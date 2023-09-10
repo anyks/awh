@@ -21,7 +21,7 @@
  * @param buffer буфер с данными заголовка
  * @param size   размер передаваемого буфера
  */
-void awh::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
+void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Если данные переданы
 	if((buffer != nullptr) && (size >= 2)){
 		// Получаем наличие маски
@@ -68,7 +68,7 @@ void awh::Frame::head(head_t & head, const char * buffer, const size_t size) con
  * @param size    размер передаваемого буфера
  * @param mask    флаг выполнения маскировки сообщения
  */
-void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept {
+void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept {
 	// Если данные переданы
 	if(!payload.empty() && (buffer != nullptr) && (size > 0)){
 		// Размер смещения в буфере и размер передаваемых данных
@@ -142,7 +142,7 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
  * @param mess данные сообщения
  * @return     бинарные данные фрейма
  */
-vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
+vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если сообщение передано
@@ -189,7 +189,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
  * @param buffer бинарные данные сообщения
  * @return       сообщение в текстовом виде
  */
-awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
+awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noexcept {
 	// Результат работы функции
 	mess_t result;
 	// Если данные переданы
@@ -237,7 +237,7 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
  * @param mask флаг выполнения маскировки сообщения
  * @return     бинарные данные фрейма
  */
-vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexcept {
+vector <char> awh::ws::Frame::ping(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
 	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PING)), 0x0};
 	// Если сообщение передано
@@ -253,7 +253,7 @@ vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexc
  * @param mask флаг выполнения маскировки сообщения
  * @return     бинарные данные фрейма
  */
-vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexcept {
+vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
 	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PONG)), 0x0};
 	// Если сообщение передано
@@ -270,7 +270,7 @@ vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexc
  * @param size   размер передаваемого буфера
  * @return       бинарные данные полезной нагрузки
  */
-vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t size) const noexcept {
+vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Выполняем чтение заголовков
@@ -326,7 +326,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
  * @param size   размер передаваемого буфера
  * @return       бинарные данные фрейма
  */
-vector <char> awh::Frame::set(const head_t & head, const char * buffer, const size_t size) const noexcept {
+vector <char> awh::ws::Frame::set(const head_t & head, const char * buffer, const size_t size) const noexcept {
 	/**
 	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZIP,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии

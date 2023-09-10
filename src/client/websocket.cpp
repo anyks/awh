@@ -39,7 +39,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 			// Если сессия клиента совпадает с сессией полученных даных
 			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (ws->_http2.id == frame->hd.stream_id)){
 				// Объект сообщения
-				mess_t mess;
+				ws::mess_t mess;
 				// Выполняем коммит полученного результата
 				reinterpret_cast <http_t *> (&ws->_ws)->commit();
 				/**
@@ -89,7 +89,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 						// Устанавливаем флаг принудительной остановки
 						ws->_stopped = true;
 						// Создаём сообщение
-						mess = mess_t(ws->_code, ws->_ws.message(ws->_code));
+						mess = ws::mess_t(ws->_code, ws->_ws.message(ws->_code));
 						// Выводим сообщение
 						ws->error(mess);
 					} break;
@@ -130,7 +130,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 							// Устанавливаем код ответа
 							ws->_code = 404;
 							// Создаём сообщение
-							mess = mess_t(ws->_code, ws->_ws.message(ws->_code));
+							mess = ws::mess_t(ws->_code, ws->_ws.message(ws->_code));
 							// Выводим сообщение
 							ws->error(mess);
 						}
@@ -144,7 +144,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 						// Устанавливаем код ответа
 						ws->_code = query.code;
 						// Создаём сообщение
-						mess = mess_t(ws->_code, query.message);
+						mess = ws::mess_t(ws->_code, query.message);
 						// Выводим сообщение
 						ws->error(mess);
 					} break;
@@ -647,7 +647,7 @@ void awh::client::WebSocket::actionOpen() noexcept {
  */
 void awh::client::WebSocket::actionRead() noexcept {
 	// Объект сообщения
-	mess_t mess;
+	ws::mess_t mess;
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Если рукопожатие не выполнено
@@ -710,7 +710,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
 					// Создаём сообщение
-					mess = mess_t(this->_code, this->_ws.message(this->_code));
+					mess = ws::mess_t(this->_code, this->_ws.message(this->_code));
 					// Выводим сообщение
 					this->error(mess);
 				} break;
@@ -761,7 +761,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Устанавливаем код ответа
 						this->_code = 404;
 						// Создаём сообщение
-						mess = mess_t(this->_code, this->_ws.message(this->_code));
+						mess = ws::mess_t(this->_code, this->_ws.message(this->_code));
 						// Выводим сообщение
 						this->error(mess);
 					}
@@ -775,7 +775,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 					// Устанавливаем код ответа
 					this->_code = query.code;
 					// Создаём сообщение
-					mess = mess_t(this->_code, query.message);
+					mess = ws::mess_t(this->_code, query.message);
 					// Выводим сообщение
 					this->error(mess);
 				} break;
@@ -801,7 +801,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 		// Создаём буфер сообщения
 		vector <char> buffer;
 		// Создаём объект шапки фрейма
-		frame_t::head_t head;
+		ws::frame_t::head_t head;
 		// Выполняем обработку полученных данных
 		while(!this->_close && this->_allow.receive){
 			// Выполняем чтение фрейма WebSocket
@@ -811,7 +811,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Проверяем состояние флагов RSV2 и RSV3
 				if(head.rsv[1] || head.rsv[2]){
 					// Создаём сообщение
-					mess = mess_t(1002, "RSV2 and RSV3 must be clear");
+					mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
 					// Выводим сообщение
 					this->error(mess);
 					// Выполняем реконнект
@@ -819,10 +819,10 @@ void awh::client::WebSocket::actionRead() noexcept {
 				}
 				// Если флаг компресси включён а данные пришли не сжатые
 				if(head.rsv[0] && ((this->_compress == http_t::compress_t::NONE) ||
-				  (head.optcode == frame_t::opcode_t::CONTINUATION) ||
+				  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
 				  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
 					// Создаём сообщение
-					mess = mess_t(1002, "RSV1 must be clear");
+					mess = ws::mess_t(1002, "RSV1 must be clear");
 					// Выводим сообщение
 					this->error(mess);
 					// Выполняем реконнект
@@ -831,7 +831,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если опкоды требуют финального фрейма
 				if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
 					// Создаём сообщение
-					mess = mess_t(1002, "FIN must be set");
+					mess = ws::mess_t(1002, "FIN must be set");
 					// Выводим сообщение
 					this->error(mess);
 					// Выполняем реконнект
@@ -840,21 +840,21 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Определяем тип ответа
 				switch(static_cast <uint8_t> (head.optcode)){
 					// Если ответом является PING
-					case static_cast <uint8_t> (frame_t::opcode_t::PING):
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 						// Отправляем ответ серверу
 						this->pong(string(data.begin(), data.end()));
 					break;
 					// Если ответом является PONG
-					case static_cast <uint8_t> (frame_t::opcode_t::PONG):
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
 						// Если идентификатор адъютанта совпадает
 						if(memcmp(to_string(this->_aid).c_str(), data.data(), data.size()) == 0)
 							// Обновляем контрольную точку
 							this->_checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					break;
 					// Если ответом является TEXT
-					case static_cast <uint8_t> (frame_t::opcode_t::TEXT):
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 					// Если ответом является BINARY
-					case static_cast <uint8_t> (frame_t::opcode_t::BINARY): {
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::BINARY): {
 						// Запоминаем полученный опкод
 						this->_opcode = head.optcode;
 						// Запоминаем, что данные пришли сжатыми
@@ -862,7 +862,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
-							mess = mess_t(1002, "masked frame from server");
+							mess = ws::mess_t(1002, "masked frame from server");
 							// Выводим сообщение
 							this->error(mess);
 							// Выполняем реконнект
@@ -872,7 +872,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 							// Очищаем список фрагментированных сообщений
 							this->_buffer.fragmes.clear();
 							// Создаём сообщение
-							mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+							mess = ws::mess_t(1002, "opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
 							this->error(mess);
 							// Выполняем реконнект
@@ -885,7 +885,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						else buffer = std::forward <const vector <char>> (data);
 					} break;
 					// Если ответом является CONTINUATION
-					case static_cast <uint8_t> (frame_t::opcode_t::CONTINUATION): {
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 						// Заполняем фрагментированное сообщение
 						this->_buffer.fragmes.insert(this->_buffer.fragmes.end(), data.begin(), data.end());
 						// Если сообщение является последним
@@ -897,7 +897,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						}
 					} break;
 					// Если ответом является CLOSE
-					case static_cast <uint8_t> (frame_t::opcode_t::CLOSE): {
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
 						// Извлекаем сообщение
 						mess = this->_frame.message(data);
 						// Выводим сообщение
@@ -920,9 +920,9 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если тредпул активирован
 				if(this->_thr.is())
 					// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-					this->_thr.push(std::bind(&websocket_t::extraction, this, buffer, (this->_opcode == frame_t::opcode_t::TEXT)));
+					this->_thr.push(std::bind(&websocket_t::extraction, this, buffer, (this->_opcode == ws::frame_t::opcode_t::TEXT)));
 				// Если тредпул не активирован, выполняем извлечение полученных сообщений
-				else this->extraction(buffer, (this->_opcode == frame_t::opcode_t::TEXT));
+				else this->extraction(buffer, (this->_opcode == ws::frame_t::opcode_t::TEXT));
 				// Очищаем буфер полученного сообщения
 				buffer.clear();
 			}
@@ -1230,7 +1230,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						// Устанавливаем код ответа
 						this->_code = this->_scheme.proxy.socks5.code();
 						// Создаём сообщение
-						mess_t mess(this->_code);
+						ws::mess_t mess(this->_code);
 						// Устанавливаем сообщение ответа
 						mess = this->_scheme.proxy.socks5.message(this->_code);
 						/**
@@ -1272,7 +1272,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 				// Устанавливаем код ответа
 				this->_code = query.code;
 				// Создаём сообщение
-				mess_t mess(this->_code, query.message);
+				ws::mess_t mess(this->_code, query.message);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1423,7 +1423,7 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
  * error Метод вывода сообщений об ошибках работы клиента
  * @param message сообщение с описанием ошибки
  */
-void awh::client::WebSocket::error(const mess_t & message) const noexcept {
+void awh::client::WebSocket::error(const ws::mess_t & message) const noexcept {
 	// Очищаем список буффер бинарных данных
 	const_cast <websocket_t *> (this)->_buffer.payload.clear();
 	// Очищаем список фрагментированных сообщений
@@ -1494,7 +1494,7 @@ void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
-				mess_t mess(1007, "received data decompression error");
+				ws::mess_t mess(1007, "received data decompression error");
 				// Выводим сообщение
 				this->error(mess);
 				// Иначе выводим сообщение так - как оно пришло
@@ -1652,7 +1652,7 @@ void awh::client::WebSocket::sendTimeout() noexcept {
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
+void awh::client::WebSocket::sendError(const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
 		// Запрещаем получение данных
@@ -1717,7 +1717,7 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 			// Буфер сжатых данных
 			vector <char> buffer;
 			// Создаём объект заголовка для отправки
-			frame_t::head_t head(true, true);
+			ws::frame_t::head_t head(true, true);
 			// Если нужно производить шифрование
 			if(this->_crypt){
 				// Выполняем шифрование переданных данных
@@ -1731,7 +1731,7 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 				}
 			}
 			// Устанавливаем опкод сообщения
-			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+			head.optcode = (utf8 ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 			// Указываем, что сообщение передаётся в сжатом виде
 			head.rsv[0] = ((size >= 1024) && (this->_compress != http_t::compress_t::NONE));
 			// Если необходимо сжимать сообщение перед отправкой
@@ -1796,7 +1796,7 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 					// Выполняем сброс RSV1
 					head.rsv[0] = false;
 					// Устанавливаем опкод сообщения
-					head.optcode = frame_t::opcode_t::CONTINUATION;
+					head.optcode = ws::frame_t::opcode_t::CONTINUATION;
 					// Увеличиваем смещение в буфере
 					start = stop;
 				}
@@ -2182,7 +2182,7 @@ void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _hash(log), _ws(fmk, log, &_uri), _uri(fmk), _frame(fmk, log), _scheme(fmk, log),
- _action(action_t::NONE), _opcode(frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
+ _action(action_t::NONE), _opcode(ws::frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
  _close(false), _unbind(true), _freeze(false), _noinfo(false), _stopped(false), _compressed(false), _takeOverCli(false),
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),
  _checkPoint(0), _frameSize(0xFA000), _fmk(fmk), _log(log), _core(core) {

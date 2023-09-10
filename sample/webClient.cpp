@@ -130,7 +130,7 @@ int main(int argc, char * argv[]){
 	// Создаём биндинг
 	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
-	client::web_t web(&core, &fmk, &log);
+	client::web_t web(client::web_t::agent_t::HTTP, &core, &fmk, &log);
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -220,6 +220,7 @@ int main(int argc, char * argv[]){
 
 	// 1. Отладить формирование запроса на WebSocket/http2
 	// 2. Разобраться в принципе передачи данных по WebSocket/http2
+	// 3. Сделать поддержку расширений в WebSocket
 
 	// 1. Сделать методы остановки для Danube и протестить с названиями архивов с точками
 

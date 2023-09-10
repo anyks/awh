@@ -24,8 +24,11 @@
 /**
  * Наши модули
  */
+#include <ws/frame.hpp>
+#include <ws/client.hpp>
 #include <http/client.hpp>
 #include <core/client.hpp>
+#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -48,6 +51,14 @@ namespace awh {
 		typedef class WEB {
 			private:
 				/**
+				 * Этапы обработки
+				 */
+				enum class status_t : uint8_t {
+					STOP = 0x00, // Остановить обработку
+					NEXT = 0x01, // Следующий этап обработки
+					SKIP = 0x02  // Пропустить этап обработки
+				};
+				/**
 				 * Основные экшены
 				 */
 				enum class action_t : uint8_t {
@@ -61,6 +72,13 @@ namespace awh {
 				};
 			public:
 				/**
+				 * Идентификатор агента
+				 */
+				enum class agent_t : uint8_t {
+					HTTP      = 0x01, // HTTP-клиент
+					WEBSOCKET = 0x02  // WebSocket-клиент
+				};
+				/**
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
@@ -71,28 +89,70 @@ namespace awh {
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
-					ALIVE      = 0x01, // Флаг автоматического поддержания подключения
-					NOT_INFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOT_STOP   = 0x03, // Флаг запрета остановки биндинга
-					WAIT_MESS  = 0x04, // Флаг ожидания входящих сообщений
-					VERIFY_SSL = 0x05, // Флаг выполнения проверки сертификата SSL
-					REDIRECTS  = 0x06  // Флаг разрешающий автоматическое перенаправление запросов
+					ALIVE           = 0x01, // Флаг автоматического поддержания подключения
+					NOT_INFO        = 0x02, // Флаг запрещающий вывод информационных сообщений
+					NOT_STOP        = 0x03, // Флаг запрета остановки биндинга
+					WAIT_MESS       = 0x04, // Флаг ожидания входящих сообщений
+					VERIFY_SSL      = 0x05, // Флаг выполнения проверки сертификата SSL
+					REDIRECTS       = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
+					TAKEOVER_CLIENT = 0x07, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER = 0x08  // Флаг ожидания входящих сообщений для сервера
 				};
+			public:
 				/**
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
-					uint8_t attempt;                             // Количество выполненных попыток
-					web_t::method_t method;                      // Метод запроса
 					string query;                                // Строка HTTP запроса
+					web_t::method_t method;                      // Метод запроса
 					vector <char> entity;                        // Тело запроса
 					unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : attempt(0), method(web_t::method_t::NONE), query("") {}
+					Request() noexcept : query(""), method(web_t::method_t::NONE) {}
 				} req_t;
 			private:
+				/**
+				 * Buffer Структура буфера данных
+				 */
+				typedef struct Buffer {
+					vector <char> payload; // Бинарный буфер полезной нагрузки
+					vector <char> fragmes; // Данные фрагметрированного сообщения
+				} buffer_t;
+				/**
+				 * Locker Структура локера
+				 */
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
+				/**
+				 * Allow Структура флагов разрешения обменом данных
+				 */
+				typedef struct Allow {
+					bool send;    // Флаг разрешения отправки данных
+					bool receive; // Флаг разрешения чтения данных
+					/**
+					 * Allow Конструктор
+					 */
+					Allow() noexcept : send(true), receive(true) {}
+				} __attribute__((packed)) allow_t;
+				/**
+				 * Partner Структура партнёра
+				 */
+				typedef struct Partner {
+					short wbit;    // Размер скользящего окна
+					bool takeOver; // Флаг скользящего контекста сжатия
+					/**
+					 * Partner Конструктор
+					 */
+					Partner() noexcept : wbit(0), takeOver(false) {}
+				} __attribute__((packed)) partner_t;
 				/**
 				 * Http2 Структура работы с клиентом HTTP/2
 				 */
@@ -106,42 +166,65 @@ namespace awh {
 					Http2() noexcept : mode(false), id(-1), ctx(nullptr) {}
 				} http2_t;
 				/**
-				 * Locker Структура локера
+				 * Frame Объект фрейма WebSocket
 				 */
-				typedef struct Locker {
-					bool mode;           // Флаг блокировки
-					recursive_mutex mtx; // Мютекс для блокировки потока
+				typedef struct Frame {
+					size_t size;                  // Минимальный размер сегмента
+					ws::frame_t methods;          // Методы работы с фреймом WebSocket
+					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 					/**
-					 * Locker Конструктор
+					 * Frame Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Locker() noexcept : mode(false) {}
-				} locker_t;
-			private:
-				// Объект работы с URI ссылками
-				uri_t _uri;
-				// Объект для работы с HTTP
-				http_t _http;
-				// Объект для работы с HTTP/2
-				http2_t _http2;
-				// Объявляем функции обратного вызова
-				fn_t _callback;
-				// Объект рабочего
-				scheme_t _scheme;
-				// Объект блокировщика
-				locker_t _locker;
-				// Экшен события
-				action_t _action;
-			private:
-				// Метод компрессии данных
-				http_t::compress_t _compress;
-			private:
-				// Буфер бинарных данных
-				vector <char> _buffer;
-			private:
-				// Список доступных источников
-				vector <string> _origins;
-				// Список активых запросов
-				vector <req_t> _requests;
+					Frame(const fmk_t * fmk, const log_t * log) noexcept :
+					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+				} frame_t;
+				/**
+				 * WebHttp Структура HTTP-клиента
+				 */
+				typedef struct WebHttp {
+					uri_t uri;               // Объект работы с URI ссылками
+					http_t http;             // Объект для работы с HTTP
+					fn_t callback;           // Объект работы с функциями обратного вызова
+					vector <char> buffer;    // Объект буфера данных
+					vector <req_t> requests; // Список активых запросов
+					/**
+					 * WebHttp Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					WebHttp(const fmk_t * fmk, const log_t * log) noexcept : uri(fmk), http(fmk, log, &uri), callback(log) {}
+				} web_http_t;
+				/**
+				 * WebSocket Структура WebSocket-клиента
+				 */
+				typedef struct WebSocket {
+					bool crypt;       // Флаг шифрования сообщений
+					bool close;       // Флаг завершения работы клиента
+					bool noinfo;      // Флаг запрета вывода информационных сообщений
+					bool freeze;      // Флаг фриза работы клиента
+					bool deflate;     // Флаг переданных сжатых данных
+					time_t point;     // Контрольная точка ответа на пинг
+					uri_t uri;        // Объект работы с URI ссылками
+					ws_t http;        // Объект для работы с HTTP запросами
+					hash_t hash;      // Объект для компрессии-декомпрессии данных
+					frame_t frame;    // Объект для работы с фреймом WebSocket
+					allow_t allow;    // Объект разрешения обмена данными
+					thr_t threads;    // Объект тредпула для работы с потоками
+					ws::mess_t mess;  // Объект сформированного сообщения
+					buffer_t buffer;  // Объект буфера данных
+					partner_t client; // Объект партнёра клиента
+					partner_t server; // Объект партнёра сервера
+					/**
+					 * WebSocket Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
+					 crypt(false), close(false), noinfo(false), freeze(false), deflate(false),
+					 point(0), uri(fmk), http(fmk, log, &uri), hash(log), frame(fmk, log) {}
+				} web_socket_t;
 			private:
 				// Идентификатор подключения
 				size_t _aid;
@@ -155,8 +238,35 @@ namespace awh {
 				// Флаг выполнения редиректов
 				bool _redirects;
 			private:
+				// Количество попыток
+				uint8_t _attempt;
 				// Общее количество попыток
 				uint8_t _attempts;
+			private:
+				// Объект работы с Web-клиентом
+				web_http_t _web;
+				// Объект работы с WebSocket-клиентом
+				web_socket_t _ws;
+			private:
+				// Протокол поддерживаемый клиентом
+				agent_t _agent;
+				// Экшен события
+				action_t _action;
+			private:
+				// Метод компрессии данных
+				http_t::compress_t _compress;
+			private:
+				// Объект для работы с HTTP/2
+				http2_t _http2;
+				// Объявляем функции обратного вызова
+				fn_t _callback;
+				// Объект рабочего
+				scheme_t _scheme;
+				// Объект блокировщика
+				locker_t _locker;
+			private:
+				// Список доступных источников
+				vector <string> _origins;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -254,10 +364,20 @@ namespace awh {
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
-				 * ping Метод выполнения пинга сервера
+				 * ping2 Метод выполнения пинга сервера
 				 * @return результат работы пинга
 				 */
-				bool ping() noexcept;
+				bool ping2() noexcept;
+				/**
+				 * ping Метод проверки доступности сервера
+				 * @param message сообщение для отправки
+				 */
+				void ping(const string & message) noexcept;
+				/**
+				 * pong Метод ответа на проверку о доступности сервера
+				 * @param message сообщение для отправки
+				 */
+				void pong(const string & message) noexcept;
 			private:
 				/** 
 				 * submit Метод выполнения удалённого запроса на сервер
@@ -307,6 +427,15 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param aid    идентификатор адъютанта
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
+				 */
+				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * enableTLSCallback Метод активации зашифрованного канала TLS
@@ -365,6 +494,24 @@ namespace awh {
 				 * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
 				 */
 				void actionProxyConnect() noexcept;
+			private:
+				/**
+				 * prepare Метод выполнения препарирования полученных данных
+				 * @return результат препарирования
+				 */
+				status_t prepare() noexcept;
+			private:
+				/**
+				 * error Метод вывода сообщений об ошибках работы клиента
+				 * @param message сообщение с описанием ошибки
+				 */
+				void error(const ws::mess_t & message) const noexcept;
+				/**
+				 * extraction Метод извлечения полученных данных
+				 * @param buffer данные в чистом виде полученные с сервера
+				 * @param utf8   данные передаются в текстовом виде
+				 */
+				void extraction(const vector <char> & buffer, const bool utf8) noexcept;
 			public:
 				/**
 				 * GET Метод запроса в формате HTTP методом GET
@@ -503,7 +650,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const mode_t, WEB *)> callback) noexcept;
+				void on(function <void (const mode_t)> callback) noexcept;
 				/** 
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова
@@ -545,6 +692,11 @@ namespace awh {
 				 * sendTimeout Метод отправки сигнала таймаута
 				 */
 				void sendTimeout() noexcept;
+				/**
+				 * sendError Метод отправки сообщения об ошибке
+				 * @param mess отправляемое сообщение об ошибке
+				 */
+				void sendError(const ws::mess_t & mess) noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param reqs список запросов
@@ -664,11 +816,12 @@ namespace awh {
 			public:
 				/**
 				 * WEB Конструктор
-				 * @param core объект сетевого ядра
-				 * @param fmk  объект фреймворка
-				 * @param log  объект для работы с логами
+				 * @param agent идентификатор агента
+				 * @param core  объект сетевого ядра
+				 * @param fmk   объект фреймворка
+				 * @param log   объект для работы с логами
 				 */
-				WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				WEB(const agent_t agent, const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~WEB Деструктор
 				 */

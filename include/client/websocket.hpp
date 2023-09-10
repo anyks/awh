@@ -149,7 +149,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект для работы с фреймом WebSocket
-				frame_t _frame;
+				ws::frame_t _frame;
 				// Объект разрешения обмена данными
 				allow_t _allow;
 				// Объект рабочего
@@ -162,7 +162,7 @@ namespace awh {
 				buffer_t _buffer;
 			private:
 				// Полученный опкод сообщения
-				frame_t::opcode_t _opcode;
+				ws::frame_t::opcode_t _opcode;
 				// Метод компрессии данных
 				http_t::compress_t _compress;
 			private:
@@ -391,7 +391,7 @@ namespace awh {
 				 * error Метод вывода сообщений об ошибках работы клиента
 				 * @param message сообщение с описанием ошибки
 				 */
-				void error(const mess_t & message) const noexcept;
+				void error(const ws::mess_t & message) const noexcept;
 				/**
 				 * extraction Метод извлечения полученных данных
 				 * @param buffer данные в чистом виде полученные с сервера
@@ -451,7 +451,7 @@ namespace awh {
 				 * sendError Метод отправки сообщения об ошибке
 				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void sendError(const mess_t & mess) noexcept;
+				void sendError(const ws::mess_t & mess) noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param message буфер сообщения в бинарном виде

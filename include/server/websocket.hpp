@@ -95,7 +95,7 @@ namespace awh {
 				// Ядро локальных таймеров
 				core_t _timer;
 				// Создаём объект для работы с фреймом WebSocket
-				frame_t _frame;
+				ws::frame_t _frame;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
@@ -249,7 +249,7 @@ namespace awh {
 				 * @param aid     идентификатор адъютанта
 				 * @param message сообщение с описанием ошибки
 				 */
-				void error(const size_t aid, const mess_t & message) const noexcept;
+				void error(const size_t aid, const ws::mess_t & message) const noexcept;
 				/**
 				 * extraction Метод извлечения полученных данных
 				 * @param aid    идентификатор адъютанта
@@ -329,7 +329,7 @@ namespace awh {
 				 * @param aid  идентификатор адъютанта
 				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void sendError(const size_t aid, const mess_t & mess) const noexcept;
+				void sendError(const size_t aid, const ws::mess_t & mess) const noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param aid     идентификатор адъютанта

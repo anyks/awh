@@ -89,22 +89,22 @@ namespace awh {
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
-					bool crypt;                  // Флаг шифрования сообщений
-					bool close;                  // Флаг требования закрыть адъютанта
-					bool stopped;                // Флаг принудительной остановки
-					bool compressed;             // Флаг переданных сжатых данных
-					short wbitClient;            // Размер скользящего окна клиента
-					short wbitServer;            // Размер скользящего окна сервера
-					action_t action;             // Экшен активного события
-					time_t checkPoint;           // Контрольная точка ответа на пинг
-					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
-					allow_t allow;               // Объект разрешения обмена данными
-					locker_t locker;             // Объект блокировщика
-					buffer_t buffer;             // Объект буфера данных
-					server::ws_t ws;             // Создаём объект для работы с HTTP
-					recursive_mutex mtx;         // Мютекс для блокировки потока
-					frame_t::opcode_t opcode;    // Полученный опкод сообщения
-					http_t::compress_t compress; // Метод компрессии данных
+					bool crypt;                   // Флаг шифрования сообщений
+					bool close;                   // Флаг требования закрыть адъютанта
+					bool stopped;                 // Флаг принудительной остановки
+					bool compressed;              // Флаг переданных сжатых данных
+					short wbitClient;             // Размер скользящего окна клиента
+					short wbitServer;             // Размер скользящего окна сервера
+					action_t action;              // Экшен активного события
+					time_t checkPoint;            // Контрольная точка ответа на пинг
+					hash_t hash;                  // Создаём объект для компрессии-декомпрессии данных
+					allow_t allow;                // Объект разрешения обмена данными
+					locker_t locker;              // Объект блокировщика
+					buffer_t buffer;              // Объект буфера данных
+					server::ws_t ws;              // Создаём объект для работы с HTTP
+					recursive_mutex mtx;          // Мютекс для блокировки потока
+					http_t::compress_t compress;  // Метод компрессии данных
+					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 					/**
 					 * Coffer Конструктор
 					 */
@@ -114,8 +114,8 @@ namespace awh {
 					 wbitClient(-1), wbitServer(-1),
 					 action(action_t::NONE), checkPoint(0),
 					 hash(log), ws(fmk, log, uri),
-					 opcode(frame_t::opcode_t::TEXT),
-					 compress(http_t::compress_t::NONE) {}
+					 compress(http_t::compress_t::NONE),
+					 opcode(ws::frame_t::opcode_t::TEXT) {}
 					/**
 					 * ~Coffer Деструктор
 					 */

@@ -82,157 +82,200 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 		case NGHTTP2_DATA: {
 			// Если сессия клиента совпадает с сессией полученных даных и передача данных завершена
 			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (web->_http2.id == frame->hd.stream_id)){
-				// Выполняем коммит полученного результата
-				web->_http.commit();
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					{
-						// Если тело ответа существует
-						if(!web->_http.body().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << web->_fmk->format("<body %u>", web->_http.body().size()) << endl << endl;
-						// Иначе устанавливаем перенос строки
-						else cout << endl;
-					}
-				#endif
-				// Объект работы с функциями обратного вызова
-				fn_t callback(web->_log);
-				// Получаем параметры запроса
-				const auto & query = web->_http.query();
-				// Получаем объект запроса
-				req_t & request = web->_requests.front();
-				// Получаем статус ответа
-				awh::http_t::stath_t status = web->_http.getAuth();
-				// Если выполнять редиректы запрещено
-				if(!web->_redirects && (status == awh::http_t::stath_t::RETRY)){
-					// Если нужно произвести запрос заново
-					if((query.code == 201) || (query.code == 301) ||
-					   (query.code == 302) || (query.code == 303) ||
-					   (query.code == 307) || (query.code == 308))
-							// Запрещаем выполнять редирект
-							status = awh::http_t::stath_t::GOOD;
-				}
-				// Получаем объект биндинга ядра TCP/IP
-				client::core_t * core = const_cast <client::core_t *> (web->_core);
-				// Выполняем анализ результата авторизации
-				switch(static_cast <uint8_t> (status)){
-					// Если нужно попытаться ещё раз
-					case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
-						// Если попытка повторить авторизацию ещё не проводилась
-						if(request.attempt < web->_attempts){
-							// Получаем новый адрес запроса
-							const uri_t::url_t & url = web->_http.getUrl();
-							// Если адрес запроса получен
-							if(!url.empty()){
-								// Увеличиваем количество попыток
-								request.attempt++;
-								// Выполняем проверку соответствие протоколов
-								const bool schema = (web->_fmk->compare(url.schema, web->_scheme.url.schema));
-								// Устанавливаем новый адрес запроса
-								web->_scheme.url = std::forward <const uri_t::url_t> (url);
-								// Получаем параметры адреса запроса
-								request.query = web->_uri.query(web->_scheme.url);
-								// Если соединение является постоянным
-								if(schema && web->_http.isAlive())
-									// Отправляем повторный запрос
-									web->send();
-								// Если нам необходимо отключиться
-								else core->close(web->_aid);
+				// Определяем протокол клиента
+				switch(static_cast <uint8_t> (web->_agent)){
+					// Если агент является клиентом HTTP
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Выполняем коммит полученного результата
+						web->_web.http.commit();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Если тело ответа существует
+								if(!web->_web.http.body().empty())
+									// Выводим сообщение о выводе чанка тела
+									cout << web->_fmk->format("<body %u>", web->_web.http.body().size()) << endl << endl;
+								// Иначе устанавливаем перенос строки
+								else cout << endl;
+							}
+						#endif
+						// Выполняем препарирование полученных данных
+						switch(static_cast <uint8_t> (web->prepare())){
+							// Если необходимо выполнить пропуск обработки данных
+							case static_cast <uint8_t> (status_t::SKIP):
 								// Завершаем работу
 								return 0;
+						}
+						// Если функция обратного вызова установлена, выводим сообщение
+						if(web->_web.callback.is("entity"))
+							// Выполняем функцию обратного вызова дисконнекта
+							web->_web.callback.bind <const u_int, const string, const vector <char>> ("entity");
+						// Если подключение выполнено и список запросов не пустой
+						if((web->_aid > 0) && !web->_web.requests.empty())
+							// Выполняем запрос на удалённый сервер
+							web->submit(web->_web.requests.front());
+					} break;
+					// Если агент является клиентом WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+						// Если рукопожатие не выполнено
+						if(!reinterpret_cast <http_t *> (&web->_ws.http)->isHandshake()){
+							// Получаем объект HTTP-ответа
+							http_t * http = reinterpret_cast <http_t *> (&web->_ws.http);
+							// Выполняем коммит полученного результата
+							http->commit();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								{
+									// Если тело ответа существует
+									if(!http->body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << web->_fmk->format("<body %u>", http->body().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
+								}
+							#endif
+							// Выполняем анализ результата авторизации
+							switch(static_cast <uint8_t> (http->getAuth())){
+								// Если нужно попытаться ещё раз
+								case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+									// Если попытки повторить переадресацию закончились
+									if((web->_stopped = (web->_attempt >= web->_attempts)))
+										// Завершаем работу
+										const_cast <client::core_t *> (web->_core)->close(web->_aid);
+								} break;
+								// Если запрос неудачный
+								case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+									// Завершаем работу
+									const_cast <client::core_t *> (web->_core)->close(web->_aid);
+								break;
 							}
-						}
-						// Устанавливаем флаг принудительной остановки
-						web->_stopped = true;
-					} break;
-					// Если запрос выполнен удачно
-					case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-						// Выполняем сброс количества попыток
-						request.attempt = 0;
-						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(web->_callback.is("entity"))
-							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
-						// Устанавливаем размер стопбайт
-						if(!web->_http.isAlive()){
-							// Завершаем работу
-							core->close(web->_aid);
-							// Выполняем завершение работы
-							goto Stop;
-						}
-						// Если объект ещё не удалён
-						if(!web->_requests.empty())
-							// Выполняем удаление объекта запроса
-							web->_requests.erase(web->_requests.begin());
-						// Выполняем завершение работы
-						goto Stop;
-					} break;
-					// Если запрос неудачный
-					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
-						// Устанавливаем флаг принудительной остановки
-						web->_stopped = true;
-						// Если возникла ошибка выполнения запроса
-						if((query.code >= 400) && (query.code < 500)){
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-							if(web->_callback.is("entity"))
-								// Устанавливаем полученную функцию обратного вызова
-								callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
-							// Если объект ещё не удалён
-							if(!web->_requests.empty())
-								// Выполняем удаление объекта запроса
-								web->_requests.erase(web->_requests.begin());
-							// Выполняем завершение работы
-							goto Stop;
+							if(web->_callback.is("entity")){
+								// Получаем параметры запроса
+								const auto & query = http->query();
+								// Выводим функцию обратного вызова
+								web->_callback.call <const u_int, const string &, const vector <char> &> ("entity", query.code, query.message, http->body());
+							}
+						// Если рукопожатие выполнено
+						} else if(web->_ws.allow.receive) {
+							// Выполняем препарирование полученных данных
+							switch(static_cast <uint8_t> (web->prepare())){
+								// Если необходимо выполнить остановку обработки
+								case static_cast <uint8_t> (status_t::STOP):
+									// Выходим из функции
+									return 0;
+								// Если необходимо выполнить переход к следующему этапу обработки
+								case static_cast <uint8_t> (status_t::NEXT):
+									// Выполняем отправку сообщения об ошибке
+									web->sendError(web->_ws.mess);
+								break;
+							}
 						}
 					} break;
 				}
-				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(web->_callback.is("entity"))
-					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
-				// Завершаем работу
-				core->close(web->_aid);
-				// Устанавливаем метку завершения работы
-				Stop:
-				// Если функция обратного вызова установлена, выводим сообщение
-				if(callback.is("entity"))
-					// Выполняем функцию обратного вызова дисконнекта
-					callback.bind <const u_int, const string, const vector <char>> ("entity");
-				// Если подключение выполнено и список запросов не пустой
-				if((web->_aid > 0) && !web->_requests.empty())
-					// Выполняем запрос на удалённый сервер
-					web->submit(web->_requests.front());
 			}
 		} break;
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS: {
 			// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 			if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) && (web->_http2.id == frame->hd.stream_id)){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					{
-						// Получаем данные ответа
-						const auto & response = web->_http.response(true);
-						// Если параметры ответа получены
-						if(!response.empty())
-							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl;
-					}
-				#endif
-				// Получаем параметры запроса
-				const auto & query = web->_http.query();
-				// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-				if(web->_callback.is("response"))
-					// Выводим функцию обратного вызова
-					web->_callback.call <const u_int, const string &> ("response", query.code, query.message);
-				// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-				if(web->_callback.is("headers"))
-					// Выводим функцию обратного вызова
-					web->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", query.code, query.message, web->_http.headers());
+				// Определяем протокол клиента
+				switch(static_cast <uint8_t> (web->_agent)){
+					// Если агент является клиентом HTTP
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные ответа
+								const auto & response = web->_web.http.response(true);
+								// Если параметры ответа получены
+								if(!response.empty())
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl;
+							}
+						#endif
+						// Получаем параметры запроса
+						const auto & query = web->_web.http.query();
+						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+						if(web->_callback.is("response"))
+							// Выводим функцию обратного вызова
+							web->_callback.call <const u_int, const string &> ("response", query.code, query.message);
+						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+						if(web->_callback.is("headers"))
+							// Выводим функцию обратного вызова
+							web->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", query.code, query.message, web->_web.http.headers());
+					} break;
+					// Если агент является клиентом WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные ответа
+								const auto & response = reinterpret_cast <http_t *> (&web->_ws.http)->response(true);
+								// Если параметры ответа получены
+								if(!response.empty())
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl;
+							}
+						#endif
+						// Получаем параметры запроса
+						const auto & query = web->_ws.http.query();
+						// Получаем объект биндинга ядра TCP/IP
+						client::core_t * core = const_cast <client::core_t *> (web->_core);
+						// Выполняем препарирование полученных данных
+						switch(static_cast <uint8_t> (web->prepare())){
+							// Если необходимо выполнить остановку обработки
+							case static_cast <uint8_t> (status_t::STOP): {
+								// Выполняем сброс количества попыток
+								web->_attempt = 0;
+								// Завершаем работу
+								core->close(web->_aid);
+							}
+							// Если необходимо выполнить переход к следующему этапу обработки
+							case static_cast <uint8_t> (status_t::NEXT): {
+								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+								if(web->_callback.is("response"))
+									// Выводим функцию обратного вызова
+									web->_callback.call <const u_int, const string &> ("response", query.code, query.message);
+								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+								if(web->_callback.is("headers"))
+									// Выводим функцию обратного вызова
+									web->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", query.code, query.message, web->_ws.http.headers());
+								// Очищаем буфер собранных данных
+								web->_ws.buffer.payload.clear();
+								// Завершаем работу
+								return 0;
+							}
+							// Если необходимо выполнить пропуск обработки данных
+							case static_cast <uint8_t> (status_t::SKIP): {
+								// Если соединение является постоянным
+								if(web->_ws.http.isAlive())
+									// Выполняем открытие текущего подключения
+									web->actionConnect();
+								// Если нам необходимо отключиться
+								else core->close(web->_aid);
+								// Завершаем работу
+								return 0;
+							}
+						}
+						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+						if(web->_callback.is("response"))
+							// Выводим функцию обратного вызова
+							web->_callback.call <const u_int, const string &> ("response", query.code, query.message);
+						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+						if(web->_callback.is("headers"))
+							// Выводим функцию обратного вызова
+							web->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", query.code, query.message, web->_web.http.headers());
+					} break;
+				}
 			}
 		} break;
 	}
@@ -363,9 +406,23 @@ int awh::client::WEB::onChunkHttp2(nghttp2_session * session, const uint8_t flag
 		// Если функция обратного вызова на перехват входящих чанков установлена
 		if(web->_callback.is("chunking"))
 			// Выводим функцию обратного вызова
-			web->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &web->_http);
-		// Добавляем полученный чанк в тело данных
-		else web->_http.body(vector <char> (buffer, buffer + size));
+			web->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &web->_web.http);
+		// Если функция перехвата полученных чанков не установлена
+		else {
+			// Определяем протокол клиента
+			switch(static_cast <uint8_t> (web->_agent)){
+				// Если агент является клиентом HTTP
+				case static_cast <uint8_t> (agent_t::HTTP):
+					// Добавляем полученный чанк в тело данных
+					web->_web.http.body(vector <char> (buffer, buffer + size));
+				break;
+				// Если агент является клиентом WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Добавляем полученный чанк в тело данных
+					web->_ws.http.body(vector <char> (buffer, buffer + size));
+				break;
+			}
+		}
 	}
 	// Выводим результат
 	return 0;
@@ -388,8 +445,19 @@ int awh::client::WEB::onBeginHeadersHttp2(nghttp2_session * session, const nghtt
 		case NGHTTP2_HEADERS:{
 			// Если сессия клиента совпадает с сессией полученных даных
 			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id)){
-				// Выполняем очистку параметров HTTP запроса
-				web->_http.clear();
+				// Определяем протокол клиента
+				switch(static_cast <uint8_t> (web->_agent)){
+					// Если агент является клиентом HTTP
+					case static_cast <uint8_t> (agent_t::HTTP):
+						// Выполняем очистку параметров HTTP запроса
+						web->_web.http.clear();
+					break;
+					// Если агент является клиентом WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем очистку параметров HTTP запроса
+						web->_ws.http.clear();
+					break;
+				}
 				/**
 				 * Если включён режим отладки
 				 */
@@ -433,8 +501,19 @@ int awh::client::WEB::onHeaderHttp2(nghttp2_session * session, const nghttp2_fra
 				const string keyHeader((const char *) key, keySize);
 				// Получаем значение заголовка
 				const string valHeader((const char *) val, valSize);
-				// Устанавливаем полученные заголовки
-				web->_http.header2(keyHeader, valHeader);
+				// Определяем протокол клиента
+				switch(static_cast <uint8_t> (web->_agent)){
+					// Если агент является клиентом HTTP
+					case static_cast <uint8_t> (agent_t::HTTP):
+						// Устанавливаем полученные заголовки
+						web->_web.http.header2(keyHeader, valHeader);
+					break;
+					// Если агент является клиентом WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Устанавливаем полученные заголовки
+						web->_ws.http.header2(keyHeader, valHeader);
+					break;
+				}
 				// Если функция обратного вызова на полученного заголовка с сервера установлена
 				if(web->_callback.is("header"))
 					// Выводим функцию обратного вызова
@@ -538,10 +617,10 @@ void awh::client::WEB::chunking(const vector <char> & chunk, const awh::http_t *
 	}
 }
 /**
- * ping Метод выполнения пинга сервера
+ * ping2 Метод выполнения пинга сервера
  * @return результат работы пинга
  */
-bool awh::client::WEB::ping() noexcept {
+bool awh::client::WEB::ping2() noexcept {
 	// Если протокол подключения установлен как HTTP/2
 	if(this->_http2.mode && (this->_http2.ctx != nullptr)){
 		// Результат выполнения поерации
@@ -566,6 +645,42 @@ bool awh::client::WEB::ping() noexcept {
 	// Выводим результат
 	return false;
 }
+/**
+ * ping Метод проверки доступности сервера
+ * @param message сообщение для отправки
+ */
+void awh::client::WEB::ping(const string & message) noexcept {
+	// Если подключение выполнено
+	if(this->_core->working() && this->_ws.allow.send){
+		// Если рукопожатие выполнено
+		if(this->_ws.http.isHandshake() && (this->_aid > 0)){
+			// Создаём буфер для отправки
+			const auto & buffer = this->_ws.frame.methods.ping(message, true);
+			// Если бинарный буфер получен
+			if(!buffer.empty())
+				// Выполняем отправку сообщения на сервер
+				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+		}
+	}
+}
+/**
+ * pong Метод ответа на проверку о доступности сервера
+ * @param message сообщение для отправки
+ */
+void awh::client::WEB::pong(const string & message) noexcept {
+	// Если подключение выполнено
+	if(this->_core->working() && this->_ws.allow.send){
+		// Если рукопожатие выполнено
+		if(this->_ws.http.isHandshake() && (this->_aid > 0)){
+			// Создаём буфер для отправки
+			const auto & buffer = this->_ws.frame.methods.pong(message, true);
+			// Если бинарный буфер получен
+			if(!buffer.empty())
+				// Выполняем отправку сообщения на сервер
+				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+		}
+	}
+}
 /** 
  * submit Метод выполнения удалённого запроса на сервер
  * @param request объект запроса на удалённый сервер
@@ -574,21 +689,23 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 	// Если подключение выполнено
 	if(this->_aid > 0){
 		// Выполняем сброс состояния HTTP парсера
-		this->_http.reset();
+		this->_web.http.reset();
 		// Выполняем очистку параметров HTTP запроса
-		this->_http.clear();
+		this->_web.http.clear();
+		// Выполняем очистку функций обратного вызова
+		this->_web.callback.clear();
 		// Устанавливаем метод компрессии
-		this->_http.compress(this->_compress);
+		this->_web.http.compress(this->_compress);
 		// Если список заголовков получен
 		if(!request.headers.empty())
 			// Устанавливаем заголовоки запроса
-			this->_http.headers(request.headers);
+			this->_web.http.headers(request.headers);
 		// Если тело запроса существует
 		if(!request.entity.empty())
 			// Устанавливаем тело запроса
-			this->_http.body(request.entity);
+			this->_web.http.body(request.entity);
 		// Получаем URL ссылку для выполнения запроса
-		this->_uri.append(this->_scheme.url, request.query);
+		this->_web.uri.append(this->_scheme.url, request.query);
 		// Получаем объект биндинга ядра TCP/IP
 		client::core_t * core = const_cast <client::core_t *> (this->_core);
 		// Если активирован режим работы с HTTP/2 протоколом
@@ -596,7 +713,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			// Список заголовков для запроса
 			vector <nghttp2_nv> nva;
 			// Выполняем установку параметры ответа сервера
-			this->_http.query(awh::web_t::query_t(2.0f, request.method));
+			this->_web.http.query(awh::web_t::query_t(2.0f, request.method));
 			/**
 			 * Если включён режим отладки
 			 */
@@ -604,12 +721,12 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 				// Получаем бинарные данные WEB запроса
-				const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+				const auto & buffer = this->_web.http.request(this->_scheme.url, request.method);
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
 			// Выполняем запрос на получение заголовков
-			const auto & headers = this->_http.request2(this->_scheme.url, request.method);
+			const auto & headers = this->_web.http.request2(this->_scheme.url, request.method);
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : headers){
 				// Выполняем добавление метода запроса
@@ -650,7 +767,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 					return;
 				}
 				// Получаем данные тела запроса
-				while(!(entity = this->_http.payload()).empty()){
+				while(!(entity = this->_web.http.payload()).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -741,7 +858,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
 			// Получаем бинарные данные WEB запроса
-			const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+			const auto & buffer = this->_web.http.request(this->_scheme.url, request.method);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
 				/**
@@ -758,7 +875,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выполняем отправку заголовков запроса на сервер
 				core->write(buffer.data(), buffer.size(), this->_aid);
 				// Получаем данные тела запроса
-				while(!(entity = this->_http.payload()).empty()){
+				while(!(entity = this->_web.http.payload()).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -819,10 +936,27 @@ void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::c
 void awh::client::WEB::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если сервер уже отключился
-		if(!this->ping())
-			// Завершаем работу
-			reinterpret_cast <client::core_t *> (core)->close(aid);
+		// Определяем протокол клиента
+		switch(static_cast <uint8_t> (this->_agent)){
+			// Если агент является клиентом HTTP
+			case static_cast <uint8_t> (agent_t::HTTP): {
+				// Если сервер уже отключился
+				if(!this->ping2())
+					// Завершаем работу
+					reinterpret_cast <client::core_t *> (core)->close(aid);
+			} break;
+			// Если агент является клиентом WebSocket
+			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+				// Получаем текущий штамп времени
+				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+				if(this->_ws.close || ((stamp - this->_ws.point) >= (PERSIST_INTERVAL * 5)))
+					// Завершаем работу
+					reinterpret_cast <client::core_t *> (core)->close(aid);
+				// Отправляем запрос адъютанту
+				else this->ping(to_string(aid));
+			} break;
+		}
 	}
 }
 /**
@@ -870,6 +1004,20 @@ void awh::client::WEB::readCallback(const char * buffer, const size_t size, cons
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если протокол подключения является HTTP/2
 		if(core->proto(aid) == engine_t::proto_t::HTTP2){
+			// Если агент является клиентом WebSocket
+			if(this->_agent == agent_t::WEBSOCKET){
+				// Если подключение закрыто
+				if(this->_ws.close){
+					// Принудительно выполняем отключение лкиента
+					reinterpret_cast <client::core_t *> (core)->close(aid);
+					// Выходим из функции
+					return;
+				}
+				// Если получение данных не разрешено
+				if(!this->_ws.allow.receive)
+					// Выходим из функции
+					return;
+			}
 			// Выполняем извлечение полученного чанка данных из сокета
 			ssize_t bytes = nghttp2_session_mem_recv(this->_http2.ctx, (const uint8_t *) buffer, size);
 			// Если данные не прочитаны, выводим ошибку и выходим
@@ -888,15 +1036,60 @@ void awh::client::WEB::readCallback(const char * buffer, const size_t size, cons
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
-			// Если дисконнекта ещё не произошло
-			if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
-				// Устанавливаем экшен выполнения
-				this->_action = action_t::READ;
-				// Добавляем полученные данные в буфер
-				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-				// Выполняем запуск обработчика событий
-				this->handler();
+			// Определяем протокол клиента
+			switch(static_cast <uint8_t> (this->_agent)){
+				// Если агент является клиентом HTTP
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Если дисконнекта ещё не произошло
+					if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
+						// Устанавливаем экшен выполнения
+						this->_action = action_t::READ;
+						// Добавляем полученные данные в буфер
+						this->_web.buffer.insert(this->_web.buffer.end(), buffer, buffer + size);
+						// Выполняем запуск обработчика событий
+						this->handler();
+					}
+				} break;
+				// Если агент является клиентом WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+					// Если подключение закрыто
+					if(this->_ws.close){
+						// Принудительно выполняем отключение лкиента
+						reinterpret_cast <client::core_t *> (core)->close(aid);
+						// Выходим из функции
+						return;
+					}
+					// Если разрешено получение данных
+					if(this->_ws.allow.receive){
+						// Устанавливаем экшен выполнения
+						this->_action = action_t::READ;
+						// Добавляем полученные данные в буфер
+						this->_ws.buffer.payload.insert(this->_ws.buffer.payload.end(), buffer, buffer + size);
+						// Выполняем запуск обработчика событий
+						this->handler();
+					}
+				} break;
 			}
+		}
+	}
+}
+/**
+ * writeCallback Метод обратного вызова при записи сообщения на клиенте
+ * @param buffer бинарный буфер содержащий сообщение
+ * @param size   размер бинарного буфера содержащего сообщение
+ * @param aid    идентификатор адъютанта
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
+ */
+void awh::client::WEB::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Если необходимо выполнить закрыть подключение
+		if(!this->_ws.close && this->_stopped){
+			// Устанавливаем флаг закрытия подключения
+			this->_ws.close = !this->_ws.close;
+			// Принудительно выполняем отключение лкиента
+			const_cast <client::core_t *> (this->_core)->close(aid);
 		}
 	}
 }
@@ -913,8 +1106,19 @@ bool awh::client::WEB::enableTLSCallback(const uri_t::url_t & url, const size_t 
 	(void) aid;
 	(void) sid;
 	(void) core;
-	// Выводим результат активации
-	return (!url.empty() && this->_fmk->compare(url.schema, "https"));
+	// Определяем протокол клиента
+	switch(static_cast <uint8_t> (this->_agent)){
+		// Если агент является клиентом HTTP
+		case static_cast <uint8_t> (agent_t::HTTP):
+			// Выводим результат активации
+			return (!url.empty() && this->_fmk->compare(url.schema, "https"));
+		// Если агент является клиентом WebSocket
+		case static_cast <uint8_t> (agent_t::WEBSOCKET):
+			// Выводим результат активации
+			return (!url.empty() && this->_fmk->compare(url.schema, "wss"));
+	}
+	// Сообщаем, что подключение производится в незащищённом режиме
+	return false;
 }
 /**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
@@ -948,8 +1152,19 @@ void awh::client::WEB::proxyReadCallback(const char * buffer, const size_t size,
 		if((this->_action == action_t::NONE) || (this->_action == action_t::PROXY_READ)){
 			// Устанавливаем экшен выполнения
 			this->_action = action_t::PROXY_READ;
-			// Добавляем полученные данные в буфер
-			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+			// Определяем протокол клиента
+			switch(static_cast <uint8_t> (this->_agent)){
+				// Если агент является клиентом HTTP
+				case static_cast <uint8_t> (agent_t::HTTP):
+					// Добавляем полученные данные в буфер
+					this->_web.buffer.insert(this->_web.buffer.end(), buffer, buffer + size);
+				break;
+				// Если агент является клиентом WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Добавляем полученные данные в буфер
+					this->_ws.buffer.payload.insert(this->_ws.buffer.payload.end(), buffer, buffer + size);
+				break;
+			}
 			// Выполняем запуск обработчика событий
 			this->handler();
 		}
@@ -1006,177 +1221,202 @@ void awh::client::WEB::actionOpen() noexcept {
  * actionRead Метод обработки экшена чтения с сервера
  */
 void awh::client::WEB::actionRead() noexcept {
-	// Флаг удачного получения данных
-	bool receive = false;
-	// Флаг завершения работы
-	bool completed = false;
-	// Объект работы с функциями обратного вызова
-	fn_t callback(this->_log);
-	// Получаем объект запроса
-	req_t & request = this->_requests.front();
-	// Получаем объект биндинга ядра TCP/IP
-	client::core_t * core = const_cast <client::core_t *> (this->_core);
-	// Выполняем обработку полученных данных
-	while(!this->_active){
-		// Выполняем парсинг полученных данных
-		size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
-		// Если все данные получены
-		if((completed = this->_http.isEnd())){
-			// Получаем параметры запроса
-			const auto & query = this->_http.query();
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				{
-					// Получаем данные ответа
-					const auto & response = this->_http.response(true);
-					// Если параметры ответа получены
-					if(!response.empty()){
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры ответа
-						cout << string(response.begin(), response.end()) << endl;
-						// Если тело ответа существует
-						if(!this->_http.body().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
-						// Иначе устанавливаем перенос строки
-						else cout << endl;
+	// Определяем протокол клиента
+	switch(static_cast <uint8_t> (this->_agent)){
+		// Если агент является клиентом HTTP
+		case static_cast <uint8_t> (agent_t::HTTP): {
+			// Флаг удачного получения данных
+			bool receive = false;
+			// Флаг завершения работы
+			bool completed = false;
+			// Выполняем обработку полученных данных
+			while(!this->_active){
+				// Выполняем парсинг полученных данных
+				size_t bytes = this->_web.http.parse(this->_web.buffer.data(), this->_web.buffer.size());
+				// Если все данные получены
+				if((completed = this->_web.http.isEnd())){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						{
+							// Получаем данные ответа
+							const auto & response = this->_web.http.response(true);
+							// Если параметры ответа получены
+							if(!response.empty()){
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры ответа
+								cout << string(response.begin(), response.end()) << endl;
+								// Если тело ответа существует
+								if(!this->_web.http.body().empty())
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("<body %u>", this->_web.http.body().size()) << endl << endl;
+								// Иначе устанавливаем перенос строки
+								else cout << endl;
+							}
+						}
+					#endif
+					// Выполняем препарирование полученных данных
+					switch(static_cast <uint8_t> (this->prepare())){
+						// Если необходимо выполнить остановку обработки
+						case static_cast <uint8_t> (status_t::STOP):
+							// Выполняем завершение работы
+							goto Stop;
+						// Если необходимо выполнить переход к следующему этапу обработки
+						case static_cast <uint8_t> (status_t::NEXT):
+							// Выполняем переход к следующему этапу обработки
+							goto Next;
+						// Если необходимо выполнить пропуск обработки данных
+						case static_cast <uint8_t> (status_t::SKIP):
+							// Завершаем работу
+							return;
 					}
 				}
-			#endif
-			// Получаем статус ответа
-			awh::http_t::stath_t status = this->_http.getAuth();
-			// Если выполнять редиректы запрещено
-			if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
-				// Если нужно произвести запрос заново
-				if((query.code == 201) || (query.code == 301) ||
-				   (query.code == 302) || (query.code == 303) ||
-				   (query.code == 307) || (query.code == 308))
-						// Запрещаем выполнять редирект
-						status = awh::http_t::stath_t::GOOD;
+				// Устанавливаем метку продолжения обработки пайплайна
+				Next:
+				// Если парсер обработал какое-то количество байт
+				if((receive = ((bytes > 0) && !this->_web.buffer.empty()))){
+					// Если размер буфера больше количества удаляемых байт
+					if((receive = (this->_web.buffer.size() >= bytes)))
+						// Удаляем количество обработанных байт
+						this->_web.buffer.assign(this->_web.buffer.begin() + bytes, this->_web.buffer.end());
+						// vector <decltype(this->_web.buffer)::value_type> (this->_web.buffer.begin() + bytes, this->_web.buffer.end()).swap(this->_web.buffer);
+				}
+				// Если данные мы все получили, выходим
+				if(!receive || this->_web.buffer.empty()) break;
 			}
-			// Выполняем анализ результата авторизации
-			switch(static_cast <uint8_t> (status)){
-				// Если нужно попытаться ещё раз
-				case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
-					// Если попытка повторить авторизацию ещё не проводилась
-					if(request.attempt < this->_attempts){
-						// Получаем новый адрес запроса
-						const uri_t::url_t & url = this->_http.getUrl();
-						// Если адрес запроса получен
-						if(!url.empty()){
-							// Увеличиваем количество попыток
-							request.attempt++;
-							// Выполняем проверку соответствие протоколов
-							const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
-							// Устанавливаем новый адрес запроса
-							this->_scheme.url = std::forward <const uri_t::url_t> (url);
-							// Получаем параметры адреса запроса
-							request.query = this->_uri.query(this->_scheme.url);
-							// Выполняем очистку оставшихся данных
-							this->_buffer.clear();
+			// Устанавливаем метку завершения работы
+			Stop:
+			// Если экшен соответствует, выполняем его сброс
+			if(this->_action == action_t::READ)
+				// Выполняем сброс экшена
+				this->_action = action_t::NONE;
+			// Если получение данных выполнено
+			if(completed){
+				// Если функция обратного вызова установлена, выводим сообщение
+				if(this->_web.callback.is("entity"))
+					// Выполняем функцию обратного вызова дисконнекта
+					this->_web.callback.bind <const u_int, const string, const vector <char>> ("entity");
+				// Если подключение выполнено и список запросов не пустой
+				if((this->_aid > 0) && !this->_web.requests.empty())
+					// Выполняем запрос на удалённый сервер
+					this->submit(this->_web.requests.front());
+			}
+		} break;
+		// Если агент является клиентом WebSocket
+		case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+			// Если рукопожатие не выполнено
+			if(!reinterpret_cast <http_t *> (&this->_ws.http)->isHandshake()){
+				// Выполняем парсинг полученных данных
+				const size_t bytes = this->_ws.http.parse(this->_ws.buffer.payload.data(), this->_ws.buffer.payload.size());
+				// Если все данные получены
+				if(this->_ws.http.isEnd()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Получаем данные ответа
+						const auto & response = reinterpret_cast <http_t *> (&this->_ws.http)->response(true);
+						// Если параметры ответа получены
+						if(!response.empty()){
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+							// Если тело ответа существует
+							if(!this->_ws.http.body().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << this->_fmk->format("<body %u>", this->_ws.http.body().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
+						}
+					#endif
+					// Выполняем препарирование полученных данных
+					switch(static_cast <uint8_t> (this->prepare())){
+						// Если необходимо выполнить остановку обработки
+						case static_cast <uint8_t> (status_t::STOP): {
 							// Если экшен соответствует, выполняем его сброс
 							if(this->_action == action_t::READ)
 								// Выполняем сброс экшена
 								this->_action = action_t::NONE;
+							// Выполняем сброс количества попыток
+							this->_attempt = 0;
+							// Завершаем работу
+							const_cast <client::core_t *> (this->_core)->close(this->_aid);
+						}
+						// Если необходимо выполнить переход к следующему этапу обработки
+						case static_cast <uint8_t> (status_t::NEXT): {
+							// Есла данных передано больше чем обработано
+							if(this->_ws.buffer.payload.size() > bytes)
+								// Удаляем количество обработанных байт
+								this->_ws.buffer.payload.assign(this->_ws.buffer.payload.begin() + bytes, this->_ws.buffer.payload.end());
+								// vector <decltype(this->_ws.buffer.payload)::value_type> (this->_ws.buffer.payload.begin() + bytes, this->_ws.buffer.payload.end()).swap(this->_ws.buffer.payload);
+							// Если данных в буфере больше нет
+							else {
+								// Очищаем буфер собранных данных
+								this->_ws.buffer.payload.clear();
+								// Если экшен соответствует, выполняем его сброс
+								if(this->_action == action_t::READ)
+									// Выполняем сброс экшена
+									this->_action = action_t::NONE;
+							}
+							// Завершаем работу
+							return;
+						}
+						// Если необходимо выполнить пропуск обработки данных
+						case static_cast <uint8_t> (status_t::SKIP): {
 							// Если соединение является постоянным
-							if(schema && this->_http.isAlive())
-								// Отправляем повторный запрос
-								this->send();
-							// Если нам необходимо отключиться
-							else core->close(this->_aid);
+							if(this->_ws.http.isAlive())
+								// Устанавливаем новый экшен выполнения
+								this->_action = action_t::CONNECT;
+							// Завершаем работу
+							else {
+								// Если экшен соответствует, выполняем его сброс
+								if(this->_action == action_t::READ)
+									// Выполняем сброс экшена
+									this->_action = action_t::NONE;
+								// Завершаем работу
+								const_cast <client::core_t *> (this->_core)->close(this->_aid);
+							}
 							// Завершаем работу
 							return;
 						}
 					}
-					// Устанавливаем флаг принудительной остановки
-					this->_stopped = true;
-				} break;
-				// Если запрос выполнен удачно
-				case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-					// Выполняем сброс количества попыток
-					request.attempt = 0;
-					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(this->_callback.is("entity"))
-						// Устанавливаем полученную функцию обратного вызова
-						callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
-					// Устанавливаем размер стопбайт
-					if(!this->_http.isAlive()){
-						// Выполняем очистку оставшихся данных
-						this->_buffer.clear();
-						// Завершаем работу
-						core->close(this->_aid);
-						// Выполняем завершение работы
-						goto Stop;
+				// Если экшен соответствует, выполняем его сброс
+				} else if(this->_action == action_t::READ)
+					// Выполняем сброс экшена
+					this->_action = action_t::NONE;
+				// Завершаем работу
+				return;
+			// Если рукопожатие выполнено
+			} else if(this->_ws.allow.receive) {
+				// Выполняем препарирование полученных данных
+				switch(static_cast <uint8_t> (this->prepare())){
+					// Если необходимо выполнить остановку обработки
+					case static_cast <uint8_t> (status_t::STOP): {
+						// Если экшен соответствует, выполняем его сброс
+						if(this->_action == action_t::READ)
+							// Выполняем сброс экшена
+							this->_action = action_t::NONE;
+						// Выходим из функции
+						return;
 					}
-					// Если объект ещё не удалён
-					if(!this->_requests.empty())
-						// Выполняем удаление объекта запроса
-						this->_requests.erase(this->_requests.begin());
-					// Завершаем обработку
-					goto Next;
-				} break;
-				// Если запрос неудачный
-				case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
-					// Устанавливаем флаг принудительной остановки
-					this->_stopped = true;
-					// Если возникла ошибка выполнения запроса
-					if((query.code >= 400) && (query.code < 500)){
-						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(this->_callback.is("entity"))
-							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
-						// Если объект ещё не удалён
-						if(!this->_requests.empty())
-							// Выполняем удаление объекта запроса
-							this->_requests.erase(this->_requests.begin());
-						// Завершаем обработку
-						goto Next;
-					}
-				} break;
+					// Если необходимо выполнить переход к следующему этапу обработки
+					case static_cast <uint8_t> (status_t::NEXT):
+						// Выполняем реконнект
+						goto Reconnect;
+				}
 			}
-			// Выполняем очистку оставшихся данных
-			this->_buffer.clear();
-			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-			if(this->_callback.is("entity"))
-				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
-			// Завершаем работу
-			core->close(this->_aid);
-			// Выполняем завершение работы
-			goto Stop;
-		}
-		// Устанавливаем метку продолжения обработки пайплайна
-		Next:
-		// Если парсер обработал какое-то количество байт
-		if((receive = ((bytes > 0) && !this->_buffer.empty()))){
-			// Если размер буфера больше количества удаляемых байт
-			if((receive = (this->_buffer.size() >= bytes)))
-				// Удаляем количество обработанных байт
-				this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-				// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
-		}
-		// Если данные мы все получили, выходим
-		if(!receive || this->_buffer.empty()) break;
-	}
-	// Устанавливаем метку завершения работы
-	Stop:
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::READ)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-	// Если получение данных выполнено
-	if(completed){
-		// Если функция обратного вызова установлена, выводим сообщение
-		if(callback.is("entity"))
-			// Выполняем функцию обратного вызова дисконнекта
-			callback.bind <const u_int, const string, const vector <char>> ("entity");
-		// Если подключение выполнено и список запросов не пустой
-		if((this->_aid > 0) && !this->_requests.empty())
-			// Выполняем запрос на удалённый сервер
-			this->submit(this->_requests.front());
+			// Устанавливаем метку реконнекта
+			Reconnect:
+			// Выполняем отправку сообщения об ошибке
+			this->sendError(this->_ws.mess);
+			// Если экшен соответствует, выполняем его сброс
+			if(this->_action == action_t::READ)
+				// Выполняем сброс экшена
+				this->_action = action_t::NONE;
+		} break;
 	}
 }
 /**
@@ -1243,36 +1483,36 @@ void awh::client::WEB::actionConnect() noexcept {
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
 		// Выводим функцию обратного вызова
-		this->_callback.call <const mode_t, web_t *> ("active", mode_t::CONNECT, this);
+		this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
 }
 /**
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::WEB::actionDisconnect() noexcept {
 	// Если список ответов получен
-	if(!this->_requests.empty()){
+	if(!this->_web.requests.empty()){
 		// Получаем параметры запроса
-		const auto & query = this->_http.query();
+		const auto & query = this->_web.http.query();
 		// Если нужно произвести запрос заново
 		if(!this->_stopped && ((query.code == 201) || (query.code == 301) ||
 		   (query.code == 302) || (query.code == 303) || (query.code == 307) ||
 		   (query.code == 308) || (query.code == 401) || (query.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((query.code == 401) || (query.code == 407) || this->_http.isHeader("location")){
+			if((query.code == 401) || (query.code == 407) || this->_web.http.isHeader("location")){
 				// Получаем новый адрес запроса
-				const uri_t::url_t & url = this->_http.getUrl();
+				const uri_t::url_t & url = this->_web.http.getUrl();
 				// Если адрес запроса получен
 				if(!url.empty()){
-					// Получаем объект запроса
-					req_t & request = this->_requests.front();
 					// Увеличиваем количество попыток
-					request.attempt++;
+					this->_attempt++;
+					// Получаем объект запроса
+					req_t & request = this->_web.requests.front();
 					// Устанавливаем новый адрес запроса
 					this->_scheme.url = std::forward <const uri_t::url_t> (url);
 					// Получаем параметры адреса запроса
-					request.query = this->_uri.query(this->_scheme.url);
+					request.query = this->_web.uri.query(this->_scheme.url);
 					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
+					this->_web.buffer.clear();
 					// Выполняем установку следующего экшена на открытие подключения
 					this->_action = action_t::OPEN;
 					// Завершаем работу
@@ -1284,7 +1524,7 @@ void awh::client::WEB::actionDisconnect() noexcept {
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Выполняем очистку оставшихся данных
-		this->_buffer.clear();
+		this->_web.buffer.clear();
 		// Если экшен соответствует, выполняем его сброс
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
@@ -1292,13 +1532,13 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const mode_t, web_t *> ("active", mode_t::DISCONNECT, this);
+			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем очистку оставшихся данных
-		this->_buffer.clear();
+		this->_web.buffer.clear();
 		// Выполняем очистку списка запросов
-		this->_requests.clear();
+		this->_web.requests.clear();
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Выполняем сброс параметров запроса
@@ -1314,7 +1554,7 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const mode_t, web_t *> ("active", mode_t::DISCONNECT, this);
+			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	}
 }
 /**
@@ -1330,13 +1570,13 @@ void awh::client::WEB::actionProxyRead() noexcept {
 			// Если данные не получены
 			if(!this->_scheme.proxy.socks5.isEnd()){
 				// Выполняем парсинг входящих данных
-				this->_scheme.proxy.socks5.parse(this->_buffer.data(), this->_buffer.size());
+				this->_scheme.proxy.socks5.parse(this->_web.buffer.data(), this->_web.buffer.size());
 				// Получаем данные запроса
 				const auto & buffer = this->_scheme.proxy.socks5.get();
 				// Если данные получены
 				if(!buffer.empty()){
 					// Выполняем очистку буфера данных
-					this->_buffer.clear();
+					this->_web.buffer.clear();
 					// Выполняем отправку запроса на сервер
 					core->write(buffer.data(), buffer.size(), this->_aid);
 					// Если экшен соответствует, выполняем его сброс
@@ -1348,7 +1588,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 				// Если данные все получены
 				} else if(this->_scheme.proxy.socks5.isEnd()) {
 					// Выполняем очистку буфера данных
-					this->_buffer.clear();
+					this->_web.buffer.clear();
 					// Если рукопожатие выполнено
 					if(this->_scheme.proxy.socks5.isHandshake()){
 						// Выполняем переключение на работу с сервером
@@ -1398,11 +1638,11 @@ void awh::client::WEB::actionProxyRead() noexcept {
 		// Если прокси-сервер является HTTP
 		case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
 			// Выполняем парсинг полученных данных
-			this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
+			this->_scheme.proxy.http.parse(this->_web.buffer.data(), this->_web.buffer.size());
 			// Если все данные получены
 			if(this->_scheme.proxy.http.isEnd()){
 				// Выполняем очистку буфера данных
-				this->_buffer.clear();
+				this->_web.buffer.clear();
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1426,7 +1666,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 				// Объект работы с функциями обратного вызова
 				fn_t callback(this->_log);
 				// Получаем объект запроса
-				req_t & request = this->_requests.front();
+				req_t & request = this->_web.requests.front();
 				// Получаем параметры запроса
 				const auto & query = this->_scheme.proxy.http.query();
 				// Получаем статус ответа
@@ -1444,12 +1684,12 @@ void awh::client::WEB::actionProxyRead() noexcept {
 				switch(static_cast <uint8_t> (status)){
 					// Если нужно попытаться ещё раз
 					case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
-						// Если попытка повторить авторизацию ещё не проводилась
-						if(request.attempt < this->_attempts){
+						// Если попытки повторить переадресацию ещё не закончились
+						if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 							// Если адрес запроса получен
 							if(!this->_scheme.proxy.url.empty()){
 								// Увеличиваем количество попыток
-								request.attempt++;
+								this->_attempt++;
 								// Если соединение является постоянным
 								if(this->_scheme.proxy.http.isAlive())
 									// Устанавливаем новый экшен выполнения
@@ -1467,13 +1707,11 @@ void awh::client::WEB::actionProxyRead() noexcept {
 								return;
 							}
 						}
-						// Устанавливаем флаг принудительной остановки
-						this->_stopped = true;
 					} break;
 					// Если запрос выполнен удачно
 					case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
 						// Выполняем сброс количества попыток
-						request.attempt = 0;
+						this->_attempt = 0;
 						// Выполняем переключение на работу с сервером
 						core->switchProxy(this->_aid);
 						// Если экшен соответствует, выполняем его сброс
@@ -1581,6 +1819,367 @@ void awh::client::WEB::actionProxyConnect() noexcept {
 		this->_action = action_t::NONE;
 }
 /**
+ * prepare Метод выполнения препарирования полученных данных
+ * @return результат препарирования
+ */
+awh::client::WEB::status_t awh::client::WEB::prepare() noexcept {
+	// Результат работы функции
+	status_t result = status_t::STOP;
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->_core);
+	// Определяем протокол клиента
+	switch(static_cast <uint8_t> (this->_agent)){
+		// Если агент является клиентом HTTP
+		case static_cast <uint8_t> (agent_t::HTTP): {
+			// Получаем параметры запроса
+			const auto & query = this->_web.http.query();
+			// Получаем статус ответа
+			awh::http_t::stath_t status = this->_web.http.getAuth();
+			// Если выполнять редиректы запрещено
+			if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+				// Если нужно произвести запрос заново
+				if((query.code == 201) || (query.code == 301) ||
+				   (query.code == 302) || (query.code == 303) ||
+				   (query.code == 307) || (query.code == 308))
+						// Запрещаем выполнять редирект
+						status = awh::http_t::stath_t::GOOD;
+			}
+			// Выполняем анализ результата авторизации
+			switch(static_cast <uint8_t> (status)){
+				// Если нужно попытаться ещё раз
+				case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+					// Если попытки повторить переадресацию ещё не закончились
+					if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+						// Получаем новый адрес запроса
+						const uri_t::url_t & url = this->_web.http.getUrl();
+						// Если адрес запроса получен
+						if(!url.empty()){
+							// Увеличиваем количество попыток
+							this->_attempt++;
+							// Выполняем проверку соответствие протоколов
+							const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
+							// Устанавливаем новый адрес запроса
+							this->_scheme.url = std::forward <const uri_t::url_t> (url);
+							// Получаем объект запроса
+							req_t & request = this->_web.requests.front();
+							// Получаем параметры адреса запроса
+							request.query = this->_web.uri.query(this->_scheme.url);
+							// Выполняем очистку оставшихся данных
+							this->_web.buffer.clear();
+							// Если экшен соответствует, выполняем его сброс
+							if(this->_action == action_t::READ)
+								// Выполняем сброс экшена
+								this->_action = action_t::NONE;
+							// Если соединение является постоянным
+							if(schema && this->_web.http.isAlive())
+								// Отправляем повторный запрос
+								this->send();
+							// Если нам необходимо отключиться
+							else core->close(this->_aid);
+							// Завершаем работу
+							return status_t::SKIP;
+						}
+					}
+				} break;
+				// Если запрос выполнен удачно
+				case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+					// Выполняем сброс количества попыток
+					this->_attempt = 0;
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(this->_callback.is("entity"))
+						// Устанавливаем полученную функцию обратного вызова
+						this->_web.callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_web.http.body());
+					// Устанавливаем размер стопбайт
+					if(!this->_web.http.isAlive()){
+						// Выполняем очистку оставшихся данных
+						this->_web.buffer.clear();
+						// Завершаем работу
+						core->close(this->_aid);
+						// Выполняем завершение работы
+						return status_t::STOP;
+					}
+					// Если объект ещё не удалён
+					if(!this->_web.requests.empty())
+						// Выполняем удаление объекта запроса
+						this->_web.requests.erase(this->_web.requests.begin());
+					// Завершаем обработку
+					return status_t::NEXT;
+				} break;
+				// Если запрос неудачный
+				case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
+					// Устанавливаем флаг принудительной остановки
+					this->_stopped = true;
+					// Если возникла ошибка выполнения запроса
+					if((query.code >= 400) && (query.code < 500)){
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(this->_callback.is("entity"))
+							// Устанавливаем полученную функцию обратного вызова
+							this->_web.callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_web.http.body());
+						// Если объект ещё не удалён
+						if(!this->_web.requests.empty())
+							// Выполняем удаление объекта запроса
+							this->_web.requests.erase(this->_web.requests.begin());
+						// Завершаем обработку
+						return status_t::NEXT;
+					}
+				} break;
+			}
+			// Выполняем очистку оставшихся данных
+			this->_web.buffer.clear();
+			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+			if(this->_callback.is("entity"))
+				// Устанавливаем полученную функцию обратного вызова
+				this->_web.callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_web.http.body());
+			// Завершаем работу
+			core->close(this->_aid);
+			// Выполняем завершение работы
+			return status_t::STOP;
+		} break;
+		// Если агент является клиентом WebSocket
+		case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+			// Если рукопожатие не выполнено
+			if(!reinterpret_cast <http_t *> (&this->_ws.http)->isHandshake()){
+				// Получаем параметры запроса
+				auto query = this->_ws.http.query();
+				// Выполняем проверку авторизации
+				switch(static_cast <uint8_t> (this->_ws.http.getAuth())){
+					// Если нужно попытаться ещё раз
+					case static_cast <uint8_t> (http_t::stath_t::RETRY): {
+						// Если попытка повторить авторизацию ещё не проводилась
+						if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+							// Получаем новый адрес запроса
+							this->_scheme.url = this->_ws.http.getUrl();
+							// Если адрес запроса получен
+							if(!this->_scheme.url.empty()){
+								// Увеличиваем количество попыток
+								this->_attempt++;
+								// Выполняем очистку оставшихся данных
+								this->_ws.buffer.payload.clear();
+								// Завершаем работу
+								return status_t::SKIP;
+							}
+						}
+						// Создаём сообщение
+						this->_ws.mess = ws::mess_t(query.code, this->_ws.http.message(query.code));
+						// Выводим сообщение
+						this->error(this->_ws.mess);
+					} break;
+					// Если запрос выполнен удачно
+					case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+						// Если рукопожатие выполнено
+						if(this->_ws.http.isHandshake()){
+							// Выполняем сброс количества попыток
+							this->_attempt = 0;
+							// Очищаем список фрагментированных сообщений
+							this->_ws.buffer.fragmes.clear();
+							// Получаем флаг шифрованных данных
+							this->_ws.crypt = this->_ws.http.isCrypt();
+							// Получаем поддерживаемый метод компрессии
+							this->_compress = this->_ws.http.compress();
+							// Получаем размер скользящего окна сервера
+							this->_ws.server.wbit = this->_ws.http.wbitServer();
+							// Получаем размер скользящего окна клиента
+							this->_ws.client.wbit = this->_ws.http.wbitClient();
+							// Обновляем контрольную точку времени получения данных
+							this->_ws.point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Разрешаем перехватывать контекст компрессии для клиента
+							this->_ws.hash.takeoverCompress(this->_ws.http.clientTakeover());
+							// Разрешаем перехватывать контекст компрессии для сервера
+							this->_ws.hash.takeoverDecompress(this->_ws.http.serverTakeover());
+							// Если разрешено в лог выводим информационные сообщения
+							if(!this->_ws.noinfo)
+								// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
+								this->_log->print("authorization on the WebSocket-server was successful", log_t::flag_t::INFO);
+							// Если функция обратного вызова при подключении/отключении установлена
+							if(this->_callback.is("active"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+							// Завершаем работу
+							return status_t::NEXT;
+						// Сообщаем, что рукопожатие не выполнено
+						} else {
+							// Если код ответа не является отрицательным
+							if(query.code < 400){
+								// Устанавливаем код ответа
+								query.code = 403;
+								// Заменяем ответ сервера
+								this->_ws.http.query(query);
+							}
+							// Создаём сообщение
+							this->_ws.mess = ws::mess_t(query.code, this->_ws.http.message(query.code));
+							// Выводим сообщение
+							this->error(this->_ws.mess);
+						}
+					} break;
+					// Если запрос неудачный
+					case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+						// Устанавливаем флаг принудительной остановки
+						this->_stopped = true;
+						// Создаём сообщение
+						this->_ws.mess = ws::mess_t(query.code, query.message);
+						// Выводим сообщение
+						this->error(this->_ws.mess);
+					} break;
+				}
+				// Завершаем работу
+				return status_t::STOP;
+			// Если рукопожатие выполнено
+			} else if(this->_ws.allow.receive) {
+				// Флаг удачного получения данных
+				bool receive = false;
+				// Создаём буфер сообщения
+				vector <char> buffer;
+				// Создаём объект шапки фрейма
+				ws::frame_t::head_t head;
+				// Выполняем обработку полученных данных
+				while(!this->_ws.close && this->_ws.allow.receive){
+					// Выполняем чтение фрейма WebSocket
+					const auto & data = this->_ws.frame.methods.get(head, this->_ws.buffer.payload.data(), this->_ws.buffer.payload.size());
+					// Если буфер данных получен
+					if(!data.empty()){
+						// Проверяем состояние флагов RSV2 и RSV3
+						if(head.rsv[1] || head.rsv[2]){
+							// Создаём сообщение
+							this->_ws.mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
+							// Выводим сообщение
+							this->error(this->_ws.mess);
+							// Выполняем реконнект
+							return status_t::NEXT;
+						}
+						// Если флаг компресси включён а данные пришли не сжатые
+						if(head.rsv[0] && ((this->_compress == http_t::compress_t::NONE) ||
+						(head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
+						((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
+							// Создаём сообщение
+							this->_ws.mess = ws::mess_t(1002, "RSV1 must be clear");
+							// Выводим сообщение
+							this->error(this->_ws.mess);
+							// Выполняем реконнект
+							return status_t::NEXT;
+						}
+						// Если опкоды требуют финального фрейма
+						if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
+							// Создаём сообщение
+							this->_ws.mess = ws::mess_t(1002, "FIN must be set");
+							// Выводим сообщение
+							this->error(this->_ws.mess);
+							// Выполняем реконнект
+							return status_t::NEXT;
+						}
+						// Определяем тип ответа
+						switch(static_cast <uint8_t> (head.optcode)){
+							// Если ответом является PING
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
+								// Отправляем ответ серверу
+								this->pong(string(data.begin(), data.end()));
+							break;
+							// Если ответом является PONG
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
+								// Если идентификатор адъютанта совпадает
+								if(memcmp(to_string(this->_aid).c_str(), data.data(), data.size()) == 0)
+									// Обновляем контрольную точку
+									this->_ws.point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							break;
+							// Если ответом является TEXT
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
+							// Если ответом является BINARY
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::BINARY): {
+								// Запоминаем полученный опкод
+								this->_ws.frame.opcode = head.optcode;
+								// Запоминаем, что данные пришли сжатыми
+								this->_ws.deflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
+								// Если сообщение замаскированно
+								if(head.mask){
+									// Создаём сообщение
+									this->_ws.mess = ws::mess_t(1002, "masked frame from server");
+									// Выводим сообщение
+									this->error(this->_ws.mess);
+									// Выполняем реконнект
+									return status_t::NEXT;
+								// Если список фрагментированных сообщений существует
+								} else if(!this->_ws.buffer.fragmes.empty()) {
+									// Очищаем список фрагментированных сообщений
+									this->_ws.buffer.fragmes.clear();
+									// Создаём сообщение
+									this->_ws.mess = ws::mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+									// Выводим сообщение
+									this->error(this->_ws.mess);
+									// Выполняем реконнект
+									return status_t::NEXT;
+								// Если сообщение является не последнем
+								} else if(!head.fin)
+									// Заполняем фрагментированное сообщение
+									this->_ws.buffer.fragmes.insert(this->_ws.buffer.fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								else buffer = std::forward <const vector <char>> (data);
+							} break;
+							// Если ответом является CONTINUATION
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
+								// Заполняем фрагментированное сообщение
+								this->_ws.buffer.fragmes.insert(this->_ws.buffer.fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								if(head.fin){
+									// Выполняем копирование всех собранных сегментов
+									buffer = std::forward <const vector <char>> (this->_ws.buffer.fragmes);
+									// Очищаем список фрагментированных сообщений
+									this->_ws.buffer.fragmes.clear();
+								}
+							} break;
+							// Если ответом является CLOSE
+							case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
+								// Извлекаем сообщение
+								this->_ws.mess = this->_ws.frame.methods.message(data);
+								// Выводим сообщение
+								this->error(this->_ws.mess);
+								// Выполняем реконнект
+								return status_t::NEXT;
+							} break;
+						}
+					}
+					// Если парсер обработал какое-то количество байт
+					if((receive = ((head.frame > 0) && !this->_ws.buffer.payload.empty()))){
+						// Если размер буфера больше количества удаляемых байт
+						if((receive = (this->_ws.buffer.payload.size() >= head.frame)))
+							// Удаляем количество обработанных байт
+							this->_ws.buffer.payload.assign(this->_ws.buffer.payload.begin() + head.frame, this->_ws.buffer.payload.end());
+							// vector <decltype(this->_ws.buffer.payload)::value_type> (this->_ws.buffer.payload.begin() + head.frame, this->_ws.buffer.payload.end()).swap(this->_ws.buffer.payload);
+					}
+					// Если сообщения получены
+					if(!buffer.empty()){
+						// Если тредпул активирован
+						if(this->_ws.threads.is())
+							// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+							this->_ws.threads.push(std::bind(&web_t::extraction, this, buffer, (this->_ws.frame.opcode == ws::frame_t::opcode_t::TEXT)));
+						// Если тредпул не активирован, выполняем извлечение полученных сообщений
+						else this->extraction(buffer, (this->_ws.frame.opcode == ws::frame_t::opcode_t::TEXT));
+						// Очищаем буфер полученного сообщения
+						buffer.clear();
+					}
+					// Если данные мы все получили, выходим
+					if(!receive || this->_ws.buffer.payload.empty()) break;
+				}
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * error Метод вывода сообщений об ошибках работы клиента
+ * @param message сообщение с описанием ошибки
+ */
+void awh::client::WEB::error(const ws::mess_t & message) const noexcept {
+
+}
+/**
+ * extraction Метод извлечения полученных данных
+ * @param buffer данные в чистом виде полученные с сервера
+ * @param utf8   данные передаются в текстовом виде
+ */
+void awh::client::WEB::extraction(const vector <char> & buffer, const bool utf8) noexcept {
+
+}
+/**
  * GET Метод запроса в формате HTTP методом GET
  * @param url     адрес запроса
  * @param headers заголовки запроса
@@ -1657,11 +2256,11 @@ vector <char> awh::client::WEB::PUT(const uri_t::url_t & url, const unordered_mu
 		// Есди данные уже набраны
 		if(!body.empty()) body.append("&");
 		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
+		body.append(this->_web.uri.encode(param.first));
 		// Добавляем разделитель
 		body.append("=");
 		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
+		body.append(this->_web.uri.encode(param.second));
 	}
 	// Устанавливаем тепло запроса
 	vector <char> result(body.begin(), body.end());
@@ -1721,11 +2320,11 @@ vector <char> awh::client::WEB::POST(const uri_t::url_t & url, const unordered_m
 		// Есди данные уже набраны
 		if(!body.empty()) body.append("&");
 		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
+		body.append(this->_web.uri.encode(param.first));
 		// Добавляем разделитель
 		body.append("=");
 		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
+		body.append(this->_web.uri.encode(param.second));
 	}
 	// Устанавливаем тепло запроса
 	vector <char> result(body.begin(), body.end());
@@ -1785,11 +2384,11 @@ vector <char> awh::client::WEB::PATCH(const uri_t::url_t & url, const unordered_
 		// Есди данные уже набраны
 		if(!body.empty()) body.append("&");
 		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
+		body.append(this->_web.uri.encode(param.first));
 		// Добавляем разделитель
 		body.append("=");
 		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
+		body.append(this->_web.uri.encode(param.second));
 	}
 	// Устанавливаем тепло запроса
 	vector <char> result(body.begin(), body.end());
@@ -1866,7 +2465,7 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
 		});
 		// Подписываемся на событие коннекта и дисконнекта клиента
-		this->on([method, &url, &entity, &headers](const web_t::mode_t mode, web_t * web) noexcept -> void {
+		this->on([method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект запроса
@@ -1876,13 +2475,13 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				// Устанавливаем тепло запроса
 				req.entity = std::forward <const vector <char>> (entity);
 				// Устанавливаем параметры запроса
-				req.query = std::forward <const string> (web->_uri.query(url));
+				req.query = std::forward <const string> (this->_web.uri.query(url));
 				// Запоминаем переданные заголовки
 				req.headers = std::forward <const unordered_multimap <string, string>> (headers);
 				// Выполняем запрос на сервер
-				web->send({req, req});
+				this->send({req, req});
 			// Выполняем остановку работы модуля
-			} else web->stop();
+			} else this->stop();
 		});
 		// Подписываемся на событие получения тела ответа
 		this->on([&entity, this](const u_int code, const string & message, const vector <char> & data) noexcept -> void {
@@ -1903,7 +2502,7 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				headers = std::forward <const unordered_multimap <string, string>> (data);
 		});
 		// Выполняем инициализацию подключения
-		this->init(this->_uri.origin(url));
+		this->init(this->_web.uri.origin(url));
 		// Выполняем запуск работы
 		this->start();
 	}
@@ -1917,7 +2516,7 @@ void awh::client::WEB::flush() noexcept {
 	// Снимаем флаг принудительной остановки
 	this->_stopped = false;
 	// Выполняем очистку оставшихся данных
-	this->_buffer.clear();
+	this->_web.buffer.clear();
 }
 /**
  * init Метод инициализации WEB клиента
@@ -1932,7 +2531,7 @@ void awh::client::WEB::init(const string & url, const http_t::compress_t compres
 		// Устанавливаем метод компрессии сообщений
 		this->_compress = compress;
 		// Устанавливаем URL адрес запроса (как заглушка)
-		this->_scheme.url = this->_uri.parse("http://unixsocket");
+		this->_scheme.url = this->_web.uri.parse("http://unixsocket");
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -1945,7 +2544,7 @@ void awh::client::WEB::init(const string & url, const http_t::compress_t compres
 		// Выполняем очистку схемы сети
 		this->_scheme.clear();
 		// Устанавливаем URL адрес запроса
-		this->_scheme.url = this->_uri.parse(url);
+		this->_scheme.url = this->_web.uri.parse(url);
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -1961,9 +2560,9 @@ void awh::client::WEB::init(const string & url, const http_t::compress_t compres
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
-void awh::client::WEB::on(function <void (const mode_t, web_t *)> callback) noexcept {
+void awh::client::WEB::on(function <void (const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const mode_t, web_t *)> ("active", callback);
+	this->_callback.set <void (const mode_t)> ("active", callback);
 }
 /** 
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера
@@ -1979,7 +2578,7 @@ void awh::client::WEB::on(function <void (const vector <char> &)> callback) noex
  */
 void awh::client::WEB::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on(callback);
+	this->_web.http.on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const u_int, const string &)> ("response", callback);
 }
@@ -1989,7 +2588,7 @@ void awh::client::WEB::on(function <void (const u_int, const string &)> callback
  */
 void awh::client::WEB::on(function <void (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on(callback);
+	this->_web.http.on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const string &, const string &)> ("header", callback);
 }
@@ -2007,7 +2606,7 @@ void awh::client::WEB::on(function <void (const u_int, const string &, const vec
  */
 void awh::client::WEB::on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on(callback);
+	this->_web.http.on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
 }
@@ -2017,7 +2616,7 @@ void awh::client::WEB::on(function <void (const u_int, const string &, const uno
  */
 void awh::client::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on(callback);
+	this->_web.http.on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
@@ -2039,20 +2638,27 @@ void awh::client::WEB::sendTimeout() noexcept {
 		const_cast <client::core_t *> (this->_core)->sendTimeout(this->_aid);
 }
 /**
+ * sendError Метод отправки сообщения об ошибке
+ * @param mess отправляемое сообщение об ошибке
+ */
+void awh::client::WEB::sendError(const ws::mess_t & mess) noexcept {
+
+}
+/**
  * send Метод отправки сообщения на сервер
  * @param reqs список запросов
  */
 void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 	// Если список запросов установлен
-	if(!reqs.empty() || !this->_requests.empty()){
+	if(!reqs.empty() || !this->_web.requests.empty()){
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Если объект списка запросов не существует
-		if(this->_requests.empty())
+		if(this->_web.requests.empty())
 			// Выполняем получение списка запросов
-			this->_requests = std::forward <const vector <req_t>> (reqs);
+			this->_web.requests = std::forward <const vector <req_t>> (reqs);
 		// Выполняем запрос на удалённый сервер
-		this->submit(this->_requests.front());
+		this->submit(this->_web.requests.front());
 	}
 }
 /**
@@ -2121,7 +2727,7 @@ void awh::client::WEB::stop() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Выполняем очистку списка запросов
-		this->_requests.clear();
+		this->_web.requests.clear();
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Завершаем работу, если разрешено остановить
@@ -2201,7 +2807,7 @@ void awh::client::WEB::proxy(const string & uri, const scheme_t::family_t family
 		// Устанавливаем семейство интернет протоколов
 		this->_scheme.proxy.family = family;
 		// Устанавливаем параметры прокси-сервера
-		this->_scheme.proxy.url = this->_uri.parse(uri);
+		this->_scheme.proxy.url = this->_web.uri.parse(uri);
 		// Если данные параметров прокси-сервера получены
 		if(!this->_scheme.proxy.url.empty()){
 			// Если протокол подключения SOCKS5
@@ -2230,7 +2836,7 @@ void awh::client::WEB::proxy(const string & uri, const scheme_t::family_t family
  */
 void awh::client::WEB::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->_http.chunk(size);
+	this->_web.http.chunk(size);
 }
 /**
  * attempts Метод установки общего количества попыток
@@ -2270,7 +2876,7 @@ void awh::client::WEB::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента
-		this->_http.userAgent(userAgent);
+		this->_web.http.userAgent(userAgent);
 		// Устанавливаем пользовательского агента для прокси-сервера
 		this->_scheme.proxy.http.userAgent(userAgent);
 	}
@@ -2292,7 +2898,7 @@ void awh::client::WEB::user(const string & login, const string & password) noexc
 	// Если пользователь и пароль переданы
 	if(!login.empty() && !password.empty())
 		// Устанавливаем логин и пароль пользователя
-		this->_http.user(login, password);
+		this->_web.http.user(login, password);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -2316,7 +2922,7 @@ void awh::client::WEB::keepAlive(const int cnt, const int idle, const int intvl)
  */
 void awh::client::WEB::serv(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса
-	this->_http.serv(id, name, ver);
+	this->_web.http.serv(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->_scheme.proxy.http.serv(id, name, ver);
 }
@@ -2328,7 +2934,7 @@ void awh::client::WEB::serv(const string & id, const string & name, const string
  */
 void awh::client::WEB::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования
-	this->_http.crypto(pass, salt, cipher);
+	this->_web.http.crypto(pass, salt, cipher);
 }
 /**
  * authType Метод установки типа авторизации
@@ -2337,7 +2943,7 @@ void awh::client::WEB::crypto(const string & pass, const string & salt, const ha
  */
 void awh::client::WEB::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
-	this->_http.authType(type, hash);
+	this->_web.http.authType(type, hash);
 }
 /**
  * authTypeProxy Метод установки типа авторизации прокси-сервера
@@ -2350,15 +2956,16 @@ void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::ha
 }
 /**
  * WEB Конструктор
- * @param core объект сетевого ядра
- * @param fmk  объект фреймворка
- * @param log  объект для работы с логами
+ * @param agent идентификатор агента
+ * @param core  объект сетевого ядра
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
  */
-awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _http(fmk, log, &_uri), _callback(log), _scheme(fmk, log),
- _action(action_t::NONE), _compress(awh::http_t::compress_t::NONE), _aid(0),
- _unbind(true), _active(false), _stopped(false), _redirects(false),
- _attempts(10), _fmk(fmk), _log(log), _core(core) {
+awh::client::WEB::WEB(const agent_t agent, const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+ _aid(0), _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _attempt(0), _attempts(10), _web(fmk, log), _ws(fmk, log), _agent(agent),
+ _action(action_t::NONE), _compress(awh::http_t::compress_t::NONE),
+ _callback(log), _scheme(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -2376,7 +2983,7 @@ awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_
 	// Устанавливаем событие на активацию шифрованного TLS канала
 	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для получения чанков
-	this->_http.on(std::bind(&web_t::chunking, this, _1, _2));
+	this->_web.http.on(std::bind(&web_t::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра клиента

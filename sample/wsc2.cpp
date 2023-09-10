@@ -231,9 +231,9 @@ class Executor {
 		}
 		/**
 		 * webActive Метод событий подключения и отключения от WEB сервера
-		 * @param web объект веб-клиента
+		 * @param mode статус события активности клиента
 		 */
-		void webActive(const client::web_t::mode_t mode, client::web_t * web){
+		void webActive(const client::web_t::mode_t mode){
 			// Запоминаем событие сервера
 			this->_webMode = mode;
 			// Определяем событие WEB клиента
@@ -304,7 +304,7 @@ class Executor {
 			 */
 			try {
 				// Выделяем память для Web-клиента
-				this->_web = new client::web_t(&this->_core, fmk, log);
+				this->_web = new client::web_t(client::web_t::agent_t::HTTP, &this->_core, fmk, log);
 				/**
 				 * 1. Устанавливаем отложенные вызовы
 				 * 2. Устанавливаем ожидание входящих сообщений
@@ -321,10 +321,10 @@ class Executor {
 				this->_core.mode(client::core_t::mode_t::ASYNC);
 				// Выполняем инициализацию подключения
 				this->_web->init("https://api2.binance.com");
+				// Устанавливаем метод активации подключения
+				this->_web->on((function <void (const client::web_t::mode_t)>) std::bind(&Executor::webActive, this, _1));
 				// Устанавливаем метод получения сообщения сервера
 				this->_web->on((function <void (const u_int, const string &)>) std::bind(&Executor::webMessage, this, _1, _2));
-				// Устанавливаем метод активации подключения
-				this->_web->on((function <void (const client::web_t::mode_t, client::web_t *)>) std::bind(&Executor::webActive, this, _1, _2));
 				// Устанавливаем метод получения тела ответа
 				this->_web->on((function <void (const u_int, const string &, const vector <char> &)>) std::bind(&Executor::webEntity, this, _1, _2, _3));
 				// Выполняем подключение ядра
