@@ -266,7 +266,7 @@ namespace awh {
 				locker_t _locker;
 			private:
 				// Список доступных источников
-				vector <string> _origins;
+				// vector <string> _origins;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -502,10 +502,10 @@ namespace awh {
 				status_t prepare() noexcept;
 			private:
 				/**
-				 * error Метод вывода сообщений об ошибках работы клиента
+				 * webSocketError Метод вывода сообщений об ошибках работы клиента
 				 * @param message сообщение с описанием ошибки
 				 */
-				void error(const ws::mess_t & message) const noexcept;
+				void webSocketError(const ws::mess_t & message) const noexcept;
 				/**
 				 * extraction Метод извлечения полученных данных
 				 * @param buffer данные в чистом виде полученные с сервера
@@ -702,17 +702,24 @@ namespace awh {
 				 * @param reqs список запросов
 				 */
 				void send(const vector <req_t> & reqs = {}) noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param message буфер сообщения в бинарном виде
+				 * @param size    размер сообщения в байтах
+				 * @param utf8    данные передаются в текстовом виде
+				 */
+				void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешенных источников для HTTP/2
 				 * @param origins список разрешённых источников
 				 */
-				void setOrigin(const vector <string> & origins) noexcept;
+				// void setOrigin(const vector <string> & origins) noexcept;
 				/**
 				 * sendOrigin Метод отправки списка разрешенных источников для HTTP/2
 				 * @param origins список разрешённых источников
 				 */
-				void sendOrigin(const vector <string> & origins) noexcept;
+				// void sendOrigin(const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения
@@ -726,6 +733,26 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				void start() noexcept;
+				/**
+				 * pause Метод установки на паузу клиента
+				 */
+				void pause() noexcept;
+			public:
+				/**
+				 * sub Метод получения выбранного сабпротокола
+				 * @return выбранный сабпротокол
+				 */
+				const string & sub() const noexcept;
+				/**
+				 * sub Метод установки подпротокола поддерживаемого сервером
+				 * @param sub подпротокол для установки
+				 */
+				void sub(const string & sub) noexcept;
+				/**
+				 * subs Метод установки списка подпротоколов поддерживаемых сервером
+				 * @param subs подпротоколы для установки
+				 */
+				void subs(const vector <string> & subs) noexcept;
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт
@@ -742,6 +769,13 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+			public:
+				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
@@ -753,6 +787,11 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
+				/**
+				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
 				/**
 				 * attempts Метод установки общего количества попыток
 				 * @param attempts общее количество попыток
