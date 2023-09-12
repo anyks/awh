@@ -2777,6 +2777,9 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		// Подписываемся на событие получения тела ответа
 		this->on([&entity, this](const u_int code, const string & message, const vector <char> & data) noexcept -> void {
+			
+			cout << " ================== " << string(data.begin(), data.end()) << endl;
+			
 			// Если тело ответа получено
 			if(!data.empty())
 				// Формируем результат ответа
@@ -2784,7 +2787,7 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			// Выполняем очистку тела запроса
 			else entity.clear();
 			// Выполняем остановку
-			this->stop();
+			// this->stop();
 		});
 		// Подписываем на событие получения заголовков ответа
 		this->on([&headers, this](const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
