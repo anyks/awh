@@ -110,6 +110,9 @@ namespace awh {
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
+				// Объект функций обратного вызова для вывода результата
+				fn_t _resultCallback;
+			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
 			private:

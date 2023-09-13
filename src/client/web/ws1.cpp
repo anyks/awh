@@ -44,6 +44,8 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 		this->_hash.takeoverCompress(this->_client.takeOver);
 		// Разрешаем перехватывать контекст декомпрессии
 		this->_hash.takeoverDecompress(this->_server.takeOver);
+		// Выполняем очистку функций обратного вызова
+		this->_resultCallback.clear();
 		// Получаем бинарные данные REST запроса
 		const auto & buffer = this->_http.request(this->_scheme.url);
 		// Если бинарные данные запроса получены
@@ -194,6 +196,10 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 							return;
 						}
 					}
+					// Если функция обратного вызова установлена, выводим сообщение
+					if(this->_resultCallback.is("entity"))
+						// Выполняем функцию обратного вызова дисконнекта
+						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
 				}
 				// Завершаем работу
 				return;
@@ -425,6 +431,10 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 					if(this->_callback.is("active"))
 						// Выводим функцию обратного вызова
 						this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(this->_callback.is("entity"))
+						// Устанавливаем полученную функцию обратного вызова
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
@@ -440,6 +450,10 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 					this->_mess = ws::mess_t(query.code, this->_http.message(query.code));
 					// Выводим сообщение
 					this->error(this->_mess);
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(this->_callback.is("entity"))
+						// Устанавливаем полученную функцию обратного вызова
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
 				}
 			} break;
 			// Если запрос неудачный
@@ -450,6 +464,10 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 				this->_mess = ws::mess_t(query.code, query.message);
 				// Выводим сообщение
 				this->error(this->_mess);
+				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+				if(this->_callback.is("entity"))
+					// Устанавливаем полученную функцию обратного вызова
+					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
 			} break;
 		}
 		// Завершаем работу
@@ -1119,8 +1137,8 @@ void awh::client::WebSocket1::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false),
- _deflate(false), _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log) {
+ web_t(fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1135,8 +1153,8 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false),
- _deflate(false), _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log){
+ web_t(core, fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
