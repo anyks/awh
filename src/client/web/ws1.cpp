@@ -1148,3 +1148,10 @@ awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * f
 	// Активируем асинхронный режим работы
 	const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 }
+/**
+ * ~WebSocket1 Деструктор
+ */
+awh::client::WebSocket1::~WebSocket1() noexcept {
+	// Выполняем завершение всех активных потоков
+	this->_thr.wait();
+}

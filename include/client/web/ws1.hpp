@@ -364,7 +364,7 @@ namespace awh {
 				/**
 				 * ~WebSocket1 Деструктор
 				 */
-				~WebSocket1() noexcept {}
+				~WebSocket1() noexcept;
 		} ws1_t;
 	};
 };
