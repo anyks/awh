@@ -33,9 +33,9 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
 		// Если система остановлена
 		case static_cast <uint8_t> (status_t::STOP): {
 			// Если функция обратного вызова установлена
-			if(this->_activeClusterFn != nullptr)
+			if(this->_callback.is("activeCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_activeClusterFn, status_t::STOP, this).detach();
+				std::thread(this->_callback.get <void (const status_t, awh::core_t *)> ("activeCluster"), status_t::STOP, this).detach();
 			// Выполняем остановку кластера
 			this->_cluster.stop(0);
 		} break;
@@ -49,17 +49,17 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
  */
 void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_eventsFn != nullptr){
+	if(this->_callback.is("events")){
 		// Определяем производится ли инициализация кластера
 		if(this->_pid == getpid()){
 			// Если функция обратного вызова установлена
-			if(this->_activeClusterFn != nullptr)
+			if(this->_callback.is("activeCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_activeClusterFn, status_t::START, const_cast <core_t *> (this)).detach();
+				std::thread(this->_callback.get <void (const status_t, awh::core_t *)> ("activeCluster"), status_t::START, const_cast <core_t *> (this)).detach();
 			// Выполняем функцию обратного вызова
-			this->_eventsFn(worker_t::MASTER, pid, event, const_cast <core_t *> (this));
+			this->_callback.call <const worker_t, const pid_t, const cluster_t::event_t, core_t *> ("events", worker_t::MASTER, pid, event, const_cast <core_t *> (this));
 		// Если производится запуск воркера, выполняем функцию обратного вызова
-		} else this->_eventsFn(worker_t::CHILDREN, pid, event, const_cast <core_t *> (this));
+		} else this->_callback.call <const worker_t, const pid_t, const cluster_t::event_t, core_t *> ("events", worker_t::CHILDREN, pid, event, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -71,13 +71,13 @@ void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluste
  */
 void awh::cluster::Core::message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_messageFn != nullptr){
+	if(this->_callback.is("message")){
 		// Определяем производится ли инициализация кластера
 		if(this->_pid == getpid())
 			// Выполняем функцию обратного вызова
-			this->_messageFn(worker_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
+			this->_callback.call <const worker_t, const pid_t, const char *, const size_t, core_t *> ("message", worker_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
 		// Если производится запуск воркера, если функция обратного вызова установлена
-		else this->_messageFn(worker_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
+		else this->_callback.call <const worker_t, const pid_t, const char *, const size_t, core_t *> ("message", worker_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -160,7 +160,10 @@ void awh::cluster::Core::stop() noexcept {
 			// Выполняем остановку чтения базы событий
 			this->dispatch.stop();
 			// Выполняем получение функции обратного вызова
-			this->_activeFn = this->_activeClusterFn;
+			this->_callback.set <void (const status_t, awh::core_t *)> (
+				"active",
+				this->_callback.get <void (const status_t, awh::core_t *)> ("activeCluster")
+			);
 			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
 			this->activeOnTrhead = !this->activeOnTrhead;
 		// Выполняем разблокировку потока
@@ -183,11 +186,14 @@ void awh::cluster::Core::start() noexcept {
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
 			// Выполняем получение функции обратного вызова
-			this->_activeClusterFn = this->_activeFn;
+			this->_callback.set <void (const status_t, awh::core_t *)> (
+				"activeCluster",
+				this->_callback.get <void (const status_t, awh::core_t *)> ("active")
+			);
 			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
 			this->activeOnTrhead = !this->activeOnTrhead;
 			// Устанавливаем функцию обратного вызова на запуск системы
-			this->_activeFn = std::bind(&cluster::core_t::active, this, _1, _2);
+			this->_callback.set <void (const status_t, awh::core_t *)> ("active", std::bind(&cluster::core_t::active, this, _1, _2));
 			// Выполняем запуск чтения базы событий
 			this->dispatch.start();
 		// Выполняем разблокировку потока
@@ -208,7 +214,7 @@ void awh::cluster::Core::close() noexcept {
  */
 void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const cluster_t::event_t, core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
-	this->_eventsFn = callback;
+	this->_callback.set <void (const worker_t, const pid_t, const cluster_t::event_t, core_t *)>("events", callback);
 }
 /**
  * on Метод установки функции обратного вызова при получении сообщения
@@ -216,7 +222,7 @@ void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const c
  */
 void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const char *, const size_t, core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
-	this->_messageFn = callback;
+	this->_callback.set <void (const worker_t, const pid_t, const char *, const size_t, core_t *)> ("message", callback);
 }
 /**
  * clusterAsync Метод установки флага асинхронного режима работы
@@ -288,7 +294,7 @@ void awh::cluster::Core::clusterAutoRestart(const bool mode) noexcept {
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _clusterSize(1), _clusterAutoRestart(false), _log(log), _eventsFn(nullptr), _messageFn(nullptr) {
+ awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _clusterSize(1), _clusterAutoRestart(false), _log(log) {
 	// Устанавливаем идентификатор процесса
 	this->_pid = getpid();
 	// Устанавливаем тип запускаемого ядра

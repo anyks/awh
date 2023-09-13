@@ -68,16 +68,8 @@ namespace awh {
 				// Флаг автоматического перезапуска упавших процессов
 				bool _clusterAutoRestart;
 			private:
-				// Функция обратного вызова при запуске/остановке модуля
-				function <void (const status_t, awh::core_t *)> _activeClusterFn;
-			private:
 				// Объект для работы с логами
 				const log_t * _log;
-			private:
-				// Функция обратного вызова при получении события
-				function <void (const worker_t, const pid_t, const cluster_t::event_t, Core *)> _eventsFn;
-				// Функция обратного вызова при получении сообщения
-				function <void (const worker_t, const pid_t, const char *, const size_t, Core *)> _messageFn;
 			private:
 				/**
 				 * active Метод вывода статуса работы сетевого ядра

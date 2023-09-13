@@ -597,6 +597,8 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 	} else if(this->_core != nullptr) {
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->callback(nullptr);
+		// Удаляем схему сети из сетевого ядра
+		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
 	}

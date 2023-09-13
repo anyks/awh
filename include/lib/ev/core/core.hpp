@@ -49,6 +49,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <net/dns.hpp>
 #include <net/engine.hpp>
 #include <scheme/core.hpp>
@@ -269,6 +270,8 @@ namespace awh {
 			fs_t _fs;
 			// Объект работы с сигналами
 			sig_t _sig;
+			// Объект функций обратного вызова
+			fn_t _callback;
 			// Объект события таймера
 			timer_t _timer;
 		protected:
@@ -313,11 +316,6 @@ namespace awh {
 			const fmk_t * fmk;
 			// Создаём объект работы с логами
 			const log_t * log;
-		protected:
-			// Функция обратного вызова при краше приложения
-			function <void (const int)> _crashFn;
-			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const status_t, Core *)> _activeFn;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий

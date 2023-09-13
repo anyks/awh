@@ -36,7 +36,7 @@ namespace awh {
 		 */
 		typedef class Http1 : public web_t {
 			private:
-				// Объект для работы с HTTP
+				// Объект для работы с HTTP-протколом
 				http_t _http;
 			private:
 				// Объект функций обратного вызова для вывода результата
@@ -151,6 +151,11 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере

@@ -26,6 +26,8 @@ void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+		// Запоминаем идентификатор адъютанта
+		this->_aid = aid;
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
@@ -88,7 +90,7 @@ void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, 
 		// Если завершить работу разрешено
 		if(this->_unbind)
 			// Завершаем работу
-			const_cast <client::core_t *> (this->_core)->stop();
+			dynamic_cast <client::core_t *> (core)->stop();
 	}
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
@@ -147,7 +149,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 							}
 						#endif
 						// Выполняем препарирование полученных данных
-						switch(static_cast <uint8_t> (this->prepare(this->_requests.begin()->first, aid, reinterpret_cast <client::core_t *> (core)))){
+						switch(static_cast <uint8_t> (this->prepare(this->_requests.begin()->first, aid, dynamic_cast <client::core_t *> (core)))){
 							// Если необходимо выполнить остановку обработки
 							case static_cast <uint8_t> (status_t::STOP):
 								// Выполняем завершение работы
@@ -511,6 +513,24 @@ void awh::client::Http1::on(function <void (const int32_t, const u_int, const st
 void awh::client::Http1::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_http.chunk(size);
+}
+/**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	// Устанавливаем флаг разрешающий выполнять редиректы
+	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
+	// Устанавливаем флаг ожидания входящих сообщений
+	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
+	// Выполняем установку флага проверки домена
+	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
 }
 /**
  * user Метод установки параметров авторизации

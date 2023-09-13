@@ -232,9 +232,12 @@ namespace awh {
 			protected:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @return результат препарирования
+				 * @param id   идентификатор запроса
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 * @return     результат препарирования
 				 */
-				virtual status_t prepare() noexcept = 0;
+				virtual status_t prepare(const int32_t id, const size_t aid, client::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB клиента
@@ -337,7 +340,7 @@ namespace awh {
 				 * core Метод установки сетевого ядра
 				 * @param core объект сетевого ядра
 				 */
-				void core(const client::core_t * core) noexcept;
+				virtual void core(const client::core_t * core) noexcept;
 				/**
 				 * compress Метод установки метода компрессии
 				 * @param compress метод компрессии сообщений
@@ -350,6 +353,12 @@ namespace awh {
 				 * @param intvl интервал времени в секундах между попытками
 				 */
 				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+			public:
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				virtual void mode(const set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
@@ -644,6 +653,11 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * userAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса
