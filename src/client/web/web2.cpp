@@ -175,7 +175,7 @@ int awh::client::Web2::onClose(nghttp2_session * session, const int32_t sid, con
 		(void) sid;
 	#endif
 	// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-	web->_sessionMode = false;
+	web->_upgraded = false;
 	// Если сессия HTTP/2 закрыта не удачно
 	if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
 		// Выводим сообщение об ошибке
@@ -351,11 +351,11 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 		// Если система была остановлена
 		if(status == awh::core_t::status_t::STOP){
 			// Если контекст сессии HTTP/2 создан
-			if(this->_sessionMode && (this->_session != nullptr))
+			if(this->_upgraded && (this->_session != nullptr))
 				// Выполняем удаление сессии
 				nghttp2_session_del(this->_session);
 			// Деактивируем флаг работы с протоколом HTTP/2
-			this->_sessionMode = false;
+			this->_upgraded = false;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
@@ -371,7 +371,7 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  */
 void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если протокол подключения является HTTP/2
-	if(!this->_sessionMode && (core->proto(aid) == engine_t::proto_t::HTTP2)){
+	if(!this->_upgraded && (core->proto(aid) == engine_t::proto_t::HTTP2)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -417,7 +417,7 @@ void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh:
 			return;
 		}
 		// Выполняем активацию работы с протоколом HTTP/2
-		this->_sessionMode = !this->_sessionMode;
+		this->_upgraded = !this->_upgraded;
 	}
 }
 /**
@@ -426,7 +426,7 @@ void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh:
  */
 bool awh::client::Web2::ping() noexcept {
 	// Если протокол подключения установлен как HTTP/2
-	if(this->_sessionMode && (this->_session != nullptr)){
+	if(this->_upgraded && (this->_session != nullptr)){
 		// Результат выполнения поерации
 		int rv = -1;
 		// Выполняем пинг удалённого сервера
@@ -458,7 +458,7 @@ bool awh::client::Web2::ping() noexcept {
  */
 void awh::client::Web2::send(const int32_t id, const char * message, const size_t size, const bool end) noexcept {
 	// Если протокол подключения установлен как HTTP/2 и подключение выполнено
-	if(this->_sessionMode && this->_core->working() && (this->_session != nullptr) && (message != nullptr) && (size > 0)){
+	if(this->_upgraded && this->_core->working() && (this->_session != nullptr) && (message != nullptr) && (size > 0)){
 		// Список файловых дескрипторов
 		int fds[2];
 		/**
@@ -652,7 +652,7 @@ void awh::client::Web2::crypto(const string & pass, const string & salt, const h
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK),
- _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5), _sessionMode(false), _session(nullptr) {
+ _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5), _upgraded(false), _session(nullptr) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }
@@ -664,7 +664,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK),
- _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5), _sessionMode(false), _session(nullptr) {
+ _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5), _upgraded(false), _session(nullptr) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }

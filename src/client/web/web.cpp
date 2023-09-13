@@ -23,16 +23,21 @@
 void awh::client::Web::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
-		// Если подключение уже выполнено
-		if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
-			// Если подключение производится через, прокси-сервер
-			if(this->_scheme.isProxy())
-				// Выполняем запуск функции подключения для прокси-сервера
-				this->proxyConnectCallback(this->_aid, sid, core);
-			// Выполняем запуск функции подключения
-			else this->connectCallback(this->_aid, sid, core);
-		// Если биндинг уже запущен, выполняем запрос на сервер
-		} else dynamic_cast <client::core_t *> (core)->open(sid);
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::READ, event_t::CONNECT, event_t::DISCONNECT}, event_t::OPEN)){
+			// Если подключение уже выполнено
+			if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
+				// Если подключение производится через, прокси-сервер
+				if(this->_scheme.isProxy())
+					// Выполняем запуск функции подключения для прокси-сервера
+					this->proxyConnectCallback(this->_aid, sid, core);
+				// Выполняем запуск функции подключения
+				else this->connectCallback(this->_aid, sid, core);
+			// Если биндинг уже запущен, выполняем запрос на сервер
+			} else dynamic_cast <client::core_t *> (core)->open(sid);
+		}
 	}
 }
 /**
@@ -58,50 +63,55 @@ void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Запоминаем идентификатор адъютанта
-		this->_aid = aid;
-		// Определяем тип прокси-сервера
-		switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
-			// Если прокси-сервер является Socks5
-			case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
-				// Выполняем сброс состояния Socks5 парсера
-				this->_scheme.proxy.socks5.reset();
-				// Устанавливаем URL адрес запроса
-				this->_scheme.proxy.socks5.url(this->_scheme.url);
-				// Выполняем создание буфера запроса
-				this->_scheme.proxy.socks5.parse();
-				// Получаем данные запроса
-				const auto & buffer = this->_scheme.proxy.socks5.get();
-				// Если данные получены
-				if(!buffer.empty())
-					// Выполняем отправку сообщения на сервер
-					dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
-			} break;
-			// Если прокси-сервер является HTTP
-			case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
-				// Выполняем сброс состояния HTTP парсера
-				this->_scheme.proxy.http.reset();
-				// Выполняем очистку параметров HTTP запроса
-				this->_scheme.proxy.http.clear();
-				// Получаем бинарные данные WEB запроса
-				const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
-				// Если бинарные данные запроса получены
-				if(!buffer.empty()){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры запроса
-						cout << string(buffer.begin(), buffer.end()) << endl;
-					#endif
-					// Выполняем отправку сообщения на сервер
-					dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
-				}
-			} break;
-			// Иначе завершаем работу
-			default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::OPEN, event_t::PROXY_READ}, event_t::PROXY_CONNECT)){
+			// Запоминаем идентификатор адъютанта
+			this->_aid = aid;
+			// Определяем тип прокси-сервера
+			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
+				// Если прокси-сервер является Socks5
+				case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
+					// Выполняем сброс состояния Socks5 парсера
+					this->_scheme.proxy.socks5.reset();
+					// Устанавливаем URL адрес запроса
+					this->_scheme.proxy.socks5.url(this->_scheme.url);
+					// Выполняем создание буфера запроса
+					this->_scheme.proxy.socks5.parse();
+					// Получаем данные запроса
+					const auto & buffer = this->_scheme.proxy.socks5.get();
+					// Если данные получены
+					if(!buffer.empty())
+						// Выполняем отправку сообщения на сервер
+						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
+				} break;
+				// Если прокси-сервер является HTTP
+				case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
+					// Выполняем сброс состояния HTTP парсера
+					this->_scheme.proxy.http.reset();
+					// Выполняем очистку параметров HTTP запроса
+					this->_scheme.proxy.http.clear();
+					// Получаем бинарные данные WEB запроса
+					const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
+					// Если бинарные данные запроса получены
+					if(!buffer.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << string(buffer.begin(), buffer.end()) << endl;
+						#endif
+						// Выполняем отправку сообщения на сервер
+						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
+					}
+				} break;
+				// Иначе завершаем работу
+				default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+			}
 		}
 	}
 }
@@ -116,165 +126,170 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Добавляем полученные данные в буфер
-		this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-		// Определяем тип прокси-сервера
-		switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
-			// Если прокси-сервер является Socks5
-			case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
-				// Если данные не получены
-				if(!this->_scheme.proxy.socks5.isEnd()){
-					// Выполняем парсинг входящих данных
-					this->_scheme.proxy.socks5.parse(this->_buffer.data(), this->_buffer.size());
-					// Получаем данные запроса
-					const auto & buffer = this->_scheme.proxy.socks5.get();
-					// Если данные получены
-					if(!buffer.empty()){
-						// Выполняем очистку буфера данных
-						this->_buffer.clear();
-						// Выполняем отправку запроса на сервер
-						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
-						// Завершаем работу
-						return;
-					// Если данные все получены
-					} else if(this->_scheme.proxy.socks5.isEnd()) {
-						// Выполняем очистку буфера данных
-						this->_buffer.clear();
-						// Если рукопожатие выполнено
-						if(this->_scheme.proxy.socks5.isHandshake()){
-							// Выполняем переключение на работу с сервером
-							dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::PROXY_CONNECT}, event_t::PROXY_READ)){
+			// Добавляем полученные данные в буфер
+			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+			// Определяем тип прокси-сервера
+			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
+				// Если прокси-сервер является Socks5
+				case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
+					// Если данные не получены
+					if(!this->_scheme.proxy.socks5.isEnd()){
+						// Выполняем парсинг входящих данных
+						this->_scheme.proxy.socks5.parse(this->_buffer.data(), this->_buffer.size());
+						// Получаем данные запроса
+						const auto & buffer = this->_scheme.proxy.socks5.get();
+						// Если данные получены
+						if(!buffer.empty()){
+							// Выполняем очистку буфера данных
+							this->_buffer.clear();
+							// Выполняем отправку запроса на сервер
+							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
 							// Завершаем работу
 							return;
-						// Если рукопожатие не выполнено
-						} else {
-							// Устанавливаем код ответа
-							const u_int code = this->_scheme.proxy.socks5.code();
-							// Устанавливаем сообщение ответа
-							const string & message = this->_scheme.proxy.socks5.message(code);
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Если заголовки получены
-								if(!message.empty()){
-									// Данные WEB ответа
-									const string & answer = this->_fmk->format("SOCKS5 %u %s\r\n", code, message.c_str());
+						// Если данные все получены
+						} else if(this->_scheme.proxy.socks5.isEnd()) {
+							// Выполняем очистку буфера данных
+							this->_buffer.clear();
+							// Если рукопожатие выполнено
+							if(this->_scheme.proxy.socks5.isHandshake()){
+								// Выполняем переключение на работу с сервером
+								dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
+								// Завершаем работу
+								return;
+							// Если рукопожатие не выполнено
+							} else {
+								// Устанавливаем код ответа
+								const u_int code = this->_scheme.proxy.socks5.code();
+								// Устанавливаем сообщение ответа
+								const string & message = this->_scheme.proxy.socks5.message(code);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Если заголовки получены
+									if(!message.empty()){
+										// Данные WEB ответа
+										const string & answer = this->_fmk->format("SOCKS5 %u %s\r\n", code, message.c_str());
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+										// Выводим параметры ответа
+										cout << string(answer.begin(), answer.end()) << endl;
+									}
+								#endif
+								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+								if(this->_callback.is("response"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, code, message);
+								// Завершаем работу
+								dynamic_cast <client::core_t *> (core)->close(this->_aid);
+								// Завершаем работу
+								return;
+							}
+						}
+					}
+				} break;
+				// Если прокси-сервер является HTTP
+				case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
+					// Выполняем парсинг полученных данных
+					this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
+					// Если все данные получены
+					if(this->_scheme.proxy.http.isEnd()){
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные ответа
+								const auto & response = this->_scheme.proxy.http.response(true);
+								// Если параметры ответа получены
+								if(!response.empty()){
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
-									cout << string(answer.begin(), answer.end()) << endl;
-								}
-							#endif
-							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-							if(this->_callback.is("response"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, code, message);
-							// Завершаем работу
-							dynamic_cast <client::core_t *> (core)->close(this->_aid);
-							// Завершаем работу
-							return;
-						}
-					}
-				}
-			} break;
-			// Если прокси-сервер является HTTP
-			case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
-				// Выполняем парсинг полученных данных
-				this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
-				// Если все данные получены
-				if(this->_scheme.proxy.http.isEnd()){
-					// Выполняем очистку буфера данных
-					this->_buffer.clear();
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						{
-							// Получаем данные ответа
-							const auto & response = this->_scheme.proxy.http.response(true);
-							// Если параметры ответа получены
-							if(!response.empty()){
-								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
-								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl;
-								// Если тело ответа существует
-								if(!this->_scheme.proxy.http.body().empty())
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
-							}
-						}
-					#endif
-					// Получаем параметры запроса
-					const auto & query = this->_scheme.proxy.http.query();
-					// Получаем статус ответа
-					awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
-					// Если выполнять редиректы запрещено
-					if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
-						// Если нужно произвести запрос заново
-						if((query.code == 201) || (query.code == 301) ||
-						   (query.code == 302) || (query.code == 303) ||
-						   (query.code == 307) || (query.code == 308))
-							// Запрещаем выполнять редирект
-							status = awh::http_t::stath_t::GOOD;
-					}
-					// Выполняем проверку авторизации
-					switch(static_cast <uint8_t> (status)){
-						// Если нужно попытаться ещё раз
-						case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
-							// Если попытки повторить переадресацию ещё не закончились
-							if(!(this->_stopped = (this->_attempt >= this->_attempts))){
-								// Если адрес запроса получен
-								if(!this->_scheme.proxy.url.empty()){
-									// Увеличиваем количество попыток
-									this->_attempt++;
-									// Если соединение является постоянным
-									if(this->_scheme.proxy.http.isAlive())
-										// Устанавливаем новый экшен выполнения
-										this->proxyConnectCallback(aid, sid, core);
-									// Если соединение должно быть закрыто
-									else dynamic_cast <client::core_t *> (core)->close(this->_aid);
-									// Завершаем работу
-									return;
+									cout << string(response.begin(), response.end()) << endl;
+									// Если тело ответа существует
+									if(!this->_scheme.proxy.http.body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
 								}
 							}
-						} break;
-						// Если запрос выполнен удачно
-						case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-							// Выполняем сброс количества попыток
-							this->_attempt = 0;
-							// Выполняем переключение на работу с сервером
-							dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
-							// Завершаем работу
-							return;
-						} break;
-						// Если запрос неудачный
-						case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
-							// Устанавливаем флаг принудительной остановки
-							this->_stopped = true;
-						break;
+						#endif
+						// Получаем параметры запроса
+						const auto & query = this->_scheme.proxy.http.query();
+						// Получаем статус ответа
+						awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
+						// Если выполнять редиректы запрещено
+						if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+							// Если нужно произвести запрос заново
+							if((query.code == 201) || (query.code == 301) ||
+							   (query.code == 302) || (query.code == 303) ||
+							   (query.code == 307) || (query.code == 308))
+								// Запрещаем выполнять редирект
+								status = awh::http_t::stath_t::GOOD;
+						}
+						// Выполняем проверку авторизации
+						switch(static_cast <uint8_t> (status)){
+							// Если нужно попытаться ещё раз
+							case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+								// Если попытки повторить переадресацию ещё не закончились
+								if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+									// Если адрес запроса получен
+									if(!this->_scheme.proxy.url.empty()){
+										// Увеличиваем количество попыток
+										this->_attempt++;
+										// Если соединение является постоянным
+										if(this->_scheme.proxy.http.isAlive())
+											// Устанавливаем новый экшен выполнения
+											this->proxyConnectCallback(aid, sid, core);
+										// Если соединение должно быть закрыто
+										else dynamic_cast <client::core_t *> (core)->close(this->_aid);
+										// Завершаем работу
+										return;
+									}
+								}
+							} break;
+							// Если запрос выполнен удачно
+							case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+								// Выполняем сброс количества попыток
+								this->_attempt = 0;
+								// Выполняем переключение на работу с сервером
+								dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
+								// Завершаем работу
+								return;
+							} break;
+							// Если запрос неудачный
+							case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+								// Устанавливаем флаг принудительной остановки
+								this->_stopped = true;
+							break;
+						}
+						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+						if(this->_callback.is("response"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, query.code, query.message);
+						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+						if(this->_callback.is("headers"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, query.code, query.message, this->_scheme.proxy.http.headers());
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(this->_callback.is("entity"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, query.code, query.message, this->_scheme.proxy.http.body());
+						// Завершаем работу
+						dynamic_cast <client::core_t *> (core)->close(this->_aid);
+						// Завершаем работу
+						return;
 					}
-					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-					if(this->_callback.is("response"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, query.code, query.message);
-					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-					if(this->_callback.is("headers"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, query.code, query.message, this->_scheme.proxy.http.headers());
-					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(this->_callback.is("entity"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, query.code, query.message, this->_scheme.proxy.http.body());
-					// Завершаем работу
-					dynamic_cast <client::core_t *> (core)->close(this->_aid);
-					// Завершаем работу
-					return;
-				}
-			} break;
-			// Иначе завершаем работу
-			default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+				} break;
+				// Иначе завершаем работу
+				default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+			}
 		}
 	}
 }

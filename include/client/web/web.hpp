@@ -18,6 +18,7 @@
 /**
  * Стандартная библиотека
  */
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hold.hpp>
 #include <net/uri.hpp>
 #include <http/client.hpp>
 #include <core/client.hpp>
@@ -98,6 +100,19 @@ namespace awh {
 					NEXT = 0x01, // Следующий этап обработки
 					SKIP = 0x02  // Пропустить этап обработки
 				};
+				/**
+				 * Идентификаторы текущего события
+				 */
+				enum class event_t : uint8_t {
+					NONE          = 0x00, // Событие не установлено
+					OPEN          = 0x01, // Событие открытия подключения
+					READ          = 0x02, // Событие чтения данных с сервера
+					SUBMIT        = 0x03, // Событие HTTP-запроса на удаленный сервер
+					CONNECT       = 0x04, // Событие подключения к серверу
+					DISCONNECT    = 0x05, // Событие отключения от сервера
+					PROXY_READ    = 0x06, // Событие чтения данных с прокси-сервера
+					PROXY_CONNECT = 0x07  // Событие подключения к прокси-серверу
+				};
 			protected:
 				// Идентификатор подключения
 				size_t _aid;
@@ -128,6 +143,9 @@ namespace awh {
 			protected:
 				// Объект буфера данных
 				vector <char> _buffer;
+			protected:
+				// Список рабочих событий
+				stack <event_t> _events;
 			protected:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -426,6 +444,23 @@ namespace awh {
 					 */
 					Crypto() noexcept : pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} crypto_t;
+				/**
+				 * Worker Структура активного воркера
+				 */
+				typedef struct Worker {
+					uri_t uri;       // Объект работы с URI ссылками
+					http_t http;     // Объект для работы с HTTP
+					fn_t callback;   // Объект функций обратного вызова
+					agent_t agent;   // Агент воркера
+					uint8_t attempt; // Количество попыток
+					/**
+					 * Worker Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Worker(const fmk_t * fmk, const log_t * log) noexcept :
+					 uri(fmk), http(fmk, log, &uri), callback(log), agent(agent_t::HTTP), attempt(0) {}
+				} worker_t;
 			protected:
 				// Объект идентификации сервиса
 				serv_t _serv;
@@ -448,10 +483,13 @@ namespace awh {
 				// Алгоритм шифрования для Digest-авторизации
 				auth_t::hash_t _authHash;
 			protected:
-				// Флаг активации сессии HTTP/2
-				bool _sessionMode;
+				// Флаг переключения на протокол HTTP/2
+				bool _upgraded;
 				// Ессия HTTP/2 подключения
 				nghttp2_session * _session;
+			protected:
+				// Список активных врокеров
+				map <int32_t, unique_ptr <worker_t>> _workers;
 			protected:
 				/**
 				 * debug Функция обратного вызова при получении отладочной информации

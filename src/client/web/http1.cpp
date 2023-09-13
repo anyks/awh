@@ -22,10 +22,15 @@
  * @param core объект сетевого ядра
  */
 void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Если функция обратного вызова при подключении/отключении установлена
-	if(this->_callback.is("active"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+	}
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
@@ -101,83 +106,88 @@ void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, 
 void awh::client::Http1::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Если список ответов получен
-		if(!this->_requests.empty()){
-			// Флаг удачного получения данных
-			bool receive = false;
-			// Флаг завершения работы
-			bool completed = false;
-			// Добавляем полученные данные в буфер
-			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-			// Выполняем обработку полученных данных
-			while(!this->_active){
-				// Выполняем парсинг полученных данных
-				size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
-				// Если все данные получены
-				if((completed = this->_http.isEnd())){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						{
-							// Получаем данные ответа
-							const auto & response = this->_http.response(true);
-							// Если параметры ответа получены
-							if(!response.empty()){
-								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl;
-								// Если тело ответа существует
-								if(!this->_http.body().empty())
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
-								// Иначе устанавливаем перенос строки
-								else cout << endl;
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::CONNECT}, event_t::READ)){
+			// Если список ответов получен
+			if(!this->_requests.empty()){
+				// Флаг удачного получения данных
+				bool receive = false;
+				// Флаг завершения работы
+				bool completed = false;
+				// Добавляем полученные данные в буфер
+				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+				// Выполняем обработку полученных данных
+				while(!this->_active){
+					// Выполняем парсинг полученных данных
+					size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
+					// Если все данные получены
+					if((completed = this->_http.isEnd())){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные ответа
+								const auto & response = this->_http.response(true);
+								// Если параметры ответа получены
+								if(!response.empty()){
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl;
+									// Если тело ответа существует
+									if(!this->_http.body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
+								}
 							}
+						#endif
+						// Выполняем препарирование полученных данных
+						switch(static_cast <uint8_t> (this->prepare(this->_requests.begin()->first, aid, reinterpret_cast <client::core_t *> (core)))){
+							// Если необходимо выполнить остановку обработки
+							case static_cast <uint8_t> (status_t::STOP):
+								// Выполняем завершение работы
+								goto Stop;
+							// Если необходимо выполнить переход к следующему этапу обработки
+							case static_cast <uint8_t> (status_t::NEXT):
+								// Выполняем переход к следующему этапу обработки
+								goto Next;
+							// Если необходимо выполнить пропуск обработки данных
+							case static_cast <uint8_t> (status_t::SKIP):
+								// Завершаем работу
+								return;
 						}
-					#endif
-					// Выполняем препарирование полученных данных
-					switch(static_cast <uint8_t> (this->prepare(this->_requests.begin()->first, aid, reinterpret_cast <client::core_t *> (core)))){
-						// Если необходимо выполнить остановку обработки
-						case static_cast <uint8_t> (status_t::STOP):
-							// Выполняем завершение работы
-							goto Stop;
-						// Если необходимо выполнить переход к следующему этапу обработки
-						case static_cast <uint8_t> (status_t::NEXT):
-							// Выполняем переход к следующему этапу обработки
-							goto Next;
-						// Если необходимо выполнить пропуск обработки данных
-						case static_cast <uint8_t> (status_t::SKIP):
-							// Завершаем работу
-							return;
 					}
+					// Устанавливаем метку продолжения обработки пайплайна
+					Next:
+					// Если парсер обработал какое-то количество байт
+					if((receive = ((bytes > 0) && !this->_buffer.empty()))){
+						// Если размер буфера больше количества удаляемых байт
+						if((receive = (this->_buffer.size() >= bytes)))
+							// Удаляем количество обработанных байт
+							this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+							// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+					}
+					// Если данные мы все получили, выходим
+					if(!receive || this->_buffer.empty()) break;
 				}
-				// Устанавливаем метку продолжения обработки пайплайна
-				Next:
-				// Если парсер обработал какое-то количество байт
-				if((receive = ((bytes > 0) && !this->_buffer.empty()))){
-					// Если размер буфера больше количества удаляемых байт
-					if((receive = (this->_buffer.size() >= bytes)))
-						// Удаляем количество обработанных байт
-						this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+				// Устанавливаем метку завершения работы
+				Stop:
+				// Если получение данных выполнено
+				if(completed){
+					// Если функция обратного вызова установлена, выводим сообщение
+					if(this->_resultCallback.is("entity"))
+						// Выполняем функцию обратного вызова дисконнекта
+						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+					// Если подключение выполнено и список запросов не пустой
+					if((this->_aid > 0) && !this->_requests.empty())
+						// Выполняем запрос на удалённый сервер
+						this->submit(this->_requests.begin()->second);
 				}
-				// Если данные мы все получили, выходим
-				if(!receive || this->_buffer.empty()) break;
-			}
-			// Устанавливаем метку завершения работы
-			Stop:
-			// Если получение данных выполнено
-			if(completed){
-				// Если функция обратного вызова установлена, выводим сообщение
-				if(this->_resultCallback.is("entity"))
-					// Выполняем функцию обратного вызова дисконнекта
-					this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
-				// Если подключение выполнено и список запросов не пустой
-				if((this->_aid > 0) && !this->_requests.empty())
-					// Выполняем запрос на удалённый сервер
-					this->submit(this->_requests.begin()->second);
 			}
 		}
 	}
@@ -374,58 +384,63 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
  * @param request объект запроса на удалённый сервер
  */
 void awh::client::Http1::submit(const request_t & request) noexcept {
-	// Если подключение выполнено
-	if(this->_aid > 0){
-		// Выполняем сброс параметров запроса
-		this->flush();
-		// Выполняем сброс состояния HTTP парсера
-		this->_http.reset();
-		// Выполняем очистку параметров HTTP запроса
-		this->_http.clear();
-		// Выполняем очистку функций обратного вызова
-		this->_resultCallback.clear();
-		// Выполняем установку URL-адреса запроса
-		this->_scheme.url = request.url;
-		// Устанавливаем метод компрессии
-		this->_http.compress(this->_compress);
-		// Если список заголовков получен
-		if(!request.headers.empty())
-			// Устанавливаем заголовоки запроса
-			this->_http.headers(request.headers);
-		// Если тело запроса существует
-		if(!request.entity.empty())
-			// Устанавливаем тело запроса
-			this->_http.body(request.entity);
-		// Получаем бинарные данные WEB запроса
-		const auto & buffer = this->_http.request(this->_scheme.url, request.method);
-		// Если бинарные данные запроса получены
-		if(!buffer.empty()){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок запроса
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры запроса
-				cout << string(buffer.begin(), buffer.end()) << endl << endl;
-			#endif
-			// Тело WEB сообщения
-			vector <char> entity;
-			// Получаем объект биндинга ядра TCP/IP
-			client::core_t * core = const_cast <client::core_t *> (this->_core);
-			// Выполняем отправку заголовков запроса на сервер
-			core->write(buffer.data(), buffer.size(), this->_aid);
-			// Получаем данные тела запроса
-			while(!(entity = this->_http.payload()).empty()){
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SUBMIT)){
+		// Если подключение выполнено
+		if(this->_aid > 0){
+			// Выполняем сброс параметров запроса
+			this->flush();
+			// Выполняем сброс состояния HTTP парсера
+			this->_http.reset();
+			// Выполняем очистку параметров HTTP запроса
+			this->_http.clear();
+			// Выполняем очистку функций обратного вызова
+			this->_resultCallback.clear();
+			// Выполняем установку URL-адреса запроса
+			this->_scheme.url = request.url;
+			// Устанавливаем метод компрессии
+			this->_http.compress(this->_compress);
+			// Если список заголовков получен
+			if(!request.headers.empty())
+				// Устанавливаем заголовоки запроса
+				this->_http.headers(request.headers);
+			// Если тело запроса существует
+			if(!request.entity.empty())
+				// Устанавливаем тело запроса
+				this->_http.body(request.entity);
+			// Получаем бинарные данные WEB запроса
+			const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+			// Если бинарные данные запроса получены
+			if(!buffer.empty()){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
-					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(buffer.begin(), buffer.end()) << endl << endl;
 				#endif
-				// Выполняем отправку тела запроса на сервер
-				core->write(entity.data(), entity.size(), this->_aid);
+				// Тело WEB сообщения
+				vector <char> entity;
+				// Получаем объект биндинга ядра TCP/IP
+				client::core_t * core = const_cast <client::core_t *> (this->_core);
+				// Выполняем отправку заголовков запроса на сервер
+				core->write(buffer.data(), buffer.size(), this->_aid);
+				// Получаем данные тела запроса
+				while(!(entity = this->_http.payload()).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					#endif
+					// Выполняем отправку тела запроса на сервер
+					core->write(entity.data(), entity.size(), this->_aid);
+				}
 			}
 		}
 	}
