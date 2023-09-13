@@ -647,6 +647,17 @@ void awh::client::Web2::crypto(const string & pass, const string & salt, const h
 }
 /**
  * Web2 Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
+ web_t(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK),
+ _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5), _sessionMode(false), _session(nullptr) {
+	// Устанавливаем функцию персистентного вызова
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
+}
+/**
+ * Web2 Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

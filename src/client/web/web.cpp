@@ -301,14 +301,9 @@ bool awh::client::Web::enableTLSCallback(const uri_t::url_t & url, const size_t 
  */
 void awh::client::Web::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()){
+	if(!chunk.empty())
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
-		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callback.is("chunks"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const vector <char> &> ("chunks", chunk);
-	}
 }
 /**
  * init Метод инициализации WEB клиента
@@ -360,20 +355,6 @@ void awh::client::Web::on(function <void (const mode_t)> callback) noexcept {
 	this->_callback.set <void (const mode_t)> ("active", callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::Web::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем функцию обратного вызова для WebSocket/1.1
-	this->_ws.http.on(callback);
-	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_web.http.on(callback);
-	*/
-	// Устанавливаем функцию обратного вызова для HTTP/2 и WebSocket/2
-	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
@@ -388,6 +369,28 @@ void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core
 void awh::client::Web::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const int32_t, const vector <char> &)> ("chunks", callback);
+}
+/**
+ * on Метод установки функции вывода полученного тела данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
+	// Устанавливаем функцию обратного вызова для WebSocket/1.1
+	this->_ws.http.on(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/1.1
+	this->_web.http.on(callback);
+	*/
+	// Устанавливаем функцию обратного вызова для HTTP/2 и WebSocket/2
+	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
@@ -414,14 +417,6 @@ void awh::client::Web::on(function <void (const int32_t, const string &, const s
 	*/
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const int32_t, const string &, const string &)> ("header", callback);
-}
-/**
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
 }
 /**
  * on Метод установки функции вывода полученных заголовков с сервера
@@ -571,6 +566,27 @@ void awh::client::Web::attempts(const uint8_t attempts) noexcept {
 	if(attempts > 0) this->_attempts = attempts;
 }
 /**
+ * core Метод установки сетевого ядра
+ * @param core объект сетевого ядра
+ */
+void awh::client::Web::core(const client::core_t * core) noexcept {
+	// Если объект сетевого ядра передан
+	if(core != nullptr){
+		// Выполняем установку объекта сетевого ядра
+		this->_core = core;
+		// Добавляем схемы сети в сетевое ядро
+		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
+		// Устанавливаем функцию активации ядра клиента
+		const_cast <client::core_t *> (this->_core)->callback(std::bind(&web_t::eventsCallback, this, _1, _2));
+	// Если объект сетевого ядра не передан но ранее оно было добавлено
+	} else if(this->_core != nullptr) {
+		// Устанавливаем функцию активации ядра клиента
+		const_cast <client::core_t *> (this->_core)->callback(nullptr);
+		// Выполняем установку объекта сетевого ядра
+		this->_core = core;
+	}
+}
+/**
  * compress Метод установки метода компрессии
  * @param compress метод компрессии сообщений
  */
@@ -636,6 +652,32 @@ void awh::client::Web::authTypeProxy(const auth_t::type_t type, const auth_t::ha
 }
 /**
  * Web Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
+ _aid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
+ _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _attempt(0), _attempts(15), _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2));
+	// Устанавливаем событие на запуск системы
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
+	// Устанавливаем событие подключения
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
+	// Устанавливаем событие отключения
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectCallback, this, _1, _2, _3));
+	// Устанавливаем событие на подключение к прокси-серверу
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем событие на чтение данных с прокси-сервера
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем событие на активацию шифрованного TLS канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
+}
+/**
+ * Web Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
@@ -645,6 +687,8 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
  _unbind(true), _active(false), _stopped(false), _redirects(false),
  _attempt(0), _attempts(15), _compress(awh::http_t::compress_t::NONE),
  _fmk(fmk), _log(log), _core(core) {
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2));
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения

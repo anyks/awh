@@ -350,6 +350,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web2.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/websocket.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"

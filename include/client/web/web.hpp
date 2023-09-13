@@ -75,6 +75,20 @@ namespace awh {
 					TAKEOVER_CLIENT = 0x07, // Флаг ожидания входящих сообщений для клиента
 					TAKEOVER_SERVER = 0x08  // Флаг ожидания входящих сообщений для сервера
 				};
+			public:
+				/**
+				 * Request Структура запроса клиента
+				 */
+				typedef struct Request {
+					uri_t::url_t url;                            // URL-запроса запроса
+					web_t::method_t method;                      // Метод запроса
+					vector <char> entity;                        // Тело запроса
+					unordered_multimap <string, string> headers; // Заголовки клиента
+					/**
+					 * Request Конструктор
+					 */
+					Request() noexcept : method(web_t::method_t::NONE) {}
+				} request_t;
 			protected:
 				/**
 				 * Этапы обработки
@@ -90,7 +104,7 @@ namespace awh {
 			protected:
 				// Объект работы с URI ссылками
 				uri_t _uri;
-				// Объект работы с функциями обратного вызова
+				// Объект функций обратного вызова
 				fn_t _callback;
 				// Объект рабочего
 				scheme_t _scheme;
@@ -191,7 +205,7 @@ namespace awh {
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
+				virtual void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -218,11 +232,6 @@ namespace awh {
 				void on(function <void (const mode_t)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
@@ -234,25 +243,32 @@ namespace awh {
 				 */
 				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
 				/**
-				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного заголовка с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
-				/**
 				 * on Метод установки функции вывода полученного тела данных с сервера
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции вывода полученного заголовка с сервера
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута
@@ -299,6 +315,11 @@ namespace awh {
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
+				/**
+				 * core Метод установки сетевого ядра
+				 * @param core объект сетевого ядра
+				 */
+				void core(const client::core_t * core) noexcept;
 				/**
 				 * compress Метод установки метода компрессии
 				 * @param compress метод компрессии сообщений
@@ -358,6 +379,12 @@ namespace awh {
 				 */
 				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept = 0;
 			public:
+				/**
+				 * Web Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Web(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * Web Конструктор
 				 * @param core объект сетевого ядра
@@ -613,6 +640,12 @@ namespace awh {
 				 */
 				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
+				/**
+				 * Web2 Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Web2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * Web2 Конструктор
 				 * @param core объект сетевого ядра
