@@ -77,6 +77,9 @@ namespace awh {
 					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
 			private:
+				// Идентификатор подключения
+				int32_t _sid;
+			private:
 				// Флаг завершения работы клиента
 				bool _close;
 				// Флаг шифрования сообщений
@@ -188,28 +191,6 @@ namespace awh {
 				int receivedHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
-				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
-				 */
-				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
-				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * response Метод получения ответа сервера
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
@@ -229,6 +210,13 @@ namespace awh {
 				 * @param headers заголовки ответа сервера
 				 */
 				void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+			private:
+				/**
+				 * chunking Метод обработки получения чанков
+				 * @param chunk бинарный буфер чанка
+				 * @param http  объект модуля HTTP
+				 */
+				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -303,12 +291,6 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос

@@ -719,7 +719,7 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT}, event_t::READ)){
+	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
 		if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
 			// Запрещаем получение данных
@@ -764,7 +764,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT}, event_t::READ)){
+	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
 		if(this->_core->working() && this->_allow.send){
 			// Выполняем блокировку отправки сообщения

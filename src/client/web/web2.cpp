@@ -370,54 +370,59 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param core объект сетевого ядра
  */
 void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Если протокол подключения является HTTP/2
-	if(!this->_upgraded && (core->proto(aid) == engine_t::proto_t::HTTP2)){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выполняем установку функции для вывода отладочной информации
-			nghttp2_set_debug_vprintf_callback(&web2_t::debug);
-		#endif
-		// Создаём объект функций обратного вызова
-		nghttp2_session_callbacks * callbacks;
-		// Выполняем инициализацию сессию функций обратного вызова
-		nghttp2_session_callbacks_new(&callbacks);
-		// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
-		nghttp2_session_callbacks_set_send_callback(callbacks, &web2_t::onSend);
-		// Выполняем установку функции обратного вызова при получении заголовка HTTP/2
-		nghttp2_session_callbacks_set_on_header_callback(callbacks, &web2_t::onHeader);
-		// Выполняем установку функции обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &web2_t::onFrame);
-		// Выполняем установку функции обратного вызова закрытия подключения с сервером HTTP/2
-		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &web2_t::onClose);
-		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
-		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &web2_t::onChunk);
-		// Выполняем установку функции обратного вызова начала получения фрейма заголовков HTTP/2
-		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &web2_t::onBeginHeaders);
-		// Выполняем подключение котнекста сессии HTTP/2
-		nghttp2_session_client_new(&this->_session, callbacks, this);
-		// Выполняем удаление объекта функций обратного вызова
-		nghttp2_session_callbacks_del(callbacks);
-		// Создаём параметры сессии подключения с HTTP/2 сервером
-		const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 128}};
-		// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
-		const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
-		// Если настройки для сессии установить не удалось
-		if(rv != 0){
-			// Выполняем закрытие подключения
-			dynamic_cast <client::core_t *> (core)->close(aid);
-			// Выводим сообщение об ошибке
-			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-			// Если сессия HTTP/2 создана удачно
-			if(this->_session != nullptr)
-				// Выполняем удаление сессии
-				nghttp2_session_del(this->_session);
-			// Выходим из функции
-			return;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::CONNECT}, event_t::CONNECT)){
+		// Если протокол подключения является HTTP/2
+		if(!this->_upgraded && (core->proto(aid) == engine_t::proto_t::HTTP2)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выполняем установку функции для вывода отладочной информации
+				nghttp2_set_debug_vprintf_callback(&web2_t::debug);
+			#endif
+			// Создаём объект функций обратного вызова
+			nghttp2_session_callbacks * callbacks;
+			// Выполняем инициализацию сессию функций обратного вызова
+			nghttp2_session_callbacks_new(&callbacks);
+			// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
+			nghttp2_session_callbacks_set_send_callback(callbacks, &web2_t::onSend);
+			// Выполняем установку функции обратного вызова при получении заголовка HTTP/2
+			nghttp2_session_callbacks_set_on_header_callback(callbacks, &web2_t::onHeader);
+			// Выполняем установку функции обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+			nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &web2_t::onFrame);
+			// Выполняем установку функции обратного вызова закрытия подключения с сервером HTTP/2
+			nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &web2_t::onClose);
+			// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
+			nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &web2_t::onChunk);
+			// Выполняем установку функции обратного вызова начала получения фрейма заголовков HTTP/2
+			nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &web2_t::onBeginHeaders);
+			// Выполняем подключение котнекста сессии HTTP/2
+			nghttp2_session_client_new(&this->_session, callbacks, this);
+			// Выполняем удаление объекта функций обратного вызова
+			nghttp2_session_callbacks_del(callbacks);
+			// Создаём параметры сессии подключения с HTTP/2 сервером
+			const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 128}};
+			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
+			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
+			// Если настройки для сессии установить не удалось
+			if(rv != 0){
+				// Выполняем закрытие подключения
+				dynamic_cast <client::core_t *> (core)->close(aid);
+				// Выводим сообщение об ошибке
+				this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если сессия HTTP/2 создана удачно
+				if(this->_session != nullptr)
+					// Выполняем удаление сессии
+					nghttp2_session_del(this->_session);
+				// Выходим из функции
+				return;
+			}
+			// Выполняем активацию работы с протоколом HTTP/2
+			this->_upgraded = !this->_upgraded;
 		}
-		// Выполняем активацию работы с протоколом HTTP/2
-		this->_upgraded = !this->_upgraded;
 	}
 }
 /**
@@ -425,26 +430,31 @@ void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh:
  * @return результат работы пинга
  */
 bool awh::client::Web2::ping() noexcept {
-	// Если протокол подключения установлен как HTTP/2
-	if(this->_upgraded && (this->_session != nullptr)){
-		// Результат выполнения поерации
-		int rv = -1;
-		// Выполняем пинг удалённого сервера
-		if((rv = nghttp2_submit_ping(this->_session, 0, nullptr)) != 0){
-			// Выводим сообщение об полученной ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-			// Выходим из функции
-			return false;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+		// Если протокол подключения установлен как HTTP/2
+		if(this->_upgraded && (this->_session != nullptr)){
+			// Результат выполнения поерации
+			int rv = -1;
+			// Выполняем пинг удалённого сервера
+			if((rv = nghttp2_submit_ping(this->_session, 0, nullptr)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выходим из функции
+				return false;
+			}
+			// Фиксируем отправленный результат
+			if((rv = nghttp2_session_send(this->_session)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выходим из функции
+				return false;
+			}
+			// Выводим результат
+			return true;
 		}
-		// Фиксируем отправленный результат
-		if((rv = nghttp2_session_send(this->_session)) != 0){
-			// Выводим сообщение об полученной ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-			// Выходим из функции
-			return false;
-		}
-		// Выводим результат
-		return true;
 	}
 	// Выводим результат
 	return false;
@@ -457,104 +467,109 @@ bool awh::client::Web2::ping() noexcept {
  * @param end     флаг последнего сообщения после которого поток закрывается
  */
 void awh::client::Web2::send(const int32_t id, const char * message, const size_t size, const bool end) noexcept {
-	// Если протокол подключения установлен как HTTP/2 и подключение выполнено
-	if(this->_upgraded && this->_core->working() && (this->_session != nullptr) && (message != nullptr) && (size > 0)){
-		// Список файловых дескрипторов
-		int fds[2];
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-			const int rv = _pipe(fds, 4096, O_BINARY);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-			const int rv = ::pipe(fds);
-		#endif
-		// Выполняем подписку на основной канал передачи данных
-		if(rv != 0){
-			// Выводим в лог сообщение
-			this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-			// Выполняем закрытие подключения
-			const_cast <client::core_t *> (this->_core)->close(this->_aid);
-			// Выходим из функции
-			return;
-		}
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Если данные небыли записаны в сокет
-			if(static_cast <int> (_write(fds[1], message, size)) != static_cast <int> (size)){
-				// Выполняем закрытие сокета для чтения
-				_close(fds[0]);
-				// Выполняем закрытие сокета для записи
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
+		// Если протокол подключения установлен как HTTP/2 и подключение выполнено
+		if(this->_upgraded && this->_core->working() && (this->_session != nullptr) && (message != nullptr) && (size > 0)){
+			// Список файловых дескрипторов
+			int fds[2];
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+				const int rv = _pipe(fds, 4096, O_BINARY);
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+				const int rv = ::pipe(fds);
+			#endif
+			// Выполняем подписку на основной канал передачи данных
+			if(rv != 0){
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Выполняем закрытие подключения
+				const_cast <client::core_t *> (this->_core)->close(this->_aid);
+				// Выходим из функции
+				return;
+			}
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Если данные небыли записаны в сокет
+				if(static_cast <int> (_write(fds[1], message, size)) != static_cast <int> (size)){
+					// Выполняем закрытие сокета для чтения
+					_close(fds[0]);
+					// Выполняем закрытие сокета для записи
+					_close(fds[1]);
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Выполняем закрытие подключения
+					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					// Выходим из функции
+					return;
+				}
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Если данные небыли записаны в сокет
+				if(static_cast <int> (::write(fds[1], message, size)) != static_cast <int> (size)){
+					// Выполняем закрытие сокета для чтения
+					::close(fds[0]);
+					// Выполняем закрытие сокета для записи
+					::close(fds[1]);
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Выполняем закрытие подключения
+					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					// Выходим из функции
+					return;
+				}
+			#endif
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем закрытие подключения
 				_close(fds[1]);
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
 				// Выполняем закрытие подключения
-				const_cast <client::core_t *> (this->_core)->close(this->_aid);
-				// Выходим из функции
-				return;
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Если данные небыли записаны в сокет
-			if(static_cast <int> (::write(fds[1], message, size)) != static_cast <int> (size)){
-				// Выполняем закрытие сокета для чтения
-				::close(fds[0]);
-				// Выполняем закрытие сокета для записи
 				::close(fds[1]);
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-				// Выполняем закрытие подключения
-				const_cast <client::core_t *> (this->_core)->close(this->_aid);
-				// Выходим из функции
-				return;
-			}
-		#endif
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем закрытие подключения
-			_close(fds[1]);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем закрытие подключения
-			::close(fds[1]);
-		#endif
-		// Создаём объект передачи данных тела полезной нагрузки
-		nghttp2_data_provider data;
-		// Зануляем передаваемый контекст
-		data.source.ptr = nullptr;
-		// Устанавливаем файловый дескриптор
-		data.source.fd = fds[0];
-		// Устанавливаем функцию обратного вызова
-		data.read_callback = &web2_t::onRead;
-		{
-			// Результат фиксации сессии
-			int rv = -1;
-			// Выполняем формирование данных фрейма для отправки
-			if((rv = nghttp2_submit_data(this->_session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
-				// Выводим сообщение об полученной ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-				// Выходим из функции
-				return;
-			}
-			// Фиксируем отправленный результат
-			if((rv = nghttp2_session_send(this->_session)) != 0){
-				// Выводим сообщение об полученной ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-				// Выходим из функции
-				return;
+			#endif
+			// Создаём объект передачи данных тела полезной нагрузки
+			nghttp2_data_provider data;
+			// Зануляем передаваемый контекст
+			data.source.ptr = nullptr;
+			// Устанавливаем файловый дескриптор
+			data.source.fd = fds[0];
+			// Устанавливаем функцию обратного вызова
+			data.read_callback = &web2_t::onRead;
+			{
+				// Результат фиксации сессии
+				int rv = -1;
+				// Выполняем формирование данных фрейма для отправки
+				if((rv = nghttp2_submit_data(this->_session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выходим из функции
+					return;
+				}
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выходим из функции
+					return;
+				}
 			}
 		}
 	}
