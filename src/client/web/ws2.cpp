@@ -469,56 +469,6 @@ int awh::client::WebSocket2::receivedHeader(const int32_t sid, const string & ke
 	return 0;
 }
 /**
- * response Метод получения ответа сервера
- * @param code    код ответа сервера
- * @param message сообщение ответа сервера
- */
-void awh::client::WebSocket2::response(const u_int code, const string & message) noexcept {
-	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-	if(this->_callback.is("response"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, code, message);
-}
-/**
- * header Метод получения заголовка
- * @param key   ключ заголовка
- * @param value значение заголовка
- */
-void awh::client::WebSocket2::header(const string & key, const string & value) noexcept {
-	// Если функция обратного вызова на полученного заголовка с сервера установлена
-	if(this->_callback.is("header"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const string &, const string &> ("header", this->_sid, key, value);
-}
-/**
- * headers Метод получения заголовков
- * @param code    код ответа сервера
- * @param message сообщение ответа сервера
- * @param headers заголовки ответа сервера
- */
-void awh::client::WebSocket2::headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
-	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-	if(this->_callback.is("headers"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, code, message, this->_http.headers());
-}
-/**
- * chunking Метод обработки получения чанков
- * @param chunk бинарный буфер чанка
- * @param http  объект модуля HTTP
- */
-void awh::client::WebSocket2::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
-	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()){
-		// Выполняем добавление полученного чанка в тело ответа
-		const_cast <awh::http_t *> (http)->body(chunk);
-		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callback.is("chunks"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const vector <char> &> ("chunks", 1, chunk);
-	}
-}
-/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::WebSocket2::flush() noexcept {
@@ -1251,10 +1201,13 @@ void awh::client::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 	this->_client.takeOver = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeOver = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr){
+		// Устанавливаем флаг запрещающий вывод информационных сообщений
+		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
+		// Выполняем установку флага проверки домена
+		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	}
 }
 /**
  * core Метод установки сетевого ядра
@@ -1273,8 +1226,19 @@ void awh::client::WebSocket2::core(const client::core_t * core) noexcept {
 		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->callback(std::bind(&ws2_t::eventsCallback, this, _1, _2));
+		// Если многопоточность активированна
+		if(this->_thr.is())
+			// Устанавливаем простое чтение базы событий
+			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
+		// Если многопоточность активированна
+		if(this->_thr.is()){
+			// Выполняем завершение всех активных потоков
+			this->_thr.wait();
+			// Снимаем режим простого чтения базы событий
+			const_cast <client::core_t *> (this->_core)->easily(false);
+		}
 		// Отключаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->callback(nullptr);
 		// Деактивируем персистентный запуск для работы пингов
@@ -1343,8 +1307,10 @@ void awh::client::WebSocket2::multiThreads(const size_t threads, const bool mode
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(threads);
 		}
-		// Устанавливаем простое чтение базы событий
-		const_cast <client::core_t *> (this->_core)->easily(true);
+		// Если сетевое ядро установлено
+		if(this->_core != nullptr)
+			// Устанавливаем простое чтение базы событий
+			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
 	} else this->_thr.wait();
 }

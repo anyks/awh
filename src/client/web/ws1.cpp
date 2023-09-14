@@ -1062,10 +1062,13 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 	this->_client.takeOver = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeOver = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr){
+		// Устанавливаем флаг запрещающий вывод информационных сообщений
+		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
+		// Выполняем установку флага проверки домена
+		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	}
 }
 /**
  * core Метод установки сетевого ядра
@@ -1084,8 +1087,19 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->callback(std::bind(&ws1_t::eventsCallback, this, _1, _2));
+		// Если многопоточность активированна
+		if(this->_thr.is())
+			// Устанавливаем простое чтение базы событий
+			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
+		// Если многопоточность активированна
+		if(this->_thr.is()){
+			// Выполняем завершение всех активных потоков
+			this->_thr.wait();
+			// Снимаем режим простого чтения базы событий
+			const_cast <client::core_t *> (this->_core)->easily(false);
+		}
 		// Отключаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->callback(nullptr);
 		// Деактивируем персистентный запуск для работы пингов
@@ -1154,8 +1168,10 @@ void awh::client::WebSocket1::multiThreads(const size_t threads, const bool mode
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(threads);
 		}
-		// Устанавливаем простое чтение базы событий
-		const_cast <client::core_t *> (this->_core)->easily(true);
+		// Если сетевое ядро установлено
+		if(this->_core != nullptr)
+			// Устанавливаем простое чтение базы событий
+			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
 	} else this->_thr.wait();
 }

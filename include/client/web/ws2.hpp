@@ -191,34 +191,6 @@ namespace awh {
 				int receivedHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
-				 * response Метод получения ответа сервера
-				 * @param code    код ответа сервера
-				 * @param message сообщение ответа сервера
-				 */
-				void response(const u_int code, const string & message) noexcept;
-			private:
-				/**
-				 * header Метод получения заголовка
-				 * @param key   ключ заголовка
-				 * @param value значение заголовка
-				 */
-				void header(const string & key, const string & value) noexcept;
-				/**
-				 * headers Метод получения заголовков
-				 * @param code    код ответа сервера
-				 * @param message сообщение ответа сервера
-				 * @param headers заголовки ответа сервера
-				 */
-				void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
-			private:
-				/**
-				 * chunking Метод обработки получения чанков
-				 * @param chunk бинарный буфер чанка
-				 * @param http  объект модуля HTTP
-				 */
-				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
-			private:
-				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
