@@ -2436,60 +2436,74 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 			result.push_back(make_pair(":path", query.uri));
 			// Выполняем установку схемы протокола
 			result.push_back(make_pair(":scheme", "https"));
+			// Если метод подключения установлен как CONNECT
+			if(method == web_t::method_t::CONNECT)
+				// Формируем URI запроса
+				result.push_back(make_pair(":authority", this->fmk->format("%s:%u", url.host.c_str(), url.port)));
 			// Выполняем установку хоста сервера
-			result.push_back(make_pair(":authority", host));
+			else result.push_back(make_pair(":authority", host));
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
-				// Флаг разрешающий вывода заголовка
-				bool allow = !this->isBlack(header.first);
-				// Выполняем перебор всех обязательных заголовков
-				for(uint8_t i = 0; i < 12; i++){
-					// Если заголовок уже найден пропускаем его
-					if(available[i]) continue;
-					// Выполняем првоерку заголовка
-					switch(i){
-						case 0:  available[i] = this->fmk->compare(header.first, "host");                  break;
-						case 1:  available[i] = this->fmk->compare(header.first, "accept");                break;
-						case 2:  available[i] = this->fmk->compare(header.first, "origin");                break;
-						case 3:  available[i] = this->fmk->compare(header.first, "user-agent");            break;
-						case 4:  available[i] = this->fmk->compare(header.first, "connection");            break;
-						case 6:  available[i] = this->fmk->compare(header.first, "accept-language");       break;
-						case 7:  available[i] = this->fmk->compare(header.first, "accept-encoding");       break;
-						case 8:  available[i] = this->fmk->compare(header.first, "content-encoding");      break;
-						case 9:  available[i] = this->fmk->compare(header.first, "transfer-encoding");     break;
-						case 10: available[i] = this->fmk->compare(header.first, "x-awh-encryption");      break;
-						case 11: available[i] = (this->fmk->compare(header.first, "authorization") ||
-							                     this->fmk->compare(header.first, "proxy-authorization")); break;
-						case 5: {
-							// Запоминаем, что мы нашли заголовок размера тела
-							available[i] = this->fmk->compare(header.first, "content-length");
-							// Устанавливаем размер тела сообщения
-							if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-						} break;
-					}
-					// Если заголовок разрешён для вывода
-					if(allow){
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 0:
-							case 5:
-							case 7:
-							case 8:
-							case 9:
-							case 10: allow = !available[i]; break;
-							case 4: {
-								// Если заголовок Connection определён
-								if(available[i])
-									// Выполняем определение разрешено ли выводить заголовок
-									allow = !this->fmk->compare(header.second, "keep-alive");
-							} break;
-						}
-					}
-				}
-				// Если заголовок не является запрещённым, добавляем заголовок в запрос
-				if(allow)
+				// Если заголовок является системным
+				if(header.first.front() == ':')
 					// Формируем строку запроса
 					result.push_back(make_pair(this->fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+			}
+			// Переходим по всему списку заголовков
+			for(auto & header : this->web.headers()){
+				// Если заголовок не является системным
+				if(header.first.front() != ':'){
+					// Флаг разрешающий вывода заголовка
+					bool allow = !this->isBlack(header.first);
+					// Выполняем перебор всех обязательных заголовков
+					for(uint8_t i = 0; i < 12; i++){
+						// Если заголовок уже найден пропускаем его
+						if(available[i]) continue;
+						// Выполняем првоерку заголовка
+						switch(i){
+							case 0:  available[i] = this->fmk->compare(header.first, "host");                  break;
+							case 1:  available[i] = this->fmk->compare(header.first, "accept");                break;
+							case 2:  available[i] = this->fmk->compare(header.first, "origin");                break;
+							case 3:  available[i] = this->fmk->compare(header.first, "user-agent");            break;
+							case 4:  available[i] = this->fmk->compare(header.first, "connection");            break;
+							case 6:  available[i] = this->fmk->compare(header.first, "accept-language");       break;
+							case 7:  available[i] = this->fmk->compare(header.first, "accept-encoding");       break;
+							case 8:  available[i] = this->fmk->compare(header.first, "content-encoding");      break;
+							case 9:  available[i] = this->fmk->compare(header.first, "transfer-encoding");     break;
+							case 10: available[i] = this->fmk->compare(header.first, "x-awh-encryption");      break;
+							case 11: available[i] = (this->fmk->compare(header.first, "authorization") ||
+													 this->fmk->compare(header.first, "proxy-authorization")); break;
+							case 5: {
+								// Запоминаем, что мы нашли заголовок размера тела
+								available[i] = this->fmk->compare(header.first, "content-length");
+								// Устанавливаем размер тела сообщения
+								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
+							} break;
+						}
+						// Если заголовок разрешён для вывода
+						if(allow){
+							// Выполняем првоерку заголовка
+							switch(i){
+								case 0:
+								case 5:
+								case 7:
+								case 8:
+								case 9:
+								case 10: allow = !available[i]; break;
+								case 4: {
+									// Если заголовок Connection определён
+									if(available[i])
+										// Выполняем определение разрешено ли выводить заголовок
+										allow = !this->fmk->compare(header.second, "keep-alive");
+								} break;
+							}
+						}
+					}
+					// Если заголовок не является запрещённым, добавляем заголовок в запрос
+					if(allow)
+						// Формируем строку запроса
+						result.push_back(make_pair(this->fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+				}
 			}
 			// Устанавливаем Accept если не передан
 			if(!available[1] && (method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
