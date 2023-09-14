@@ -44,6 +44,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		this->_hash.takeoverCompress(this->_client.takeOver);
 		// Разрешаем перехватывать контекст декомпрессии
 		this->_hash.takeoverDecompress(this->_server.takeOver);
+		// Выполняем очистку функций обратного вызова
+		this->_resultCallback.clear();
 		// Если протокол подключения является HTTP/2
 		if(!this->_upgraded && (dynamic_cast <client::core_t *> (core)->proto(aid) == engine_t::proto_t::HTTP2)){
 			/**
@@ -144,18 +146,6 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 					return;
 				}
 			}
-			// Выполняем добавление воркера в список активных воркеров
-			auto ret = this->_workers.emplace(id, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
-			// Устанавливаем метод сжатия
-			ret.first.second->http.compress(this->_compress);
-			// Разрешаем перехватывать контекст для клиента
-			ret.first.second->http.clientTakeover(this->_client.takeOver);
-			// Разрешаем перехватывать контекст для сервера
-			ret.first.second->http.serverTakeover(this->_server.takeOver);
-			// Разрешаем перехватывать контекст компрессии
-			ret.first.second->hash.takeoverCompress(this->_client.takeOver);
-			// Разрешаем перехватывать контекст декомпрессии
-			ret.first.second->hash.takeoverDecompress(this->_server.takeOver);
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
 			/** +++++++++++++++++++++++++ **/

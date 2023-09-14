@@ -76,54 +76,45 @@ namespace awh {
 					Frame(const fmk_t * fmk, const log_t * log) noexcept :
 					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
-				/**
-				 * Worker Структура активного воркера
-				 */
-				typedef struct Worker {
-					bool crypt;            // Флаг шифрования сообщений
-					bool deflate;          // Флаг переданных сжатых данных
-					uint8_t attempt;       // Количество попыток
-					uri_t uri;             // Объект работы с URI ссылками
-					ws_t http;             // Объект для работы с HTTP
-					hash_t hash;           // Объект для компрессии-декомпрессии данных
-					fn_t callback;         // Объект функций обратного вызова
-					frame_t frame;         // Объект для работы с фреймом WebSocket
-					agent_t agent;         // Агент воркера
-					ws::mess_t mess;       // Объект отправляемого сообщения
-					partner_t client;      // Объект партнёра клиента
-					partner_t server;      // Объект партнёра сервера
-					vector <char> fragmes; // Данные фрагметрированного сообщения
-					/**
-					 * Worker Конструктор
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 */
-					Worker(const fmk_t * fmk, const log_t * log) noexcept :
-					 crypt(false), deflate(false), attempt(0), uri(fmk), http(fmk, log, &uri),
-					 hash(log), callback(log), frame(fmk, log), agent(agent_t::WEBSOCKET) {}
-				} worker_t;
-			private:
-				// Объект тредпула для работы с потоками
-				thr_t _thr;
-				// Объект разрешения обмена данными
-				allow_t _allow;
 			private:
 				// Флаг завершения работы клиента
 				bool _close;
+				// Флаг шифрования сообщений
+				bool _crypt;
 				// Флаг запрета вывода информационных сообщений
 				bool _noinfo;
 				// Флаг фриза работы клиента
 				bool _freeze;
+				// Флаг переданных сжатых данных
+				bool _deflate;
 				// Контрольная точка ответа на пинг
 				time_t _point;
+			private:
+				// Объект тредпула для работы с потоками
+				thr_t _thr;
+				// Объект работы с URI ссылками
+				uri_t _uri;
+				// Объект для работы с HTTP-протколом
+				ws_t _http;
+				// Объект для компрессии-декомпрессии данных
+				hash_t _hash;
+				// Объект для работы с фреймом WebSocket
+				frame_t _frame;
+				// Объект разрешения обмена данными
+				allow_t _allow;
+				// Объект отправляемого сообщения
+				ws::mess_t _mess;
 			private:
 				// Объект партнёра клиента
 				partner_t _client;
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
-				// Список активных врокеров
-				map <int32_t, unique_ptr <worker_t>> _workers;
+				// Объект функций обратного вызова для вывода результата
+				fn_t _resultCallback;
+			private:
+				// Данные фрагметрированного сообщения
+				vector <char> _fragmes;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
