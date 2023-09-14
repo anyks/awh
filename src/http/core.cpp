@@ -2081,6 +2081,8 @@ vector <pair<string, string>> awh::Http::proxy2(const uri_t::url_t & url) noexce
 		if(!host.empty() && (url.port > 0)){
 			// Объект параметров запроса
 			web_t::query_t query;
+			// Выполняем установки версии протокола
+			query.ver = 2.0f;
 			// Добавляем в чёрный список заголовок Accept
 			this->addBlack("Accept");
 			// Добавляем в чёрный список заголовок Accept-Language
@@ -2121,6 +2123,10 @@ vector <pair<string, string>> awh::Http::proxy2(const uri_t::url_t & url) noexce
 vector <pair<string, string>> awh::Http::reject2(const u_int code, const string & mess) const noexcept {
 	// Объект параметров запроса
 	web_t::query_t query;
+	// Выполняем установки версии протокола
+	query.ver = 2.0f;
+	// Выполняем установку кода ответа
+	query.code = code;
 	// Получаем текст сообщения
 	query.message = (!mess.empty() ? mess : this->message(code));
 	// Если сообщение получено

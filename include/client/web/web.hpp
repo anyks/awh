@@ -456,20 +456,22 @@ namespace awh {
 				/**
 				 * Worker Структура активного воркера
 				 */
+				/*
 				typedef struct Worker {
 					uri_t uri;       // Объект работы с URI ссылками
 					http_t http;     // Объект для работы с HTTP
 					fn_t callback;   // Объект функций обратного вызова
 					agent_t agent;   // Агент воркера
 					uint8_t attempt; // Количество попыток
-					/**
+					///
 					 * Worker Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
-					 */
+					 //
 					Worker(const fmk_t * fmk, const log_t * log) noexcept :
 					 uri(fmk), http(fmk, log, &uri), callback(log), agent(agent_t::HTTP), attempt(0) {}
 				} worker_t;
+				*/
 			protected:
 				// Объект идентификации сервиса
 				serv_t _serv;
@@ -496,9 +498,6 @@ namespace awh {
 				bool _upgraded;
 				// Ессия HTTP/2 подключения
 				nghttp2_session * _session;
-			protected:
-				// Список активных врокеров
-				map <int32_t, unique_ptr <worker_t>> _workers;
 			protected:
 				/**
 				 * debug Функция обратного вызова при получении отладочной информации
@@ -649,15 +648,16 @@ namespace awh {
 				void send(const int32_t id, const char * message, const size_t size, const bool end) noexcept;
 			public:
 				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				virtual void mode(const set <flag_t> & flags) noexcept;
+			public:
+				/**
 				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
-				/**
-				 * mode Метод установки флагов настроек модуля
-				 * @param flags список флагов настроек модуля для установки
-				 */
-				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * userAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса

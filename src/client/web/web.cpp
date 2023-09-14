@@ -470,10 +470,14 @@ void awh::client::Web::stop() noexcept {
 	this->_active = true;
 	// Если подключение выполнено
 	if(this->_core->working()){
+		// Выполняем сброс параметров запроса
+		this->flush();
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
-		// Завершаем работу, если разрешено остановить
-		if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
+		// Если завершить работу разрешено
+		if(this->_unbind)
+			// Завершаем работу
+			const_cast <client::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
 		else {
 			/**

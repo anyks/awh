@@ -62,10 +62,6 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 			// Выполняем отправку сообщения на сервер
 			dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 		}
-		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callback.is("active"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
 	}
 }
 /**
@@ -91,6 +87,8 @@ void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t 
 				this->_scheme.url = std::forward <const uri_t::url_t> (url);
 				// Выполняем очистку оставшихся данных
 				this->_buffer.clear();
+				// Выполняем очистку оставшихся фрагментов
+				this->_fragmes.clear();
 				// Выполняем установку следующего экшена на открытие подключения
 				this->open();
 				// Завершаем работу
@@ -893,6 +891,55 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 void awh::client::WebSocket1::pause() noexcept {
 	// Ставим работу клиента на паузу
 	this->_freeze = true;
+}
+/**
+ * stop Метод остановки клиента
+ */
+void awh::client::WebSocket1::stop() noexcept {
+	// Устанавливаем флаг принудительной остановки
+	this->_active = true;
+	// Если подключение выполнено
+	if(this->_core->working()){
+		// Выполняем сброс параметров запроса
+		this->flush();
+		// Очищаем адрес сервера
+		this->_scheme.url.clear();
+		// Если завершить работу разрешено
+		if(this->_unbind)
+			// Завершаем работу
+			const_cast <client::core_t *> (this->_core)->stop();
+		// Если завершать работу запрещено, просто отключаемся
+		else {
+			/**
+			 * Если установлено постоянное подключение
+			 * нам нужно заблокировать автоматический реконнект.
+			 */
+			// Считываем значение флага
+			const bool alive = this->_scheme.alive;
+			// Выполняем отключение флага постоянного подключения
+			this->_scheme.alive = false;
+			// Выполняем отключение клиента
+			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Восстанавливаем предыдущее значение флага
+			this->_scheme.alive = alive;
+		}
+	}
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::client::WebSocket1::start() noexcept {
+	// Если адрес URL запроса передан
+	if(!this->_freeze && !this->_scheme.url.empty()){
+		// Если биндинг не запущен, выполняем запуск биндинга
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <client::core_t *> (this->_core)->start();
+		// Выполняем запрос на сервер
+		else this->open();
+	}
+	// Снимаем с паузы клиент
+	this->_freeze = false;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибок

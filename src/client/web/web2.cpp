@@ -582,27 +582,12 @@ void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Активируем персистентный запуск для работы пингов
+	const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
 	// Выполняем установку флага проверки домена
 	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	// Если протокол подключения желательно установить HTTP/2
-	if(this->_core->proto() == engine_t::proto_t::HTTP2){
-		// Флаг активации работы персистентного вызова
-		bool enable = this->_scheme.alive;
-		// Если необходимо выполнить отключение персистентного вызова
-		if(!enable && !this->_workers.empty()){
-			// Выполняем переход по всему списку воркеров
-			for(auto & worker : this->_workers){
-				// Если среди списка воркеров найден клиент WebSocket
-				if((enable = (worker.second->agent == agent_t::WEBSOCKET)))
-					// Выходим из цикла
-					break;
-			}
-		}
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(enable);
-	}
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса

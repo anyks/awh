@@ -239,6 +239,14 @@ namespace awh {
 				 * pause Метод установки на паузу клиента
 				 */
 				void pause() noexcept;
+				/**
+				 * stop Метод остановки клиента
+				 */
+				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибок

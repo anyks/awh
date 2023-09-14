@@ -522,8 +522,12 @@ vector <char> awh::WCore::request(const uri_t::url_t & url) noexcept {
 vector <pair<string, string>> awh::WCore::response2() noexcept {
 	// Выполняем инициализацию формата ответа
 	this->initResponse();
+	// Добавляем статус ответа
+	this->header(":status", "200");
+	// Устанавливаем парарметр запроса
+	this->web.query(awh::web_t::query_t(2.0f, 200));
 	// Выводим результат
-	return http_t::response2(static_cast <u_int> (101));
+	return http_t::response2(static_cast <u_int> (200));
 }
 /**
  * request2 Метод создания запроса (протокол HTTP/2)
@@ -533,8 +537,16 @@ vector <pair<string, string>> awh::WCore::response2() noexcept {
 vector <pair<string, string>> awh::WCore::request2(const uri_t::url_t & url) noexcept {
 	// Выполняем инициализацию формата запроса
 	this->initRequest();
+	// Добавляем заголовок протокола подключения
+	this->header(":protocol", "websocket");
+	// Добавляем заголовок схемы подключения
+	this->header(":scheme", "https");
+	// Формируем URI запроса
+	this->header(":authority", this->fmk->format("%s:%u", url.host.c_str(), url.port));
+	// Устанавливаем парарметр запроса
+	this->web.query(awh::web_t::query_t(2.0f, web_t::method_t::CONNECT));
 	// Выводим результат
-	return http_t::request2(url, web_t::method_t::GET);
+	return http_t::request2(url, web_t::method_t::CONNECT);
 }
 /**
  * sub Метод получения выбранного сабпротокола
