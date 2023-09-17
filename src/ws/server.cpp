@@ -37,6 +37,9 @@ void awh::server::WS::commit() noexcept {
 	if(!ext.empty()){
 		// Выполняем разделение параметров расширений
 		if(!this->fmk->split(ext, ";", extensions).empty()){
+			// Выполняем включение перехвата контекста
+			this->_server.takeover = true;
+			this->_client.takeover = true;
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
 				// Если нужно производить шифрование данных
@@ -53,13 +56,13 @@ void awh::server::WS::commit() noexcept {
 				// Если клиент просит отключить перехват контекста сжатия для сервера
 				} else if(this->fmk->compare(val, "server_no_context_takeover")) {
 					// Выполняем отключение перехвата контекста
-					this->_noServerTakeover = true;
+					this->_server.takeover = false;
 					// Выполняем отключение перехвата контекста
-					this->_noClientTakeover = true;
+					this->_client.takeover = false;
 				// Если клиент просит отключить перехват контекста сжатия для клиента
 				} else if(this->fmk->compare(val, "client_no_context_takeover"))
 					// Выполняем отключение перехвата контекста
-					this->_noClientTakeover = true;
+					this->_client.takeover = false;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				else if(this->fmk->compare(val, "permessage-deflate") || this->fmk->compare(val, "perframe-deflate")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
@@ -83,13 +86,13 @@ void awh::server::WS::commit() noexcept {
 					// Устанавливаем размер скользящего окна
 					if(this->_compress != compress_t::NONE)
 						// Устанавливаем размер скользящего окна
-						this->_wbitClient = ::stoi(val.substr(23));
+						this->_client.wbit = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				} else if(this->fmk->compare(val, "client_max_window_bits")) {
 					// Устанавливаем максимальный размер скользящего окна
 					if(this->_compress != compress_t::NONE)
 						// Устанавливаем максимальный размер скользящего окна
-						this->_wbitClient = GZIP_MAX_WBITS;
+						this->_client.wbit = GZIP_MAX_WBITS;
 				}
 			}
 		}

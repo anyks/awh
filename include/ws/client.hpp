@@ -75,9 +75,8 @@ namespace awh {
 				 * WS Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
-				 * @param uri объект работы с URI
 				 */
-				WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_core_t(fmk, log, uri) {
+				WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
 					// Устанавливаем тип HTTP модуля (Клиент)
 					this->web.init(awh::web_t::hid_t::CLIENT);
 					// Устанавливаем тип модуля (Клиент)

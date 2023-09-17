@@ -47,35 +47,41 @@ namespace awh {
 			// Размер максимального значения окна для сжатия данных GZIP
 			static constexpr int GZIP_MAX_WBITS = 15;
 		protected:
-			// Размер скользящего окна клиента
-			short _wbitClient;
-			// Размер скользящего окна сервера
-			short _wbitServer;
+			/**
+			 * Partner Структура партнёра
+			 */
+			typedef struct Partner {
+				short wbit;    // Размер скользящего окна
+				bool takeover; // Флаг скользящего контекста сжатия
+				/**
+				 * Partner Конструктор
+				 */
+				Partner() noexcept : wbit(GZIP_MAX_WBITS), takeover(false) {}
+			} __attribute__((packed)) partner_t;
+		protected:
+			// Поддерживаемый сабпротокол
+			string _sub;
+		protected:
+			// Ключ клиента
+			mutable string _key;
+		protected:
+			// Объект партнёра клиента
+			partner_t _client;
+			// Объект партнёра сервера
+			partner_t _server;
 		protected:
 			// Метод сжатия данных запроса/ответа
 			compress_t _compress;
 		protected:
-			// Поддерживаемый сабпротокол
-			string _sub;
-			// Ключ клиента
-			mutable string _key;
-		protected:
-			// Флаг запрета переиспользования контекста компрессии для клиента
-			bool _noClientTakeover;
-			// Флаг запрета переиспользования контекста компрессии для сервера
-			bool _noServerTakeover;
-		protected:
 			// Поддерживаемые сабпротоколы
 			set <string> _subs;
+			// Список поддверживаемых расширений
+			vector <vector <string>> _extensions;
 		private:
 			/**
-			 * initRequest Метод инициализации формата запроса
+			 * init Метод инициализации
 			 */
-			void initRequest() noexcept;
-			/**
-			 * initResponse Метод инициализации формата ответа
-			 */
-			void initResponse() noexcept;
+			void init(const process_t flag) noexcept;
 		protected:
 			/**
 			 * key Метод генерации ключа
@@ -137,6 +143,17 @@ namespace awh {
 			void compress(const compress_t compress) noexcept;
 		public:
 			/**
+			 * extensions Метод извлечения списка расширений
+			 * @return список поддерживаемых расширений
+			 */
+			const vector <vector <string>> & extensions() const noexcept;
+			/**
+			 * extensions Метод установки списка расширений
+			 * @param extensions список поддерживаемых расширений
+			 */
+			void extensions(const vector <vector <string>> & extensions) noexcept;
+		public:
+			/**
 			 * isHandshake Метод получения флага рукопожатия
 			 * @return флаг получения рукопожатия
 			 */
@@ -148,39 +165,26 @@ namespace awh {
 			bool checkUpgrade() const noexcept;
 		public:
 			/**
-			 * wbitClient Метод получения размер скользящего окна для клиента
-			 * @return размер скользящего окна
+			 * wbit Метод получения размер скользящего окна
+			 * @param hid тип текущего модуля
+			 * @return    размер скользящего окна
 			 */
-			short wbitClient() const noexcept;
-			/**
-			 * wbitServer Метод получения размер скользящего окна для сервера
-			 * @return размер скользящего окна
-			 */
-			short wbitServer() const noexcept;
+			short wbit(const web_t::hid_t hid) const noexcept;
 		public:
 			/**
-			 * response Метод создания ответа
-			 * @return буфер данных запроса в бинарном виде
+			 * process Метод создания выполняемого процесса в бинарном виде
+			 * @param flag     флаг выполняемого процесса
+			 * @param provider параметры провайдера обмена сообщениями
+			 * @return         буфер данных в бинарном виде
 			 */
-			vector <char> response() noexcept;
+			vector <char> process(const process_t flag, const web_t::provider_t & provider) const noexcept;
 			/**
-			 * request Метод создания запроса
-			 * @param url объект параметров REST запроса
-			 * @return    буфер данных запроса в бинарном виде
+			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+			 * @param flag     флаг выполняемого процесса
+			 * @param provider параметры провайдера обмена сообщениями
+			 * @return         буфер данных в бинарном виде
 			 */
-			vector <char> request(const uri_t::url_t & url) noexcept;
-		public:
-			/**
-			 * response2 Метод создания ответа (протокол HTTP/2)
-			 * @return буфер данных запроса в бинарном виде
-			 */
-			vector <pair<string, string>> response2() noexcept;
-			/**
-			 * request2 Метод создания запроса (протокол HTTP/2)
-			 * @param url объект параметров REST запроса
-			 * @return    буфер данных запроса в бинарном виде
-			 */
-			vector <pair<string, string>> request2(const uri_t::url_t & url) noexcept;
+			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
 			 * sub Метод получения выбранного сабпротокола
@@ -199,37 +203,25 @@ namespace awh {
 			void subs(const vector <string> & subs) noexcept;
 		public:
 			/**
-			 * clientTakeover Метод получения флага переиспользования контекста компрессии для клиента
-			 * @return флаг запрета переиспользования контекста компрессии для клиента
+			 * takeover Метод получения флага переиспользования контекста компрессии
+			 * @param hid тип текущего модуля
+			 * @return    флаг запрета переиспользования контекста компрессии
 			 */
-			bool clientTakeover() const noexcept;
+			bool takeover(const web_t::hid_t hid) const noexcept;
 			/**
-			 * clientTakeover Метод установки флага переиспользования контекста компрессии для клиента
-			 * @param flag флаг запрета переиспользования контекста компрессии для клиента
+			 * takeover Метод установки флага переиспользования контекста компрессии
+			 * @param hid  тип текущего модуля
+			 * @param flag флаг запрета переиспользования контекста компрессии
 			 */
-			void clientTakeover(const bool flag) noexcept;
-		public:
-			/**
-			 * serverTakeover Метод получения флага переиспользования контекста компрессии для сервера
-			 * @return флаг запрета переиспользования контекста компрессии для сервера
-			 */
-			bool serverTakeover() const noexcept;
-			/**
-			 * serverTakeover Метод установки флага переиспользования контекста компрессии для сервера
-			 * @param flag флаг запрета переиспользования контекста компрессии для сервера
-			 */
-			void serverTakeover(const bool flag) noexcept;
+			void takeover(const web_t::hid_t hid, const bool flag) noexcept;
 		public:
 			/**
 			 * WCore Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
 			 */
-			WCore(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-			 http_t(fmk, log, uri), _wbitClient(GZIP_MAX_WBITS),
-			 _wbitServer(GZIP_MAX_WBITS), _compress(compress_t::DEFLATE),
-			 _sub(""), _key(""), _noClientTakeover(true), _noServerTakeover(true) {}
+			WCore(const fmk_t * fmk, const log_t * log) noexcept :
+			 http_t(fmk, log), _sub{""}, _key{""}, _compress(compress_t::DEFLATE) {}
 			/**
 			 * ~WCore Деструктор
 			 */

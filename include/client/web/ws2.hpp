@@ -55,11 +55,11 @@ namespace awh {
 				 */
 				typedef struct Partner {
 					short wbit;    // Размер скользящего окна
-					bool takeOver; // Флаг скользящего контекста сжатия
+					bool takeover; // Флаг скользящего контекста сжатия
 					/**
 					 * Partner Конструктор
 					 */
-					Partner() noexcept : wbit(0), takeOver(false) {}
+					Partner() noexcept : wbit(0), takeover(false) {}
 				} __attribute__((packed)) partner_t;
 				/**
 				 * Frame Объект фрейма WebSocket

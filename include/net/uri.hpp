@@ -194,6 +194,13 @@ namespace awh {
 			string origin(const url_t & url) const noexcept;
 		public:
 			/**
+			 * combine Метод комбинации двух адресов
+			 * @param dest адрес места назначения
+			 * @param src  исходный адрес для объединения
+			 */
+			void combine(url_t & dest, const url_t & src) const noexcept;
+		public:
+			/**
 			 * append Метод добавления к URL адресу параметров запроса
 			 * @param url    параметры URL-запроса
 			 * @param params параметры для добавления

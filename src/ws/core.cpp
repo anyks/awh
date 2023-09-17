@@ -16,208 +16,206 @@
 #include <ws/core.hpp>
 
 /**
- * initRequest Метод инициализации формата запроса
+ * init Метод инициализации
  */
-void awh::WCore::initRequest() noexcept {
-	// Удаляем заголовок Accept
-	this->rmHeader("Accept");
-	// Удаляем заголовок отключения кеширования
-	this->rmHeader("Pragma");
+void awh::WCore::init(const process_t flag) noexcept {
 	// Удаляем заголовок апгрейд
 	this->rmHeader("Upgrade");
-	// Удаляем заголовок протокола подключения
-	this->rmHeader(":protocol");
 	// Удаляем заголовок подключения
 	this->rmHeader("Connection");
-	// Удаляем заголовок отключения кеширования
-	this->rmHeader("Cache-Control");
-	// Удаляем заголовок типа запроса
-	this->rmHeader("Sec-Fetch-Mode");
-	// Удаляем заголовок места назначения запроса
-	this->rmHeader("Sec-Fetch-Dest");
-	// Удаляем заголовок требования сжимать содержимое ответов
-	this->rmHeader("Accept-Encoding");
-	// Удаляем заголовок поддерживаемых языков
-	this->rmHeader("Accept-Language");
-	// Удаляем заголовок ключ клиента
-	this->rmHeader("Sec-WebSocket-Key");
-	// Удаляем заголовок версии WebSocket
-	this->rmHeader("Sec-WebSocket-Version");
 	// Удаляем заголовок сабпратоколов
 	this->rmHeader("Sec-WebSocket-Protocol");
 	// Удаляем заголовок расширений
 	this->rmHeader("Sec-WebSocket-Extensions");
-	// Если подпротоколы существуют
-	if(!this->_subs.empty()){
-		// Если количество подпротоколов больше 5-ти
-		if(this->_subs.size() > 5){
-			// Список желаемых подпротоколов
-			string subs = "";
-			// Переходим по всему списку подпротоколов
-			for(auto & sub : this->_subs){
-				// Если подпротокол уже не пустой, добавляем разделитель
-				if(!subs.empty()) subs.append(", ");
-				// Добавляем в список желаемый подпротокол
-				subs.append(sub);
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Удаляем заголовок Accept
+			this->rmHeader("Accept");
+			// Удаляем заголовок отключения кеширования
+			this->rmHeader("Pragma");
+			// Удаляем заголовок протокола подключения
+			this->rmHeader(":protocol");
+			// Удаляем заголовок отключения кеширования
+			this->rmHeader("Cache-Control");
+			// Удаляем заголовок типа запроса
+			this->rmHeader("Sec-Fetch-Mode");
+			// Удаляем заголовок места назначения запроса
+			this->rmHeader("Sec-Fetch-Dest");
+			// Удаляем заголовок требования сжимать содержимое ответов
+			this->rmHeader("Accept-Encoding");
+			// Удаляем заголовок поддерживаемых языков
+			this->rmHeader("Accept-Language");
+			// Удаляем заголовок ключ клиента
+			this->rmHeader("Sec-WebSocket-Key");
+			// Удаляем заголовок версии WebSocket
+			this->rmHeader("Sec-WebSocket-Version");
+			// Если подпротоколы существуют
+			if(!this->_subs.empty()){
+				// Если количество подпротоколов больше 5-ти
+				if(this->_subs.size() > 5){
+					// Список желаемых подпротоколов
+					string subs = "";
+					// Переходим по всему списку подпротоколов
+					for(auto & sub : this->_subs){
+						// Если подпротокол уже не пустой, добавляем разделитель
+						if(!subs.empty()) subs.append(", ");
+						// Добавляем в список желаемый подпротокол
+						subs.append(sub);
+					}
+					// Добавляем заголовок сабпротокола
+					this->header("Sec-WebSocket-Protocol", subs);
+				// Если подпротоколов слишком много
+				} else {
+					// Получаем список заголовков
+					const auto & headers = this->web.headers();
+					// Переходим по всему списку подпротоколов
+					for(auto & sub : this->_subs)
+						// Добавляем полученный заголовок
+						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
+				}
 			}
-			// Добавляем заголовок сабпротокола
-			this->header("Sec-WebSocket-Protocol", subs);
-		// Если подпротоколов слишком много
-		} else {
-			// Получаем список заголовков
-			const auto & headers = this->web.headers();
-			// Переходим по всему списку подпротоколов
-			for(auto & sub : this->_subs)
+			// Если метод компрессии указан
+			if(this->crypt || (this->_compress != compress_t::NONE)){
+				// Список расширений протокола
+				string extensions = "";
+				// Если метод компрессии указан
+				if(this->_compress != compress_t::NONE){
+					// Если метод компрессии выбран Deflate
+					if(this->_compress == compress_t::DEFLATE){
+						// Устанавливаем тип компрессии Deflate
+						extensions = "permessage-deflate";
+						// Если запрещено переиспользовать контекст компрессии для сервера
+						if(!this->_server.takeover && this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для сервера
+							extensions.append("; server_no_context_takeover");
+						// Если запрещено переиспользовать контекст компрессии для клиента
+						else if(this->_server.takeover && !this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для клиента
+							extensions.append("; client_no_context_takeover");
+						// Если запрещено переиспользовать контекст компрессии для клиента и сервера
+						else if(!this->_server.takeover && !this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
+							extensions.append("; server_no_context_takeover; client_no_context_takeover");
+						// Устанавливаем максимальный размер скользящего окна
+						extensions.append("; client_max_window_bits");
+					// Если метод компрессии выбран GZip
+					} else if(this->_compress == compress_t::GZIP)
+						// Устанавливаем тип компрессии GZip
+						extensions = "permessage-gzip";
+					// Если метод компрессии выбран Brotli
+					else if(this->_compress == compress_t::BROTLI)
+						// Устанавливаем тип компрессии Brotli
+						extensions = "permessage-br";
+					// Если данные должны быть зашифрованны
+					if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
+				// Если метод компрессии не указан но указан режим шифрования
+				} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
 				// Добавляем полученный заголовок
-				const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
-		}
-	}
-	// Если метод компрессии указан
-	if(this->crypt || (this->_compress != compress_t::NONE)){
-		// Список расширений протокола
-		string extensions = "";
-		// Если метод компрессии указан
-		if(this->_compress != compress_t::NONE){
-			// Если метод компрессии выбран Deflate
-			if(this->_compress == compress_t::DEFLATE){
-				// Устанавливаем тип компрессии Deflate
-				extensions = "permessage-deflate";
-				// Если запрещено переиспользовать контекст компрессии для сервера
-				if(this->_noServerTakeover && !this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для сервера
-					extensions.append("; server_no_context_takeover");
-				// Если запрещено переиспользовать контекст компрессии для клиента
-				else if(!this->_noServerTakeover && this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для клиента
-					extensions.append("; client_no_context_takeover");
-				// Если запрещено переиспользовать контекст компрессии для клиента и сервера
-				else if(this->_noServerTakeover && this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
-					extensions.append("; server_no_context_takeover; client_no_context_takeover");
-				// Устанавливаем максимальный размер скользящего окна
-				extensions.append("; client_max_window_bits");
-			// Если метод компрессии выбран GZip
-			} else if(this->_compress == compress_t::GZIP)
-				// Устанавливаем тип компрессии GZip
-				extensions = "permessage-gzip";
-			// Если метод компрессии выбран Brotli
-			else if(this->_compress == compress_t::BROTLI)
-				// Устанавливаем тип компрессии Brotli
-				extensions = "permessage-br";
-			// Если данные должны быть зашифрованны
-			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
-		// Если метод компрессии не указан но указан режим шифрования
-		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
-		// Добавляем полученный заголовок
-		this->header("Sec-WebSocket-Extensions", extensions);
-	}
-	// Если версия протокола меньше 2.0
-	if(this->web.query().ver < 2.0f){
-		// Генерируем ключ клиента
-		this->_key = this->key();
-		// Добавляем заголовок апгрейд
-		this->header("Upgrade", "WebSocket");
-		// Добавляем заголовок подключения
-		this->header("Connection", "Keep-Alive, Upgrade");
-		// Добавляем заголовок ключ клиента
-		this->header("Sec-WebSocket-Key", this->_key);
-	// Если версия протокола выше или соответствует 2.0, добавляем заголовок протокола подключения
-	} else this->header(":protocol", "websocket");
-	// Добавляем заголовок Accept
-	this->header("Accept", "*/*");
-	// Добавляем заголовок отключения кеширования
-	this->header("Pragma", "No-Cache");
-	// Добавляем заголовок отключения кеширования
-	this->header("Cache-Control", "No-Cache");
-	// Добавляем заголовок типа запроса
-	this->header("Sec-Fetch-Mode", "WebSocket");
-	// Добавляем заголовок места назначения запроса
-	this->header("Sec-Fetch-Dest", "WebSocket");
-	// Добавляем заголовок требования сжимать содержимое ответов
-	this->header("Accept-Encoding", "gzip, deflate, br");
-	// Добавляем заголовок поддерживаемых языков
-	this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
-	// Добавляем заголовок версии WebSocket
-	this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
-}
-/**
- * initResponse Метод инициализации формата ответа
- */
-void awh::WCore::initResponse() noexcept {
-	// Удаляем статус ответа
-	this->rmHeader(":status");
-	// Удаляем заголовок апгрейд
-	this->rmHeader("Upgrade");
-	// Удаляем заголовок подключения
-	this->rmHeader("Connection");
-	// Удаляем заголовок хеша ключа
-	this->rmHeader("Sec-WebSocket-Accept");
-	// Удаляем заголовок сабпратоколов
-	this->rmHeader("Sec-WebSocket-Protocol");
-	// Удаляем заголовок расширений
-	this->rmHeader("Sec-WebSocket-Extensions");
-	// Если метод компрессии указан
-	if(this->crypt || (this->_compress != compress_t::NONE)){
-		// Список расширений протокола
-		string extensions = "";
-		// Если метод компрессии указан
-		if(this->_compress != compress_t::NONE){
-			// Если метод компрессии выбран Deflate
-			if(this->_compress == compress_t::DEFLATE){
-				// Устанавливаем тип компрессии Deflate
-				extensions = "permessage-deflate";
-				// Если запрещено переиспользовать контекст компрессии для клиента и сервера
-				if(this->_noServerTakeover && this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
-					extensions.append("; server_no_context_takeover; client_no_context_takeover");
-				// Если запрещено переиспользовать контекст компрессии для клиента
-				else if(!this->_noServerTakeover && this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для клиента
-					extensions.append("; client_no_context_takeover");
-				// Если запрещено переиспользовать контекст компрессии для сервера
-				else if(this->_noServerTakeover && !this->_noClientTakeover)
-					// Устанавливаем запрет на переиспользование контекста компрессии для сервера
-					extensions.append("; server_no_context_takeover");
-				// Если требуется указать количество байт
-				if(this->_wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->_wbitServer));
-			// Если метод компрессии выбран GZip
-			} else if(this->_compress == compress_t::GZIP)
-				// Устанавливаем тип компрессии GZip
-				extensions = "permessage-gzip";
-			// Если метод компрессии выбран Brotli
-			else if(this->_compress == compress_t::BROTLI)
-				// Устанавливаем тип компрессии Brotli
-				extensions = "permessage-br";
-			// Если данные должны быть зашифрованны
-			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
-		// Если метод компрессии не указан но указан режим шифрования
-		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
-		// Добавляем заголовок расширений
-		this->header("Sec-WebSocket-Extensions", extensions);
-	}
-	// Добавляем в чёрный список заголовок Content-Type
-	this->addBlack("Content-Type");
-	// Если подпротокол выбран
-	if(!this->_sub.empty())
-		// Добавляем заголовок сабпротокола
-		this->header("Sec-WebSocket-Protocol", this->_sub.c_str());
-	// Если версия протокола меньше 2.0
-	if(this->web.query().ver < 2.0f){
-		// Добавляем заголовок подключения
-		this->header("Connection", "Upgrade");
-		// Добавляем заголовок апгрейд
-		this->header("Upgrade", "WebSocket");
-		// Выполняем генерацию хеша ключа
-		const string & sha1 = this->sha1();
-		// Если SHA1-ключ не сгенерирован
-		if(sha1.empty()){
-			// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
-			this->log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-		// Добавляем заголовок хеша ключа
-		this->header("Sec-WebSocket-Accept", sha1.c_str());
+				this->header("Sec-WebSocket-Extensions", extensions);
+			}
+			// Если версия протокола меньше 2.0
+			if(this->web.request().version < 2.0f){
+				// Генерируем ключ клиента
+				this->_key = this->key();
+				// Добавляем заголовок апгрейд
+				this->header("Upgrade", "WebSocket");
+				// Добавляем заголовок подключения
+				this->header("Connection", "Keep-Alive, Upgrade");
+				// Добавляем заголовок ключ клиента
+				this->header("Sec-WebSocket-Key", this->_key);
+			// Если версия протокола выше или соответствует 2.0, добавляем заголовок протокола подключения
+			} else this->header(":protocol", "websocket");
+			// Добавляем заголовок Accept
+			this->header("Accept", "*/*");
+			// Добавляем заголовок отключения кеширования
+			this->header("Pragma", "No-Cache");
+			// Добавляем заголовок отключения кеширования
+			this->header("Cache-Control", "No-Cache");
+			// Добавляем заголовок типа запроса
+			this->header("Sec-Fetch-Mode", "WebSocket");
+			// Добавляем заголовок места назначения запроса
+			this->header("Sec-Fetch-Dest", "WebSocket");
+			// Добавляем заголовок требования сжимать содержимое ответов
+			this->header("Accept-Encoding", "gzip, deflate, br");
+			// Добавляем заголовок поддерживаемых языков
+			this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
+			// Добавляем заголовок версии WebSocket
+			this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE): {
+			// Удаляем статус ответа
+			this->rmHeader(":status");
+			// Удаляем заголовок хеша ключа
+			this->rmHeader("Sec-WebSocket-Accept");
+			// Если метод компрессии указан
+			if(this->crypt || (this->_compress != compress_t::NONE)){
+				// Список расширений протокола
+				string extensions = "";
+				// Если метод компрессии указан
+				if(this->_compress != compress_t::NONE){
+					// Если метод компрессии выбран Deflate
+					if(this->_compress == compress_t::DEFLATE){
+						// Устанавливаем тип компрессии Deflate
+						extensions = "permessage-deflate";
+						// Если запрещено переиспользовать контекст компрессии для клиента и сервера
+						if(!this->_server.takeover && !this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
+							extensions.append("; server_no_context_takeover; client_no_context_takeover");
+						// Если запрещено переиспользовать контекст компрессии для клиента
+						else if(this->_server.takeover && !this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для клиента
+							extensions.append("; client_no_context_takeover");
+						// Если запрещено переиспользовать контекст компрессии для сервера
+						else if(!this->_server.takeover && this->_client.takeover)
+							// Устанавливаем запрет на переиспользование контекста компрессии для сервера
+							extensions.append("; server_no_context_takeover");
+						// Если требуется указать количество байт
+						if(this->_server.wbit > 0)
+							// Выполняем установку размера скользящего окна
+							extensions.append(this->fmk->format("; server_max_window_bits=%u", this->_server.wbit));
+					// Если метод компрессии выбран GZip
+					} else if(this->_compress == compress_t::GZIP)
+						// Устанавливаем тип компрессии GZip
+						extensions = "permessage-gzip";
+					// Если метод компрессии выбран Brotli
+					else if(this->_compress == compress_t::BROTLI)
+						// Устанавливаем тип компрессии Brotli
+						extensions = "permessage-br";
+					// Если данные должны быть зашифрованны
+					if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
+				// Если метод компрессии не указан но указан режим шифрования
+				} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
+				// Добавляем заголовок расширений
+				this->header("Sec-WebSocket-Extensions", extensions);
+			}
+			// Добавляем в чёрный список заголовок Content-Type
+			this->addBlack("Content-Type");
+			// Если подпротокол выбран
+			if(!this->_sub.empty())
+				// Добавляем заголовок сабпротокола
+				this->header("Sec-WebSocket-Protocol", this->_sub.c_str());
+			// Если версия протокола меньше 2.0
+			if(this->web.response().version < 2.0f){
+				// Добавляем заголовок подключения
+				this->header("Connection", "Upgrade");
+				// Добавляем заголовок апгрейд
+				this->header("Upgrade", "WebSocket");
+				// Выполняем генерацию хеша ключа
+				const string & sha1 = this->sha1();
+				// Если SHA1-ключ не сгенерирован
+				if(sha1.empty()){
+					// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
+					this->log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
+				}
+				// Добавляем заголовок хеша ключа
+				this->header("Sec-WebSocket-Accept", sha1.c_str());
+			}
+		} break;
 	}
 }
 /**
@@ -303,14 +301,10 @@ vector <char> awh::WCore::dump() const noexcept {
 		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 		// Добавляем дамп бинарных данных модуля
 		result.insert(result.end(), dump.begin(), dump.end());
-		// Устанавливаем размер скользящего окна клиента
-		result.insert(result.end(), (const char *) &this->_wbitClient, (const char *) &this->_wbitClient + sizeof(this->_wbitClient));
-		// Устанавливаем размер скользящего окна сервера
-		result.insert(result.end(), (const char *) &this->_wbitServer, (const char *) &this->_wbitServer + sizeof(this->_wbitServer));
-		// Устанавливаем флаг запрета переиспользования контекста компрессии для клиента
-		result.insert(result.end(), (const char *) &this->_noClientTakeover, (const char *) &this->_noClientTakeover + sizeof(this->_noClientTakeover));
-		// Устанавливаем флаг запрета переиспользования контекста компрессии для сервера
-		result.insert(result.end(), (const char *) &this->_noServerTakeover, (const char *) &this->_noServerTakeover + sizeof(this->_noServerTakeover));
+		// Устанавливаем параметры партнёра клиента
+		result.insert(result.end(), (const char *) &this->_client, (const char *) &this->_client + sizeof(this->_client));
+		// Устанавливаем параметры партнёра сервера
+		result.insert(result.end(), (const char *) &this->_server, (const char *) &this->_server + sizeof(this->_server));
 		// Устанавливаем метод сжатия данных запроса/ответа
 		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
 		// Получаем размер поддерживаемого сабпротокола
@@ -352,59 +346,51 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
 		// Выполняем получение размера дампа бинарных данных модуля
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Создаём бинарный буфер дампа
 		vector <char> dump(length, 0);
 		// Выполняем получение бинарного буфера дампа
-		memcpy((void *) dump.data(), data.data() + offset, length);
+		::memcpy((void *) dump.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем установку бинарного буфера данных
 		reinterpret_cast <http_t *> (const_cast <ws_core_t *> (this))->dump(dump);
-		// Выполняем получение размера скользящего окна клиента
-		memcpy((void *) &this->_wbitClient, data.data() + offset, sizeof(this->_wbitClient));
+		// Выполняем получение параметров партнёра клиента
+		::memcpy((void *) &this->_client, data.data() + offset, sizeof(this->_client));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_wbitClient);
-		// Выполняем получение размера скользящего окна сервера
-		memcpy((void *) &this->_wbitServer, data.data() + offset, sizeof(this->_wbitServer));
+		offset += sizeof(this->_client);
+		// Выполняем получение параметров партнёра сервера
+		::memcpy((void *) &this->_server, data.data() + offset, sizeof(this->_server));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_wbitServer);
-		// Выполняем получение размера флага запрета переиспользования контекста компрессии для клиента
-		memcpy((void *) &this->_noClientTakeover, data.data() + offset, sizeof(this->_noClientTakeover));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_noClientTakeover);
-		// Выполняем получение размера флага запрета переиспользования контекста компрессии для сервера
-		memcpy((void *) &this->_noServerTakeover, data.data() + offset, sizeof(this->_noServerTakeover));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_noServerTakeover);
+		offset += sizeof(this->_server);
 		// Выполняем получение метода сжатия данных запроса/ответа
-		memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
+		::memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_compress);
 		// Выполняем получение размера поддерживаемого сабпротокола
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выполняем выделение памяти для поддерживаемого сабпротокола
 		this->_sub.resize(length, 0);
 		// Выполняем получение поддерживаемого сабпротокола
-		memcpy((void *) this->_sub.data(), data.data() + offset, length);
+		::memcpy((void *) this->_sub.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера ключа клиента
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выполняем выделение памяти для ключа клиента
 		this->_key.resize(length, 0);
 		// Выполняем получение ключа клиента
-		memcpy((void *) this->_key.data(), data.data() + offset, length);
+		::memcpy((void *) this->_key.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение количества поддерживаемых сабпротоколов
-		memcpy((void *) &count, data.data() + offset, sizeof(count));
+		::memcpy((void *) &count, data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс списка поддерживаемых сабпротоколов
@@ -412,13 +398,13 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
 		for(size_t i = 0; i < count; i++){
 			// Выполняем получение размера поддерживаемого сабпротокола
-			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			::memcpy((void *) &length, data.data() + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для поддерживаемого сабпротокола
 			string sub(length, 0);
 			// Выполняем получение поддерживаемого сабпротокола
-			memcpy((void *) sub.data(), data.data() + offset, length);
+			::memcpy((void *) sub.data(), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
@@ -439,9 +425,9 @@ void awh::WCore::clean() noexcept {
 	// Выполняем сброс поддерживаемых сабпротоколов
 	this->_subs.clear();
 	// Выполняем сброс размера скользящего окна для клиента
-	this->_wbitClient = GZIP_MAX_WBITS;
+	this->_client.wbit = GZIP_MAX_WBITS;
 	// Выполняем сброс размера скользящего окна для сервера
-	this->_wbitServer = GZIP_MAX_WBITS;
+	this->_server.wbit = GZIP_MAX_WBITS;
 }
 /**
  * compress Метод получения метода компрессии
@@ -458,6 +444,26 @@ awh::Http::compress_t awh::WCore::compress() const noexcept {
 void awh::WCore::compress(const compress_t compress) noexcept {
 	// Устанавливаем метод компрессии сообщений
 	this->_compress = compress;
+}
+/**
+ * extensions Метод извлечения списка расширений
+ * @return список поддерживаемых расширений
+ */
+const vector <vector <string>> & awh::WCore::extensions() const noexcept {
+	// Выводим результат
+	return this->_extensions;
+}
+/**
+ * extensions Метод установки списка расширений
+ * @param extensions список поддерживаемых расширений
+ */
+void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcept {
+	// Если список поддерживаемых расширений переданы
+	if(!extensions.empty())
+		// Выполняем установку списка поддерживаемых расширений
+		this->_extensions.assign(extensions.begin(), extensions.end());
+	// Выполняем список поддерживаемых расширений
+	else this->_extensions.clear();
 }
 /**
  * isHandshake Метод получения флага рукопожатия
@@ -524,70 +530,118 @@ bool awh::WCore::checkUpgrade() const noexcept {
 	return result;
 }
 /**
- * wbitClient Метод получения размер скользящего окна для клиента
- * @return размер скользящего окна
+ * wbit Метод получения размер скользящего окна
+ * @param hid тип модуля
+ * @return    размер скользящего окна
  */
-short awh::WCore::wbitClient() const noexcept {
-	// Выводим размер скользящего окна
-	return this->_wbitClient;
-}
-/**
- * wbitServer Метод получения размер скользящего окна для сервера
- * @return размер скользящего окна
- */
-short awh::WCore::wbitServer() const noexcept {
-	// Выводим размер скользящего окна
-	return this->_wbitServer;
-}
-/**
- * response Метод создания ответа
- * @return буфер данных запроса в бинарном виде
- */
-vector <char> awh::WCore::response() noexcept {
-	// Устанавливаем парарметр запроса
-	this->web.query(awh::web_t::query_t(1.1f, 101));
-	// Выполняем инициализацию формата ответа
-	this->initResponse();
+short awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
+	// Определяем флаг типа текущего модуля
+	switch(static_cast <uint8_t> (hid)){
+		// Если флаг текущего модуля соответствует клиенту
+		case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+			// Выводим размер скользящего окна
+			return this->_client.wbit;
+		// Если флаг текущего модуля соответствует серверу
+		case static_cast <uint8_t> (web_t::hid_t::SERVER):
+			// Выводим размер скользящего окна
+			return this->_server.wbit;
+	}
 	// Выводим результат
-	return http_t::response(static_cast <u_int> (101));
+	return GZIP_MAX_WBITS;
 }
 /**
- * request Метод создания запроса
- * @param url объект параметров REST запроса
- * @return    буфер данных запроса в бинарном виде
+ * process Метод создания выполняемого процесса в бинарном виде
+ * @param flag     флаг выполняемого процесса
+ * @param provider параметры провайдера обмена сообщениями
+ * @return         буфер данных в бинарном виде
  */
-vector <char> awh::WCore::request(const uri_t::url_t & url) noexcept {
-	// Устанавливаем парарметр запроса
-	this->web.query(awh::web_t::query_t(1.1f, web_t::method_t::GET));
-	// Выполняем инициализацию формата запроса
-	this->initRequest();
+vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Получаем объект ответа клиенту
+			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
+			// Если параметры запроса получены
+			if(!req.url.empty() && (req.method == web_t::method_t::GET))
+				// Устанавливаем парарметры запроса
+				this->web.request(req);
+			// Если данные переданы неверные
+			else {
+				// Выводим сообщение, что данные переданы неверные
+				this->log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return vector <char> ();
+			}
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE): {
+			// Получаем объект ответа клиенту
+			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
+			// Если параметры запроса получены
+			if(res.code == 101)
+				// Устанавливаем параметры ответа
+				this->web.response(res);
+			// Если данные переданы неверные
+			else {
+				// Выводим сообщение, что данные переданы неверные
+				this->log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return vector <char> ();
+			}
+		} break;
+	}
+	// Выполняем инициализацию
+	const_cast <ws_core_t *> (this)->init(flag);
 	// Выводим результат
-	return http_t::request(url, web_t::method_t::GET);
+	return http_t::process(flag, provider);
 }
 /**
- * response2 Метод создания ответа (протокол HTTP/2)
- * @return буфер данных запроса в бинарном виде
+ * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+ * @param flag     флаг выполняемого процесса
+ * @param provider параметры провайдера обмена сообщениями
+ * @return         буфер данных в бинарном виде
  */
-vector <pair<string, string>> awh::WCore::response2() noexcept {
-	// Устанавливаем парарметр запроса
-	this->web.query(awh::web_t::query_t(2.0f, 200));
-	// Выполняем инициализацию формата ответа
-	this->initResponse();
+vector <pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Получаем объект ответа клиенту
+			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
+			// Если параметры запроса получены
+			if(!req.url.empty() && (req.method == web_t::method_t::CONNECT))
+				// Устанавливаем парарметры запроса
+				this->web.request(req);
+			// Если данные переданы неверные
+			else {
+				// Выводим сообщение, что данные переданы неверные
+				this->log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return vector <pair <string, string>> ();
+			}
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE): {
+			// Получаем объект ответа клиенту
+			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
+			// Если параметры запроса получены
+			if(res.code == 200)
+				// Устанавливаем параметры ответа
+				this->web.response(res);
+			// Если данные переданы неверные
+			else {
+				// Выводим сообщение, что данные переданы неверные
+				this->log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return vector <pair <string, string>> ();
+			}
+		} break;
+	}
+	// Выполняем инициализацию
+	const_cast <ws_core_t *> (this)->init(flag);
 	// Выводим результат
-	return http_t::response2(static_cast <u_int> (200));
-}
-/**
- * request2 Метод создания запроса (протокол HTTP/2)
- * @param url объект параметров REST запроса
- * @return    буфер данных запроса в бинарном виде
- */
-vector <pair<string, string>> awh::WCore::request2(const uri_t::url_t & url) noexcept {
-	// Устанавливаем парарметр запроса
-	this->web.query(awh::web_t::query_t(2.0f, web_t::method_t::CONNECT));
-	// Выполняем инициализацию формата запроса
-	this->initRequest();
-	// Выводим результат
-	return http_t::request2(url, web_t::method_t::CONNECT);
+	return http_t::process2(flag, provider);
 }
 /**
  * sub Метод получения выбранного сабпротокола
@@ -619,34 +673,42 @@ void awh::WCore::subs(const vector <string> & subs) noexcept {
 	}
 }
 /**
- * clientTakeover Метод получения флага переиспользования контекста компрессии для клиента
- * @return флаг запрета переиспользования контекста компрессии для клиента
+ * takeover Метод получения флага переиспользования контекста компрессии
+ * @param hid тип текущего модуля
+ * @return    флаг запрета переиспользования контекста компрессии
  */
-bool awh::WCore::clientTakeover() const noexcept {
-	// Выводим результат проверки
-	return !this->_noClientTakeover;
+bool awh::WCore::takeover(const web_t::hid_t hid) const noexcept {
+	// Определяем флаг типа текущего модуля
+	switch(static_cast <uint8_t> (hid)){
+		// Если флаг текущего модуля соответствует клиенту
+		case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+			// Выводим флаг переиспользования компрессии
+			return this->_client.takeover;
+		// Если флаг текущего модуля соответствует серверу
+		case static_cast <uint8_t> (web_t::hid_t::SERVER):
+			// Выводим флаг переиспользования компрессии
+			return this->_server.takeover;
+	}
+	// Выводим результат
+	return false;
 }
 /**
- * clientTakeover Метод установки флага переиспользования контекста компрессии для клиента
- * @param flag флаг запрета переиспользования контекста компрессии для клиента
+ * takeover Метод установки флага переиспользования контекста компрессии
+ * @param hid  тип текущего модуля
+ * @param flag флаг запрета переиспользования контекста компрессии
  */
-void awh::WCore::clientTakeover(const bool flag) noexcept {
-	// Устанавливаем флаг запрета переиспользования контекста компрессии для клиента
-	this->_noClientTakeover = !flag;
-}
-/**
- * serverTakeover Метод получения флага переиспользования контекста компрессии для сервера
- * @return флаг запрета переиспользования контекста компрессии для сервера
- */
-bool awh::WCore::serverTakeover() const noexcept {
-	// Выводим результат проверки
-	return !this->_noServerTakeover;
-}
-/**
- * serverTakeover Метод установки флага переиспользования контекста компрессии для сервера
- * @param flag флаг запрета переиспользования контекста компрессии для сервера
- */
-void awh::WCore::serverTakeover(const bool flag) noexcept {
-	// Устанавливаем флаг запрета переиспользования контекста компрессии для сервера
-	this->_noServerTakeover = !flag;
+void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
+	// Определяем флаг типа текущего модуля
+	switch(static_cast <uint8_t> (hid)){
+		// Если флаг текущего модуля соответствует клиенту
+		case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+			// Устанавливаем флаг переиспользования компрессии
+			this->_client.takeover = flag;
+		break;
+		// Если флаг текущего модуля соответствует серверу
+		case static_cast <uint8_t> (web_t::hid_t::SERVER):
+			// Устанавливаем флаг переиспользования компрессии
+			this->_server.takeover = flag;
+		break;
+	}
 }

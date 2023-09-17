@@ -113,6 +113,29 @@ int main(int argc, char * argv[]){
 	Executor executor(&log);
 	// Создаём биндинг
 	core_t core(&fmk, &log);
+
+	uri_t uri(&fmk);
+
+
+
+	auto url = uri.parse("/home/test/data?id=15&post=32#hello=124");
+
+	url.host = "anyks.com";
+	url.domain = "anyks.com";
+
+	// uri.combine(url, uri.parse("https://anyks.com"));
+
+	cout << " -------------1 " << url.port << " == " << url.family << " == " << url.ip << " == " << url.host << " == " << url.user << " == " << url.pass << " == " << url.domain << " == " << url.schema << " == " << url.anchor << endl;
+
+	for(auto & item : url.path)
+		cout << " ----------2 " << item << endl;
+	
+	for(auto & item : url.params)
+		cout << " ----------3 " << item.first << " == " << item.second << endl;
+
+	cout << " ================ " << uri.query(url) << " ==== " << uri.url(url) << endl;
+
+
 	// Устанавливаем название сервиса
 	log.name("Timer");
 	// Устанавливаем формат времени

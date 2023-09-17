@@ -29,7 +29,6 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/uri.hpp>
 #include <http/web.hpp>
 #include <hash/hash.hpp>
 #include <auth/client.hpp>
@@ -58,6 +57,14 @@ namespace awh {
 				FAULT = 0x03  // Авторизация не удалась
 			};
 			/**
+			 * Флаг выполняемого процесса
+			 */
+			enum class process_t : uint8_t {
+				NONE     = 0x00, // Операция не установлена
+				REQUEST  = 0x01, // Операция запроса
+				RESPONSE = 0x02, // Операция ответа
+			};
+			/**
 			 * Формат сжатия тела запроса
 			 */
 			enum class compress_t : uint8_t {
@@ -71,6 +78,21 @@ namespace awh {
 				DEFLATE_BROTLI = 0x07  // deflate, br
 			};
 		public:
+			/**
+			 * Server Структура идентификации сервера
+			 */
+			typedef struct Server {
+				// Идентификатор сервиса
+				string id;
+				// Название сервиса
+				string name;
+				// Версия модуля приложения
+				string version;
+				/**
+				 * Server Конструктор
+				 */
+				Server() noexcept : id{""}, name{""}, version{""} {}
+			} server_t;
 			/**
 			 * Crypto Структура крипто-данных
 			 */
@@ -97,10 +119,22 @@ namespace awh {
 				 */
 				Auth(const fmk_t * fmk, const log_t * log) : client(fmk, log), server(fmk, log) {}
 			} auth_t;
+		protected:
 			/**
-			 * Список HTTP сообщений
+			 * Стейты работы модуля
+			 */
+			enum class state_t : uint8_t {
+				NONE      = 0x00, // Режим стейта не выставлен
+				GOOD      = 0x01, // Режим удачного выполнения запроса
+				BROKEN    = 0x02, // Режим бракованных данных
+				HANDSHAKE = 0x03  // Режим выполненного рукопожатия
+			};
+		private:
+			/**
+			 * Список HTTP-сообщений
 			 */
 			map <u_short, string> messages = {
+				{0, "Not Answer"},
 				{100, "Continue"},
 				{101, "Switching Protocols"},
 				{102, "Processing"},
@@ -147,15 +181,16 @@ namespace awh {
 				{505, "HTTP Version Not Supported"}
 			};
 		protected:
-			/**
-			 * Стейты работы модуля
-			 */
-			enum class state_t : uint8_t {
-				NONE      = 0x00, // Режим стейта не выставлен
-				GOOD      = 0x01, // Режим удачного выполнения запроса
-				BROKEN    = 0x02, // Режим бракованных данных
-				HANDSHAKE = 0x03  // Режим выполненного рукопожатия
-			};
+			// Создаём объект работы с URI
+			uri_t uri;
+		protected:
+			// Стейт проверки авторизации
+			stath_t stath;
+			// Стейт текущего запроса
+			state_t state;
+		private:
+			// Объявляем функции обратного вызова
+			fn_t _callback;
 		protected:
 			// Создаём объект HTTP парсера
 			mutable web_t web;
@@ -167,8 +202,8 @@ namespace awh {
 			// Создаём объект для работы с временными сжатыми данными
 			mutable hash_t dhash;
 		protected:
-			// Параметры выполняемого запроса
-			mutable uri_t::url_t url;
+			// Тип используемого HTTP модуля
+			web_t::hid_t httpType;
 		protected:
 			// Флаг зашифрованных данных
 			mutable bool crypt;
@@ -179,26 +214,14 @@ namespace awh {
 			// Размер одного чанка
 			size_t _chunk;
 		private:
-			// Идентификатор сервиса
-			string _servId;
-			// Версия модуля приложения
-			string _servVer;
-			// Название сервиса
-			string _servName;
-		private:
-			// User-Agent для HTTP запроса
-			mutable string _userAgent;
-		protected:
-			// Стейт проверки авторизации
-			stath_t stath;
-			// Стейт текущего запроса
-			state_t state;
+			// Идентификатор сервера
+			server_t _server;
 		private:
 			// Метод компрессии отправляемых данных
 			compress_t _compress;
-		protected:
-			// Тип используемого HTTP модуля
-			web_t::hid_t httpType;
+		private:
+			// User-Agent для HTTP запроса
+			mutable string _userAgent;
 		protected:
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;
@@ -210,8 +233,6 @@ namespace awh {
 			const fmk_t * fmk;
 			// Создаём объект работы с логами
 			const log_t * log;
-			// Создаём объект работы с URI
-			const uri_t * uri;
 		private:
 			/**
 			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
@@ -295,7 +316,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string & header(const string & key) const noexcept;
+			const string header(const string & key) const noexcept;
 			/**
 			 * header Метод добавления заголовка
 			 * @param key ключ заголовка
@@ -380,11 +401,13 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool isAlive() const noexcept;
+		public:
 			/**
 			 * isHandshake Метод проверки рукопожатия
 			 * @return проверка рукопожатия
 			 */
 			virtual bool isHandshake() noexcept;
+		public:
 			/**
 			 * isBlack Метод проверки существования заголовка в чёрный списоке
 			 * @param key ключ заголовка для проверки
@@ -399,15 +422,26 @@ namespace awh {
 			bool isHeader(const string & key) const noexcept;
 		public:
 			/**
-			 * query Метод получения объекта запроса сервера
-			 * @return объект запроса сервера
+			 * request Метод получения объекта запроса на сервер
+			 * @return объект запроса на сервер
 			 */
-			const web_t::query_t & query() const noexcept;
+			const web_t::req_t & request() const noexcept;
 			/**
-			 * query Метод добавления объекта запроса клиента
-			 * @param query объект запроса клиента
+			 * request Метод добавления объекта запроса на сервер
+			 * @param req объект запроса на сервер
 			 */
-			void query(const web_t::query_t & query) noexcept;
+			void request(const web_t::req_t & req) noexcept;
+		public:
+			/**
+			 * response Метод получения объекта ответа сервера
+			 * @return объект ответа сервера
+			 */
+			const web_t::res_t & response() const noexcept;
+			/**
+			 * response Метод добавления объекта ответа сервера
+			 * @param res объект ответа сервера
+			 */
+			void response(const web_t::res_t & res) noexcept;
 		public:
 			/**
 			 * date Метод получения текущей даты для HTTP запроса
@@ -436,79 +470,72 @@ namespace awh {
 			crypto_t encode(const vector <char> & buffer) const noexcept;
 		public:
 			/**
-			 * request Метод создания запроса как он есть
-			 * @param nobody флаг запрета подготовки тела
-			 * @return       буфер данных запроса в бинарном виде
-			 */
-			vector <char> request(const bool nobody = false) const noexcept;
-			/**
-			 * response Метод создания ответа как он есть
-			 * @param nobody флаг запрета подготовки тела
-			 * @return       буфер данных ответа в бинарном виде
-			 */
-			vector <char> response(const bool nobody = false) const noexcept;
-		public:
-			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
-			 * @param url объект параметров REST запроса
+			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <char> proxy(const uri_t::url_t & url) noexcept;
+			vector <char> proxy(const web_t::req_t & req) const noexcept;
+			/**
+			 * proxy2 Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
+			 * @param req объект параметров REST-запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
+		public:
 			/**
 			 * reject Метод создания отрицательного ответа
-			 * @param code код ответа
-			 * @param mess сообщение ответа
-			 * @return     буфер данных запроса в бинарном виде
-			 */
-			vector <char> reject(const u_int code, const string & mess = "") const noexcept;
-			/**
-			 * response Метод создания ответа
-			 * @param code код ответа
-			 * @param mess сообщение ответа
-			 * @return     буфер данных запроса в бинарном виде
-			 */
-			vector <char> response(const u_int code, const string & mess = "") const noexcept;
-			/**
-			 * request Метод создания запроса
-			 * @param url    объект параметров REST запроса
-			 * @param method метод REST запроса
-			 * @return       буфер данных запроса в бинарном виде
-			 */
-			vector <char> request(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
-		public:
-			/**
-			 * proxy2 Метод создания запроса для авторизации на прокси-сервере (протокол HTTP/2)
-			 * @param url объект параметров REST запроса
+			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <pair<string, string>> proxy2(const uri_t::url_t & url) noexcept;
+			vector <char> reject(const web_t::res_t & res) const noexcept;
 			/**
-			 * reject2 Метод создания отрицательного ответа (протокол HTTP/2)
-			 * @param code код ответа
-			 * @param mess сообщение ответа
-			 * @return     буфер данных запроса в бинарном виде
+			 * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
+			 * @param req объект параметров REST-ответа
+			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <pair<string, string>> reject2(const u_int code, const string & mess = "") const noexcept;
+			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
-			 * response2 Метод создания ответа (протокол HTTP/2)
-			 * @param code код ответа
-			 * @return     буфер данных запроса в бинарном виде
+			 * process Метод создания выполняемого процесса в бинарном виде
+			 * @param flag   флаг выполняемого процесса
+			 * @param nobody флаг запрета подготовки тела
+			 * @return       буфер данных в бинарном виде
 			 */
-			vector <pair<string, string>> response2(const u_int code) const noexcept;
+			virtual vector <char> process(const process_t flag, const bool nobody = false) const noexcept;
 			/**
-			 * request2 Метод создания запроса (протокол HTTP/2)
-			 * @param url    объект параметров REST запроса
-			 * @param method метод REST запроса
-			 * @return       буфер данных запроса в бинарном виде
+			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+			 * @param flag   флаг выполняемого процесса
+			 * @param nobody флаг запрета подготовки тела
+			 * @return       буфер данных в бинарном виде
 			 */
-			vector <pair<string, string>> request2(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
+			virtual vector <pair <string, string>> process2(const process_t flag, const bool nobody = false) const noexcept;
+		public:
+			/**
+			 * process Метод создания выполняемого процесса в бинарном виде
+			 * @param flag     флаг выполняемого процесса
+			 * @param provider параметры провайдера обмена сообщениями
+			 * @return         буфер данных в бинарном виде
+			 */
+			virtual vector <char> process(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			/**
+			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+			 * @param flag     флаг выполняемого процесса
+			 * @param provider параметры провайдера обмена сообщениями
+			 * @return         буфер данных в бинарном виде
+			 */
+			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const u_int, const string &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const web_t::method_t, const uri_t::url_t &)> callback) noexcept;
+		public:
 			/** 
 			 * on Метод установки функции вывода полученного заголовка с сервера
 			 * @param callback функция обратного вызова
@@ -519,21 +546,28 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const vector <char> &, const Http *)> callback) noexcept;
-			/** 
-			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const web_t::method_t, const string &)> callback) noexcept;
+		public:
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
 			/** 
+			 * on Метод установки функции вывода полученного тела данных с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
+		public:
+			/** 
 			 * on Метод установки функции вывода полученных заголовков с сервера
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученных заголовков с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 		public:
 			/**
 			 * chunk Метод установки размера чанка
@@ -565,9 +599,8 @@ namespace awh {
 			 * Http Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			Http(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Http Деструктор
 			 */

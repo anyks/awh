@@ -39,6 +39,9 @@ void awh::client::WS::commit() noexcept {
 	if(!ext.empty()){
 		// Выполняем разделение параметров расширений
 		if(!this->fmk->split(ext, ";", extensions).empty()){
+			// Выполняем включение перехвата контекста
+			this->_server.takeover = true;
+			this->_client.takeover = true;
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
 				// Если нужно производить шифрование данных
@@ -55,11 +58,11 @@ void awh::client::WS::commit() noexcept {
 				// Если клиент просит отключить перехват контекста сжатия для сервера
 				} else if(this->fmk->compare(val, "server_no_context_takeover"))
 					// Выполняем отключение перехвата контекста
-					this->_noServerTakeover = true;
+					this->_server.takeover = false;
 				// Если клиент просит отключить перехват контекста сжатия для клиента
 				else if(this->fmk->compare(val, "client_no_context_takeover"))
 					// Выполняем отключение перехвата контекста
-					this->_noClientTakeover = true;
+					this->_client.takeover = false;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				else if(this->fmk->compare(val, "permessage-deflate") || this->fmk->compare(val, "perframe-deflate"))
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
@@ -75,19 +78,19 @@ void awh::client::WS::commit() noexcept {
 				// Если размер скользящего окна для клиента получен
 				else if(this->fmk->exists("client_max_window_bits=", val))
 					// Устанавливаем размер скользящего окна
-					this->_wbitClient = ::stoi(val.substr(23));
+					this->_client.wbit = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				else if(this->fmk->compare(val, "client_max_window_bits"))
 					// Устанавливаем максимальный размер скользящего окна
-					this->_wbitClient = GZIP_MAX_WBITS;
+					this->_client.wbit = GZIP_MAX_WBITS;
 				// Если размер скользящего окна для сервера получен
 				else if(this->fmk->exists("server_max_window_bits=", val))
 					// Устанавливаем размер скользящего окна
-					this->_wbitServer = ::stoi(val.substr(23));
+					this->_server.wbit = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для сервера
 				else if(this->fmk->compare(val, "server_max_window_bits"))
 					// Устанавливаем максимальный размер скользящего окна
-					this->_wbitServer = GZIP_MAX_WBITS;
+					this->_server.wbit = GZIP_MAX_WBITS;
 			}
 		}
 	}
@@ -130,10 +133,10 @@ bool awh::client::WS::checkVer() noexcept {
 awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
-	// Получаем объект параметров запроса
-	web_t::query_t query = this->web.query();
+	// Получаем объект параметров ответа
+	const web_t::res_t & response = this->web.response();
 	// Проверяем код ответа
-	switch(query.code){
+	switch(response.code){
 		// Если требуется авторизация
 		case 401: {
 			// Определяем тип авторизации
@@ -167,39 +170,12 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 			const string & location = this->web.header("location");
 			// Если адрес перенаправления найден
 			if(!location.empty()){
-				// Выполняем парсинг URL
-				uri_t::url_t tmp = this->uri->parse(location);
-				/*
-				// Если параметры URL существуют
-				if(!this->url.params.empty()){
-					// Флаг поиска параметра
-					bool flag = false;
-					// Переходим по всему списку параметров
-					for(auto it = this->url.params.begin(); it != this->url.params.end(); ++it){
-						// Переходим по всему списку полученных параметров
-						for(auto jt = tmp.params.begin(); jt != tmp.params.end(); ++jt){
-							// Выполняем поиск ключа параметра
-							flag = this->fmk->compare(jt->first, it->first);
-							// Если параметр найден
-							if(flag) break;
-						}
-						// Если параметр не найден, добавляем в список
-						if(!flag) tmp.params.push_back(make_pair(it->first, it->second));
-					}
-				}
-				*/
-				// Меняем IP адрес сервера
-				const_cast <uri_t::url_t *> (&this->url)->ip = std::move(tmp.ip);
-				// Меняем порт сервера
-				const_cast <uri_t::url_t *> (&this->url)->port = std::move(tmp.port);
-				// Меняем на путь сервере
-				const_cast <uri_t::url_t *> (&this->url)->path = std::move(tmp.path);
-				// Меняем доменное имя сервера
-				const_cast <uri_t::url_t *> (&this->url)->domain = std::move(tmp.domain);
-				// Меняем протокол запроса сервера
-				const_cast <uri_t::url_t *> (&this->url)->schema = std::move(tmp.schema);
-				// Устанавливаем новый список параметров
-				// const_cast <uri_t::url_t *> (&this->url)->params = std::move(tmp.params);
+				// Получаем объект параметров запроса
+				web_t::req_t request = this->web.request();
+				// Выполняем парсинг полученного URL-адреса
+				request.url = this->uri.parse(location);
+				// Выполняем установку параметров запроса
+				this->web.request(std::move(request));
 				// Просим повторить авторизацию ещё раз
 				result = http_t::stath_t::RETRY;
 			}

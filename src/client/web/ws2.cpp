@@ -37,13 +37,13 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
 		// Разрешаем перехватывать контекст для клиента
-		this->_http.clientTakeover(this->_client.takeOver);
+		this->_http.clientTakeover(this->_client.takeover);
 		// Разрешаем перехватывать контекст для сервера
-		this->_http.serverTakeover(this->_server.takeOver);
+		this->_http.serverTakeover(this->_server.takeover);
 		// Разрешаем перехватывать контекст компрессии
-		this->_hash.takeoverCompress(this->_client.takeOver);
+		this->_hash.takeoverCompress(this->_client.takeover);
 		// Разрешаем перехватывать контекст декомпрессии
-		this->_hash.takeoverDecompress(this->_server.takeOver);
+		this->_hash.takeoverDecompress(this->_server.takeover);
 		// Выполняем очистку функций обратного вызова
 		this->_resultCallback.clear();
 		// Выполняем инициализацию сессии HTTP/2
@@ -1198,9 +1198,9 @@ void awh::client::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeOver = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeOver = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

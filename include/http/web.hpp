@@ -31,6 +31,8 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/uri.hpp>
+#include <net/net.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -45,7 +47,7 @@ namespace awh {
 	typedef class Web {
 		public:
 			/**
-			 * Тип используемого HTTP модуля
+			 * Тип используемого HTTP-модуля
 			 */
 			enum class hid_t : uint8_t {
 				NONE   = 0x00, // HTTP модуль не инициализирован
@@ -62,7 +64,7 @@ namespace awh {
 				HEADERS = 0x04  // Режим чтения заголовков
 			};
 			/**
-			 * Методы HTTP запроса
+			 * Методы HTTP-запроса
 			 */
 			enum class method_t : uint8_t {
 				NONE    = 0x00, // Метод не установлен
@@ -76,32 +78,71 @@ namespace awh {
 				OPTIONS = 0x08, // Метод OPTIONS
 				CONNECT = 0x09  // Метод CONNECT
 			};
+		public:
 			/**
-			 * Query Структура запроса
+			 * Provider Структура провайдера
 			 */
-			typedef struct Query {
-				float ver;       // Версия протокола
-				u_int code;      // Код ответа сервера
-				method_t method; // Метод запроса
-				string uri;      // Параметры запроса
-				string message;  // Сообщение сервера
+			typedef struct Provider {
+				// Версия протокола
+				float version;
 				/**
-				 * Query Конструктор
+				 * Provider Конструктор
 				 */
-				Query() noexcept : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
+				Provider() noexcept : version(HTTP_VERSION) {}
 				/**
-				 * Query Конструктор
-				 * @param ver    версия протокола
+				 * Provider Конструктор
+				 * @param version версия протокола
+				 */
+				Provider(const float version) noexcept : version(version) {}
+			} provider_t;
+			/**
+			 * Request Структура запроса
+			 */
+			typedef struct Request : public provider_t {
+				// Метод запроса
+				method_t method;
+				// Адрес URL-запроса
+				uri_t::url_t url;
+				/**
+				 * Request Конструктор
+				 */
+				Request() noexcept : provider_t(), method(method_t::NONE) {}
+				/**
+				 * Request Конструктор
 				 * @param method метод запроса
 				 */
-				Query(const float ver, const method_t method) noexcept : code(0), ver(ver), method(method), uri(""), message("") {}
+				Request(const method_t method) noexcept : provider_t(), method(method) {}
 				/**
-				 * Query Конструктор
-				 * @param ver  версия протокола
+				 * Request Конструктор
+				 * @param version версия протокола
+				 * @param method  метод запроса
+				 */
+				Request(const float version, const method_t method) noexcept : provider_t(version), method(method) {}
+			} req_t;
+			/**
+			 * Response Структура ответа сервера
+			 */
+			typedef struct Response : public provider_t {
+				// Код ответа сервера
+				u_int code;
+				// Сообщение сервера
+				string message;
+				/**
+				 * Response Конструктор
+				 */
+				Response() noexcept : provider_t(), code(0), message{""} {}
+				/**
+				 * Response Конструктор
 				 * @param code код ответа сервера
 				 */
-				Query(const float ver, const u_int code) noexcept : code(code), ver(ver), method(method_t::NONE), uri(""), message("") {}
-			} query_t;
+				Response(const u_int code) noexcept : provider_t(), code(code), message{""} {}
+				/**
+				 * Response Конструктор
+				 * @param version версия протокола
+				 * @param code    код ответа сервера
+				 */
+				Response(const float version, const u_int code) noexcept : provider_t(version), code(code), message{""} {}
+			} res_t;
 		private:
 			/**
 			 * Стейты работы чанка
@@ -140,17 +181,23 @@ namespace awh {
 					Chunk() noexcept : size(0), state(cstate_t::SIZE) {}
 			} chunk_t;
 		private:
+			// Объект запроса
+			req_t _req;
+			// Объект ответа
+			res_t _res;
+		private:
 			// Сепаратор для детекции в буфере
-			char _sep;
+			char _separator;
+		private:
+			// Массив позиций в буфере сепаратора
+			int64_t _pos[2];
 			// Размер тела сообщения
 			int64_t _bodySize;
-			// Массив позиций в буфере сепаратора
-			int64_t _pos[2] = {-1, -1};
 		private:
+			// Создаём объект работы с URI
+			uri_t _uri;
 			// Объявляем функции обратного вызова
 			fn_t _callback;
-			// Объект параметров запроса
-			query_t _query;
 			// Объект собираемого чанка
 			chunk_t _chunk;
 		private:
@@ -159,8 +206,6 @@ namespace awh {
 			// Тип используемого HTTP модуля
 			hid_t _httpType;
 		private:
-			// Данные пустого заголовка
-			string _header;
 			// Полученное тело HTTP запроса
 			vector <char> _body;
 			// Полученные HTTP заголовки
@@ -223,15 +268,26 @@ namespace awh {
 			void reset() noexcept;
 		public:
 			/**
-			 * query Метод получения объекта запроса сервера
-			 * @return объект запроса сервера
+			 * request Метод получения объекта запроса на сервер
+			 * @return объект запроса на сервер
 			 */
-			const query_t & query() const noexcept;
+			const req_t & request() const noexcept;
 			/**
-			 * query Метод добавления объекта запроса клиента
-			 * @param query объект запроса клиента
+			 * request Метод добавления объекта запроса на сервер
+			 * @param req объект запроса на сервер
 			 */
-			void query(const query_t & query) noexcept;
+			void request(const req_t & req) noexcept;
+		public:
+			/**
+			 * response Метод получения объекта ответа сервера
+			 * @return объект ответа сервера
+			 */
+			const res_t & response() const noexcept;
+			/**
+			 * response Метод добавления объекта ответа сервера
+			 * @param res объект ответа сервера
+			 */
+			void response(const res_t & res) noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки
@@ -275,7 +331,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string & header(const string & key) const noexcept;
+			const string header(const string & key) const noexcept;
 			/**
 			 * header Метод добавления заголовка
 			 * @param key ключ заголовка
@@ -315,7 +371,8 @@ namespace awh {
 			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const method_t, const string &)> callback) noexcept;
+			void on(function <void (const method_t, const uri_t::url_t &)> callback) noexcept;
+		public:
 			/** 
 			 * on Метод установки функции вывода полученного заголовка с сервера
 			 * @param callback функция обратного вызова
@@ -326,16 +383,28 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const vector <char> &, const Web *)> callback) noexcept;
+		public:
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
 			/** 
+			 * on Метод установки функции вывода полученного тела данных с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
+		public:
+			/** 
 			 * on Метод установки функции вывода полученных заголовков с сервера
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученных заголовков с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 		public:
 			/**
 			 * Web Конструктор
@@ -343,8 +412,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept :
-			 _sep('\0'), _bodySize(-1), _callback(log), _state(state_t::QUERY),
-			 _httpType(hid_t::NONE), _header(""), _fmk(fmk), _log(log) {}
+			 _separator('\0'), _pos{-1,-1}, _bodySize(-1), _uri(fmk), _callback(log),
+			 _state(state_t::QUERY), _httpType(hid_t::NONE), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Web Деструктор
 			 */

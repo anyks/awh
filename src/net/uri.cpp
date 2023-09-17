@@ -414,6 +414,49 @@ string awh::URI::origin(const url_t & url) const noexcept {
 	return result;
 }
 /**
+ * combine Метод комбинации двух адресов
+ * @param dest адрес места назначения
+ * @param src  исходный адрес для объединения
+ */
+void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
+	// Если доменное доменное имя или IP-адрес установлены
+	if(!src.domain.empty() || !src.ip.empty()){
+		// Выполняем устновку IP-адреса
+		dest.ip = src.ip;
+		// Выполняем установку хоста
+		dest.host = src.host;
+		// Выполняем установку доменного имени
+		dest.domain = src.domain;
+		// Выполняем установку схемы протокола
+		dest.schema = src.schema;
+		// Выполняем установку семейство протоколов
+		dest.family = src.family;
+	}
+	// Если порт установлен
+	if(src.port > 0)
+		// Выполняем установку порта
+		dest.port = src.port;
+	// Если якорь установлен
+	if(!src.anchor.empty())
+		// Выполняем установку якоря
+		dest.anchor = src.anchor;
+	// Если логин пользователя указан
+	if(!src.user.empty()){
+		// Выполняем установку логина пользователя
+		dest.user = src.user;
+		// Выполняем установку пароля пользователя
+		dest.pass = src.pass;
+	}
+	// Если путь запроса указан
+	if(!src.path.empty())
+		// Выполняем установку пути запроса
+		dest.path.assign(src.path.begin(), src.path.end());
+	// Если параметры запроса указаны
+	if(!src.params.empty())
+		// Выполняем установку параметров запроса
+		dest.params.assign(src.params.begin(), src.params.end());
+}
+/**
  * append Метод добавления к URL адресу параметров запроса
  * @param url    параметры URL-запроса
  * @param params параметры для добавления
