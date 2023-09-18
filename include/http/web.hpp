@@ -115,9 +115,38 @@ namespace awh {
 				/**
 				 * Request Конструктор
 				 * @param version версия протокола
+				 */
+				Request(const float version) noexcept : provider_t(version), method(method_t::NONE) {}
+				/**
+				 * Request Конструктор
+				 * @param url адрес URL-запроса
+				 */
+				Request(const uri_t::url_t & url) noexcept : provider_t(), method(method_t::NONE), url(url) {}
+				/**
+				 * Request Конструктор
+				 * @param version версия протокола
 				 * @param method  метод запроса
 				 */
 				Request(const float version, const method_t method) noexcept : provider_t(version), method(method) {}
+				/**
+				 * Request Конструктор
+				 * @param method метод запроса
+				 * @param url    адрес URL-запроса
+				 */
+				Request(const method_t method, const uri_t::url_t & url) noexcept : provider_t(), method(method), url(url) {}
+				/**
+				 * Request Конструктор
+				 * @param version версия протокола
+				 * @param url     адрес URL-запроса
+				 */
+				Request(const float version, const uri_t::url_t & url) noexcept : provider_t(version), method(method_t::NONE), url(url) {}
+				/**
+				 * Request Конструктор
+				 * @param version версия протокола
+				 * @param method  метод запроса
+				 * @param url     адрес URL-запроса
+				 */
+				Request(const float version, const method_t method, const uri_t::url_t & url) noexcept : provider_t(version), method(method), url(url) {}
 			} req_t;
 			/**
 			 * Response Структура ответа сервера
@@ -139,9 +168,38 @@ namespace awh {
 				/**
 				 * Response Конструктор
 				 * @param version версия протокола
+				 */
+				Response(const float version) noexcept : provider_t(version), code(0), message{""} {}
+				/**
+				 * Response Конструктор
+				 * @param message сообщение сервера
+				 */
+				Response(const string & message) noexcept : provider_t(), code(0), message(message) {}
+				/**
+				 * Response Конструктор
+				 * @param version версия протокола
 				 * @param code    код ответа сервера
 				 */
 				Response(const float version, const u_int code) noexcept : provider_t(version), code(code), message{""} {}
+				/**
+				 * Response Конструктор
+				 * @param code    код ответа сервера
+				 * @param message сообщение сервера
+				 */
+				Response(const u_int code, const string & message) noexcept : provider_t(), code(code), message(message) {}
+				/**
+				 * Response Конструктор
+				 * @param version версия протокола
+				 * @param message сообщение сервера
+				 */
+				Response(const float version, const string & message) noexcept : provider_t(version), code(0), message(message) {}
+				/**
+				 * Response Конструктор
+				 * @param version версия протокола
+				 * @param code    код ответа сервера
+				 * @param message сообщение сервера
+				 */
+				Response(const float version, const u_int code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
 			} res_t;
 		private:
 			/**

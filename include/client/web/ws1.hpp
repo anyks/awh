@@ -35,9 +35,18 @@ namespace awh {
 	 */
 	namespace client {
 		/**
+		 * WebSocket2 Прототип класса WebSocket/2.0 клиента
+		 */
+		class WebSocket2;
+		/**
 		 * WebSocket1 Класс WebSocket-клиента
 		 */
 		typedef class WebSocket1 : public web_t {
+			private:
+				/**
+				 * WebSocket2 Устанавливаем дружбу с классом WebSocket/2.0 клиента
+				 */
+				friend class WebSocket2;
 			private:
 				/**
 				 * Allow Структура флагов разрешения обменом данных
@@ -92,8 +101,6 @@ namespace awh {
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
-				// Объект работы с URI ссылками
-				uri_t _uri;
 				// Объект для работы с HTTP-протколом
 				ws_t _http;
 				// Объект для компрессии-декомпрессии данных
@@ -287,12 +294,12 @@ namespace awh {
 				 */
 				const string & sub() const noexcept;
 				/**
-				 * sub Метод установки подпротокола поддерживаемого сервером
+				 * sub Метод установки сабпротокола поддерживаемого сервером
 				 * @param sub подпротокол для установки
 				 */
 				void sub(const string & sub) noexcept;
 				/**
-				 * subs Метод установки списка подпротоколов поддерживаемых сервером
+				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
 				 * @param subs подпротоколы для установки
 				 */
 				void subs(const vector <string> & subs) noexcept;

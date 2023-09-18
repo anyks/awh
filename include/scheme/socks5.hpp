@@ -83,9 +83,8 @@ namespace awh {
 					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
-					 * @param uri объект работы с URI ссылками
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
 					 locked(false), connect(false), stopped(false), scheme(fmk, log), socks5(log) {}
 					/**
 					 * ~Coffer Деструктор

@@ -34,24 +34,26 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		this->_http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		this->_http.clear();
+		// Выполняем очистку функций обратного вызова
+		this->_resultCallback.clear();
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
-		// Разрешаем перехватывать контекст для клиента
-		this->_http.clientTakeover(this->_client.takeover);
-		// Разрешаем перехватывать контекст для сервера
-		this->_http.serverTakeover(this->_server.takeover);
 		// Разрешаем перехватывать контекст компрессии
 		this->_hash.takeoverCompress(this->_client.takeover);
 		// Разрешаем перехватывать контекст декомпрессии
 		this->_hash.takeoverDecompress(this->_server.takeover);
-		// Выполняем очистку функций обратного вызова
-		this->_resultCallback.clear();
+		// Разрешаем перехватывать контекст для клиента
+		this->_http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeover);
+		// Разрешаем перехватывать контекст для сервера
+		this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(aid, sid, core);
 		// Если активирован режим работы с HTTP/2 протоколом
 		if(this->_upgraded){
 			// Список заголовков для запроса
 			vector <nghttp2_nv> nva;
+			// Создаём объек запроса
+			awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 			/**
 			 * Если включён режим отладки
 			 */
@@ -59,14 +61,14 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 				// Получаем бинарные данные REST запроса
-				const auto & buffer = this->_http.request(this->_scheme.url);
+				const auto & buffer = this->_http.process(http_t::process_t::RESPONSE, std::move(query));
 				// Если бинарные данные запроса получены
 				if(!buffer.empty())
 					// Выводим параметры запроса
 					cout << string(buffer.begin(), buffer.end()) << endl << endl;
 			#endif
 			// Выполняем запрос на получение заголовков
-			const auto & headers = this->_http.request2(this->_scheme.url);
+			const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : headers){
 				// Выполняем добавление метода запроса
@@ -101,7 +103,31 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
-			/** +++++++++++++++++++++++++ **/
+			// Выполняем установку сетевого ядра
+			this->_ws1._core = this->_core;
+			// Выполняем установку данных URL-адреса
+			this->_ws1._scheme.url = this->_scheme.url;
+			// Если функция обратного вызова при подключении/отключении установлена
+			if(this->_callback.is("active"))
+				// Выполняем установку функции обратного вызова
+				this->_ws1._callback.set <void (const mode_t)> ("active", this->_callback.get <void (const mode_t)> ("active"));
+			// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
+			if(this->_callback.is("chunks"))
+				// Выполняем установку функции обратного вызова
+				this->_ws1._callback.set <void (const int32_t, const vector <char> &)> ("chunks", this->_callback.get <void (const int32_t, const vector <char> &)> ("chunks"));
+			// Если функция обратного вызова, для вывода полученного тела данных с сервера установлена
+			if(this->_callback.is("entity"))
+				// Выполняем установку функции обратного вызова
+				this->_ws1._callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity"));
+			// Если многопоточность активированна
+			if(this->_thr.is()){
+				// Выполняем завершение всех активных потоков
+				this->_thr.wait();
+				// Выполняем инициализацию нового тредпула
+				this->_ws1.multiThreads(this->_threads);
+			}
+			// Выполняем переброс вызова коннекта на клиент WebSocket
+			this->_ws1.connectCallback(aid, sid, core);
 		}
 	}
 }
@@ -112,54 +138,61 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Получаем параметры запроса
-	const auto & query = this->_http.query();
-	// Если нужно произвести запрос заново
-	if(!this->_stopped && ((query.code == 301) || (query.code == 308) || (query.code == 401) || (query.code == 407))){
-		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-		if((query.code == 401) || (query.code == 407) || this->_http.isHeader("location")){
-			// Получаем новый адрес запроса
-			const uri_t::url_t & url = this->_http.getUrl();
-			// Если адрес запроса получен
-			if(!url.empty()){
-				// Увеличиваем количество попыток
-				this->_attempt++;
-				// Заменяем адрес запроса в схеме клиента
-				this->_scheme.url = std::forward <const uri_t::url_t> (url);
-				// Выполняем очистку оставшихся данных
-				this->_buffer.clear();
-				// Выполняем очистку оставшихся фрагментов
-				this->_fragmes.clear();
-				// Выполняем установку следующего экшена на открытие подключения
-				this->open();
-				// Завершаем работу
-				return;
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выполняем переброс вызова дисконнекта на клиент WebSocket
+		this->_ws1.disconnectCallback(aid, sid, core);
+	// Если переключение протокола на HTTP/2 выполнено
+	else {
+		// Получаем параметры запроса
+		const auto & response = this->_http.response();
+		// Если нужно произвести запрос заново
+		if(!this->_stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401) || (response.code == 407))){
+			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
+				// Получаем новый адрес запроса
+				const uri_t::url_t & url = this->_http.getUrl();
+				// Если адрес запроса получен
+				if(!url.empty()){
+					// Увеличиваем количество попыток
+					this->_attempt++;
+					// Заменяем адрес запроса в схеме клиента
+					this->_scheme.url = std::forward <const uri_t::url_t> (url);
+					// Выполняем очистку оставшихся данных
+					this->_buffer.clear();
+					// Выполняем очистку оставшихся фрагментов
+					this->_fragmes.clear();
+					// Выполняем установку следующего экшена на открытие подключения
+					this->open();
+					// Завершаем работу
+					return;
+				}
 			}
 		}
+		// Если подключение является постоянным
+		if(this->_scheme.alive){
+			// Выполняем очистку оставшихся данных
+			this->_buffer.clear();
+			// Выполняем очистку оставшихся фрагментов
+			this->_fragmes.clear();
+		// Если подключение не является постоянным
+		} else {
+			// Выполняем сброс параметров запроса
+			this->flush();
+			// Выполняем зануление идентификатора адъютанта
+			this->_aid = 0;
+			// Очищаем адрес сервера
+			this->_scheme.url.clear();
+			// Если завершить работу разрешено
+			if(this->_unbind)
+				// Завершаем работу
+				dynamic_cast <client::core_t *> (core)->stop();
+		}
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	}
-	// Если подключение является постоянным
-	if(this->_scheme.alive){
-		// Выполняем очистку оставшихся данных
-		this->_buffer.clear();
-		// Выполняем очистку оставшихся фрагментов
-		this->_fragmes.clear();
-	// Если подключение не является постоянным
-	} else {
-		// Выполняем сброс параметров запроса
-		this->flush();
-		// Выполняем зануление идентификатора адъютанта
-		this->_aid = 0;
-		// Очищаем адрес сервера
-		this->_scheme.url.clear();
-		// Если завершить работу разрешено
-		if(this->_unbind)
-			// Завершаем работу
-			dynamic_cast <client::core_t *> (core)->stop();
-	}
-	// Если функция обратного вызова при подключении/отключении установлена
-	if(this->_callback.is("active"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с сервера
@@ -202,9 +235,9 @@ void awh::client::WebSocket2::readCallback(const char * buffer, const size_t siz
 				return;
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
-		} else {
-			/** +++++++++++++++++++++++++ **/
-		}
+		} else
+			// Выполняем переброс вызова чтения на клиент WebSocket
+			this->_ws1.readCallback(buffer, size, aid, sid, core);
 	}
 }
 /**
@@ -218,12 +251,19 @@ void awh::client::WebSocket2::readCallback(const char * buffer, const size_t siz
 void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если необходимо выполнить закрыть подключение
-		if(!this->_close && this->_stopped){
-			// Устанавливаем флаг закрытия подключения
-			this->_close = !this->_close;
-			// Принудительно выполняем отключение лкиента
-			dynamic_cast <client::core_t *> (core)->close(aid);
+		// Если переключение протокола на HTTP/2 не выполнено
+		if(!this->_upgraded)
+			// Выполняем переброс вызова записи на клиент WebSocket
+			this->_ws1.writeCallback(buffer, size, aid, sid, core);
+		// Если переключение протокола на HTTP/2 выполнено
+		else {
+			// Если необходимо выполнить закрыть подключение
+			if(!this->_close && this->_stopped){
+				// Устанавливаем флаг закрытия подключения
+				this->_close = !this->_close;
+				// Принудительно выполняем отключение лкиента
+				dynamic_cast <client::core_t *> (core)->close(aid);
+			}
 		}
 	}
 }
@@ -236,14 +276,21 @@ void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t si
 void awh::client::WebSocket2::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем текущий штамп времени
-		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if(this->_close || ((stamp - this->_point) >= (PERSIST_INTERVAL * 5)))
-			// Завершаем работу
-			dynamic_cast <client::core_t *> (core)->close(aid);
-		// Отправляем запрос адъютанту
-		else this->ping(to_string(aid));
+		// Если переключение протокола на HTTP/2 не выполнено
+		if(!this->_upgraded)
+			// Выполняем переброс персистентного вызова на клиент WebSocket
+			this->_ws1.persistCallback(aid, sid, core);
+		// Если переключение протокола на HTTP/2 выполнено
+		else {
+			// Получаем текущий штамп времени
+			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+			if(this->_close || ((stamp - this->_point) >= (PERSIST_INTERVAL * 5)))
+				// Завершаем работу
+				dynamic_cast <client::core_t *> (core)->close(aid);
+			// Отправляем запрос адъютанту
+			else this->ping(to_string(aid));
+		}
 	}
 }
 /**
@@ -328,7 +375,7 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 					#if defined(DEBUG_MODE)
 						{
 							// Получаем данные ответа
-							const auto & response = reinterpret_cast <http_t *> (&this->_http)->response(true);
+							const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
@@ -336,7 +383,7 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 						}
 					#endif
 					// Получаем параметры запроса
-					const auto & query = this->_http.query();
+					const auto & response = this->_http.response();
 					// Получаем объект биндинга ядра TCP/IP
 					client::core_t * core = const_cast <client::core_t *> (this->_core);
 					// Выполняем препарирование полученных данных
@@ -353,11 +400,11 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callback.is("response"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, query.code, query.message);
+								this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, query.code, query.message, this->_http.headers());
+								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, response.code, response.message, this->_http.headers());
 							// Очищаем буфер собранных данных
 							this->_buffer.clear();
 							// Завершаем работу
@@ -378,11 +425,11 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 					if(this->_callback.is("response"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, query.code, query.message);
+						this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, response.code, response.message);
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(this->_callback.is("headers"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, query.code, query.message, this->_http.headers());
+						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, response.code, response.message, this->_http.headers());
 				}
 			} break;
 		}
@@ -472,16 +519,23 @@ int awh::client::WebSocket2::receivedHeader(const int32_t sid, const string & ke
  * flush Метод сброса параметров запроса
  */
 void awh::client::WebSocket2::flush() noexcept {
-	// Снимаем флаг отключения
-	this->_close = false;
-	// Снимаем флаг принудительной остановки
-	this->_stopped = false;
-	// Выполняем очистку оставшихся данных
-	this->_buffer.clear();
-	// Выполняем очистку оставшихся фрагментов
-	this->_fragmes.clear();
-	// Устанавливаем флаг разрешающий обмен данных
-	this->_allow = allow_t();
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выполняем сброс параметров запроса на клиенте WebSocket
+		this->_ws1.flush();
+	// Если переключение протокола на HTTP/2 выполнено
+	else {
+		// Снимаем флаг отключения
+		this->_close = false;
+		// Снимаем флаг принудительной остановки
+		this->_stopped = false;
+		// Выполняем очистку оставшихся данных
+		this->_buffer.clear();
+		// Выполняем очистку оставшихся фрагментов
+		this->_fragmes.clear();
+		// Устанавливаем флаг разрешающий обмен данных
+		this->_allow = allow_t();
+	}
 }
 /**
  * ping Метод проверки доступности сервера
@@ -532,7 +586,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 	// Если рукопожатие не выполнено
 	if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
 		// Получаем параметры запроса
-		auto query = this->_http.query();
+		auto response = this->_http.response();
 		// Выполняем проверку авторизации
 		switch(static_cast <uint8_t> (this->_http.getAuth())){
 			// Если нужно попытаться ещё раз
@@ -552,7 +606,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 					}
 				}
 				// Создаём сообщение
-				this->_mess = ws::mess_t(query.code, this->_http.message(query.code));
+				this->_mess = ws::mess_t(response.code, this->_http.message(response.code));
 				// Выводим сообщение
 				this->error(this->_mess);
 			} break;
@@ -569,15 +623,15 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 					// Получаем поддерживаемый метод компрессии
 					this->_compress = this->_http.compress();
 					// Получаем размер скользящего окна сервера
-					this->_server.wbit = this->_http.wbitServer();
+					this->_server.wbit = this->_http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
-					this->_client.wbit = this->_http.wbitClient();
+					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Разрешаем перехватывать контекст компрессии для клиента
-					this->_hash.takeoverCompress(this->_http.clientTakeover());
+					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
 					// Разрешаем перехватывать контекст компрессии для сервера
-					this->_hash.takeoverDecompress(this->_http.serverTakeover());
+					this->_hash.takeoverDecompress(this->_http.takeover(awh::web_t::hid_t::SERVER));
 					// Если разрешено в лог выводим информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
@@ -589,26 +643,26 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
 				} else {
 					// Если код ответа не является отрицательным
-					if(query.code < 400){
+					if(response.code < 400){
 						// Устанавливаем код ответа
-						query.code = 403;
+						response.code = 403;
 						// Заменяем ответ сервера
-						this->_http.query(query);
+						this->_http.response(response);
 					}
 					// Создаём сообщение
-					this->_mess = ws::mess_t(query.code, this->_http.message(query.code));
+					this->_mess = ws::mess_t(response.code, this->_http.message(response.code));
 					// Выводим сообщение
 					this->error(this->_mess);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 				}
 			} break;
 			// Если запрос неудачный
@@ -616,13 +670,13 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
 				// Создаём сообщение
-				this->_mess = ws::mess_t(query.code, query.message);
+				this->_mess = ws::mess_t(response.code, response.message);
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 			} break;
 		}
 		// Завершаем работу
@@ -873,41 +927,48 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
-	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
-	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
-		// Если подключение выполнено
-		if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
-			// Запрещаем получение данных
-			this->_allow.receive = false;
-			// Получаем объект биндинга ядра TCP/IP
-			client::core_t * core = const_cast <client::core_t *> (this->_core);
-			// Выполняем остановку получения данных
-			core->disabled(engine_t::method_t::READ, this->_aid);
-			// Если код ошибки относится к WebSocket
-			if(mess.code >= 1000){
-				// Получаем буфер сообщения
-				const auto & buffer = this->_frame.methods.message(mess);
-				// Если данные сообщения получены
-				if((this->_stopped = !buffer.empty())){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим отправляемое сообщение
-						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
-					#endif
-					// Выполняем отправку сообщения на сервер
-					web2_t::send(this->_sid, buffer.data(), buffer.size(), true);
-					// Выходим из функции
-					return;
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выполняем отправку сообщение об ошибке на клиент WebSocket
+		this->_ws1.sendError(mess);
+	// Если переключение протокола на HTTP/2 выполнено
+	else {
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+			// Если подключение выполнено
+			if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
+				// Запрещаем получение данных
+				this->_allow.receive = false;
+				// Получаем объект биндинга ядра TCP/IP
+				client::core_t * core = const_cast <client::core_t *> (this->_core);
+				// Выполняем остановку получения данных
+				core->disabled(engine_t::method_t::READ, this->_aid);
+				// Если код ошибки относится к WebSocket
+				if(mess.code >= 1000){
+					// Получаем буфер сообщения
+					const auto & buffer = this->_frame.methods.message(mess);
+					// Если данные сообщения получены
+					if((this->_stopped = !buffer.empty())){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим отправляемое сообщение
+							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
+						#endif
+						// Выполняем отправку сообщения на сервер
+						web2_t::send(this->_sid, buffer.data(), buffer.size(), true);
+						// Выходим из функции
+						return;
+					}
 				}
+				// Завершаем работу
+				core->close(this->_aid);
 			}
-			// Завершаем работу
-			core->close(this->_aid);
 		}
 	}
 }
@@ -918,127 +979,134 @@ void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
  * @param utf8    данные передаются в текстовом виде
  */
 void awh::client::WebSocket2::send(const char * message, const size_t size, const bool utf8) noexcept {
-	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
-	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
-		// Если подключение выполнено
-		if(this->_core->working() && this->_allow.send){
-			// Выполняем блокировку отправки сообщения
-			this->_allow.send = !this->_allow.send;
-			// Если рукопожатие выполнено
-			if((message != nullptr) && (size > 0) && this->_http.isHandshake() && (this->_aid > 0)){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Если отправляемое сообщение является текстом
-					if(utf8)
-						// Выводим параметры ответа
-						cout << string(message, size) << endl << endl;
-					// Выводим сообщение о выводе чанка полезной нагрузки
-					else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
-				#endif
-				// Буфер сжатых данных
-				vector <char> buffer;
-				// Создаём объект заголовка для отправки
-				ws::frame_t::head_t head(true, true);
-				// Если нужно производить шифрование
-				if(this->_crypt){
-					// Выполняем шифрование переданных данных
-					buffer = this->_hash.encrypt(message, size);
-					// Если данные зашифрованны
-					if(!buffer.empty()){
-						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выполняем отправку сообщения на клиент WebSocket
+		this->_ws1.send(message, size, utf8);
+	// Если переключение протокола на HTTP/2 выполнено
+	else {
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+			// Если подключение выполнено
+			if(this->_core->working() && this->_allow.send){
+				// Выполняем блокировку отправки сообщения
+				this->_allow.send = !this->_allow.send;
+				// Если рукопожатие выполнено
+				if((message != nullptr) && (size > 0) && this->_http.isHandshake() && (this->_aid > 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Если отправляемое сообщение является текстом
+						if(utf8)
+							// Выводим параметры ответа
+							cout << string(message, size) << endl << endl;
+						// Выводим сообщение о выводе чанка полезной нагрузки
+						else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
+					#endif
+					// Буфер сжатых данных
+					vector <char> buffer;
+					// Создаём объект заголовка для отправки
+					ws::frame_t::head_t head(true, true);
+					// Если нужно производить шифрование
+					if(this->_crypt){
+						// Выполняем шифрование переданных данных
+						buffer = this->_hash.encrypt(message, size);
+						// Если данные зашифрованны
+						if(!buffer.empty()){
+							// Заменяем сообщение для передачи
+							message = buffer.data();
+							// Заменяем размер сообщения
+							(* const_cast <size_t *> (&size)) = buffer.size();
+						}
 					}
-				}
-				// Указываем, что сообщение передаётся в сжатом виде
-				head.rsv[0] = ((size >= 1024) && (this->_compress != http_t::compress_t::NONE));
-				// Устанавливаем опкод сообщения
-				head.optcode = (utf8 ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
-				// Если необходимо сжимать сообщение перед отправкой
-				if(head.rsv[0]){
-					// Компрессионные данные
-					vector <char> data;
-					// Определяем метод компрессии
-					switch(static_cast <uint8_t> (this->_compress)){
-						// Если метод компрессии выбран Deflate
-						case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
-							// Устанавливаем размер скользящего окна
-							this->_hash.wbit(this->_client.wbit);
-							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::DEFLATE);
-							// Удаляем хвост в полученных данных
-							this->_hash.rmTail(data);
-						} break;
-						// Если метод компрессии выбран GZip
-						case static_cast <uint8_t> (http_t::compress_t::GZIP):
-							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::GZIP);
-						break;
-						// Если метод компрессии выбран Brotli
-						case static_cast <uint8_t> (http_t::compress_t::BROTLI):
-							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::BROTLI);
-						break;
+					// Указываем, что сообщение передаётся в сжатом виде
+					head.rsv[0] = ((size >= 1024) && (this->_compress != http_t::compress_t::NONE));
+					// Устанавливаем опкод сообщения
+					head.optcode = (utf8 ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
+					// Если необходимо сжимать сообщение перед отправкой
+					if(head.rsv[0]){
+						// Компрессионные данные
+						vector <char> data;
+						// Определяем метод компрессии
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если метод компрессии выбран Deflate
+							case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
+								// Устанавливаем размер скользящего окна
+								this->_hash.wbit(this->_client.wbit);
+								// Выполняем компрессию полученных данных
+								data = this->_hash.compress(message, size, hash_t::method_t::DEFLATE);
+								// Удаляем хвост в полученных данных
+								this->_hash.rmTail(data);
+							} break;
+							// Если метод компрессии выбран GZip
+							case static_cast <uint8_t> (http_t::compress_t::GZIP):
+								// Выполняем компрессию полученных данных
+								data = this->_hash.compress(message, size, hash_t::method_t::GZIP);
+							break;
+							// Если метод компрессии выбран Brotli
+							case static_cast <uint8_t> (http_t::compress_t::BROTLI):
+								// Выполняем компрессию полученных данных
+								data = this->_hash.compress(message, size, hash_t::method_t::BROTLI);
+							break;
+						}
+						// Если сжатие данных прошло удачно
+						if(!data.empty()){
+							// Выполняем перемещение данных
+							buffer = std::forward <vector <char>> (data);
+							// Заменяем сообщение для передачи
+							message = buffer.data();
+							// Заменяем размер сообщения
+							(* const_cast <size_t *> (&size)) = buffer.size();
+						// Снимаем флаг сжатых данных
+						} else head.rsv[0] = false;
 					}
-					// Если сжатие данных прошло удачно
-					if(!data.empty()){
-						// Выполняем перемещение данных
-						buffer = std::forward <vector <char>> (data);
-						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
-					// Снимаем флаг сжатых данных
-					} else head.rsv[0] = false;
-				}
-				// Если требуется фрагментация сообщения
-				if(size > this->_frame.size){
-					// Бинарный буфер чанка данных
-					vector <char> chunk(this->_frame.size);
-					// Смещение в бинарном буфере
-					size_t start = 0, stop = this->_frame.size;
-					// Выполняем разбивку полезной нагрузки на сегменты
-					while(stop < size){
-						// Увеличиваем длину чанка
-						stop += this->_frame.size;
-						// Если длина чанка слишком большая, компенсируем
-						stop = (stop > size ? size : stop);
-						// Устанавливаем флаг финального сообщения
-						head.fin = (stop == size);
-						// Формируем чанк бинарных данных
-						chunk.assign(message + start, message + stop);
+					// Если требуется фрагментация сообщения
+					if(size > this->_frame.size){
+						// Бинарный буфер чанка данных
+						vector <char> chunk(this->_frame.size);
+						// Смещение в бинарном буфере
+						size_t start = 0, stop = this->_frame.size;
+						// Выполняем разбивку полезной нагрузки на сегменты
+						while(stop < size){
+							// Увеличиваем длину чанка
+							stop += this->_frame.size;
+							// Если длина чанка слишком большая, компенсируем
+							stop = (stop > size ? size : stop);
+							// Устанавливаем флаг финального сообщения
+							head.fin = (stop == size);
+							// Формируем чанк бинарных данных
+							chunk.assign(message + start, message + stop);
+							// Создаём буфер для отправки
+							const auto & buffer = this->_frame.methods.set(head, chunk.data(), chunk.size());
+							// Если бинарный буфер для отправки данных получен
+							if(!buffer.empty())
+								// Выполняем отправку сообщения на сервер
+								web2_t::send(this->_sid, buffer.data(), buffer.size(), false);
+							// Выполняем сброс RSV1
+							head.rsv[0] = false;
+							// Устанавливаем опкод сообщения
+							head.optcode = ws::frame_t::opcode_t::CONTINUATION;
+							// Увеличиваем смещение в буфере
+							start = stop;
+						}
+					// Если фрагментация сообщения не требуется
+					} else {
 						// Создаём буфер для отправки
-						const auto & buffer = this->_frame.methods.set(head, chunk.data(), chunk.size());
+						const auto & buffer = this->_frame.methods.set(head, message, size);
 						// Если бинарный буфер для отправки данных получен
 						if(!buffer.empty())
 							// Выполняем отправку сообщения на сервер
 							web2_t::send(this->_sid, buffer.data(), buffer.size(), false);
-						// Выполняем сброс RSV1
-						head.rsv[0] = false;
-						// Устанавливаем опкод сообщения
-						head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-						// Увеличиваем смещение в буфере
-						start = stop;
 					}
-				// Если фрагментация сообщения не требуется
-				} else {
-					// Создаём буфер для отправки
-					const auto & buffer = this->_frame.methods.set(head, message, size);
-					// Если бинарный буфер для отправки данных получен
-					if(!buffer.empty())
-						// Выполняем отправку сообщения на сервер
-						web2_t::send(this->_sid, buffer.data(), buffer.size(), false);
 				}
+				// Выполняем разблокировку отправки сообщения
+				this->_allow.send = !this->_allow.send;
 			}
-			// Выполняем разблокировку отправки сообщения
-			this->_allow.send = !this->_allow.send;
 		}
 	}
 }
@@ -1046,8 +1114,14 @@ void awh::client::WebSocket2::send(const char * message, const size_t size, cons
  * pause Метод установки на паузу клиента
  */
 void awh::client::WebSocket2::pause() noexcept {
-	// Ставим работу клиента на паузу
-	this->_freeze = true;
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Ставим работу клиента на паузу
+		this->_ws1.pause();
+	// Если переключение протокола на HTTP/2 выполнено
+	else
+		// Ставим работу клиента на паузу
+		this->_freeze = true;
 }
 /**
  * stop Метод остановки клиента
@@ -1105,6 +1179,8 @@ void awh::client::WebSocket2::start() noexcept {
 void awh::client::WebSocket2::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения входящих ошибок
 	this->_callback.set <void (const u_int, const string &)> ("error", callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
@@ -1113,6 +1189,8 @@ void awh::client::WebSocket2::on(function <void (const u_int, const string &)> c
 void awh::client::WebSocket2::on(function <void (const vector <char> &, const bool)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения входящих сообщений
 	this->_callback.set <void (const vector <char> &, const bool)> ("message", callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
@@ -1121,6 +1199,8 @@ void awh::client::WebSocket2::on(function <void (const vector <char> &, const bo
 void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученного заголовка с сервера
@@ -1129,6 +1209,8 @@ void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, con
 void awh::client::WebSocket2::on(function <void (const int32_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученных заголовков с сервера
@@ -1137,41 +1219,57 @@ void awh::client::WebSocket2::on(function <void (const int32_t, const string &, 
 void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * sub Метод получения выбранного сабпротокола
  * @return выбранный сабпротокол
  */
 const string & awh::client::WebSocket2::sub() const noexcept {
-	// Выводим выбранный сабпротокол
-	return this->_http.sub();
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выводим выбранный сабпротокол
+		return this->_ws1.sub();
+	// Если переключение протокола на HTTP/2 выполнено
+	else
+		// Выводим выбранный сабпротокол
+		return this->_http.sub();
 }
 /**
- * sub Метод установки подпротокола поддерживаемого сервером
+ * sub Метод установки сабпротокола поддерживаемого сервером
  * @param sub подпротокол для установки
  */
 void awh::client::WebSocket2::sub(const string & sub) noexcept {
 	// Если сабпротокол передан
-	if(!sub.empty())
-		// Устанавливаем сабподпротокол
+	if(!sub.empty()){
+		// Устанавливаем сабподпротокол для WebSocket-клиента
+		this->_ws1.sub(sub);
+		// Устанавливаем сабподпротокол для HTTP-клиента
 		this->_http.sub(sub);
+	}
 }
 /**
- * subs Метод установки списка подпротоколов поддерживаемых сервером
+ * subs Метод установки списка сабпротоколов поддерживаемых сервером
  * @param subs подпротоколы для установки
  */
 void awh::client::WebSocket2::subs(const vector <string> & subs) noexcept {
-	// Если список подпротоколов получен
-	if(!subs.empty())
-		// Устанавливаем список сабподпротоколов
+	// Если список сабпротоколов получен
+	if(!subs.empty()){
+		// Устанавливаем список сабсабпротоколов для WebSocket-клиента
+		this->_ws1.subs(subs);
+		// Устанавливаем список сабсабпротоколов для HTTP-клиента
 		this->_http.subs(subs);
+	}
 }
 /**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
 void awh::client::WebSocket2::chunk(const size_t size) noexcept {
-	// Устанавливаем размер чанка
+	// Устанавливаем размер чанка для WebSocket-клиента
+	this->_ws1.chunk(size);
+	// Устанавливаем размер чанка для HTTP-клиента
 	this->_http.chunk(size);
 }
 /**
@@ -1180,7 +1278,12 @@ void awh::client::WebSocket2::chunk(const size_t size) noexcept {
  */
 void awh::client::WebSocket2::segmentSize(const size_t size) noexcept {
 	// Если размер передан, устанавливаем
-	if(size > 0) this->_frame.size = size;
+	if(size > 0){
+		// Устанавливаем размер сегментов фрейма
+		this->_frame.size = size;
+		// Устанавливаем размер сегментов фрейма для WebSocket-клиента
+		this->_ws1.segmentSize(size);
+	}
 }
 /**
  * mode Метод установки флагов настроек модуля
@@ -1208,6 +1311,8 @@ void awh::client::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 		// Выполняем установку флага проверки домена
 		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
 	}
+	// Устанавливаем флаги настроек модуля для WebSocket-клиента
+	this->_ws1.mode(flags);
 }
 /**
  * core Метод установки сетевого ядра
@@ -1257,7 +1362,9 @@ void awh::client::WebSocket2::core(const client::core_t * core) noexcept {
  * @param password пароль пользователя для авторизации на сервере
  */
 void awh::client::WebSocket2::user(const string & login, const string & password) noexcept {
-	// Устанавливаем логин и пароль пользователя
+	// Устанавливаем логин и пароль пользователя для WebSocket-клиента
+	this->_ws1.user(login, password);
+	// Устанавливаем логин и пароль пользователя для HTTP-клиента
 	this->_http.user(login, password);
 }
 /**
@@ -1269,7 +1376,9 @@ void awh::client::WebSocket2::userAgent(const string & userAgent) noexcept {
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента у родительского класса
 		web2_t::userAgent(userAgent);
-		// Устанавливаем пользовательского агента
+		// Устанавливаем пользовательского агента для WebSocket-клиента
+		this->_ws1.userAgent(userAgent);
+		// Устанавливаем пользовательского агента для HTTP-клиента
 		this->_http.userAgent(userAgent);
 	}
 }
@@ -1284,7 +1393,9 @@ void awh::client::WebSocket2::serv(const string & id, const string & name, const
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
 		web2_t::serv(id, name, ver);
-		// Устанавливаем данные сервиса
+		// Устанавливаем данные сервиса для WebSocket-клиента
+		this->_ws1.serv(id, name, ver);
+		// Устанавливаем данные сервиса для HTTP-клиента
 		this->_http.serv(id, name, ver);
 	}
 }
@@ -1296,16 +1407,18 @@ void awh::client::WebSocket2::serv(const string & id, const string & name, const
 void awh::client::WebSocket2::multiThreads(const size_t threads, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
+		// Выполняем установку количества активных ядер
+		this->_threads = threads;
 		// Если многопоточность ещё не активированна
 		if(!this->_thr.is())
 			// Выполняем инициализацию пула потоков
-			this->_thr.init(threads);
+			this->_thr.init(this->_threads);
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
 			this->_thr.wait();
 			// Выполняем инициализацию нового тредпула
-			this->_thr.init(threads);
+			this->_thr.init(this->_threads);
 		}
 		// Если сетевое ядро установлено
 		if(this->_core != nullptr)
@@ -1320,7 +1433,9 @@ void awh::client::WebSocket2::multiThreads(const size_t threads, const bool mode
  * @param hash алгоритм шифрования для Digest-авторизации
  */
 void awh::client::WebSocket2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
-	// Если объект авторизации создан
+	// Устанавливаем параметры авторизации для WebSocket-клиента
+	this->_ws1.authType(type, hash);
+	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http.authType(type, hash);
 }
 /**
@@ -1330,6 +1445,8 @@ void awh::client::WebSocket2::authType(const auth_t::type_t type, const auth_t::
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::client::WebSocket2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования для WebSocket-клиента
+	this->_ws1.crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента
 	this->_http.crypto(pass, salt, cipher);
 }
@@ -1340,7 +1457,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1354,7 +1471,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1368,6 +1485,12 @@ awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * f
  * ~WebSocket2 Деструктор
  */
 awh::client::WebSocket2::~WebSocket2() noexcept {
-	// Выполняем завершение всех активных потоков
-	this->_thr.wait();
+	// Если многопоточность активированна
+	if(this->_thr.is())
+		// Выполняем завершение всех активных потоков
+		this->_thr.wait();
+	// Если многопоточность активированна у WebSocket/1.1 клиента
+	if(this->_ws1._thr.is())
+		// Выполняем завершение всех активных потоков
+		this->_ws1._thr.wait();
 }

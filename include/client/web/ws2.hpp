@@ -21,6 +21,7 @@
 #include <ws/frame.hpp>
 #include <ws/client.hpp>
 #include <sys/threadpool.hpp>
+#include <client/web/ws1.hpp>
 #include <client/web/web.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -92,11 +93,14 @@ namespace awh {
 				bool _deflate;
 				// Контрольная точка ответа на пинг
 				time_t _point;
+				// Количество активных ядер
+				size_t _threads;
+			private:
+				// Объект работы с WebSocket-клиентом HTTP/1.1
+				ws1_t _ws1;
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
-				// Объект работы с URI ссылками
-				uri_t _uri;
 				// Объект для работы с HTTP-протколом
 				ws_t _http;
 				// Объект для компрессии-декомпрессии данных
@@ -291,7 +295,7 @@ namespace awh {
 				 */
 				void sub(const string & sub) noexcept;
 				/**
-				 * subs Метод установки списка подпротоколов поддерживаемых сервером
+				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
 				 * @param subs подпротоколы для установки
 				 */
 				void subs(const vector <string> & subs) noexcept;

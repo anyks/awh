@@ -48,7 +48,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 				#if defined(DEBUG_MODE)
 					{
 						// Получаем данные ответа
-						const auto & response = reinterpret_cast <http_t *> (&ws->_ws)->response(true);
+						const auto & response = ws->_ws.process(http_t::process_t::RESPONSE, true);
 						// Если параметры ответа получены
 						if(!response.empty()){
 							// Выводим параметры ответа
@@ -106,15 +106,15 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 							// Получаем поддерживаемый метод компрессии
 							ws->_compress = ws->_ws.compress();
 							// Получаем размер скользящего окна сервера
-							ws->_wbitServer = ws->_ws.wbitServer();
+							ws->_wbitServer = ws->_ws.wbit(awh::web_t::hid_t::SERVER);
 							// Получаем размер скользящего окна клиента
-							ws->_wbitClient = ws->_ws.wbitClient();
+							ws->_wbitClient = ws->_ws.wbit(awh::web_t::hid_t::CLIENT);
 							// Обновляем контрольную точку времени получения данных
 							ws->_checkPoint = ws->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 							// Разрешаем перехватывать контекст компрессии для клиента
-							ws->_hash.takeoverCompress(ws->_ws.clientTakeover());
+							ws->_hash.takeoverCompress(ws->_ws.takeover(awh::web_t::hid_t::CLIENT));
 							// Разрешаем перехватывать контекст компрессии для сервера
-							ws->_hash.takeoverDecompress(ws->_ws.serverTakeover());
+							ws->_hash.takeoverDecompress(ws->_ws.takeover(awh::web_t::hid_t::SERVER));
 							// Выводим в лог сообщение
 							if(!ws->_noinfo) ws->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена, выполняем
@@ -138,13 +138,13 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 					// Если запрос неудачный
 					case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 						// Получаем параметры запроса
-						const auto & query = ws->_ws.query();
+						const auto & response = ws->_ws.response();
 						// Устанавливаем флаг принудительной остановки
 						ws->_stopped = true;
 						// Устанавливаем код ответа
-						ws->_code = query.code;
+						ws->_code = response.code;
 						// Создаём сообщение
-						mess = ws::mess_t(ws->_code, query.message);
+						mess = ws::mess_t(ws->_code, response.message);
 						// Выводим сообщение
 						ws->error(mess);
 					} break;
@@ -661,7 +661,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Получаем данные ответа
-				const auto & response = reinterpret_cast <http_t *> (&this->_ws)->response(true);
+				const auto & response = this->_ws.process(http_t::process_t::RESPONSE, true);
 				// Если параметры ответа получены
 				if(!response.empty()){
 					// Выводим заголовок ответа
@@ -727,15 +727,15 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Получаем поддерживаемый метод компрессии
 						this->_compress = this->_ws.compress();
 						// Получаем размер скользящего окна сервера
-						this->_wbitServer = this->_ws.wbitServer();
+						this->_wbitServer = this->_ws.wbit(awh::web_t::hid_t::SERVER);
 						// Получаем размер скользящего окна клиента
-						this->_wbitClient = this->_ws.wbitClient();
+						this->_wbitClient = this->_ws.wbit(awh::web_t::hid_t::CLIENT);
 						// Обновляем контрольную точку времени получения данных
 						this->_checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Разрешаем перехватывать контекст компрессии для клиента
-						this->_hash.takeoverCompress(this->_ws.clientTakeover());
+						this->_hash.takeoverCompress(this->_ws.takeover(awh::web_t::hid_t::CLIENT));
 						// Разрешаем перехватывать контекст компрессии для сервера
-						this->_hash.takeoverDecompress(this->_ws.serverTakeover());
+						this->_hash.takeoverDecompress(this->_ws.takeover(awh::web_t::hid_t::SERVER));
 						// Выводим в лог сообщение
 						if(!this->_noinfo) this->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена, выполняем
@@ -769,13 +769,13 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если запрос неудачный
 				case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 					// Получаем параметры запроса
-					const auto & query = this->_ws.query();
+					const auto & response = this->_ws.response();
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
 					// Устанавливаем код ответа
-					this->_code = query.code;
+					this->_code = response.code;
 					// Создаём сообщение
-					mess = ws::mess_t(this->_code, query.message);
+					mess = ws::mess_t(this->_code, response.message);
 					// Выводим сообщение
 					this->error(mess);
 				} break;
@@ -975,14 +975,14 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	this->_ws.clear();
 	// Устанавливаем метод сжатия
 	this->_ws.compress(this->_compress);
-	// Разрешаем перехватывать контекст для клиента
-	this->_ws.clientTakeover(this->_takeOverCli);
-	// Разрешаем перехватывать контекст для сервера
-	this->_ws.serverTakeover(this->_takeOverSrv);
 	// Разрешаем перехватывать контекст компрессии
 	this->_hash.takeoverCompress(this->_takeOverCli);
 	// Разрешаем перехватывать контекст декомпрессии
 	this->_hash.takeoverDecompress(this->_takeOverSrv);
+	// Разрешаем перехватывать контекст для клиента
+	this->_ws.takeover(awh::web_t::hid_t::CLIENT, this->_takeOverCli);
+	// Разрешаем перехватывать контекст для сервера
+	this->_ws.takeover(awh::web_t::hid_t::SERVER, this->_takeOverSrv);
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Если протокол подключения является HTTP/2
@@ -1033,14 +1033,14 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	}
 	// Если активирован режим работы с HTTP/2 протоколом
 	if(this->_http2.mode){
+		
+		
+		this->_ws.extensions({{"test1", "test2", "test3", "test4"},{"goga1", "goga2"},{"hobot"},{"bingo1", "bingo2", "bingo3"},{"hello"}});
+		
 		// Список заголовков для запроса
 		vector <nghttp2_nv> nva;
 		// Выполняем получение параметров запроса
-		awh::web_t::query_t query = this->_ws.query();
-		// Выполняем установки версии протокола
-		query.ver = 2.0f;
-		// Выполняем установку параметры ответа сервера
-		this->_ws.query(std::move(query));
+		awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1048,14 +1048,14 @@ void awh::client::WebSocket::actionConnect() noexcept {
 			// Выводим заголовок запроса
 			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 			// Получаем бинарные данные REST запроса
-			const auto & buffer = this->_ws.request(this->_scheme.url);
+			const auto & buffer = this->_ws.process(http_t::process_t::REQUEST, awh::web_t::req_t(2.0f, awh::web_t::method_t::GET, this->_scheme.url));
 			// Если бинарные данные запроса получены
 			if(!buffer.empty())
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl << endl;
 		#endif
 		// Выполняем запрос на получение заголовков
-		const auto & headers = this->_ws.request2(this->_scheme.url);
+		const auto & headers = this->_ws.process2(http_t::process_t::REQUEST, std::move(query));
 		
 
 		nva = {
@@ -1119,8 +1119,10 @@ void awh::client::WebSocket::actionConnect() noexcept {
 		}
 	// Если активирован режим работы с HTTP/1.1 протоколом
 	} else {
+		// Создаём объек запроса
+		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
 		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_ws.request(this->_scheme.url);
+		const auto & buffer = this->_ws.process(http_t::process_t::REQUEST, std::move(query));
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
 			/**
@@ -1268,27 +1270,29 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 			// Если все данные получены
 			if(this->_scheme.proxy.http.isEnd()){
 				// Получаем параметры запроса
-				const auto & query = this->_scheme.proxy.http.query();
+				const auto & response = this->_scheme.proxy.http.response();
 				// Устанавливаем код ответа
-				this->_code = query.code;
+				this->_code = response.code;
 				// Создаём сообщение
-				ws::mess_t mess(this->_code, query.message);
+				ws::mess_t mess(this->_code, response.message);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
-					// Получаем данные ответа
-					const auto & response = this->_scheme.proxy.http.response(true);
-					// Если параметры ответа получены
-					if(!response.empty()){
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры ответа
-						cout << string(response.begin(), response.end()) << endl;
-						// Если тело ответа существует
-						if(!this->_scheme.proxy.http.body().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
+					{
+						// Получаем данные ответа
+						const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, true);
+						// Если параметры ответа получены
+						if(!response.empty()){
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+							// Если тело ответа существует
+							if(!this->_scheme.proxy.http.body().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
+						}
 					}
 				#endif
 				// Выполняем проверку авторизации
@@ -2154,7 +2158,9 @@ void awh::client::WebSocket::crypto(const string & pass, const string & salt, co
 	// Устанавливаем размер шифрования
 	this->_hash.cipher(cipher);
 	// Устанавливаем параметры шифрования
-	if(this->_crypt) this->_ws.crypto(pass, salt, cipher);
+	if(this->_crypt)
+		// Выполняем установку шифрования
+		this->_ws.crypto(pass, salt, cipher);
 }
 /**
  * authType Метод установки типа авторизации
@@ -2181,7 +2187,7 @@ void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _hash(log), _ws(fmk, log, &_uri), _uri(fmk), _frame(fmk, log), _scheme(fmk, log),
+ _hash(log), _ws(fmk, log), _uri(fmk), _frame(fmk, log), _scheme(fmk, log),
  _action(action_t::NONE), _opcode(ws::frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
  _close(false), _unbind(true), _freeze(false), _noinfo(false), _stopped(false), _compressed(false), _takeOverCli(false),
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),

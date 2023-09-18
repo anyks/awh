@@ -21,8 +21,9 @@
 void awh::client::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
 	this->crypt = false;
-	// Список доступных расширений
-	vector <string> extensions;
+	// Выполняем включение перехвата контекста
+	this->_server.takeover = true;
+	this->_client.takeover = true;
 	// Выполняем проверку авторизации
 	this->stath = this->checkAuth();
 	// Если ключ соответствует
@@ -33,71 +34,65 @@ void awh::client::WS::commit() noexcept {
 	else this->state = state_t::BROKEN;
 	// Отключаем сжатие ответа с сервера
 	this->_compress = compress_t::NONE;
-	// Получаем значение заголовка Sec-Websocket-Extensions
-	const string & ext = this->web.header("sec-websocket-extensions");
-	// Если заголовок найден
-	if(!ext.empty()){
-		// Выполняем разделение параметров расширений
-		if(!this->fmk->split(ext, ";", extensions).empty()){
-			// Выполняем включение перехвата контекста
-			this->_server.takeover = true;
-			this->_client.takeover = true;
-			// Ищем поддерживаемые заголовки
-			for(auto & val : extensions){
-				// Если нужно производить шифрование данных
-				if((this->crypt = this->fmk->exists("permessage-encrypt=", val))){
-					// Определяем размер шифрования
-					switch(::stoi(val.substr(19))){
-						// Если шифрование произведено 128 битным ключём
-						case 128: this->hash.cipher(hash_t::cipher_t::AES128); break;
-						// Если шифрование произведено 192 битным ключём
-						case 192: this->hash.cipher(hash_t::cipher_t::AES192); break;
-						// Если шифрование произведено 256 битным ключём
-						case 256: this->hash.cipher(hash_t::cipher_t::AES256); break;
-					}
-				// Если клиент просит отключить перехват контекста сжатия для сервера
-				} else if(this->fmk->compare(val, "server_no_context_takeover"))
-					// Выполняем отключение перехвата контекста
-					this->_server.takeover = false;
-				// Если клиент просит отключить перехват контекста сжатия для клиента
-				else if(this->fmk->compare(val, "client_no_context_takeover"))
-					// Выполняем отключение перехвата контекста
-					this->_client.takeover = false;
-				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
-				else if(this->fmk->compare(val, "permessage-deflate") || this->fmk->compare(val, "perframe-deflate"))
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::DEFLATE;
-				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
-				else if(this->fmk->compare(val, "permessage-gzip") || this->fmk->compare(val, "perframe-gzip"))
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::GZIP;
-				// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
-				else if(this->fmk->compare(val, "permessage-br") || this->fmk->compare(val, "perframe-br"))
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::BROTLI;
-				// Если размер скользящего окна для клиента получен
-				else if(this->fmk->exists("client_max_window_bits=", val))
-					// Устанавливаем размер скользящего окна
-					this->_client.wbit = ::stoi(val.substr(23));
-				// Если разрешено использовать максимальный размер скользящего окна для клиента
-				else if(this->fmk->compare(val, "client_max_window_bits"))
-					// Устанавливаем максимальный размер скользящего окна
-					this->_client.wbit = GZIP_MAX_WBITS;
-				// Если размер скользящего окна для сервера получен
-				else if(this->fmk->exists("server_max_window_bits=", val))
-					// Устанавливаем размер скользящего окна
-					this->_server.wbit = ::stoi(val.substr(23));
-				// Если разрешено использовать максимальный размер скользящего окна для сервера
-				else if(this->fmk->compare(val, "server_max_window_bits"))
-					// Устанавливаем максимальный размер скользящего окна
-					this->_server.wbit = GZIP_MAX_WBITS;
+	// Список доступных расширений
+	vector <string> extensions;
+	// Переходим по всему списку заголовков
+	for(auto & header : this->web.headers()){
+		// Если заголовок расширения найден
+		if(this->fmk->compare(header.first, "sec-websocket-extensions")){
+			// Запись названия расширения
+			string extension = "";
+			// Выполняем перебор записи расширения
+			for(auto & letter : header.second){
+				// Определяем чему соответствует буква
+				switch(letter){
+					// Если буква соответствует разделителю расширения
+					case ';': {
+						// Если слово собранно
+						if(!extension.empty() && !this->extractExtension(extension)){
+							// Выполняем добавление слова в список записей
+							extensions.push_back(std::move(extension));
+							// Выполняем очистку слова записи
+							extension.clear();
+						}
+						// Если список записей собран
+						if(!extensions.empty()){
+							// Выполняем добавление списка записей в список расширений
+							this->_extensions.push_back(std::move(extensions));
+							// Выполняем очистку списка расширений
+							extensions.clear();
+						}
+					} break;
+					// Если буква соответствует разделителю группы расширений
+					case ',': {
+						// Если слово собранно
+						if(!extension.empty() && !this->extractExtension(extension)){
+							// Выполняем добавление слова в список записей
+							extensions.push_back(std::move(extension));
+							// Выполняем очистку слова записи
+							extension.clear();
+						}
+					} break;
+					// Если буква соответствует пробелу
+					case ' ': break;
+					// Если буква соответствует знаку табуляции
+					case '\t': break;
+					// Если буква соответствует букве
+					default: extension.append(1, letter);
+				}
 			}
+			// Если слово собранно
+			if(!extension.empty() && !this->extractExtension(extension))
+				// Выполняем добавление слова в список записей
+				extensions.push_back(std::move(extension));
 		}
 	}
+	// Если список записей собран
+	if(!extensions.empty())
+		// Выполняем добавление списка записей в список расширений
+		this->_extensions.push_back(std::move(extensions));
 	// Ищем подпротокол сервера
-	const string & sub = this->web.header("sec-websocket-protocol");
-	// Если подпротокол найден, устанавливаем его
-	if(!sub.empty()) this->_sub = sub;
+	this->_sub = this->web.header("sec-websocket-protocol");
 }
 /**
  * checkKey Метод проверки ключа сервера

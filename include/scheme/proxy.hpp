@@ -93,12 +93,11 @@ namespace awh {
 					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
-					 * @param uri объект работы с URI ссылками
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
 					 crypt(false), alive(false), close(false), locked(false),
 					 connect(false), stopped(false), requests(0), checkPoint(0),
-					 srv(fmk, log, uri), cli(fmk, log, uri), scheme(fmk, log),
+					 srv(fmk, log), cli(fmk, log), scheme(fmk, log),
 					 method(web_t::method_t::NONE),
 					 compress(awh::http_t::compress_t::NONE) {}
 					/**

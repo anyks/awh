@@ -274,7 +274,7 @@ void awh::server::WEB::actionRead(const size_t aid) noexcept {
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
-						const auto & request = adj->http.request(true);
+						const auto & request = adj->http.process(http_t::process_t::REQUEST, true);
 						// Если параметры запроса получены
 						if(!request.empty()){
 							// Выводим заголовок запроса
@@ -331,7 +331,7 @@ void awh::server::WEB::actionRead(const size_t aid) noexcept {
 							// Выполняем очистку буфера полученных данных
 							adj->buffer.clear();
 							// Формируем запрос авторизации
-							const auto & response = adj->http.reject(401);
+							const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							// Если ответ получен
 							if(!response.empty()){
 								// Тело полезной нагрузки
@@ -611,7 +611,7 @@ void awh::server::WEB::reject(const size_t aid, const u_int code, const string &
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->http.reject(code, mess);
+			const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (code), mess));
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -662,7 +662,7 @@ void awh::server::WEB::response(const size_t aid, const u_int code, const string
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->http.response(code, mess);
+			const auto & response = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (code), mess));
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа

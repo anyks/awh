@@ -72,9 +72,8 @@ namespace awh {
 			 * HttpProxy Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
 			 */
-			HttpProxy(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			HttpProxy(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~HttpProxy Деструктор
 			 */

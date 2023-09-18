@@ -76,9 +76,8 @@ namespace awh {
 				 * Http Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
-				 * @param uri объект работы с URI
 				 */
-				Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+				Http(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~Http Деструктор
 				 */

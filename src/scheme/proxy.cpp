@@ -38,7 +38,7 @@ void awh::server::SchemeProxy::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log, &this->uri)));
+		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log)));
 		// Устанавливаем метод сжатия
 		ret.first->second->cli.compress(this->compress);
 		ret.first->second->srv.compress(this->compress);

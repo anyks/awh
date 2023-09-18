@@ -276,7 +276,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
-						const auto & request = reinterpret_cast <http_t *> (&adj->ws)->request(true);
+						const auto & request = adj->ws.process(http_t::process_t::REQUEST, true);
 						// Если параметры запроса получены
 						if(!request.empty()){
 							// Выводим заголовок запроса
@@ -306,7 +306,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->ws.clear();
 									// Получаем бинарные данные REST запроса
-									buffer = adj->ws.reject(400, "Unsupported protocol version");
+									buffer = adj->ws.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 									// Завершаем работу
@@ -317,7 +317,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->ws.clear();
 									// Получаем бинарные данные REST запроса
-									buffer = adj->ws.reject(400, "Wrong client key");
+									buffer = adj->ws.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 									// Завершаем работу
@@ -330,19 +330,19 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Получаем поддерживаемый метод компрессии
 								adj->compress = adj->ws.compress();
 								// Получаем размер скользящего окна сервера
-								adj->wbitServer = adj->ws.wbitServer();
+								adj->wbitServer = adj->ws.wbit(awh::web_t::hid_t::SERVER);
 								// Получаем размер скользящего окна клиента
-								adj->wbitClient = adj->ws.wbitClient();
+								adj->wbitClient = adj->ws.wbit(awh::web_t::hid_t::CLIENT);
 								// Если разрешено выполнять перехват контекста компрессии для сервера
-								if(adj->ws.serverTakeover())
+								if(adj->ws.takeover(awh::web_t::hid_t::SERVER))
 									// Разрешаем перехватывать контекст компрессии для клиента
 									adj->hash.takeoverCompress(true);
 								// Если разрешено выполнять перехват контекста компрессии для клиента
-								if(adj->ws.clientTakeover())
+								if(adj->ws.takeover(awh::web_t::hid_t::CLIENT))
 									// Разрешаем перехватывать контекст компрессии для сервера
 									adj->hash.takeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
-								buffer = adj->ws.response();
+								buffer = adj->ws.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (101)));
 								// Если бинарные данные ответа получены
 								if(!buffer.empty()){
 									/**
@@ -383,7 +383,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем очистку буфера данных
 									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
-									buffer = adj->ws.reject(500);
+									buffer = adj->ws.reject(awh::web_t::res_t(static_cast <u_int> (500)));
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 								}
@@ -396,7 +396,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Выполняем очистку буфера данных
 								adj->buffer.payload.clear();
 								// Формируем ответ, что страница не доступна
-								buffer = adj->ws.reject(403);
+								buffer = adj->ws.reject(awh::web_t::res_t(static_cast <u_int> (403)));
 								// Если бинарные данные запроса получены, отправляем на сервер
 								adj->stopped = !buffer.empty();
 							}
@@ -410,7 +410,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выполняем очистку буфера данных
 							adj->buffer.payload.clear();
 							// Формируем запрос авторизации
-							buffer = adj->ws.reject(401);
+							buffer = adj->ws.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
@@ -634,14 +634,14 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 				// Устанавливаем размер шифрования
 				adj->hash.cipher(this->_cipher);
 			}
-			// Разрешаем перехватывать контекст для клиента
-			adj->ws.clientTakeover(this->_takeOverCli);
-			// Разрешаем перехватывать контекст для сервера
-			adj->ws.serverTakeover(this->_takeOverSrv);
 			// Разрешаем перехватывать контекст компрессии
 			adj->hash.takeoverCompress(this->_takeOverSrv);
 			// Разрешаем перехватывать контекст декомпрессии
 			adj->hash.takeoverDecompress(this->_takeOverCli);
+			// Разрешаем перехватывать контекст для клиента
+			adj->ws.takeover(awh::web_t::hid_t::CLIENT, this->_takeOverCli);
+			// Разрешаем перехватывать контекст для сервера
+			adj->ws.takeover(awh::web_t::hid_t::SERVER, this->_takeOverSrv);
 			// Устанавливаем данные сервиса
 			adj->ws.serv(this->_sid, this->_name, this->_ver);
 			// Устанавливаем поддерживаемые сабпротоколы

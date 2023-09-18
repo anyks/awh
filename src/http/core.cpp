@@ -1864,23 +1864,50 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 						// Определяем метод запроса
 						switch(static_cast <uint8_t> (req.method)){
 							// Если метод запроса указан как GET
-							case static_cast <uint8_t> (web_t::method_t::GET): httpMethod = "get"; break;
+							case static_cast <uint8_t> (web_t::method_t::GET):
+								// Устанавливаем метод запроса
+								httpMethod = "get";
+							break;
 							// Если метод запроса указан как PUT
-							case static_cast <uint8_t> (web_t::method_t::PUT): httpMethod = "put"; break;
+							case static_cast <uint8_t> (web_t::method_t::PUT):
+								// Устанавливаем метод запроса
+								httpMethod = "put";
+							break;
 							// Если метод запроса указан как POST
-							case static_cast <uint8_t> (web_t::method_t::POST): httpMethod = "post"; break;
+							case static_cast <uint8_t> (web_t::method_t::POST):
+								// Устанавливаем метод запроса
+								httpMethod = "post";
+							break;
 							// Если метод запроса указан как HEAD
-							case static_cast <uint8_t> (web_t::method_t::HEAD): httpMethod = "head"; break;
+							case static_cast <uint8_t> (web_t::method_t::HEAD):
+								// Устанавливаем метод запроса
+								httpMethod = "head";
+							break;
 							// Если метод запроса указан как PATCH
-							case static_cast <uint8_t> (web_t::method_t::PATCH): httpMethod = "patch"; break;
+							case static_cast <uint8_t> (web_t::method_t::PATCH):
+								// Устанавливаем метод запроса
+								httpMethod = "patch";
+							break;
 							// Если метод запроса указан как TRACE
-							case static_cast <uint8_t> (web_t::method_t::TRACE): httpMethod = "trace"; break;
+							case static_cast <uint8_t> (web_t::method_t::TRACE):
+								// Устанавливаем метод запроса
+								httpMethod = "trace";
+							break;
 							// Если метод запроса указан как DELETE
-							case static_cast <uint8_t> (web_t::method_t::DEL): httpMethod = "delete"; break;
+							case static_cast <uint8_t> (web_t::method_t::DEL):
+								// Устанавливаем метод запроса
+								httpMethod = "delete";
+							break;
 							// Если метод запроса указан как OPTIONS
-							case static_cast <uint8_t> (web_t::method_t::OPTIONS): httpMethod = "options"; break;
+							case static_cast <uint8_t> (web_t::method_t::OPTIONS):
+								// Устанавливаем метод запроса
+								httpMethod = "options";
+							break;
 							// Если метод запроса указан как CONNECT
-							case static_cast <uint8_t> (web_t::method_t::CONNECT): httpMethod = "connect"; break;
+							case static_cast <uint8_t> (web_t::method_t::CONNECT):
+								// Устанавливаем метод запроса
+								httpMethod = "connect";
+							break;
 						}
 						// Получаем параметры авторизации
 						const string & auth = this->auth.client.header(httpMethod, false);
@@ -2739,13 +2766,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 					if(req.method == web_t::method_t::CONNECT)
 						// Формируем URI запроса
 						result.push_back(make_pair(":authority", this->fmk->format("%s:%u", req.url.host.c_str(), req.url.port)));
-					// Если метод подключения не является методом CONNECT
-					else {
-						// Выполняем установку хоста сервера
-						result.push_back(make_pair(":authority", req.url.host));
-						// Выполняем установку пути запроса
-						result.push_back(make_pair(":path", this->uri.query(req.url)));
-					}
+					// Если метод подключения не является методом CONNECT, выполняем установку хоста сервера
+					else result.push_back(make_pair(":authority", req.url.host));
+					// Выполняем установку пути запроса
+					result.push_back(make_pair(":path", this->uri.query(req.url)));
 					// Переходим по всему списку заголовков
 					for(auto & header : this->web.headers()){
 						// Если заголовок является системным

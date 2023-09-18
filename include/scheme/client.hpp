@@ -57,8 +57,6 @@ namespace awh {
 			public:
 				// Создаем объект сети
 				net_t net;
-				// Создаём объект работы с URI
-				uri_t uri;
 				// Создаём объект для работы с Socks5
 				socks5_t socks5;
 				// Создаём объект для работы с HTTP
@@ -76,7 +74,7 @@ namespace awh {
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 				 family(scheme_t::family_t::IPV4), type(type_t::NONE),
-				 uri(fmk), socks5(log), http(fmk, log, &uri), fmk(fmk), log(log) {}
+				 socks5(log), http(fmk, log), fmk(fmk), log(log) {}
 				/**
 				 * ~Proxy Деструктор
 				 */

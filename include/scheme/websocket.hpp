@@ -107,13 +107,15 @@ namespace awh {
 					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 					/**
 					 * Coffer Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
 					 crypt(false), close(false),
 					 stopped(false), compressed(false),
 					 wbitClient(-1), wbitServer(-1),
 					 action(action_t::NONE), checkPoint(0),
-					 hash(log), ws(fmk, log, uri),
+					 hash(log), ws(fmk, log),
 					 compress(http_t::compress_t::NONE),
 					 opcode(ws::frame_t::opcode_t::TEXT) {}
 					/**

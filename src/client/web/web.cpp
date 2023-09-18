@@ -206,7 +206,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 						#if defined(DEBUG_MODE)
 							{
 								// Получаем данные ответа
-								const auto & response = this->_scheme.proxy.http.response(true);
+								const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, true);
 								// Если параметры ответа получены
 								if(!response.empty()){
 									// Выводим заголовок ответа
@@ -221,15 +221,15 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							}
 						#endif
 						// Получаем параметры запроса
-						const auto & query = this->_scheme.proxy.http.query();
+						const auto & response = this->_scheme.proxy.http.response();
 						// Получаем статус ответа
 						awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
 						// Если выполнять редиректы запрещено
 						if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
 							// Если нужно произвести запрос заново
-							if((query.code == 201) || (query.code == 301) ||
-							   (query.code == 302) || (query.code == 303) ||
-							   (query.code == 307) || (query.code == 308))
+							if((response.code == 201) || (response.code == 301) ||
+							   (response.code == 302) || (response.code == 303) ||
+							   (response.code == 307) || (response.code == 308))
 								// Запрещаем выполнять редирект
 								status = awh::http_t::stath_t::GOOD;
 						}
@@ -272,15 +272,15 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 						if(this->_callback.is("response"))
 							// Выводим функцию обратного вызова
-							this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, query.code, query.message);
+							this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, response.code, response.message);
 						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 						if(this->_callback.is("headers"))
 							// Выводим функцию обратного вызова
-							this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, query.code, query.message, this->_scheme.proxy.http.headers());
+							this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, response.code, response.message, this->_scheme.proxy.http.headers());
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 						if(this->_callback.is("entity"))
 							// Выводим функцию обратного вызова
-							this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, query.code, query.message, this->_scheme.proxy.http.body());
+							this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, response.code, response.message, this->_scheme.proxy.http.body());
 						// Завершаем работу
 						dynamic_cast <client::core_t *> (core)->close(this->_aid);
 						// Завершаем работу

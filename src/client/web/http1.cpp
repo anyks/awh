@@ -44,13 +44,13 @@ void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, 
 	// Если список ответов получен
 	if(!this->_requests.empty()){
 		// Получаем параметры запроса
-		const auto & query = this->_http.query();
+		const auto & response = this->_http.response();
 		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((query.code == 201) || (query.code == 301) ||
-		  (query.code == 302) || (query.code == 303) || (query.code == 307) ||
-		  (query.code == 308) || (query.code == 401) || (query.code == 407))){
+		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
+		  (response.code == 302) || (response.code == 303) || (response.code == 307) ||
+		  (response.code == 308) || (response.code == 401) || (response.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((query.code == 401) || (query.code == 407) || this->_http.isHeader("location")){
+			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
 				// Получаем новый адрес запроса
 				const uri_t::url_t & url = this->_http.getUrl();
 				// Если адрес запроса получен
@@ -132,7 +132,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 						#if defined(DEBUG_MODE)
 							{
 								// Получаем данные ответа
-								const auto & response = this->_http.response(true);
+								const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
 								// Если параметры ответа получены
 								if(!response.empty()){
 									// Выводим заголовок ответа
@@ -266,15 +266,15 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Получаем параметры запроса
-	const auto & query = this->_http.query();
+	const auto & response = this->_http.response();
 	// Получаем статус ответа
 	awh::http_t::stath_t status = this->_http.getAuth();
 	// Если выполнять редиректы запрещено
 	if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
 		// Если нужно произвести запрос заново
-		if((query.code == 201) || (query.code == 301) ||
-		   (query.code == 302) || (query.code == 303) ||
-		   (query.code == 307) || (query.code == 308))
+		if((response.code == 201) || (response.code == 301) ||
+		   (response.code == 302) || (response.code == 303) ||
+		   (response.code == 307) || (response.code == 308))
 				// Запрещаем выполнять редирект
 				status = awh::http_t::stath_t::GOOD;
 	}
@@ -324,7 +324,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 			if(this->_callback.is("entity"))
 				// Устанавливаем полученную функцию обратного вызова
-				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 			// Устанавливаем размер стопбайт
 			if(!this->_http.isAlive()){
 				// Выполняем очистку оставшихся данных
@@ -351,11 +351,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 			// Устанавливаем флаг принудительной остановки
 			this->_stopped = true;
 			// Если возникла ошибка выполнения запроса
-			if((query.code >= 400) && (query.code < 500)){
+			if((response.code >= 400) && (response.code < 500)){
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 				// Если объект ещё не удалён
 				if(!this->_requests.empty()){
 					// Выполняем поиск указанного запроса
@@ -375,7 +375,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 	// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 	if(this->_callback.is("entity"))
 		// Устанавливаем полученную функцию обратного вызова
-		this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+		this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 	// Завершаем работу
 	core->close(aid);
 	// Выполняем завершение работы
@@ -412,8 +412,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			if(!request.entity.empty())
 				// Устанавливаем тело запроса
 				this->_http.body(request.entity);
+			// Создаём объек запроса
+			awh::web_t::req_t query(request.method, this->_scheme.url);
 			// Получаем бинарные данные WEB запроса
-			const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
 				/**
@@ -575,7 +577,7 @@ void awh::client::Http1::serv(const string & id, const string & name, const stri
  * @param hash алгоритм шифрования для Digest-авторизации
  */
 void awh::client::Http1::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
-	// Если объект авторизации создан
+	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http.authType(type, hash);
 }
 /**
@@ -594,7 +596,7 @@ void awh::client::Http1::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _http(fmk, log, &_uri), _resultCallback(log) {
+ web_t(fmk, log), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
 }
@@ -605,7 +607,7 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _http(fmk, log, &_uri), _resultCallback(log) {
+ web_t(core, fmk, log), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
 }

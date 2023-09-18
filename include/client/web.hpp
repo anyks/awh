@@ -184,7 +184,6 @@ namespace awh {
 				 * WebHttp Структура HTTP-клиента
 				 */
 				typedef struct WebHttp {
-					uri_t uri;               // Объект работы с URI ссылками
 					http_t http;             // Объект для работы с HTTP
 					fn_t callback;           // Объект работы с функциями обратного вызова
 					vector <char> buffer;    // Объект буфера данных
@@ -194,7 +193,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WebHttp(const fmk_t * fmk, const log_t * log) noexcept : uri(fmk), http(fmk, log, &uri), callback(log) {}
+					WebHttp(const fmk_t * fmk, const log_t * log) noexcept : http(fmk, log), callback(log) {}
 				} web_http_t;
 				/**
 				 * WebSocket Структура WebSocket-клиента
@@ -206,7 +205,6 @@ namespace awh {
 					bool freeze;      // Флаг фриза работы клиента
 					bool deflate;     // Флаг переданных сжатых данных
 					time_t point;     // Контрольная точка ответа на пинг
-					uri_t uri;        // Объект работы с URI ссылками
 					ws_t http;        // Объект для работы с HTTP запросами
 					hash_t hash;      // Объект для компрессии-декомпрессии данных
 					frame_t frame;    // Объект для работы с фреймом WebSocket
@@ -223,7 +221,7 @@ namespace awh {
 					 */
 					WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
 					 crypt(false), close(false), noinfo(false), freeze(false), deflate(false),
-					 point(0), uri(fmk), http(fmk, log, &uri), hash(log), frame(fmk, log) {}
+					 point(0), http(fmk, log), hash(log), frame(fmk, log) {}
 				} web_socket_t;
 			private:
 				// Идентификатор подключения
@@ -256,6 +254,8 @@ namespace awh {
 				// Метод компрессии данных
 				http_t::compress_t _compress;
 			private:
+				// Объект работы с URI-ссылками
+				uri_t _uri;
 				// Объект для работы с HTTP/2
 				http2_t _http2;
 				// Объявляем функции обратного вызова

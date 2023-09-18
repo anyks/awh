@@ -23,9 +23,9 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Получаем объект параметров запроса
-	web_t::query_t query = this->web.query();
+	const web_t::res_t & response = this->web.response();
 	// Проверяем код ответа
-	switch(query.code){
+	switch(response.code){
 		// Если требуется авторизация
 		case 401:
 		case 407: {
@@ -34,19 +34,19 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 				// Если производится авторизация DIGEST
 				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
 					// Получаем параметры авторизации
-					const string & auth = this->web.header(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
+					const string & auth = this->web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
 					// Если параметры авторизации найдены
 					if(!auth.empty()){
 						// Устанавливаем заголовок HTTP в параметры авторизации
 						this->auth.client.header(auth);
 						// Просим повторить авторизацию ещё раз
-						result = http_t::stath_t::RETRY;
+						result = stath_t::RETRY;
 					}
 				} break;
 				// Если производится авторизация BASIC
 				case static_cast <uint8_t> (awh::auth_t::type_t::BASIC):
 					// Просим повторить авторизацию ещё раз
-					result = http_t::stath_t::RETRY;
+					result = stath_t::RETRY;
 				break;
 			}
 		} break;
@@ -61,26 +61,12 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 			const string & location = this->web.header("location");
 			// Если адрес перенаправления найден
 			if(!location.empty()){
-				// Выполняем парсинг URL
-				uri_t::url_t tmp = this->uri->parse(location);
-				/*
-				// Если параметры URL существуют
-				if(!this->url.params.empty())
-					// Переходим по всему списку параметров
-					for(auto & param : this->url.params) tmp.params.emplace(param);
-				*/
-				// Меняем IP адрес сервера
-				const_cast <uri_t::url_t *> (&this->url)->ip = std::move(tmp.ip);
-				// Меняем порт сервера
-				const_cast <uri_t::url_t *> (&this->url)->port = std::move(tmp.port);
-				// Меняем на путь сервере
-				const_cast <uri_t::url_t *> (&this->url)->path = std::move(tmp.path);
-				// Меняем доменное имя сервера
-				const_cast <uri_t::url_t *> (&this->url)->domain = std::move(tmp.domain);
-				// Меняем протокол запроса сервера
-				const_cast <uri_t::url_t *> (&this->url)->schema = std::move(tmp.schema);
-				// Устанавливаем новый список параметров
-				// const_cast <uri_t::url_t *> (&this->url)->params = std::move(tmp.params);
+				// Получаем объект параметров запроса
+				web_t::req_t request = this->web.request();
+				// Выполняем парсинг полученного URL-адреса
+				request.url = this->uri.parse(location);
+				// Выполняем установку параметров запроса
+				this->web.request(std::move(request));
 				// Просим повторить авторизацию ещё раз
 				result = stath_t::RETRY;
 			}
@@ -125,9 +111,8 @@ void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * Http Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
- * @param uri объект работы с URI
  */
-awh::client::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::http_t(fmk, log, uri) {
+awh::client::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
 	// Устанавливаем тип HTTP парсера
 	this->web.init(web_t::hid_t::CLIENT);
 	// Устанавливаем тип HTTP модуля

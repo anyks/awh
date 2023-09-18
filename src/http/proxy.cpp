@@ -33,25 +33,52 @@ awh::Http::stath_t awh::HttpProxy::checkAuth() noexcept {
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->auth.server.header(auth);
 			// Определяем метод запроса
-			switch(static_cast <uint8_t> (this->web.query().method)){
+			switch(static_cast <uint8_t> (this->web.request().method)){
 				// Если метод запроса указан как GET
-				case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
+				case static_cast <uint8_t> (web_t::method_t::GET):
+					// Устанавливаем метод запроса
+					method = "get";
+				break;
 				// Если метод запроса указан как PUT
-				case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
+				case static_cast <uint8_t> (web_t::method_t::PUT):
+					// Устанавливаем метод запроса
+					method = "put";
+				break;
 				// Если метод запроса указан как POST
-				case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
+				case static_cast <uint8_t> (web_t::method_t::POST):
+					// Устанавливаем метод запроса
+					method = "post";
+				break;
 				// Если метод запроса указан как HEAD
-				case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
+				case static_cast <uint8_t> (web_t::method_t::HEAD):
+					// Устанавливаем метод запроса
+					method = "head";
+				break;
 				// Если метод запроса указан как DELETE
-				case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+				case static_cast <uint8_t> (web_t::method_t::DEL):
+					// Устанавливаем метод запроса
+					method = "delete";
+				break;
 				// Если метод запроса указан как PATCH
-				case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+				case static_cast <uint8_t> (web_t::method_t::PATCH):
+					// Устанавливаем метод запроса
+					method = "patch";
+				break;
 				// Если метод запроса указан как TRACE
-				case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
+				case static_cast <uint8_t> (web_t::method_t::TRACE):
+					// Устанавливаем метод запроса
+					method = "trace";
+				break;
 				// Если метод запроса указан как OPTIONS
-				case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
+				case static_cast <uint8_t> (web_t::method_t::OPTIONS):
+					// Устанавливаем метод запроса
+					method = "options";
+				break;
 				// Если метод запроса указан как CONNECT
-				case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
+				case static_cast <uint8_t> (web_t::method_t::CONNECT):
+					// Устанавливаем метод запроса
+					method = "connect";
+				break;
 			}
 			// Выполняем проверку авторизации
 			if(this->auth.server.check(method))
@@ -69,7 +96,9 @@ awh::Http::stath_t awh::HttpProxy::checkAuth() noexcept {
  */
 void awh::HttpProxy::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->auth.server.realm(realm);
+	if(!realm.empty())
+		// Выполняем установку названия сервера
+		this->auth.server.realm(realm);
 }
 /**
  * opaque Метод установки временного ключа сессии сервера
@@ -77,7 +106,9 @@ void awh::HttpProxy::realm(const string & realm) noexcept {
  */
 void awh::HttpProxy::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth.server.opaque(opaque);
+	if(!opaque.empty())
+		// Выполняем установку ключа сессии
+		this->auth.server.opaque(opaque);
 }
 /**
  * extractPassCallback Метод добавления функции извлечения пароля
@@ -108,9 +139,8 @@ void awh::HttpProxy::authType(const awh::auth_t::type_t type, const awh::auth_t:
  * HttpProxy Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
- * @param uri объект работы с URI
  */
-awh::HttpProxy::HttpProxy(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+awh::HttpProxy::HttpProxy(const fmk_t * fmk, const log_t * log) noexcept : http_t(fmk, log) {
 	// Устанавливаем тип HTTP парсера
 	this->web.init(web_t::hid_t::SERVER);
 	// Устанавливаем тип HTTP модуля

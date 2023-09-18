@@ -126,7 +126,7 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t si
 				// Если метод подключения CONNECT
 				if(adj->method == web_t::method_t::CONNECT){
 					// Формируем ответ адъютанту
-					const auto & response = adj->srv.response(static_cast <u_int> (200));
+					const auto & response = adj->srv.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (200)));
 					// Если ответ получен
 					if(!response.empty()){
 						// Тело полезной нагрузки
@@ -329,12 +329,10 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 						size_t bytes = adj->cli.parse(adj->client.data(), adj->client.size());
 						// Если все данные получены
 						if(adj->cli.isEnd()){
-							// Получаем параметры запроса
-							const auto & query = adj->cli.query();
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
 								// Получаем данные ответа
-								const auto & response = adj->cli.response(true);
+								const auto & response = adj->cli.process(http_t::process_t::RESPONSE, true);
 								// Если параметры ответа получены
 								if(!response.empty()){
 									// Выводим заголовок ответа
@@ -352,7 +350,7 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 							// Выводим сообщение
 							if(this->_callback.message(it->second, event_t::RESPONSE, &adj->cli, this)){
 								// Получаем данные ответа
-								const auto & response = adj->cli.response();
+								const auto & response = adj->cli.process(http_t::process_t::RESPONSE);
 								// Если данные ответа получены
 								if(!response.empty()){
 									// Тело REST сообщения
@@ -474,7 +472,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
-						const auto & request = adj->srv.request(true);
+						const auto & request = adj->srv.process(http_t::process_t::REQUEST, true);
 						// Если параметры запроса получены
 						if(!request.empty()){
 							// Выводим заголовок запроса
@@ -512,17 +510,17 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 							// Если подключение не выполнено
 							if(!adj->connect){
 								// Получаем данные запроса
-								const auto & query = adj->srv.query();
+								const auto & request = adj->srv.request();
 								// Выполняем проверку разрешено ли нам выполнять подключение
-								const bool allow = (!this->_noConnect || (query.method != web_t::method_t::CONNECT));
+								const bool allow = (!this->_noConnect || (request.method != web_t::method_t::CONNECT));
 								// Получаем URI запрос для сервера
-								const auto & uri = (query.method == web_t::method_t::CONNECT ? query.uri : adj->srv.header("host"));
+								const auto & uri = (request.method == web_t::method_t::CONNECT ? this->_fmk->format("%s:%u", request.url.host.c_str(), request.url.port) : adj->srv.header("host"));
 								// Сообщение запрета подключения
 								const string message = (allow ? "" : "Connect method prohibited");
 								// Если URI запрос для сервера получен
 								if(allow && (adj->locked = !uri.empty())){
 									// Запоминаем метод подключения
-									adj->method = query.method;
+									adj->method = request.method;
 									// Формируем адрес подключения
 									adj->scheme.url = this->_scheme.uri.parse(this->_fmk->format("http://%s", uri.c_str()));
 									// Выполняем запрос на сервер
@@ -538,7 +536,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 									// Выполняем очистку буфера полученных данных
 									adj->server.clear();
 									// Формируем запрос реджекта
-									const auto & response = adj->srv.reject(403, message);
+									const auto & response = adj->srv.reject(awh::web_t::res_t(static_cast <u_int> (403), message));
 									// Если ответ получен
 									if(!response.empty()){
 										// Тело полезной нагрузки
@@ -560,7 +558,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 								adj->srv.rmHeader("proxy-authorization");
 								{
 									// Получаем данные запроса
-									const auto & query = adj->srv.query();
+									const auto & request = adj->srv.request();
 									// Получаем данные заголовка Via
 									string via = adj->srv.header("via");
 									// Если unix-сокет активирован
@@ -568,17 +566,17 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 										// Если заголовок получен
 										if(!via.empty())
 											// Устанавливаем Via заголовок
-											via = this->_fmk->format("%s, %.1f %s", via.c_str(), query.ver, this->_usock.c_str());
+											via = this->_fmk->format("%s, %.1f %s", via.c_str(), request.version, this->_usock.c_str());
 										// Иначе просто формируем заголовок Via
-										else via = this->_fmk->format("%.1f %s", query.ver, this->_usock.c_str());
+										else via = this->_fmk->format("%.1f %s", request.version, this->_usock.c_str());
 									// Если активирован хост и порт
 									} else {
 										// Если заголовок получен
 										if(!via.empty())
 											// Устанавливаем Via заголовок
-											via = this->_fmk->format("%s, %.1f %s:%u", via.c_str(), query.ver, this->_host.c_str(), this->_port);
+											via = this->_fmk->format("%s, %.1f %s:%u", via.c_str(), request.version, this->_host.c_str(), this->_port);
 										// Иначе просто формируем заголовок Via
-										else via = this->_fmk->format("%.1f %s:%u", query.ver, this->_host.c_str(), this->_port);
+										else via = this->_fmk->format("%.1f %s:%u", request.version, this->_host.c_str(), this->_port);
 									}
 									// Устанавливаем заголовок Via
 									adj->srv.header("Via", via);
@@ -609,7 +607,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 									// Выводим сообщение
 									if(this->_callback.message(aid, event_t::REQUEST, &adj->srv, this)){
 										// Получаем данные запроса
-										const auto & request = adj->srv.request();
+										const auto & request = adj->srv.process(http_t::process_t::REQUEST);
 										// Если данные запроса получены
 										if(!request.empty()){
 											// Получаем идентификатор адъютанта
@@ -634,7 +632,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 									// Отправляем запрос на внешний сервер
 									if(aid > 0){
 										// Получаем данные запроса
-										const auto & request = adj->srv.request();
+										const auto & request = adj->srv.process(http_t::process_t::REQUEST);
 										// Если данные запроса получены
 										if(!request.empty()){
 											// Тело REST сообщения
@@ -671,7 +669,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 							// Выполняем очистку буфера полученных данных
 							adj->server.clear();
 							// Формируем запрос авторизации
-							const auto & response = adj->srv.reject(407);
+							const auto & response = adj->srv.reject(awh::web_t::res_t(static_cast <u_int> (407)));
 							// Если ответ получен
 							if(!response.empty()){
 								// Тело полезной нагрузки
@@ -866,7 +864,7 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->srv.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->srv.reject(code, mess);
+			const auto & response = adj->srv.reject(awh::web_t::res_t(static_cast <u_int> (code), mess));
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -917,7 +915,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->srv.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->srv.response(code, mess);
+			const auto & response = adj->srv.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (code), mess));
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа

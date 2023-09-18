@@ -44,8 +44,10 @@ namespace awh {
 		protected:
 			// Версия протокола WebSocket
 			static constexpr u_short WS_VERSION = 13;
+			// Размер минимального значения окна для сжатия данных GZIP
+			static constexpr short GZIP_MIN_WBITS = 8;
 			// Размер максимального значения окна для сжатия данных GZIP
-			static constexpr int GZIP_MAX_WBITS = 15;
+			static constexpr short GZIP_MAX_WBITS = 15;
 		protected:
 			/**
 			 * Partner Структура партнёра
@@ -93,6 +95,13 @@ namespace awh {
 			 * @return сгенерированный хэш ключа клиента
 			 */
 			const string sha1() const noexcept;
+		protected:
+			/**
+			 * extractExtension Метод извлечения системного расширения из заголовка
+			 * @param extension запись из которой нужно извлечь расширение
+			 * @return          результат извлечения
+			 */
+			bool extractExtension(const string & extension) noexcept;
 		protected:
 			/**
 			 * commit Метод применения полученных результатов

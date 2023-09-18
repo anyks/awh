@@ -91,7 +91,7 @@ namespace awh {
 				/**
 				 * Server Конструктор
 				 */
-				Server() noexcept : id{""}, name{""}, version{""} {}
+				Server() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
 			} server_t;
 			/**
 			 * Crypto Структура крипто-данных
@@ -225,9 +225,6 @@ namespace awh {
 		protected:
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;
-		private:
-			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Http *)> _fn;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk;

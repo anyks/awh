@@ -34,20 +34,22 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 		this->_http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		this->_http.clear();
+		// Выполняем очистку функций обратного вызова
+		this->_resultCallback.clear();
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
-		// Разрешаем перехватывать контекст для клиента
-		this->_http.clientTakeover(this->_client.takeOver);
-		// Разрешаем перехватывать контекст для сервера
-		this->_http.serverTakeover(this->_server.takeOver);
 		// Разрешаем перехватывать контекст компрессии
 		this->_hash.takeoverCompress(this->_client.takeOver);
 		// Разрешаем перехватывать контекст декомпрессии
 		this->_hash.takeoverDecompress(this->_server.takeOver);
-		// Выполняем очистку функций обратного вызова
-		this->_resultCallback.clear();
-		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_http.request(this->_scheme.url);
+		// Разрешаем перехватывать контекст для клиента
+		this->_http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeOver);
+		// Разрешаем перехватывать контекст для сервера
+		this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeOver);
+		// Создаём объек запроса
+		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
+		// Получаем бинарные данные REST запроса		
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
 			/**
@@ -72,11 +74,11 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
  */
 void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Получаем параметры запроса
-	const auto & query = this->_http.query();
+	const auto & response = this->_http.response();
 	// Если нужно произвести запрос заново
-	if(!this->_stopped && ((query.code == 301) || (query.code == 308) || (query.code == 401) || (query.code == 407))){
+	if(!this->_stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401) || (response.code == 407))){
 		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-		if((query.code == 401) || (query.code == 407) || this->_http.isHeader("location")){
+		if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
 			// Получаем новый адрес запроса
 			const uri_t::url_t & url = this->_http.getUrl();
 			// Если адрес запроса получен
@@ -146,7 +148,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Получаем данные ответа
-						const auto & response = reinterpret_cast <http_t *> (&this->_http)->response(true);
+						const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
 						// Если параметры ответа получены
 						if(!response.empty()){
 							// Выводим заголовок ответа
@@ -375,7 +377,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 	// Если рукопожатие не выполнено
 	if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
 		// Получаем параметры запроса
-		auto query = this->_http.query();
+		auto response = this->_http.response();
 		// Выполняем проверку авторизации
 		switch(static_cast <uint8_t> (this->_http.getAuth())){
 			// Если нужно попытаться ещё раз
@@ -395,7 +397,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 					}
 				}
 				// Создаём сообщение
-				this->_mess = ws::mess_t(query.code, this->_http.message(query.code));
+				this->_mess = ws::mess_t(response.code, this->_http.message(response.code));
 				// Выводим сообщение
 				this->error(this->_mess);
 			} break;
@@ -412,15 +414,15 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 					// Получаем поддерживаемый метод компрессии
 					this->_compress = this->_http.compress();
 					// Получаем размер скользящего окна сервера
-					this->_server.wbit = this->_http.wbitServer();
+					this->_server.wbit = this->_http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
-					this->_client.wbit = this->_http.wbitClient();
+					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Разрешаем перехватывать контекст компрессии для клиента
-					this->_hash.takeoverCompress(this->_http.clientTakeover());
+					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
 					// Разрешаем перехватывать контекст компрессии для сервера
-					this->_hash.takeoverDecompress(this->_http.serverTakeover());
+					this->_hash.takeoverDecompress(this->_http.takeover(awh::web_t::hid_t::SERVER));
 					// Если разрешено в лог выводим информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
@@ -432,26 +434,26 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
 				} else {
 					// Если код ответа не является отрицательным
-					if(query.code < 400){
+					if(response.code < 400){
 						// Устанавливаем код ответа
-						query.code = 403;
+						response.code = 403;
 						// Заменяем ответ сервера
-						this->_http.query(query);
+						this->_http.response(response);
 					}
 					// Создаём сообщение
-					this->_mess = ws::mess_t(query.code, this->_http.message(query.code));
+					this->_mess = ws::mess_t(response.code, this->_http.message(response.code));
 					// Выводим сообщение
 					this->error(this->_mess);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 				}
 			} break;
 			// Если запрос неудачный
@@ -459,13 +461,13 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
 				// Создаём сообщение
-				this->_mess = ws::mess_t(query.code, query.message);
+				this->_mess = ws::mess_t(response.code, response.message);
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, query.code, query.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), id, response.code, response.message, this->_http.body());
 			} break;
 		}
 		// Завершаем работу
@@ -1008,7 +1010,7 @@ const string & awh::client::WebSocket1::sub() const noexcept {
 	return this->_http.sub();
 }
 /**
- * sub Метод установки подпротокола поддерживаемого сервером
+ * sub Метод установки сабпротокола поддерживаемого сервером
  * @param sub подпротокол для установки
  */
 void awh::client::WebSocket1::sub(const string & sub) noexcept {
@@ -1018,13 +1020,13 @@ void awh::client::WebSocket1::sub(const string & sub) noexcept {
 		this->_http.sub(sub);
 }
 /**
- * subs Метод установки списка подпротоколов поддерживаемых сервером
+ * subs Метод установки списка сабпротоколов поддерживаемых сервером
  * @param subs подпротоколы для установки
  */
 void awh::client::WebSocket1::subs(const vector <string> & subs) noexcept {
-	// Если список подпротоколов получен
+	// Если список сабпротоколов получен
 	if(!subs.empty())
-		// Устанавливаем список сабподпротоколов
+		// Устанавливаем список сабпротоколов
 		this->_http.subs(subs);
 }
 /**
@@ -1181,7 +1183,7 @@ void awh::client::WebSocket1::multiThreads(const size_t threads, const bool mode
  * @param hash алгоритм шифрования для Digest-авторизации
  */
 void awh::client::WebSocket1::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
-	// Если объект авторизации создан
+	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http.authType(type, hash);
 }
 /**
@@ -1201,7 +1203,7 @@ void awh::client::WebSocket1::crypto(const string & pass, const string & salt, c
  */
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1217,7 +1219,7 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  */
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _uri(fmk), _http(fmk, log, &_uri), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1233,6 +1235,8 @@ awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * f
  * ~WebSocket1 Деструктор
  */
 awh::client::WebSocket1::~WebSocket1() noexcept {
-	// Выполняем завершение всех активных потоков
-	this->_thr.wait();
+	// Если многопоточность активированна
+	if(this->_thr.is())
+		// Выполняем завершение всех активных потоков
+		this->_thr.wait();
 }

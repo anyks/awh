@@ -80,13 +80,13 @@ class WebServer {
 		 */
 		void message(const size_t aid, const awh::http_t * http, server::web_t * web){
 			// Получаем данные запроса
-			const auto & query = http->query();
+			const auto & request = http->request();
 			// Если пришёл запрос на фавиконку
-			if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
+			if(!request.url.empty() && (request.url.path.back().compare("favicon.ico") == 0))
 				// Выполняем реджект
 				web->reject(aid, 404);
 			// Если метод GET
-			else if(query.method == web_t::method_t::GET){
+			else if(request.method == web_t::method_t::GET){
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
