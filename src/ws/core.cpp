@@ -130,26 +130,26 @@ void awh::WCore::init(const process_t flag) noexcept {
 			this->rmHeader("Accept-Language");
 			// Удаляем заголовок версии WebSocket
 			this->rmHeader("Sec-WebSocket-Version");
-			// Если подпротоколы существуют
+			// Если сабпротоколы существуют
 			if(!this->_subs.empty()){
-				// Если количество подпротоколов больше 5-ти
+				// Если количество сабпротоколов больше 5-ти
 				if(this->_subs.size() > 5){
-					// Список желаемых подпротоколов
+					// Список желаемых сабпротоколов
 					string subs = "";
-					// Переходим по всему списку подпротоколов
+					// Переходим по всему списку сабпротоколов
 					for(auto & sub : this->_subs){
-						// Если подпротокол уже не пустой, добавляем разделитель
+						// Если сабпротокол уже не пустой, добавляем разделитель
 						if(!subs.empty()) subs.append(", ");
-						// Добавляем в список желаемый подпротокол
+						// Добавляем в список желаемый сабпротокол
 						subs.append(sub);
 					}
 					// Добавляем заголовок сабпротокола
 					this->header("Sec-WebSocket-Protocol", subs);
-				// Если подпротоколов слишком много
+				// Если сабпротоколов слишком много
 				} else {
 					// Получаем список заголовков
 					const auto & headers = this->web.headers();
-					// Переходим по всему списку подпротоколов
+					// Переходим по всему списку сабпротоколов
 					for(auto & sub : this->_subs)
 						// Добавляем полученный заголовок
 						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
@@ -176,7 +176,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 		case static_cast <uint8_t> (process_t::RESPONSE): {
 			// Добавляем в чёрный список заголовок Content-Type
 			this->addBlack("Content-Type");
-			// Если подпротокол выбран
+			// Если сабпротокол выбран
 			if(!this->_sub.empty())
 				// Добавляем заголовок сабпротокола
 				this->header("Sec-WebSocket-Protocol", this->_sub.c_str());
@@ -928,23 +928,25 @@ const string & awh::WCore::sub() const noexcept {
 	return this->_sub;
 }
 /**
- * setSub Метод установки подпротокола поддерживаемого сервером
- * @param sub подпротокол для установки
+ * setSub Метод установки сабпротокола поддерживаемого сервером
+ * @param sub сабпротокол для установки
  */
 void awh::WCore::sub(const string & sub) noexcept {
-	// Устанавливаем подпротокол
-	if(!sub.empty()) this->_subs.emplace(sub);
+	// Если сабпротокол передан
+	if(!sub.empty())
+		// Устанавливаем сабпротокол
+		this->_subs.emplace(sub);
 }
 /**
- * subs Метод установки списка подпротоколов поддерживаемых сервером
- * @param subs подпротоколы для установки
+ * subs Метод установки списка сабпротоколов поддерживаемых сервером
+ * @param subs сабпротоколы для установки
  */
 void awh::WCore::subs(const vector <string> & subs) noexcept {
-	// Если список подпротоколов получен
+	// Если список сабпротоколов получен
 	if(!subs.empty()){
-		// Переходим по всем подпротоколам
+		// Переходим по всем сабпротоколам
 		for(auto & sub : subs)
-			// Устанавливаем подпротокол
+			// Устанавливаем сабпротокол
 			this->sub(sub);
 	}
 }

@@ -201,13 +201,13 @@ namespace awh {
 			 */
 			const string & sub() const noexcept;
 			/**
-			 * sub Метод установки подпротокола поддерживаемого сервером
-			 * @param sub подпротокол для установки
+			 * sub Метод установки сабпротокола поддерживаемого сервером
+			 * @param sub сабпротокол для установки
 			 */
 			void sub(const string & sub) noexcept;
 			/**
-			 * subs Метод установки списка подпротоколов поддерживаемых сервером
-			 * @param subs подпротоколы для установки
+			 * subs Метод установки списка сабпротоколов поддерживаемых сервером
+			 * @param subs сабпротоколы для установки
 			 */
 			void subs(const vector <string> & subs) noexcept;
 		public:

@@ -378,6 +378,14 @@ void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core
 	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
 }
 /**
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
+}
+/**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера
  * @param callback функция обратного вызова
  */

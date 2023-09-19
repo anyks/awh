@@ -61,8 +61,6 @@ void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, 
 					request_t & request = this->_requests.begin()->second;
 					// Устанавливаем новый адрес запроса
 					request.url = std::forward <const uri_t::url_t> (url);
-					// Заменяем адрес запроса в схеме клиента
-					this->_scheme.url = request.url;
 					// Выполняем очистку оставшихся данных
 					this->_buffer.clear();
 					// Выполняем установку следующего экшена на открытие подключения
@@ -288,24 +286,22 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 				const uri_t::url_t & url = this->_http.getUrl();
 				// Если адрес запроса получен
 				if(!url.empty()){
-					// Выполняем проверку соответствие протоколов
-					const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
-					// Если соединение является постоянным
-					if(schema && this->_http.isAlive()){
-						// Увеличиваем количество попыток
-						this->_attempt++;
-						// Выполняем поиск указанного запроса
-						auto it = this->_requests.find(id);
-						// Если параметры активного запроса найдены
-						if(it != this->_requests.end()){
+					// Выполняем поиск указанного запроса
+					auto it = this->_requests.find(id);
+					// Если параметры активного запроса найдены
+					if(it != this->_requests.end()){
+						// Выполняем проверку соответствие протоколов
+						const bool schema = (this->_fmk->compare(url.schema, it->second.url.schema));
+						// Если соединение является постоянным
+						if(schema && this->_http.isAlive()){
+							// Увеличиваем количество попыток
+							this->_attempt++;
 							// Устанавливаем новый адрес запроса
 							it->second.url = std::forward <const uri_t::url_t> (url);
-							// Заменяем адрес запроса в схеме клиента
-							this->_scheme.url = it->second.url;
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Выполняем запрос на удалённый сервер
-							this->submit(it->second);
+							this->send(it->second);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -389,7 +385,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SUBMIT)){
+	if(hold.access({event_t::READ, event_t::SEND, event_t::CONNECT}, event_t::SUBMIT)){
 		// Если подключение выполнено
 		if(this->_aid > 0){
 			// Выполняем сброс параметров запроса
@@ -400,8 +396,6 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			this->_http.clear();
 			// Выполняем очистку функций обратного вызова
 			this->_resultCallback.clear();
-			// Выполняем установку URL-адреса запроса
-			this->_scheme.url = request.url;
 			// Устанавливаем метод компрессии
 			this->_http.compress(this->_compress);
 			// Если список заголовков получен
@@ -413,7 +407,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				// Устанавливаем тело запроса
 				this->_http.body(request.entity);
 			// Создаём объек запроса
-			awh::web_t::req_t query(request.method, this->_scheme.url);
+			awh::web_t::req_t query(request.method, request.url);
 			// Получаем бинарные данные WEB запроса
 			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 			// Если бинарные данные запроса получены
@@ -455,16 +449,35 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
  * @return        идентификатор отправленного запроса
  */
 int32_t awh::client::Http1::send(const request_t & request) noexcept {
-	// Результат работы функции
-	int32_t result = (this->_requests.size() + 1);
-	// Выполняем добавление активного запроса
-	this->_requests.emplace(result, request);
-	// Если В списке запросов ещё нет активных запросов
-	if(this->_requests.size() == 1)
-		// Выполняем запрос на удалённый сервер
-		this->submit(request);
-	// Выводим результат
-	return result;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если это первый запрос
+		if(this->_attempt == 0){
+			// Результат работы функции
+			int32_t result = (this->_requests.size() + 1);
+			// Выполняем добавление активного запроса
+			this->_requests.emplace(result, request);
+			// Если В списке запросов ещё нет активных запросов
+			if(this->_requests.size() == 1)
+				// Выполняем запрос на удалённый сервер
+				this->submit(request);
+			// Выводим результат
+			return result;
+		// Если список запросов не пустой
+		} else if(!this->_requests.empty()) {
+			// Выполняем запрос на удалённый сервер
+			this->submit(this->_requests.begin()->second);
+			// Если функция обратного вызова на вывод редиректа потоков установлена
+			if(this->_callback.is("redirect"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const int32_t> ("redirect", this->_requests.begin()->first, this->_requests.begin()->first);
+		// Выводим сообщение об ошибке
+		} else this->_log->print("number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+	}
+	// Сообщаем что идентификатор не получен
+	return -1;
 }
 /**
  * on Метод установки функции обратного вызова для перехвата полученных чанков

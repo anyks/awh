@@ -1,6 +1,6 @@
 /**
- * @file: ws1.hpp
- * @date: 2023-09-13
+ * @file: http2.hpp
+ * @date: 2023-09-18
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,16 +12,15 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_WEB_WS1_CLIENT__
-#define __AWH_WEB_WS1_CLIENT__
+#ifndef __AWH_WEB_HTTP2_CLIENT__
+#define __AWH_WEB_HTTP2_CLIENT__
 
 /**
  * Наши модули
  */
-#include <ws/frame.hpp>
-#include <ws/client.hpp>
-#include <sys/threadpool.hpp>
 #include <client/web/web.hpp>
+#include <client/web/ws2.hpp>
+#include <client/web/http1.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -35,93 +34,48 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * WebSocket2 Прототип класса WebSocket/2 клиента
+		 * Http2 Класс HTTP2-клиента
 		 */
-		class WebSocket2;
-		/**
-		 * WebSocket1 Класс WebSocket-клиента
-		 */
-		typedef class WebSocket1 : public web_t {
+		typedef class Http2 : public web2_t {
 			private:
 				/**
-				 * WebSocket2 Устанавливаем дружбу с классом WebSocket/2 клиента
+				 * Worker Структура активного воркера
 				 */
-				friend class WebSocket2;
-			private:
-				/**
-				 * Allow Структура флагов разрешения обменом данных
-				 */
-				typedef struct Allow {
-					bool send;    // Флаг разрешения отправки данных
-					bool receive; // Флаг разрешения чтения данных
+				typedef struct Worker {
+					bool update;   // Флаг обновления параметров запроса
+					http_t http;   // Объект для работы с HTTP
+					fn_t callback; // Объект функций обратного вызова
+					agent_t agent; // Агент воркера
 					/**
-					 * Allow Конструктор
-					 */
-					Allow() noexcept : send(true), receive(true) {}
-				} __attribute__((packed)) allow_t;
-				/**
-				 * Partner Структура партнёра
-				 */
-				typedef struct Partner {
-					short wbit;    // Размер скользящего окна
-					bool takeover; // Флаг скользящего контекста сжатия
-					/**
-					 * Partner Конструктор
-					 */
-					Partner() noexcept : wbit(0), takeover(false) {}
-				} __attribute__((packed)) partner_t;
-				/**
-				 * Frame Объект фрейма WebSocket
-				 */
-				typedef struct Frame {
-					size_t size;                  // Минимальный размер сегмента
-					ws::frame_t methods;          // Методы работы с фреймом WebSocket
-					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
-					/**
-					 * Frame Конструктор
+					 * Worker Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Frame(const fmk_t * fmk, const log_t * log) noexcept :
-					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
-				} frame_t;
+					Worker(const fmk_t * fmk, const log_t * log) noexcept :
+					 update(false), http(fmk, log), callback(log), agent(agent_t::HTTP) {}
+					/**
+					 * ~Worker Деструктор
+					 */
+					~Worker() noexcept {}
+				} worker_t;
 			private:
-				// Флаг завершения работы клиента
-				bool _close;
-				// Флаг шифрования сообщений
-				bool _crypt;
-				// Флаг запрета вывода информационных сообщений
-				bool _noinfo;
-				// Флаг фриза работы клиента
-				bool _freeze;
-				// Флаг переданных сжатых данных
-				bool _deflate;
-				// Контрольная точка ответа на пинг
-				time_t _point;
+				// Объект для работы c WebSocket
+				ws2_t _ws2;
+				// Объект для работы с HTTP/1.1 клиентом
+				http1_t _http1;
 			private:
-				// Объект тредпула для работы с потоками
-				thr_t _thr;
 				// Объект для работы с HTTP-протколом
-				ws_t _http;
-				// Объект для компрессии-декомпрессии данных
-				hash_t _hash;
-				// Объект для работы с фреймом WebSocket
-				frame_t _frame;
-				// Объект разрешения обмена данными
-				allow_t _allow;
-				// Объект отправляемого сообщения
-				ws::mess_t _mess;
+				http_t _http;
 			private:
-				// Объект партнёра клиента
-				partner_t _client;
-				// Объект партнёра сервера
-				partner_t _server;
+				// Количество активных ядер
+				ssize_t _threads;
+				// Размер фрейма WebSocket
+				size_t _frameSize;
 			private:
-				// Объект функций обратного вызова для вывода результата
-				fn_t _resultCallback;
-			private:
-				// Данные фрагметрированного сообщения
-				vector <char> _fragmes;
+				// Список активых запросов
+				map <int32_t, request_t> _requests;
+				// Список активных воркеров
+				map <int32_t, unique_ptr <worker_t>> _workers;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
@@ -165,48 +119,39 @@ namespace awh {
 				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * response Метод получения ответа сервера
-				 * @param code    код ответа сервера
-				 * @param message сообщение ответа сервера
+				 * receivedFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @return        статус полученных данных
 				 */
-				void response(const u_int code, const string & message) noexcept;
+				int receivedFrame(const nghttp2_frame * frame) noexcept;
+				/**
+				 * receivedChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+				 * @param sid    идентификатор сессии HTTP/2
+				 * @param buffer буфер данных который содержит полученный чанк
+				 * @param size   размер полученного буфера данных чанка
+				 * @return       статус полученных данных
+				 */
+				int receivedChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * header Метод получения заголовка
-				 * @param key   ключ заголовка
-				 * @param value значение заголовка
+				 * receivedBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid идентификатор сессии HTTP/2
+				 * @return    статус полученных данных
 				 */
-				void header(const string & key, const string & value) noexcept;
+				int receivedBeginHeaders(const int32_t sid) noexcept;
 				/**
-				 * headers Метод получения заголовков
-				 * @param code    код ответа сервера
-				 * @param message сообщение ответа сервера
-				 * @param headers заголовки ответа сервера
+				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid идентификатор сессии HTTP/2
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
 				 */
-				void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
-			private:
-				/**
-				 * chunking Метод обработки получения чанков
-				 * @param chunk бинарный буфер чанка
-				 * @param http  объект модуля HTTP
-				 */
-				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
+				int receivedHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
-			private:
-				/**
-				 * ping Метод проверки доступности сервера
-				 * @param message сообщение для отправки
-				 */
-				void ping(const string & message = "") noexcept;
-				/**
-				 * pong Метод ответа на проверку о доступности сервера
-				 * @param message сообщение для отправки
-				 */
-				void pong(const string & message = "") noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -216,24 +161,19 @@ namespace awh {
 				 * @return     результат препарирования
 				 */
 				status_t prepare(const int32_t id, const size_t aid, client::core_t * core) noexcept;
-			private:
-				/**
-				 * error Метод вывода сообщений об ошибках работы клиента
-				 * @param message сообщение с описанием ошибки
-				 */
-				void error(const ws::mess_t & message) const noexcept;
-				/**
-				 * extraction Метод извлечения полученных данных
-				 * @param buffer данные в чистом виде полученные с сервера
-				 * @param utf8   данные передаются в текстовом виде
-				 */
-				void extraction(const vector <char> & buffer, const bool utf8) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param agent   агент воркера
+				 * @param request параметры запроса на удалённый сервер
+				 * @return        идентификатор отправленного запроса
+				 */
+				int32_t send(const agent_t agent, const request_t & request) noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param message буфер сообщения в бинарном виде
@@ -246,14 +186,6 @@ namespace awh {
 				 * pause Метод установки на паузу клиента
 				 */
 				void pause() noexcept;
-				/**
-				 * stop Метод остановки клиента
-				 */
-				void stop() noexcept;
-				/**
-				 * start Метод запуска клиента
-				 */
-				void start() noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибок
@@ -265,12 +197,6 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
@@ -295,12 +221,12 @@ namespace awh {
 				const string & sub() const noexcept;
 				/**
 				 * sub Метод установки сабпротокола поддерживаемого сервером
-				 * @param sub подпротокол для установки
+				 * @param sub сабпротокол для установки
 				 */
 				void sub(const string & sub) noexcept;
 				/**
 				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
-				 * @param subs подпротоколы для установки
+				 * @param subs сабпротоколы для установки
 				 */
 				void subs(const vector <string> & subs) noexcept;
 			public:
@@ -378,24 +304,24 @@ namespace awh {
 				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * WebSocket1 Конструктор
+				 * Http2 Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WebSocket1(const fmk_t * fmk, const log_t * log) noexcept;
+				Http2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * WebSocket1 Конструктор
+				 * Http2 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket1 Деструктор
+				 * ~Http2 Деструктор
 				 */
-				~WebSocket1() noexcept;
-		} ws1_t;
+				~Http2() noexcept {}
+		} http2_t;
 	};
 };
 
-#endif // __AWH_WEB_WS1_CLIENT__
+#endif // __AWH_WEB_HTTP2_CLIENT__

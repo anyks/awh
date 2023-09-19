@@ -164,6 +164,10 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 					this->_fragmes.clear();
 					// Выполняем установку следующего экшена на открытие подключения
 					this->open();
+					// Если функция обратного вызова на вывод редиректа потоков установлена
+					if(this->_callback.is("redirect"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 					// Завершаем работу
 					return;
 				}
@@ -351,7 +355,7 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 					// Если мы получили неустановленный флаг или флаг завершения потока
 					if((frame->hd.flags & NGHTTP2_FLAG_NONE) || (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)){
 						// Выполняем препарирование полученных данных
-						switch(static_cast <uint8_t> (this->prepare(this->_sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
+						switch(static_cast <uint8_t> (this->prepare(frame->hd.stream_id, this->_aid, const_cast <client::core_t *> (this->_core)))){
 							// Если необходимо выполнить остановку обработки
 							case static_cast <uint8_t> (status_t::STOP):
 								// Выходим из функции
@@ -387,7 +391,7 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 					// Получаем объект биндинга ядра TCP/IP
 					client::core_t * core = const_cast <client::core_t *> (this->_core);
 					// Выполняем препарирование полученных данных
-					switch(static_cast <uint8_t> (this->prepare(this->_sid, this->_aid, core))){
+					switch(static_cast <uint8_t> (this->prepare(frame->hd.stream_id, this->_aid, core))){
 						// Если необходимо выполнить остановку обработки
 						case static_cast <uint8_t> (status_t::STOP): {
 							// Выполняем сброс количества попыток
@@ -400,11 +404,11 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callback.is("response"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, response.code, response.message);
+								this->_callback.call <const int32_t, const u_int, const string &> ("response", frame->hd.stream_id, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, response.code, response.message, this->_http.headers());
+								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", frame->hd.stream_id, response.code, response.message, this->_http.headers());
 							// Очищаем буфер собранных данных
 							this->_buffer.clear();
 							// Завершаем работу
@@ -425,11 +429,11 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 					if(this->_callback.is("response"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &> ("response", this->_sid, response.code, response.message);
+						this->_callback.call <const int32_t, const u_int, const string &> ("response", frame->hd.stream_id, response.code, response.message);
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(this->_callback.is("headers"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_sid, response.code, response.message, this->_http.headers());
+						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", frame->hd.stream_id, response.code, response.message, this->_http.headers());
 				}
 			} break;
 		}
@@ -601,6 +605,10 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t id, co
 						this->_attempt++;
 						// Выполняем сброс параметров запроса
 						this->flush();
+						// Если функция обратного вызова на вывод редиректа потоков установлена
+						if(this->_callback.is("redirect"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 						// Завершаем работу
 						return status_t::SKIP;
 					}
@@ -1263,6 +1271,30 @@ void awh::client::WebSocket2::subs(const vector <string> & subs) noexcept {
 	}
 }
 /**
+ * extensions Метод извлечения списка расширений
+ * @return список поддерживаемых расширений
+ */
+const vector <vector <string>> & awh::client::WebSocket2::extensions() const noexcept {
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(!this->_upgraded)
+		// Выводим список доступных расширений
+		return this->_ws1.extensions();
+	// Если переключение протокола на HTTP/2 выполнено
+	else
+		// Выводим список доступных расширений
+		return this->_http.extensions();
+}
+/**
+ * extensions Метод установки списка расширений
+ * @param extensions список поддерживаемых расширений
+ */
+void awh::client::WebSocket2::extensions(const vector <vector <string>> & extensions) noexcept {
+	// Выполняем установку списка доступных расширений для WebSocket-клиента
+	this->_ws1.extensions(extensions);
+	// Выполняем установку списка доступных расширений для HTTP-клиента
+	this->_http.extensions(extensions);
+}
+/**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -1292,25 +1324,12 @@ void awh::client::WebSocket2::segmentSize(const size_t size) noexcept {
 void awh::client::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
-	// Если сетевое ядро установлено
-	if(this->_core != nullptr){
-		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-		// Выполняем установку флага проверки домена
-		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	}
+	// Выполняем установку флагов настроек модуля
+	web2_t::mode(flags);
 	// Устанавливаем флаги настроек модуля для WebSocket-клиента
 	this->_ws1.mode(flags);
 }

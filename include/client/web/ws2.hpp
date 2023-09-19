@@ -36,9 +36,18 @@ namespace awh {
 	 */
 	namespace client {
 		/**
+		 * Http2 Прототип класса HTTP/2 клиента
+		 */
+		class Http2;
+		/**
 		 * WebSocket2 Класс WebSocket-клиента
 		 */
 		typedef class WebSocket2 : public web2_t {
+			private:
+				/**
+				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента
+				 */
+				friend class Http2;
 			private:
 				/**
 				 * Allow Структура флагов разрешения обменом данных
@@ -299,6 +308,17 @@ namespace awh {
 				 * @param subs подпротоколы для установки
 				 */
 				void subs(const vector <string> & subs) noexcept;
+			public:
+				/**
+				 * extensions Метод извлечения списка расширений
+				 * @return список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions() const noexcept;
+				/**
+				 * extensions Метод установки списка расширений
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

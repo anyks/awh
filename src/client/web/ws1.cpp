@@ -39,13 +39,13 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
 		// Разрешаем перехватывать контекст компрессии
-		this->_hash.takeoverCompress(this->_client.takeOver);
+		this->_hash.takeoverCompress(this->_client.takeover);
 		// Разрешаем перехватывать контекст декомпрессии
-		this->_hash.takeoverDecompress(this->_server.takeOver);
+		this->_hash.takeoverDecompress(this->_server.takeover);
 		// Разрешаем перехватывать контекст для клиента
-		this->_http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeOver);
+		this->_http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeover);
 		// Разрешаем перехватывать контекст для сервера
-		this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeOver);
+		this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 		// Создаём объек запроса
 		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
 		// Получаем бинарные данные REST запроса		
@@ -93,6 +93,10 @@ void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t 
 				this->_fragmes.clear();
 				// Выполняем установку следующего экшена на открытие подключения
 				this->open();
+				// Если функция обратного вызова на вывод редиректа потоков установлена
+				if(this->_callback.is("redirect"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 				// Завершаем работу
 				return;
 			}
@@ -392,6 +396,10 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t id, co
 						this->_attempt++;
 						// Выполняем сброс параметров запроса
 						this->flush();
+						// Если функция обратного вызова на вывод редиректа потоков установлена
+						if(this->_callback.is("redirect"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 						// Завершаем работу
 						return status_t::SKIP;
 					}
@@ -1030,6 +1038,22 @@ void awh::client::WebSocket1::subs(const vector <string> & subs) noexcept {
 		this->_http.subs(subs);
 }
 /**
+ * extensions Метод извлечения списка расширений
+ * @return список поддерживаемых расширений
+ */
+const vector <vector <string>> & awh::client::WebSocket1::extensions() const noexcept {
+	// Выводим список доступных расширений
+	return this->_http.extensions();
+}
+/**
+ * extensions Метод установки списка расширений
+ * @param extensions список поддерживаемых расширений
+ */
+void awh::client::WebSocket1::extensions(const vector <vector <string>> & extensions) noexcept {
+	// Выполняем установку списка доступных расширений
+	this->_http.extensions(extensions);
+}
+/**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -1061,9 +1085,9 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeOver = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeOver = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

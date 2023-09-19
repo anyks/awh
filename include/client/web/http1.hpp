@@ -32,9 +32,18 @@ namespace awh {
 	 */
 	namespace client {
 		/**
+		 * Http2 Прототип класса HTTP/2 клиента
+		 */
+		class Http2;
+		/**
 		 * Http1 Класс HTTP-клиента
 		 */
 		typedef class Http1 : public web_t {
+			private:
+				/**
+				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента
+				 */
+				friend class Http2;
 			private:
 				// Объект для работы с HTTP-протколом
 				http_t _http;

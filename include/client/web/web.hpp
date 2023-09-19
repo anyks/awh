@@ -260,6 +260,11 @@ namespace awh {
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
+				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова
 				 */
@@ -454,25 +459,6 @@ namespace awh {
 					 */
 					Crypto() noexcept : pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} crypto_t;
-				/**
-				 * Worker Структура активного воркера
-				 */
-				/*
-				typedef struct Worker {
-					uri_t uri;       // Объект работы с URI ссылками
-					http_t http;     // Объект для работы с HTTP
-					fn_t callback;   // Объект функций обратного вызова
-					agent_t agent;   // Агент воркера
-					uint8_t attempt; // Количество попыток
-					///
-					 * Worker Конструктор
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 //
-					Worker(const fmk_t * fmk, const log_t * log) noexcept :
-					 uri(fmk), http(fmk, log, &uri), callback(log), agent(agent_t::HTTP), attempt(0) {}
-				} worker_t;
-				*/
 			protected:
 				// Объект идентификации сервиса
 				serv_t _serv;
