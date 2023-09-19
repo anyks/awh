@@ -378,12 +378,12 @@ void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core
 	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
 }
 /**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
+void awh::client::Web::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/2 и WebSocket/2
+	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера
@@ -394,37 +394,26 @@ void awh::client::Web::on(function <void (const int32_t, const vector <char> &)>
 	this->_callback.set <void (const int32_t, const vector <char> &)> ("chunks", callback);
 }
 /**
- * on Метод установки функции вывода полученного тела данных с сервера
+ * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
+	this->_callback.set <void (const int32_t, const mode_t)> ("stream", callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем функцию обратного вызова для WebSocket/1.1
-	this->_ws.http.on(callback);
-	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_web.http.on(callback);
-	*/
-	// Устанавливаем функцию обратного вызова для HTTP/2 и WebSocket/2
-	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
+void awh::client::Web::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
 }
 /**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
 void awh::client::Web::on(function <void (const int32_t, const u_int, const string &)> callback) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_ws.http.on(callback);
-	this->_web.http.on(callback);
-	*/
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const int32_t, const u_int, const string &)> ("response", callback);
 }
@@ -433,11 +422,6 @@ void awh::client::Web::on(function <void (const int32_t, const u_int, const stri
  * @param callback функция обратного вызова
  */
 void awh::client::Web::on(function <void (const int32_t, const string &, const string &)> callback) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_ws.http.on(callback);
-	this->_web.http.on(callback);
-	*/
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const int32_t, const string &, const string &)> ("header", callback);
 }
@@ -446,13 +430,16 @@ void awh::client::Web::on(function <void (const int32_t, const string &, const s
  * @param callback функция обратного вызова
  */
 void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_ws.http.on(callback);
-	this->_web.http.on(callback);
-	*/
 	// Устанавливаем функцию обратного вызова для HTTP/2
 	this->_callback.set <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
+}
+/**
+ * on Метод установки функции вывода полученного тела данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
@@ -643,16 +630,9 @@ void awh::client::Web::keepAlive(const int cnt, const int idle, const int intvl)
  */
 void awh::client::Web::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
-	if(!userAgent.empty()){
-		/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-		// Устанавливаем пользовательского агента
-		this->_ws.http.userAgent(userAgent);
-		// Устанавливаем пользовательского агента
-		this->_web.http.userAgent(userAgent);
-		*/
+	if(!userAgent.empty())
 		// Устанавливаем пользовательского агента для прокси-сервера
 		this->_scheme.proxy.http.userAgent(userAgent);
-	}
 }
 /**
  * serv Метод установки данных сервиса
@@ -661,12 +641,6 @@ void awh::client::Web::userAgent(const string & userAgent) noexcept {
  * @param ver  версия сервиса
  */
 void awh::client::Web::serv(const string & id, const string & name, const string & ver) noexcept {
-	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Подключить к динамическим объектам HTTP
-	// Устанавливаем данные сервиса
-	this->_ws.http.serv(id, name, ver);
-	// Устанавливаем данные сервиса
-	this->_web.http.serv(id, name, ver);
-	*/
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->_scheme.proxy.http.serv(id, name, ver);
 }

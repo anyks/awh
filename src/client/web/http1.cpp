@@ -28,6 +28,8 @@ void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
+		// Снимаем флаг активации получения данных
+		this->_mode = false;
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
@@ -116,6 +118,12 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 				bool receive = false;
 				// Флаг завершения работы
 				bool completed = false;
+				// Получаем идентификатор потока
+				const int32_t sid = this->_requests.begin()->first;
+				// Если функция обратного вызова активности потока установлена
+				if(!this->_mode && (this->_mode = this->_callback.is("stream")))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::OPEN);
 				// Добавляем полученные данные в буфер
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
@@ -147,7 +155,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 							}
 						#endif
 						// Выполняем препарирование полученных данных
-						switch(static_cast <uint8_t> (this->prepare(this->_requests.begin()->first, aid, dynamic_cast <client::core_t *> (core)))){
+						switch(static_cast <uint8_t> (this->prepare(sid, aid, dynamic_cast <client::core_t *> (core)))){
 							// Если необходимо выполнить остановку обработки
 							case static_cast <uint8_t> (status_t::STOP):
 								// Выполняем завершение работы
@@ -179,6 +187,10 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 				Stop:
 				// Если получение данных выполнено
 				if(completed){
+					// Если функция обратного вызова активности потока установлена
+					if(this->_callback.is("stream"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 					// Если функция обратного вызова установлена, выводим сообщение
 					if(this->_resultCallback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
@@ -302,12 +314,20 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t id, const s
 							this->flush();
 							// Выполняем запрос на удалённый сервер
 							this->send(it->second);
+							// Если функция обратного вызова активности потока установлена
+							if(this->_callback.is("stream"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const mode_t> ("stream", id, mode_t::CLOSE);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
 					}
 					// Если нам необходимо отключиться
 					core->close(aid);
+					// Если функция обратного вызова активности потока установлена
+					if(this->_callback.is("stream"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const mode_t> ("stream", id, mode_t::CLOSE);
 					// Завершаем работу
 					return status_t::SKIP;
 				}
@@ -492,6 +512,22 @@ void awh::client::Http1::on(function <void (const vector <char> &, const awh::ht
 	else this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
 }
 /**
+ * on Метод установки функция обратного вызова активности потока
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
@@ -510,6 +546,14 @@ void awh::client::Http1::on(function <void (const int32_t, const string &, const
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
 	this->_http.on((function <void (const string &, const string &)>) std::bind(&http1_t::header, this, _1, _2));
+}
+/**
+ * on Метод установки функции вывода полученного тела данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 }
 /**
  * on Метод установки функции вывода полученных заголовков с сервера
@@ -609,7 +653,7 @@ void awh::client::Http1::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _http(fmk, log), _resultCallback(log) {
+ web_t(fmk, log), _mode(false), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
 }
@@ -620,7 +664,7 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _http(fmk, log), _resultCallback(log) {
+ web_t(core, fmk, log), _mode(false), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
 }

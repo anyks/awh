@@ -45,6 +45,9 @@ namespace awh {
 				 */
 				friend class Http2;
 			private:
+				// Флаг открытия подключения
+				bool _mode;
+			private:
 				// Объект для работы с HTTP-протколом
 				http_t _http;
 			private:
@@ -140,6 +143,16 @@ namespace awh {
 				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова активности потока
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const mode_t)> callback) noexcept;
+				/**
+				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */
@@ -149,6 +162,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции вывода полученного тела данных с сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
