@@ -192,10 +192,6 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 				// Завершаем работу
 				dynamic_cast <client::core_t *> (core)->stop();
 		}
-		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callback.is("active"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	}
 }
 /**
@@ -354,6 +350,13 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 				} else if(this->_allow.receive) {
 					// Если мы получили неустановленный флаг или флаг завершения потока
 					if((frame->hd.flags & NGHTTP2_FLAG_NONE) || (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)){
+						// Если поток был закрыт
+						if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM){
+							// Если функция обратного вызова при подключении/отключении установлена
+							if(this->_callback.is("active"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
+						}
 						// Выполняем препарирование полученных данных
 						switch(static_cast <uint8_t> (this->prepare(frame->hd.stream_id, this->_aid, const_cast <client::core_t *> (this->_core)))){
 							// Если необходимо выполнить остановку обработки
