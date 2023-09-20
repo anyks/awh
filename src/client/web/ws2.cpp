@@ -328,11 +328,11 @@ void awh::client::WebSocket2::persistCallback(const size_t aid, const size_t sid
 	}
 }
 /**
- * receivedFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+ * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
  * @param frame   объект фрейма заголовков HTTP/2
  * @return        статус полученных данных
  */
-int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept {
+int awh::client::WebSocket2::signalFrame(const nghttp2_frame * frame) noexcept {
 	// Если сессия клиента совпадает с сессией полученных даных
 	if(this->_sid == frame->hd.stream_id){
 		// Выполняем определение типа фрейма
@@ -489,13 +489,13 @@ int awh::client::WebSocket2::receivedFrame(const nghttp2_frame * frame) noexcept
 	return 0;
 }
 /**
- * receivedChunk Метод обратного вызова при получении чанка с сервера HTTP/2
- * @param sid    идентификатор сессии HTTP/2
+ * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+ * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
  * @param size   размер полученного буфера данных чанка
  * @return       статус полученных данных
  */
-int awh::client::WebSocket2::receivedChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept {
+int awh::client::WebSocket2::signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_sid == sid){
 		// Если функция обратного вызова на перехват входящих чанков установлена
@@ -529,11 +529,11 @@ int awh::client::WebSocket2::receivedChunk(const int32_t sid, const uint8_t * bu
 	return 0;
 }
 /**
- * receivedBeginHeaders Метод начала получения фрейма заголовков HTTP/2
- * @param sid идентификатор сессии HTTP/2
+ * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+ * @param sid идентификатор потока
  * @return    статус полученных данных
  */
-int awh::client::WebSocket2::receivedBeginHeaders(const int32_t sid) noexcept {
+int awh::client::WebSocket2::signalBeginHeaders(const int32_t sid) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_sid == sid){
 		// Выполняем очистку параметров HTTP запроса
@@ -547,12 +547,12 @@ int awh::client::WebSocket2::receivedBeginHeaders(const int32_t sid) noexcept {
 	return 0;
 }
 /**
- * receivedStreamClosed Метод завершения работы потока
- * @param sid   идентификатор сессии HTTP/2
+ * signalStreamClosed Метод завершения работы потока
+ * @param sid   идентификатор потока
  * @param error флаг ошибки HTTP/2 если присутствует
  * @return      статус полученных данных
  */
-int awh::client::WebSocket2::receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept {
+int awh::client::WebSocket2::signalStreamClosed(const int32_t sid, const uint32_t error) noexcept {
 	// Флаг отключения от сервера
 	bool stop = false;
 	// Определяем тип получаемой ошибки
@@ -660,13 +660,13 @@ int awh::client::WebSocket2::receivedStreamClosed(const int32_t sid, const uint3
 	return 0;
 }
 /**
- * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
- * @param sid идентификатор сессии HTTP/2
+ * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+ * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
  * @return    статус полученных данных
  */
-int awh::client::WebSocket2::receivedHeader(const int32_t sid, const string & key, const string & val) noexcept {
+int awh::client::WebSocket2::signalHeader(const int32_t sid, const string & key, const string & val) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_sid == sid){
 		// Устанавливаем полученные заголовки

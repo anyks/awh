@@ -353,15 +353,6 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			if(this->_callback.is("entity"))
 				// Устанавливаем полученную функцию обратного вызова
 				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
-			// Устанавливаем размер стопбайт
-			if(!this->_http.isAlive()){
-				// Выполняем очистку оставшихся данных
-				this->_buffer.clear();
-				// Завершаем работу
-				core->close(aid);
-				// Выполняем завершение работы
-				return status_t::STOP;
-			}
 			// Если объект ещё не удалён
 			if(!this->_requests.empty()){
 				// Выполняем поиск указанного запроса
@@ -370,6 +361,15 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				if(it != this->_requests.end())
 					// Выполняем удаление объекта запроса
 					this->_requests.erase(it);
+			}
+			// Устанавливаем размер стопбайт
+			if(!this->_http.isAlive()){
+				// Выполняем очистку оставшихся данных
+				this->_buffer.clear();
+				// Завершаем работу
+				core->close(aid);
+				// Выполняем завершение работы
+				return status_t::STOP;
 			}
 			// Завершаем обработку
 			return status_t::NEXT;

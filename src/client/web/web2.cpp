@@ -75,12 +75,12 @@ int awh::client::Web2::onFrame(nghttp2_session * session, const nghttp2_frame * 
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Выполняем обработку полученных данных фрейма
-	return reinterpret_cast <web2_t *> (ctx)->receivedFrame(frame);
+	return reinterpret_cast <web2_t *> (ctx)->signalFrame(frame);
 }
 /**
  * onClose Функция закрытия подключения с сервером HTTP/2
  * @param session объект сессии HTTP/2
- * @param sid     идентификатор сессии HTTP/2
+ * @param sid     идентификатор потока
  * @param error   флаг ошибки HTTP/2 если присутствует
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученного события
@@ -100,13 +100,13 @@ int awh::client::Web2::onClose(nghttp2_session * session, const int32_t sid, con
 			cout << web->_fmk->format("Stream %d closed", sid) << endl << endl;
 	#endif
 	// Выполняем передачу сигнала
-	return web->receivedStreamClosed(sid, error);
+	return web->signalStreamClosed(sid, error);
 }
 /**
  * onChunk Функция обратного вызова при получении чанка с сервера HTTP/2
  * @param session объект сессии HTTP/2
  * @param flags   флаги события для сессии HTTP/2
- * @param sid     идентификатор сессии HTTP/2
+ * @param sid     идентификатор потока
  * @param buffer  буфер данных который содержит полученный чанк
  * @param size    размер полученного буфера данных чанка
  * @param ctx     передаваемый промежуточный контекст
@@ -117,7 +117,7 @@ int awh::client::Web2::onChunk(nghttp2_session * session, const uint8_t flags, c
 	(void) flags;
 	(void) session;
 	// Выполняем обработку полученных данных чанка
-	return reinterpret_cast <web2_t *> (ctx)->receivedChunk(sid, buffer, size);
+	return reinterpret_cast <web2_t *> (ctx)->signalChunk(sid, buffer, size);
 }
 /**
  * onBeginHeaders Функция начала получения фрейма заголовков HTTP/2
@@ -147,7 +147,7 @@ int awh::client::Web2::onBeginHeaders(nghttp2_session * session, const nghttp2_f
 					cout << web->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
 				#endif
 				// Выполняем обработку сигнала начала получения заголовков
-				return web->receivedBeginHeaders(frame->hd.stream_id);
+				return web->signalBeginHeaders(frame->hd.stream_id);
 			}
 		} break;
 	}
@@ -177,7 +177,7 @@ int awh::client::Web2::onHeader(nghttp2_session * session, const nghttp2_frame *
 			// Если сессия клиента совпадает с сессией полученных даных
 			if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
 				// Выполняем обработку полученных заголовков
-				return reinterpret_cast <web2_t *> (ctx)->receivedHeader(frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+				return reinterpret_cast <web2_t *> (ctx)->signalHeader(frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
 		} break;
 	}
 	// Выводим результат
@@ -206,7 +206,7 @@ ssize_t awh::client::Web2::onSend(nghttp2_session * session, const uint8_t * buf
 /**
  * onRead Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
  * @param session объект сессии HTTP/2
- * @param sid     идентификатор сессии HTTP/2
+ * @param sid     идентификатор потока
  * @param buffer  буфер данных которые следует отправить
  * @param size    размер буфера данных для отправки
  * @param flags   флаги события для сессии HTTP/2

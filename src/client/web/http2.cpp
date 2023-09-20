@@ -294,11 +294,11 @@ void awh::client::Http2::persistCallback(const size_t aid, const size_t sid, awh
 	}
 }
 /**
- * receivedFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+ * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
  * @param frame   объект фрейма заголовков HTTP/2
  * @return        статус полученных данных
  */
-int awh::client::Http2::receivedFrame(const nghttp2_frame * frame) noexcept {
+int awh::client::Http2::signalFrame(const nghttp2_frame * frame) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(frame->hd.stream_id);
 	// Если необходимый нам воркер найден
@@ -355,7 +355,7 @@ int awh::client::Http2::receivedFrame(const nghttp2_frame * frame) noexcept {
 					// Если агент является клиентом WebSocket
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
 						// Выполняем передачу на WebSocket-клиент
-						this->_ws2.receivedFrame(frame);
+						this->_ws2.signalFrame(frame);
 					break;
 				}
 			} break;
@@ -395,7 +395,7 @@ int awh::client::Http2::receivedFrame(const nghttp2_frame * frame) noexcept {
 					// Если агент является клиентом WebSocket
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
 						// Выполняем передачу на WebSocket-клиент
-						this->_ws2.receivedFrame(frame);
+						this->_ws2.signalFrame(frame);
 					break;
 				}
 			} break;
@@ -405,13 +405,13 @@ int awh::client::Http2::receivedFrame(const nghttp2_frame * frame) noexcept {
 	return 0;
 }
 /**
- * receivedChunk Метод обратного вызова при получении чанка с сервера HTTP/2
- * @param sid    идентификатор сессии HTTP/2
+ * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+ * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
  * @param size   размер полученного буфера данных чанка
  * @return       статус полученных данных
  */
-int awh::client::Http2::receivedChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept {
+int awh::client::Http2::signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
@@ -432,7 +432,7 @@ int awh::client::Http2::receivedChunk(const int32_t sid, const uint8_t * buffer,
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем передачу полученных данных на WebSocket-клиент
-					this->_ws2.receivedChunk(sid, buffer, size);
+					this->_ws2.signalChunk(sid, buffer, size);
 				break;
 			}
 		}
@@ -441,11 +441,11 @@ int awh::client::Http2::receivedChunk(const int32_t sid, const uint8_t * buffer,
 	return 0;
 }
 /**
- * receivedBeginHeaders Метод начала получения фрейма заголовков HTTP/2
- * @param sid идентификатор сессии HTTP/2
+ * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+ * @param sid идентификатор потока
  * @return    статус полученных данных
  */
-int awh::client::Http2::receivedBeginHeaders(const int32_t sid) noexcept {
+int awh::client::Http2::signalBeginHeaders(const int32_t sid) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
@@ -464,7 +464,7 @@ int awh::client::Http2::receivedBeginHeaders(const int32_t sid) noexcept {
 			// Если агент является клиентом WebSocket
 			case static_cast <uint8_t> (agent_t::WEBSOCKET):
 				// Выполняем инициализации заголовков на WebSocket-клиенте
-				this->_ws2.receivedBeginHeaders(sid);
+				this->_ws2.signalBeginHeaders(sid);
 			break;
 		}
 	}
@@ -472,12 +472,12 @@ int awh::client::Http2::receivedBeginHeaders(const int32_t sid) noexcept {
 	return 0;
 }
 /**
- * receivedStreamClosed Метод завершения работы потока
- * @param sid   идентификатор сессии HTTP/2
+ * signalStreamClosed Метод завершения работы потока
+ * @param sid   идентификатор потока
  * @param error флаг ошибки HTTP/2 если присутствует
  * @return      статус полученных данных
  */
-int awh::client::Http2::receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept {
+int awh::client::Http2::signalStreamClosed(const int32_t sid, const uint32_t error) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
@@ -594,13 +594,13 @@ int awh::client::Http2::receivedStreamClosed(const int32_t sid, const uint32_t e
 	return 0;
 }
 /**
- * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
- * @param sid идентификатор сессии HTTP/2
+ * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+ * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
  * @return    статус полученных данных
  */
-int awh::client::Http2::receivedHeader(const int32_t sid, const string & key, const string & val) noexcept {
+int awh::client::Http2::signalHeader(const int32_t sid, const string & key, const string & val) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
@@ -619,7 +619,7 @@ int awh::client::Http2::receivedHeader(const int32_t sid, const string & key, co
 			// Если агент является клиентом WebSocket
 			case static_cast <uint8_t> (agent_t::WEBSOCKET):
 				// Выполняем отправку полученных заголовков на WebSocket-клиент
-				this->_ws2.receivedHeader(sid, key, val);
+				this->_ws2.signalHeader(sid, key, val);
 			break;
 		}
 	}
@@ -662,19 +662,13 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 						// Выполняем копирование метода запроса
 						request.method = jt->second->method;
 						// Если список заголовков получен
-						if(!jt->second->headers.empty()){
+						if(!jt->second->headers.empty())
 							// Выполняем установку заголовков запроса
 							request.headers = jt->second->headers;
-							// Устанавливаем заголовоки запроса
-							this->_http.headers(request.headers);
-						}
 						// Если тело запроса существует
-						if(!jt->second->entity.empty()){
+						if(!jt->second->entity.empty())
 							// Устанавливаем тело запроса
 							this->_http.body(jt->second->entity);
-							// Выполняем сохранение тела запроса
-							request.entity.assign(jt->second->entity.begin(), jt->second->entity.end());
-						}
 					}
 					// Выходим из цикла
 					break;
@@ -794,6 +788,29 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 	return status_t::STOP;
 }
 /**
+ * stream Метод вывода статус потока
+ * @param sid  идентификатор потока
+ * @param mode активный статус потока
+ */
+void awh::client::Http2::stream(const int32_t sid, const mode_t mode) noexcept {
+	// Если произошло закрытие потока
+	if(mode == mode_t::CLOSE){
+		// Выполняем поиск идентификатора воркера
+		auto it = this->_workers.find(sid);
+		// Если необходимый нам воркер найден
+		if(it != this->_workers.end()){
+			// Выполняем удаление указанного воркера
+			this->_workers.erase(it);
+			// Выполняем удаление параметра запроса
+			this->_requests.erase(sid);
+		}
+	}
+	// Если функция обратного вызова активности потока установлена
+	if(this->_callback.is("stream"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode);
+}
+/**
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */
@@ -841,8 +858,11 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 						this->_http.clear();
 						// Устанавливаем метод компрессии
 						this->_http.compress(this->_compress);
-						// Если выполняется нормальный запрос
-						if(this->_attempt == 0){
+						{
+							// Список заголовков для запроса
+							vector <nghttp2_nv> nva;
+							// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
+							sid = this->update(* const_cast <request_t *> (&request));
 							// Если список заголовков получен
 							if(!request.headers.empty())
 								// Устанавливаем заголовоки запроса
@@ -851,11 +871,6 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 							if(!request.entity.empty())
 								// Устанавливаем тело запроса
 								this->_http.body(request.entity);
-						}{
-							// Список заголовков для запроса
-							vector <nghttp2_nv> nva;
-							// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
-							sid = this->update(* const_cast <request_t *> (&request));
 							// Создаём объек запроса
 							awh::web_t::req_t query(2.0f, request.method, request.url);
 							/**
@@ -1187,10 +1202,6 @@ void awh::client::Http2::on(function <void (const awh::core_t::status_t, awh::co
 void awh::client::Http2::on(function <void (const int32_t, const mode_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
 }
 /**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
@@ -1506,6 +1517,10 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _threads(-1), _frameSize(0) {
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&http2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных

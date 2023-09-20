@@ -509,7 +509,7 @@ namespace awh {
 				/**
 				 * onClose Функция закрытия подключения с сервером HTTP/2
 				 * @param session объект сессии HTTP/2
-				 * @param sid     идентификатор сессии HTTP/2
+				 * @param sid     идентификатор потока
 				 * @param error   флаг ошибки HTTP/2 если присутствует
 				 * @param ctx     передаваемый промежуточный контекст
 				 * @return        статус полученного события
@@ -519,7 +519,7 @@ namespace awh {
 				 * onChunk Функция обратного вызова при получении чанка с сервера HTTP/2
 				 * @param session объект сессии HTTP/2
 				 * @param flags   флаги события для сессии HTTP/2
-				 * @param sid     идентификатор сессии HTTP/2
+				 * @param sid     идентификатор потока
 				 * @param buffer  буфер данных который содержит полученный чанк
 				 * @param size    размер полученного буфера данных чанка
 				 * @param ctx     передаваемый промежуточный контекст
@@ -562,7 +562,7 @@ namespace awh {
 				/**
 				 * onRead Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
 				 * @param session объект сессии HTTP/2
-				 * @param sid     идентификатор сессии HTTP/2
+				 * @param sid     идентификатор потока
 				 * @param buffer  буфер данных которые следует отправить
 				 * @param size    размер буфера данных для отправки
 				 * @param flags   флаги события для сессии HTTP/2
@@ -573,41 +573,41 @@ namespace awh {
 				static ssize_t onRead(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 			protected:
 				/**
-				 * receivedFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
 				 * @param frame   объект фрейма заголовков HTTP/2
 				 * @return        статус полученных данных
 				 */
-				virtual int receivedFrame(const nghttp2_frame * frame) noexcept = 0;
+				virtual int signalFrame(const nghttp2_frame * frame) noexcept = 0;
 				/**
-				 * receivedChunk Метод обратного вызова при получении чанка с сервера HTTP/2
-				 * @param sid    идентификатор сессии HTTP/2
+				 * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int receivedChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
-				 * receivedBeginHeaders Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid идентификатор сессии HTTP/2
+				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				virtual int receivedBeginHeaders(const int32_t sid) noexcept = 0;
+				virtual int signalBeginHeaders(const int32_t sid) noexcept = 0;
 				/**
-				 * receivedStreamClosed Метод завершения работы потока
-				 * @param sid   идентификатор сессии HTTP/2
+				 * signalStreamClosed Метод завершения работы потока
+				 * @param sid   идентификатор потока
 				 * @param error флаг ошибки HTTP/2 если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept = 0;
+				virtual int signalStreamClosed(const int32_t sid, const uint32_t error) noexcept = 0;
 				/**
-				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid идентификатор сессии HTTP/2
+				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int receivedHeader(const int32_t sid, const string & key, const string & val) noexcept = 0;
+				virtual int signalHeader(const int32_t sid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера

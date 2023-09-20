@@ -121,41 +121,41 @@ namespace awh {
 				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * receivedFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
 				 * @param frame   объект фрейма заголовков HTTP/2
 				 * @return        статус полученных данных
 				 */
-				int receivedFrame(const nghttp2_frame * frame) noexcept;
+				int signalFrame(const nghttp2_frame * frame) noexcept;
 				/**
-				 * receivedChunk Метод обратного вызова при получении чанка с сервера HTTP/2
-				 * @param sid    идентификатор сессии HTTP/2
+				 * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				int receivedChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
+				int signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * receivedBeginHeaders Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid идентификатор сессии HTTP/2
+				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				int receivedBeginHeaders(const int32_t sid) noexcept;
+				int signalBeginHeaders(const int32_t sid) noexcept;
 				/**
-				 * receivedStreamClosed Метод завершения работы потока
-				 * @param sid   идентификатор сессии HTTP/2
+				 * signalStreamClosed Метод завершения работы потока
+				 * @param sid   идентификатор потока
 				 * @param error флаг ошибки HTTP/2 если присутствует
 				 * @return      статус полученных данных
 				 */
-				int receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept;
+				int signalStreamClosed(const int32_t sid, const uint32_t error) noexcept;
 				/**
-				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid идентификатор сессии HTTP/2
+				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				int receivedHeader(const int32_t sid, const string & key, const string & val) noexcept;
+				int signalHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -171,12 +171,19 @@ namespace awh {
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @param sid  идентификатор запроса
+				 * @param sid  идентификатор потока
 				 * @param aid  идентификатор адъютанта
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
 				status_t prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept;
+			private:
+				/**
+				 * stream Метод вывода статус потока
+				 * @param sid  идентификатор потока
+				 * @param mode активный статус потока
+				 */
+				void stream(const int32_t sid, const mode_t mode) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
