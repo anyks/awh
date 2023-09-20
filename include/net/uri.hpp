@@ -124,6 +124,13 @@ namespace awh {
 					bool empty() const noexcept;
 				public:
 					/**
+					 * Оператор [=] получения параметров URL-запроса
+					 * @param url строка URL-запроса для получения параметров
+					 * @return    параметры URL-запроса
+					 */
+					URL & operator = (const URL & url) noexcept;
+				public:
+					/**
 					 * URL Конструктор
 					 */
 					URL() noexcept :

@@ -43,7 +43,7 @@ namespace awh {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
-				// Объект работы с протоколом HTTP/1.1
+				// Объект работы с протоколом HTTP/2
 				client::http2_t _http;
 			private:
 				// Создаём объект фреймворка
@@ -62,19 +62,12 @@ namespace awh {
 				void sendError(const ws::mess_t & mess) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения на сервер HTTP/1.1
-				 * @param request параметры запроса на удалённый сервер
-				 * @return        идентификатор отправленного запроса
-				 */
-				int32_t send(const web_t::request_t & request) noexcept;
-				/**
 				 * send Метод отправки сообщения на сервер HTTP/2
 				 * @param agent   агент воркера
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
 				int32_t send(const web_t::agent_t agent, const web_t::request_t & request) noexcept;
-			public:
 				/**
 				 * send Метод отправки сообщения на сервер WebSocket
 				 * @param message буфер сообщения в бинарном виде

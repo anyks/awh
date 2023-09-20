@@ -94,94 +94,13 @@ int awh::client::Web2::onClose(nghttp2_session * session, const int32_t sid, con
 	#if defined(DEBUG_MODE)
 		// Выводим заголовок ответа
 		cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
-		// Определяем тип получаемой ошибки
-		switch(error){
-			// Если ошибка не получена
-			case 0x0:
-				// Выводим информацию о закрытии сессии
-				cout << web->_fmk->format("Stream %d closed", sid) << endl << endl;
-			break;
-			// Если получена ошибка протокола
-			case 0x1:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "PROTOCOL_ERROR") << endl << endl;
-			break;
-			// Если получена ошибка реализации
-			case 0x2:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "INTERNAL_ERROR") << endl << endl;
-			break;
-			// Если получена ошибка превышения предела управления потоком
-			case 0x3:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "FLOW_CONTROL_ERROR") << endl << endl;
-			break;
-			// Если установка не подтверждённа
-			case 0x4:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "SETTINGS_TIMEOUT") << endl << endl;
-			break;
-			// Если получен кадр для завершения потока
-			case 0x5:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "STREAM_CLOSED") << endl << endl;
-			break;
-			// Если размер кадра некорректен
-			case 0x6:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "FRAME_SIZE_ERROR") << endl << endl;
-			break;
-			// Если поток не обработан
-			case 0x7:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "REFUSED_STREAM") << endl << endl;
-			break;
-			// Если поток аннулирован
-			case 0x8:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "CANCEL") << endl << endl;
-			break;
-			// Если состояние компрессии не обновлено
-			case 0x9:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "COMPRESSION_ERROR") << endl << endl;
-			break;
-			// Если получена ошибка TCP-соединения для метода CONNECT
-			case 0xa:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "CONNECT_ERROR") << endl << endl;
-			break;
-			// Если превышена емкость для обработки
-			case 0xb:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "ENHANCE_YOUR_CALM") << endl << endl;
-			break;
-			// Если согласованные параметры TLS не приемлемы
-			case 0xc:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "INADEQUATE_SECURITY") << endl << endl;
-			break;
-			// Если для запроса используется HTTP/1.1
-			case 0xd:
-				// Выводим информацию о закрытии сессии с ошибкой
-				cout << web->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED") << endl << endl;
-			break;
-		}
-	/**
-	 * Если включён рабочий режим
-	 */
-	#else
-		// Выполняем блокировку неиспользуемой переменной
-		(void) sid;
+		// Если ошибка не была получена
+		if(error == 0x0)
+			// Выводим информацию о закрытии сессии
+			cout << web->_fmk->format("Stream %d closed", sid) << endl << endl;
 	#endif
-	// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-	web->_upgraded = false;
-	// Если сессия HTTP/2 закрыта не удачно
-	if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
-		// Выводим сообщение об ошибке
-		return NGHTTP2_ERR_CALLBACK_FAILURE;
-	// Выводим результат
-	return 0;
+	// Выполняем передачу сигнала
+	return web->receivedStreamClosed(sid, error);
 }
 /**
  * onChunk Функция обратного вызова при получении чанка с сервера HTTP/2

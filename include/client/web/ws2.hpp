@@ -126,6 +126,9 @@ namespace awh {
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
+				// Активный прототип интернета
+				engine_t::proto_t _proto;
+			private:
 				// Объект функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:
@@ -194,6 +197,13 @@ namespace awh {
 				 * @return    статус полученных данных
 				 */
 				int receivedBeginHeaders(const int32_t sid) noexcept;
+				/**
+				 * receivedStreamClosed Метод завершения работы потока
+				 * @param sid   идентификатор сессии HTTP/2
+				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @return      статус полученных данных
+				 */
+				int receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept;
 				/**
 				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор сессии HTTP/2

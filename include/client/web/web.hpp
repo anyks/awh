@@ -594,6 +594,13 @@ namespace awh {
 				 */
 				virtual int receivedBeginHeaders(const int32_t sid) noexcept = 0;
 				/**
+				 * receivedStreamClosed Метод завершения работы потока
+				 * @param sid   идентификатор сессии HTTP/2
+				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @return      статус полученных данных
+				 */
+				virtual int receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept = 0;
+				/**
 				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор сессии HTTP/2
 				 * @param key данные ключа заголовка

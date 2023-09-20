@@ -42,17 +42,19 @@ namespace awh {
 				 * Worker Структура активного воркера
 				 */
 				typedef struct Worker {
-					bool update;   // Флаг обновления параметров запроса
-					http_t http;   // Объект для работы с HTTP
-					fn_t callback; // Объект функций обратного вызова
-					agent_t agent; // Агент воркера
+					bool update;             // Флаг обновления параметров запроса
+					http_t http;             // Объект для работы с HTTP
+					fn_t callback;           // Объект функций обратного вызова
+					agent_t agent;           // Агент воркера
+					engine_t::proto_t proto; // Активный прототип интернета
 					/**
 					 * Worker Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Worker(const fmk_t * fmk, const log_t * log) noexcept :
-					 update(false), http(fmk, log), callback(log), agent(agent_t::HTTP) {}
+					 update(false), http(fmk, log), callback(log),
+					 agent(agent_t::HTTP), proto(engine_t::proto_t::HTTP1_1) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -72,10 +74,10 @@ namespace awh {
 				// Размер фрейма WebSocket
 				size_t _frameSize;
 			private:
-				// Список активых запросов
-				map <int32_t, request_t> _requests;
 				// Список активных воркеров
 				map <int32_t, unique_ptr <worker_t>> _workers;
+				// Список активых запросов
+				map <int32_t, unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
@@ -140,6 +142,13 @@ namespace awh {
 				 */
 				int receivedBeginHeaders(const int32_t sid) noexcept;
 				/**
+				 * receivedStreamClosed Метод завершения работы потока
+				 * @param sid   идентификатор сессии HTTP/2
+				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @return      статус полученных данных
+				 */
+				int receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept;
+				/**
 				 * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор сессии HTTP/2
 				 * @param key данные ключа заголовка
@@ -152,6 +161,13 @@ namespace awh {
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
+			private:
+				/**
+				 * update Метод обновления параметров запроса для переадресации
+				 * @param request параметры запроса на удалённый сервер
+				 * @return        предыдущий идентификатор потока, если произошла переадресация
+				 */
+				int32_t update(request_t & request) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных

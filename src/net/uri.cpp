@@ -53,6 +53,75 @@ bool awh::URI::URL::empty() const noexcept {
 	return (this->schema.empty() && this->host.empty() && this->ip.empty() && this->domain.empty());
 }
 /**
+ * Оператор [=] получения параметров URL-запроса
+ * @param url строка URL-запроса для получения параметров
+ * @return    параметры URL-запроса
+ */
+awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
+	// Выполняем копирование порта
+	this->port = url.port;
+	// Выполняем копирование протокола интернета
+	this->family = url.family;
+	// Если IP-адрес передан
+	if(!url.ip.empty())
+		// Выполняем копирование IP-адреса
+		this->ip.assign(url.ip.begin(), url.ip.end());
+	// Выполняем удаление IP-адреса
+	else this->ip.clear();
+	// Если хост сервера передан
+	if(!url.host.empty())
+		// Выполняем копирование хоста сервера
+		this->host.assign(url.host.begin(), url.host.end());
+	// Выполняем удаление хоста сервера
+	else this->host.clear();
+	// Если доменное имя сервера передано
+	if(!url.domain.empty())
+		// Выполняем копирование доменного имени сервера
+		this->domain.assign(url.domain.begin(), url.domain.end());
+	// Выполняем удаление доменного имени сервера
+	else this->domain.clear();
+	// Если протокол передачи данных передан
+	if(!url.schema.empty())
+		// Выполняем копирование протокола передачи данных
+		this->schema.assign(url.schema.begin(), url.schema.end());
+	// Выполняем удаление протокола передачи данных
+	else this->schema.clear();
+	// Если якорь URL-запроса передан
+	if(!url.anchor.empty())
+		// Выполняем копирование якоря URL-запроса
+		this->anchor.assign(url.anchor.begin(), url.anchor.end());
+	// Выполняем удаление якоря URL-запроса
+	else this->anchor.clear();
+	// Если пользователь передан
+	if(!url.user.empty())
+		// Выполняем копирование пользователя
+		this->user.assign(url.user.begin(), url.user.end());
+	// Выполняем удаление пользователя
+	else this->user.clear();
+	// Если пароль передан
+	if(!url.pass.empty())
+		// Выполняем копирование пароля
+		this->pass.assign(url.pass.begin(), url.pass.end());
+	// Выполняем удаление пароля
+	else this->pass.clear();
+	// Если путь передан
+	if(!url.path.empty())
+		// Выполняем копирование пути
+		this->path.assign(url.path.begin(), url.path.end());
+	// Выполняем удаление пути
+	else this->path.clear();
+	// Если параметры переданы
+	if(!url.params.empty())
+		// Выполняем копирование параметров
+		this->params.assign(url.params.begin(), url.params.end());
+	// Выполняем удаление параметров
+	else this->params.clear();
+	// Выполняем копирование функции обратного вызова
+	this->fn = url.fn;
+	// Выводим результат
+	return (* this);
+}
+/**
  * parse Метод получения параметров URL-запроса
  * @param url строка URL-запроса для получения параметров
  * @return    параметры URL-запроса

@@ -28,16 +28,7 @@ void awh::client::Rest::sendTimeout() noexcept {
  */
 void awh::client::Rest::sendError(const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообщения об ошибке
-	// this->_http.sendError(mess);
-}
-/**
- * send Метод отправки сообщения на сервер HTTP/1.1
- * @param request параметры запроса на удалённый сервер
- * @return        идентификатор отправленного запроса
- */
-int32_t awh::client::Rest::send(const web_t::request_t & request) noexcept {
-	// Выполняем отправку сообщения на удалённый сервер
-	return -1; // this->_http.send(request);
+	this->_http.sendError(mess);
 }
 /**
  * send Метод отправки сообщения на сервер HTTP/2
@@ -57,14 +48,14 @@ int32_t awh::client::Rest::send(const web_t::agent_t agent, const web_t::request
  */
 void awh::client::Rest::send(const char * message, const size_t size, const bool utf8) noexcept {
 	// Выполняем отправку сообщения на WebSocket-сервер
-	// this->_http.send(message, size, utf8);
+	this->_http.send(message, size, utf8);
 }
 /**
  * pause Метод установки на паузу клиента WebSocket
  */
 void awh::client::Rest::pause() noexcept {
 	// Выполняем постановку клиента WebSocket на паузу
-	// this->_http.pause();
+	this->_http.pause();
 }
 /**
  * init Метод инициализации клиента
@@ -377,7 +368,6 @@ void awh::client::Rest::REQUEST(const awh::web_t::method_t method, const uri_t::
 				// Запоминаем переданные заголовки
 				request.headers = std::forward <const unordered_multimap <string, string>> (headers);
 				// Выполняем запрос на сервер
-				// this->send(request);
 				this->send(web_t::agent_t::HTTP, request);
 			// Выполняем остановку работы модуля
 			} else this->stop();
@@ -424,7 +414,7 @@ void awh::client::Rest::on(function <void (const web_t::mode_t)> callback) noexc
  */
 void awh::client::Rest::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
-	// this->_http.on(callback);
+	this->_http.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
@@ -432,7 +422,7 @@ void awh::client::Rest::on(function <void (const u_int, const string &)> callbac
  */
 void awh::client::Rest::on(function <void (const vector <char> &, const bool)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
-	// this->_http.on(callback);
+	this->_http.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
@@ -531,19 +521,17 @@ void awh::client::Rest::start() noexcept {
  * sub Метод получения выбранного сабпротокола WebSocket
  * @return выбранный сабпротокол
  */
-/*
 const string & awh::client::Rest::sub() const noexcept {
 	// Выполняем извлечение выбранного сабпротокола
 	return this->_http.sub();
 }
-*/
 /**
  * sub Метод установки сабпротокола поддерживаемого сервером WebSocket
  * @param sub сабпротокол для установки
  */
 void awh::client::Rest::sub(const string & sub) noexcept {
 	// Выполняем установку сабпротокола
-	// this->_http.sub(sub);
+	this->_http.sub(sub);
 }
 /**
  * subs Метод установки списка сабпротоколов поддерживаемых сервером WebSocket
@@ -551,25 +539,23 @@ void awh::client::Rest::sub(const string & sub) noexcept {
  */
 void awh::client::Rest::subs(const vector <string> & subs) noexcept {
 	// Выполняем установку списка сабпротоколов
-	// this->_http.subs(subs);
+	this->_http.subs(subs);
 }
 /**
  * extensions Метод извлечения списка расширений WebSocket
  * @return список поддерживаемых расширений
  */
-/*
 const vector <vector <string>> & awh::client::Rest::extensions() const noexcept {
 	// Выполняем извлечение списка расширений
 	return this->_http.extensions();
 }
-*/
 /**
  * extensions Метод установки списка расширений WebSocket
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::Rest::extensions(const vector <vector <string>> & extensions) noexcept {
 	// Выполняем установку списка расширений
-	// this->_http.extensions(extensions);
+	this->_http.extensions(extensions);
 }
 /**
  * chunk Метод установки размера чанка
@@ -585,7 +571,7 @@ void awh::client::Rest::chunk(const size_t size) noexcept {
  */
 void awh::client::Rest::segmentSize(const size_t size) noexcept {
 	// Выполняем установку размера сегмента фрейма WebSocket
-	// this->_http.segmentSize(size);
+	this->_http.segmentSize(size);
 }
 /**
  * attempts Метод установки общего количества попыток
@@ -637,7 +623,7 @@ void awh::client::Rest::keepAlive(const int cnt, const int idle, const int intvl
  */
 void awh::client::Rest::multiThreads(const size_t threads, const bool mode) noexcept {
 	// Выполняем активацию многопоточности при получения данных в WebSocket
-	// this->_http.multiThreads(threads, mode);
+	this->_http.multiThreads(threads, mode);
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса

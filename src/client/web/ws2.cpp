@@ -52,6 +52,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		if(this->_upgraded){
 			// Список заголовков для запроса
 			vector <nghttp2_nv> nva;
+			// Выполняем переключение протокола интернета на HTTP/2
+			this->_proto = engine_t::proto_t::HTTP2;
 			// Создаём объек запроса
 			awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 			/**
@@ -139,7 +141,7 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
  */
 void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded){
+	if(this->_proto != engine_t::proto_t::HTTP2){
 		// Выполняем переброс вызова дисконнекта на клиент WebSocket
 		this->_ws1.disconnectCallback(aid, sid, core);
 		// Получаем параметры запроса
@@ -160,6 +162,10 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 		return;
 	// Если переключение протокола на HTTP/2 выполнено
 	} else {
+		// Если сессия HTTP/2 активна
+		if(this->_upgraded && (this->_session != nullptr))
+			// Выполняем остановку активной сессии
+			nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
 		// Получаем параметры запроса
 		const auto & response = this->_http.response();
 		// Если нужно произвести запрос заново
@@ -172,6 +178,8 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 				if(!url.empty()){
 					// Увеличиваем количество попыток
 					this->_attempt++;
+					// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+					this->_upgraded = false;
 					// Заменяем адрес запроса в схеме клиента
 					this->_scheme.url = std::forward <const uri_t::url_t> (url);
 					// Выполняем очистку оставшихся данных
@@ -182,6 +190,8 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 					if(this->_callback.is("redirect"))
 						// Выводим функцию обратного вызова
 						this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
+					// Выполняем переключение протокола интернета обратно на HTTP/1.1
+					this->_proto = engine_t::proto_t::HTTP1_1;
 					// Выполняем установку следующего экшена на открытие подключения
 					this->open();
 					// Завершаем работу
@@ -189,30 +199,34 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 				}
 			}
 		}
-		// Если подключение является постоянным
-		if(this->_scheme.alive){
-			// Выполняем очистку оставшихся данных
-			this->_buffer.clear();
-			// Выполняем очистку оставшихся фрагментов
-			this->_fragmes.clear();
-		// Если подключение не является постоянным
-		} else {
-			// Выполняем сброс параметров запроса
-			this->flush();
-			// Выполняем зануление идентификатора адъютанта
-			this->_aid = 0;
-			// Очищаем адрес сервера
-			this->_scheme.url.clear();
-			// Если завершить работу разрешено
-			if(this->_unbind)
-				// Завершаем работу
-				dynamic_cast <client::core_t *> (core)->stop();
-		}
-		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callback.is("active"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	}
+	// Если подключение является постоянным
+	if(this->_scheme.alive){
+		// Выполняем очистку оставшихся данных
+		this->_buffer.clear();
+		// Выполняем очистку оставшихся фрагментов
+		this->_fragmes.clear();
+	// Если подключение не является постоянным
+	} else {
+		// Выполняем сброс параметров запроса
+		this->flush();
+		// Выполняем зануление идентификатора адъютанта
+		this->_aid = 0;
+		// Очищаем адрес сервера
+		this->_scheme.url.clear();
+		// Если завершить работу разрешено
+		if(this->_unbind)
+			// Завершаем работу
+			dynamic_cast <client::core_t *> (core)->stop();
+	}
+	// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+	this->_upgraded = false;
+	// Выполняем переключение протокола интернета обратно на HTTP/1.1
+	this->_proto = engine_t::proto_t::HTTP1_1;
+	// Если функция обратного вызова при подключении/отключении установлена
+	if(this->_callback.is("active"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с сервера
@@ -272,7 +286,7 @@ void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t si
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Если переключение протокола на HTTP/2 не выполнено
-		if(!this->_upgraded)
+		if(this->_proto == engine_t::proto_t::HTTP2)
 			// Выполняем переброс вызова записи на клиент WebSocket
 			this->_ws1.writeCallback(buffer, size, aid, sid, core);
 		// Если переключение протокола на HTTP/2 выполнено
@@ -297,7 +311,7 @@ void awh::client::WebSocket2::persistCallback(const size_t aid, const size_t sid
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Если переключение протокола на HTTP/2 не выполнено
-		if(!this->_upgraded)
+		if(this->_proto != engine_t::proto_t::HTTP2)
 			// Выполняем переброс персистентного вызова на клиент WebSocket
 			this->_ws1.persistCallback(aid, sid, core);
 		// Если переключение протокола на HTTP/2 выполнено
@@ -533,6 +547,119 @@ int awh::client::WebSocket2::receivedBeginHeaders(const int32_t sid) noexcept {
 	return 0;
 }
 /**
+ * receivedStreamClosed Метод завершения работы потока
+ * @param sid   идентификатор сессии HTTP/2
+ * @param error флаг ошибки HTTP/2 если присутствует
+ * @return      статус полученных данных
+ */
+int awh::client::WebSocket2::receivedStreamClosed(const int32_t sid, const uint32_t error) noexcept {
+	// Флаг отключения от сервера
+	bool stop = false;
+	// Определяем тип получаемой ошибки
+	switch(error){
+		// Если получена ошибка протокола
+		case 0x1:
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "PROTOCOL_ERROR");
+		break;
+		// Если получена ошибка реализации
+		case 0x2: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "INTERNAL_ERROR");
+		} break;
+		// Если получена ошибка превышения предела управления потоком
+		case 0x3: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "FLOW_CONTROL_ERROR");
+		} break;
+		// Если установка не подтверждённа
+		case 0x4: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "SETTINGS_TIMEOUT");
+		} break;
+		// Если получен кадр для завершения потока
+		case 0x5:
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "STREAM_CLOSED");
+		break;
+		// Если размер кадра некорректен
+		case 0x6: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "FRAME_SIZE_ERROR");
+		} break;
+		// Если поток не обработан
+		case 0x7: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "REFUSED_STREAM");
+		} break;
+		// Если поток аннулирован
+		case 0x8: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "CANCEL");
+		} break;
+		// Если состояние компрессии не обновлено
+		case 0x9:
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "COMPRESSION_ERROR");
+		break;
+		// Если получена ошибка TCP-соединения для метода CONNECT
+		case 0xa: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "CONNECT_ERROR");
+		} break;
+		// Если превышена емкость для обработки
+		case 0xb: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "ENHANCE_YOUR_CALM");
+		} break;
+		// Если согласованные параметры TLS не приемлемы
+		case 0xc: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "INADEQUATE_SECURITY");
+		} break;
+		// Если для запроса используется HTTP/1.1
+		case 0xd: {
+			// Выполняем установку флага остановки
+			stop = true;
+			// Выводим информацию о закрытии сессии с ошибкой
+			this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "HTTP_1_1_REQUIRED");
+		} break;
+	}
+	// Если разрешено выполнить остановку
+	if(stop){
+		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+		this->_upgraded = false;
+		// Если сессия HTTP/2 закрыта не удачно
+		if(nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR) != 0){
+			// Выполняем отключение от сервера
+			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Выводим сообщение об ошибке
+			return NGHTTP2_ERR_CALLBACK_FAILURE;
+		// Выполняем отключение от сервера
+		} else const_cast <client::core_t *> (this->_core)->close(this->_aid);
+	}
+	// Выводим результат
+	return 0;
+}
+/**
  * receivedHeader Метод обратного вызова при получении заголовка HTTP/2
  * @param sid идентификатор сессии HTTP/2
  * @param key данные ключа заголовка
@@ -557,7 +684,7 @@ int awh::client::WebSocket2::receivedHeader(const int32_t sid, const string & ke
  */
 void awh::client::WebSocket2::flush() noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выполняем сброс параметров запроса на клиенте WebSocket
 		this->_ws1.flush();
 	// Если переключение протокола на HTTP/2 выполнено
@@ -969,7 +1096,7 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
  */
 void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выполняем отправку сообщение об ошибке на клиент WebSocket
 		this->_ws1.sendError(mess);
 	// Если переключение протокола на HTTP/2 выполнено
@@ -1021,7 +1148,7 @@ void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
  */
 void awh::client::WebSocket2::send(const char * message, const size_t size, const bool utf8) noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выполняем отправку сообщения на клиент WebSocket
 		this->_ws1.send(message, size, utf8);
 	// Если переключение протокола на HTTP/2 выполнено
@@ -1156,7 +1283,7 @@ void awh::client::WebSocket2::send(const char * message, const size_t size, cons
  */
 void awh::client::WebSocket2::pause() noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Ставим работу клиента на паузу
 		this->_ws1.pause();
 	// Если переключение протокола на HTTP/2 выполнено
@@ -1335,7 +1462,7 @@ void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, con
  */
 const string & awh::client::WebSocket2::sub() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим выбранный сабпротокол
 		return this->_ws1.sub();
 	// Если переключение протокола на HTTP/2 выполнено
@@ -1375,7 +1502,7 @@ void awh::client::WebSocket2::subs(const vector <string> & subs) noexcept {
  */
 const vector <vector <string>> & awh::client::WebSocket2::extensions() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
-	if(!this->_upgraded)
+	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим список доступных расширений
 		return this->_ws1.extensions();
 	// Если переключение протокола на HTTP/2 выполнено
@@ -1575,7 +1702,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1589,7 +1716,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
- _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных

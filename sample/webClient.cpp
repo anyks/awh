@@ -63,9 +63,9 @@ class WebClient {
 				// Устанавливаем параметры запроса
 				req2.url = uri.parse("/api/v3/exchangeInfo");
 				// Выполняем первый запрос на сервер
-				this->_rest->send(req1);
+				this->_rest->send(client::web_t::agent_t::HTTP, req1);
 				// Выполняем второй запрос на сервер
-				this->_rest->send(req2);
+				this->_rest->send(client::web_t::agent_t::HTTP, req2);
 			}
 		}
 		/**
@@ -199,8 +199,8 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
-	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
+	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
@@ -237,11 +237,11 @@ int main(int argc, char * argv[]){
 	// Формируем GET запрос
 	// const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
-	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Подготавливаем тело запроса
-	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
+	const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
-	// const auto & body = rest.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
+	const auto & body = rest.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
 	// Выводим время запроса // 3862 || 3869 == 3893
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены
