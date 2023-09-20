@@ -281,7 +281,7 @@ namespace awh {
 			 * @param map контейнер в котором нужно произвести поиск
 			 * @return    итератор найденного элемента в контейнере
 			 */
-			A::const_iterator findInMap(const B & val, const A & map) const noexcept {
+			typename A::const_iterator findInMap(const B & val, const A & map) const noexcept {
 				// Если нам необходимо выполнить поиск по значению строке
 				if(std::is_same <B, std::string>::value || std::is_same <B, std::wstring>::value){
 					/**
