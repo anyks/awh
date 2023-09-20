@@ -274,7 +274,7 @@ namespace awh {
 			 * @tparam A тип контейнера
 			 * @tparam B тип искомого значения
 			 */
-			template <class A, typename B>
+			template <typename A, typename B>
 			/**
 			 * findInMap Метод поиска в контейнере std::map указанного значения
 			 * @param val значение которое необходимо найти
@@ -283,7 +283,7 @@ namespace awh {
 			 */
 			A::const_iterator findInMap(const B & val, const A & map) const noexcept {
 				// Если нам необходимо выполнить поиск по значению строке
-				if(std::is_same<B, std::string>::value || std::is_same<B, std::wstring>::value){
+				if(std::is_same <B, std::string>::value || std::is_same <B, std::wstring>::value){
 					/**
 					 * Структура для проверки данных
 					 */
