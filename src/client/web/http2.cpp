@@ -799,10 +799,13 @@ void awh::client::Http2::stream(const int32_t sid, const mode_t mode) noexcept {
 		auto it = this->_workers.find(sid);
 		// Если необходимый нам воркер найден
 		if(it != this->_workers.end()){
-			// Выполняем удаление указанного воркера
-			this->_workers.erase(it);
-			// Выполняем удаление параметра запроса
-			this->_requests.erase(sid);
+			// Если редирект не выполняется в данный момент
+			if(!it->second->update){
+				// Выполняем удаление указанного воркера
+				this->_workers.erase(it);
+				// Выполняем удаление параметра запроса
+				this->_requests.erase(sid);
+			}
 		}
 	}
 	// Если функция обратного вызова активности потока установлена
@@ -888,6 +891,9 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем перебор всех заголовков HTTP/2 запроса
 							for(auto & header : headers){
+								
+								cout << " =================== " << header.first << " == " << header.second << endl;
+								
 								// Выполняем добавление метода запроса
 								nva.push_back({
 									(uint8_t *) header.first.c_str(),

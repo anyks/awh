@@ -345,7 +345,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/cluster/core.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web.cpp"
@@ -448,7 +447,7 @@ else()
     add_executable(${DNS_APP_NAME} sample/dns.cpp)
     add_executable(${NTP_APP_NAME} sample/ntp.cpp)
     add_executable(${WSS_APP_NAME} sample/wss.cpp)
-    add_executable(${WSC_APP_NAME} sample/wsc2.cpp)
+    add_executable(${WSC_APP_NAME} sample/wsc.cpp)
     add_executable(${PING_APP_NAME} sample/ping.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
