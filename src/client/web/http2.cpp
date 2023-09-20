@@ -38,7 +38,10 @@ void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh
 			this->_http1._core = this->_core;
 			// Выполняем установку данных URL-адреса
 			this->_http1._scheme.url = this->_scheme.url;
-		}
+			// Активируем синхронный режим работы
+			dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::SYNC);
+		// Активируем асинхронный режим работы
+		} else dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::ASYNC);
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = this->_core;
 		// Устанавливаем флаг переключения протокола на HTTP/2
