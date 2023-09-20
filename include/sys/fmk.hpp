@@ -331,7 +331,7 @@ namespace awh {
 							 * @param item текущее проверяемое значение
 							 * @return     результат проверки
 							 */
-							bool operator () (const A::value_type & item) const noexcept {
+							bool operator () (const typename A::value_type & item) const noexcept {
 								// Выполняем сравнение текущего полученного значения
 								return this->compare(this->_value, item.second); 
 							}
@@ -360,7 +360,7 @@ namespace awh {
 							 * @param item текущее проверяемое значение
 							 * @return     результат проверки
 							 */
-							bool operator () (const A::value_type & item) const noexcept {
+							bool operator () (const typename A::value_type & item) const noexcept {
 								// Выполняем сравнение текущего полученного значения
 								return (item.second != this->_value); 
 							}
