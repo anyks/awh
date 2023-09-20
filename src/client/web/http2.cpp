@@ -891,9 +891,6 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем перебор всех заголовков HTTP/2 запроса
 							for(auto & header : headers){
-								
-								cout << " =================== " << header.first << " == " << header.second << endl;
-								
 								// Выполняем добавление метода запроса
 								nva.push_back({
 									(uint8_t *) header.first.c_str(),
