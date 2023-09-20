@@ -346,7 +346,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/cluster/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/http2.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web2.cpp"
@@ -385,7 +385,6 @@ set(WSS_APP_NAME wss)
 set(DNS_APP_NAME dns)
 set(NTP_APP_NAME ntp)
 set(PING_APP_NAME ping)
-set(HTTP2_APP_NAME http2)
 set(TIMER_APP_NAME timer)
 set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
@@ -433,7 +432,6 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
     add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
-    add_executable(${HTTP2_APP_NAME} sample/http2.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
@@ -452,7 +450,6 @@ else()
     add_executable(${WSS_APP_NAME} sample/wss.cpp)
     add_executable(${WSC_APP_NAME} sample/wsc2.cpp)
     add_executable(${PING_APP_NAME} sample/ping.cpp)
-    add_executable(${HTTP2_APP_NAME} sample/http2.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
@@ -545,14 +542,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -676,13 +665,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-            ${AWH_IDN}
-        )
-
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
@@ -789,12 +771,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-        )
-
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
         )
 
@@ -976,23 +952,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
@@ -1217,25 +1176,6 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${ICONV_LIBRARIES}
-            ${PCRE_LIBRARIES}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1484,22 +1424,6 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARIES}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
-
-        # Выполняем сборку приложения HTTP2-клиента
-        target_link_libraries(
-            ${HTTP2_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1660,13 +1584,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${HTTP2_APP_NAME}" POST_BUILD
-            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${HTTP2_APP_NAME}>"
-            COMMAND ulimit -c unlimited
-            COMMENT "sign target \"${HTTP2_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
-
         add_custom_command(TARGET "${TIMER_APP_NAME}" POST_BUILD
             COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${TIMER_APP_NAME}>"
             COMMAND ulimit -c unlimited
@@ -1741,7 +1658,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${HTTP2_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${HTTP2_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -1777,7 +1693,6 @@ install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${HTTP2_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

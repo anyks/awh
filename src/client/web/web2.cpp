@@ -597,10 +597,10 @@ void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
-	// Активируем персистентный запуск для работы пингов
-	const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
+		// Активируем персистентный запуск для работы пингов
+		const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
 		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
 		// Выполняем установку флага проверки домена

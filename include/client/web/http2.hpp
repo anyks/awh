@@ -155,12 +155,12 @@ namespace awh {
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @param id   идентификатор запроса
+				 * @param sid  идентификатор запроса
 				 * @param aid  идентификатор адъютанта
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				status_t prepare(const int32_t id, const size_t aid, client::core_t * core) noexcept;
+				status_t prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -188,6 +188,12 @@ namespace awh {
 				void pause() noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const mode_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибок
 				 * @param callback функция обратного вызова
 				 */
@@ -199,6 +205,17 @@ namespace awh {
 				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
@@ -208,6 +225,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
+				/**
+				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова

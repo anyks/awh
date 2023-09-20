@@ -41,6 +41,8 @@ void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh
 		}
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = this->_core;
+		// Устанавливаем флаг переключения протокола на HTTP/2
+		this->_ws2._upgraded = this->_upgraded;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -68,62 +70,91 @@ void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh
  * @param core объект сетевого ядра
  */
 void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Если список ответов получен
-	if(!this->_requests.empty()){
-		// Выполняем поиск активного воркера который необходимо перезапустить
-		for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
-			// Если мы нашли нужный нам воркер
-			if(it->second->update){
-				// Определяем тип агента
-				switch(static_cast <uint8_t> (it->second->agent)){
-					// Если протоколом агента является HTTP-клиент
-					case static_cast <uint8_t> (agent_t::HTTP): {
-						// Если протокол подключения желательно установить HTTP/2
-						if(core->proto() == engine_t::proto_t::HTTP2){
-							// Получаем параметры запроса
-							const auto & response = it->second->http.response();
-							// Если нужно произвести запрос заново
-							if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-							   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
-							   (response.code == 308) || (response.code == 401) || (response.code == 407))){
-								// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-								if((response.code == 401) || (response.code == 407) || it->second->http.isHeader("location")){
-									// Получаем новый адрес запроса
-									const uri_t::url_t & url = it->second->http.getUrl();
-									// Если адрес запроса получен
-									if(!url.empty()){
-										// Увеличиваем количество попыток
-										this->_attempt++;
-										// Выполняем поиск параметров запроса
-										auto jt = this->_requests.find(it->first);
-										// Если необходимые нам параметры запроса найдены
-										if(jt != this->_requests.end()){
-											// Получаем параметры адреса запроса
-											jt->second.url = std::forward <const uri_t::url_t> (url);
-											// Выполняем установку следующего экшена на открытие подключения
-											this->open();
-											// Завершаем работу
-											return;
-										}
+	// Выполняем поиск активного воркера который необходимо перезапустить
+	for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
+		// Определяем тип агента
+		switch(static_cast <uint8_t> (it->second->agent)){
+			// Если протоколом агента является HTTP-клиент
+			case static_cast <uint8_t> (agent_t::HTTP): {
+				// Если протокол подключения установлен как HTTP/2
+				if(this->_upgraded){
+					// Если мы нашли нужный нам воркер
+					if(it->second->update){
+						// Получаем параметры запроса
+						const auto & response = it->second->http.response();
+						// Если нужно произвести запрос заново
+						if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
+						   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
+						   (response.code == 308) || (response.code == 401) || (response.code == 407))){
+							// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+							if((response.code == 401) || (response.code == 407) || it->second->http.isHeader("location")){
+								// Получаем новый адрес запроса
+								const uri_t::url_t & url = it->second->http.getUrl();
+								// Если адрес запроса получен
+								if(!url.empty()){
+									// Увеличиваем количество попыток
+									this->_attempt++;
+									// Выполняем поиск параметров запроса
+									auto jt = this->_requests.find(it->first);
+									// Если необходимые нам параметры запроса найдены
+									if(jt != this->_requests.end()){
+										// Получаем параметры адреса запроса
+										jt->second.url = std::forward <const uri_t::url_t> (url);
+										// Меняем адрес подключения к серверу
+										this->_scheme.url = jt->second.url;
+										// Выполняем установку следующего экшена на открытие подключения
+										this->open();
+										// Завершаем работу
+										return;
 									}
 								}
 							}
-						// Если активирован режим работы с HTTP/1.1 протоколом
-						} else {
-							// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-							this->_http1.disconnectCallback(aid, sid, core);
-							// Завершаем работу функции
-							return;
 						}
-					} break;
-					// Если протоколом агента является WebSocket-клиент
-					case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-						// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
-						this->_ws2.disconnectCallback(aid, sid, core);
-						// Завершаем работу функции
-						return;
+					}
+				// Если активирован режим работы с HTTP/1.1 протоколом
+				} else {
+					// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
+					this->_http1.disconnectCallback(aid, sid, core);
+					// Получаем параметры запроса
+					const auto & response = this->_http1._http.response();
+					// Если нужно произвести запрос заново
+					if(!this->_http1._stopped && ((response.code == 201) || (response.code == 301) ||
+					   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
+					   (response.code == 308) || (response.code == 401) || (response.code == 407))){
+						// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+						if((response.code == 401) || (response.code == 407) || this->_http1._http.isHeader("location")){
+							// Получаем количество попыток
+							this->_attempt = this->_http1._attempt;
+							// Меняем адрес подключения к серверу
+							this->_scheme.url = this->_http1._scheme.url;
+							// Выполняем установку следующего экшена на открытие подключения
+							this->open();
+						}
+					}
+					// Завершаем работу функции
+					return;
+				}
+			} break;
+			// Если протоколом агента является WebSocket-клиент
+			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+				// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
+				this->_ws2.disconnectCallback(aid, sid, core);
+				// Получаем параметры запроса
+				const auto & response = this->_ws2._http.response();
+				// Если нужно произвести запрос заново
+				if(!this->_ws2._stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401) || (response.code == 407))){
+					// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+					if((response.code == 401) || (response.code == 407) || this->_ws2._http.isHeader("location")){
+						// Получаем количество попыток
+						this->_attempt = this->_ws2._attempt;
+						// Меняем адрес подключения к серверу
+						this->_scheme.url = this->_ws2._scheme.url;
+						// Выполняем установку следующего экшена на открытие подключения
+						this->open();
 					}
 				}
+				// Завершаем работу функции
+				return;
 			}
 		}
 	}
@@ -458,14 +489,14 @@ void awh::client::Http2::flush() noexcept {
 }
 /**
  * prepare Метод выполнения препарирования полученных данных
- * @param id   идентификатор запроса
+ * @param sid  идентификатор запроса
  * @param aid  идентификатор адъютанта
  * @param core объект сетевого ядра
  * @return     результат препарирования
  */
-awh::client::Web::status_t awh::client::Http2::prepare(const int32_t id, const size_t aid, client::core_t * core) noexcept {
+awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept {
 	// Выполняем поиск текущего воркера
-	auto it = this->_workers.find(id);
+	auto it = this->_workers.find(sid);
 	// Если искомый воркер найден
 	if(it != this->_workers.end()){
 		// Получаем параметры запроса
@@ -492,7 +523,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t id, const s
 					// Если адрес запроса получен
 					if(!url.empty()){
 						// Выполняем поиск параметров запроса
-						auto jt = this->_requests.find(id);
+						auto jt = this->_requests.find(sid);
 						// Если параметры запроса получены
 						if((it->second->update = (jt != this->_requests.end()))){
 							// Выполняем проверку соответствие протоколов
@@ -526,12 +557,12 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t id, const s
 					// Завершаем работу
 					core->close(aid);
 					// Выполняем удаление параметров запроса
-					this->_requests.erase(id);
+					this->_requests.erase(sid);
 					// Выполняем завершение работы
 					return status_t::STOP;
 				}
 				// Выполняем удаление параметров запроса
-				this->_requests.erase(id);
+				this->_requests.erase(sid);
 				// Завершаем обработку
 				return status_t::NEXT;
 			} break;
@@ -546,7 +577,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t id, const s
 						// Устанавливаем полученную функцию обратного вызова
 						it->second->callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), response.code, response.message, it->second->http.body());
 					// Выполняем удаление параметров запроса
-					this->_requests.erase(id);
+					this->_requests.erase(sid);
 					// Завершаем обработку
 					return status_t::NEXT;
 				}
@@ -559,7 +590,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t id, const s
 		// Завершаем работу
 		core->close(aid);
 		// Выполняем удаление параметров запроса
-		this->_requests.erase(id);
+		this->_requests.erase(sid);
 	}
 	// Выполняем завершение работы
 	return status_t::STOP;
@@ -604,21 +635,23 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если активирован режим работы с HTTP/2 протоколом
 					if(this->_upgraded){
-						// Выполняем сброс состояния HTTP парсера
-						this->_http.reset();
-						// Выполняем очистку параметров HTTP запроса
-						this->_http.clear();
-						// Устанавливаем метод компрессии
-						this->_http.compress(this->_compress);
-						// Если список заголовков получен
-						if(!request.headers.empty())
-							// Устанавливаем заголовоки запроса
-							this->_http.headers(request.headers);
-						// Если тело запроса существует
-						if(!request.entity.empty())
-							// Устанавливаем тело запроса
-							this->_http.body(request.entity);
-						{
+						// Если выполняется нормальный запрос
+						if(this->_attempt == 0){
+							// Выполняем сброс состояния HTTP парсера
+							this->_http.reset();
+							// Выполняем очистку параметров HTTP запроса
+							this->_http.clear();
+							// Устанавливаем метод компрессии
+							this->_http.compress(this->_compress);
+							// Если список заголовков получен
+							if(!request.headers.empty())
+								// Устанавливаем заголовоки запроса
+								this->_http.headers(request.headers);
+							// Если тело запроса существует
+							if(!request.entity.empty())
+								// Устанавливаем тело запроса
+								this->_http.body(request.entity);
+						}{
 							// Идентификатор предыдущего потока
 							int32_t oid = -1;
 							// Список заголовков для запроса
@@ -885,6 +918,14 @@ void awh::client::Http2::pause() noexcept {
 	}
 }
 /**
+ * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+}
+/**
  * on Метод установки функции обратного вызова на событие получения ошибок
  * @param callback функция обратного вызова
  */
@@ -905,6 +946,26 @@ void awh::client::Http2::on(function <void (const vector <char> &, const bool)> 
 	this->_ws2.on(callback);
 }
 /**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -921,6 +982,18 @@ void awh::client::Http2::on(function <void (const int32_t, const mode_t)> callba
  * @param callback функция обратного вызова
  */
 void awh::client::Http2::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on(callback);
+}
+/**
+ * on Метод установки функции вывода полученного чанка бинарных данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
@@ -1050,12 +1123,12 @@ void awh::client::Http2::segmentSize(const size_t size) noexcept {
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
-	// Выполняем установку флагов настроек модуля
-	web2_t::mode(flags);
 	// Устанавливаем флаги настроек модуля для WebSocket-клиента
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP/2 клиента
 	this->_http1.mode(flags);
+	// Выполняем установку флагов настроек модуля
+	web2_t::mode(flags);
 	// Если протокол подключения желательно установить HTTP/2
 	if(this->_core->proto() == engine_t::proto_t::HTTP2){
 		// Флаг активации работы персистентного вызова

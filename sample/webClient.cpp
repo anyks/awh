@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <client/web.hpp>
+#include <client/rest.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -21,56 +21,61 @@ using namespace awh;
  */
 class WebClient {
 	private:
-		// Объект логирования
-		log_t * _log;
+		// Создаём объект фреймворка
+		const fmk_t * _fmk;
+		// Создаём объект работы с логами
+		const log_t * _log;
 	private:
 		// Объект веб-клиента
-		client::web_t * _web;
+		client::rest_t * _rest;
 	public:
 		/**
 		 * message Метод получения статуса результата запроса
+		 * @param id      идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void message(const u_int code, const string & message){
+		void message(const int32_t id, const u_int code, const string & message){
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+				this->_log->print("request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
 		}
 		/**
 		 * active Метод идентификации активности на Web-клиенте
 		 * @param mode режим события подключения
-		 * @param web  объект WebClient-а
 		 */
-		void active(const client::web_t::mode_t mode, client::web_t * web){
-			// Выполняем установку веб-клиента
-			this->_web = web;
+		void active(const client::web_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
+				// Создаём объект URI
+				uri_t uri(this->_fmk);
 				// Создаём объект запроса
-				client::web_t::req_t req1, req2;
+				client::web_t::request_t req1, req2;
 				// Устанавливаем метод запроса
 				req1.method = web_t::method_t::GET;
 				// Устанавливаем метод запроса
 				req2.method = web_t::method_t::GET;
 				// Устанавливаем параметры запроса
-				req1.query = "/api/v3/exchangeInfo?symbol=BTCUSDT";
+				req1.url = uri.parse("/api/v3/exchangeInfo?symbol=BTCUSDT");
 				// Устанавливаем параметры запроса
-				req2.query = "/api/v3/exchangeInfo";
-				// Выполняем запрос на сервер
-				this->_web->send({req1, req2});
+				req2.url = uri.parse("/api/v3/exchangeInfo");
+				// Выполняем первый запрос на сервер
+				this->_rest->send(req1);
+				// Выполняем второй запрос на сервер
+				this->_rest->send(req2);
 			}
 		}
 		/**
 		 * entity Метод получения тела ответа сервера
+		 * @param id      идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param entity  тело ответа сервера
 		 */
-		void entity(const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t id, const u_int code, const string & message, const vector <char> & entity){
 			/**
 			 * Выполняем обработку ошибки
 			 */
@@ -90,15 +95,16 @@ class WebClient {
 			}
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
-			this->_web->stop();
+			this->_rest->stop();
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
+		 * @param id      идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -107,9 +113,11 @@ class WebClient {
 	public:
 		/**
 		 * WebClient Конструктор
-		 * @param log объект логирования
+		 * @param fmk  объект фреймворка
+		 * @param log  объект логирования
+		 * @param rest объект REST-клиента
 		 */
-		WebClient(log_t * log) : _log(log), _web(nullptr) {}
+		WebClient(const fmk_t * fmk, const log_t * log, client::rest_t * rest) : _fmk(fmk), _log(log), _rest(rest) {}
 };
 
 /**
@@ -125,12 +133,12 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk);
-	// Создаём объект исполнителя
-	WebClient executor(&log);
 	// Создаём биндинг
 	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
-	client::web_t web(client::web_t::agent_t::HTTP, &core, &fmk, &log);
+	client::rest_t rest(&core, &fmk, &log);
+	// Создаём объект исполнителя
+	WebClient executor(&fmk, &log, &rest);
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -143,7 +151,7 @@ int main(int argc, char * argv[]){
 	 * 2. Устанавливаем ожидание входящих сообщений
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
-	web.mode({
+	rest.mode({
 		// client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
 		// client::web_t::flag_t::WAIT_MESS,
@@ -155,32 +163,32 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	web.user("user", "password");
+	rest.user("user", "password");
 	// Устанавливаем длительное подключение
-	// web.keepAlive(2, 3, 1);
+	// rest.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение
-	// web.keepAlive(100, 30, 10);
+	// rest.keepAlive(100, 30, 10);
 	// Отключаем таймер ожидания входящих данных
-	// web.waitTimeDetect(0, 0, CONNECT_TIMEOUT);
+	// rest.waitTimeDetect(0, 0, CONNECT_TIMEOUT);
 	// Устанавливаем данные прокси-сервера
-	// web.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
-	// web.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-	// web.proxy("socks5://127.0.0.1:2222");
-	// web.proxy("socks5://test1:test@127.0.0.1:2222");
-	// web.proxy("http://test1:password@127.0.0.1:2222");
-	// web.proxy("http://127.0.0.1:2222");
-	// web.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
-	// web.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-	// web.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
-	// web.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
+	// rest.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// rest.proxy("socks5://127.0.0.1:2222");
+	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
+	// rest.proxy("http://test1:password@127.0.0.1:2222");
+	// rest.proxy("http://127.0.0.1:2222");
+	// rest.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
+	// rest.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
+	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
+	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии
-	// web.compress(http_t::compress_t::ALL_COMPRESS);
+	// rest.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	// web.authTypeProxy();
-	// web.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// rest.authTypeProxy();
+	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	// web.authType();
-	// web.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// rest.authType();
+	// rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
@@ -199,18 +207,18 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	/*
-	// Устанавливаем метод получения сообщения сервера
-	web.on((function <void (const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2));
 	// Устанавливаем метод активации подключения
-	web.on((function <void (const client::web_t::mode_t, client::web_t *)>) std::bind(&WebClient::active, &executor, _1, _2));
+	rest.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
+	// Устанавливаем метод получения сообщения сервера
+	rest.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
 	// Устанавливаем метод получения тела ответа
-	web.on((function <void (const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3));
+	rest.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения заголовков
-	web.on((function <void (const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3));
+	rest.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
 	// Выполняем инициализацию подключения
-	web.init("https://api.binance.com");
+	rest.init("https://api.binance.com");
 	// Выполняем запуск работы
-	web.start();
+	rest.start();
 	*/
 
 	// 1. Реализация Web-сервера
@@ -227,13 +235,13 @@ int main(int argc, char * argv[]){
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	// const auto & body = web.GET(url);
-	// const auto & body = web.GET(url, {{"Connection", "close"}});
-	const auto & body = web.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url, {{"Connection", "close"}});
+	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Подготавливаем тело запроса
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
-	// const auto & body = web.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
+	// const auto & body = rest.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
 	// Выводим время запроса // 3862 || 3869 == 3893
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены

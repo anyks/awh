@@ -370,14 +370,6 @@ void awh::client::Web::on(function <void (const mode_t)> callback) noexcept {
 	this->_callback.set <void (const mode_t)> ("active", callback);
 }
 /**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
-}
-/**
  * on Метод установки функции обратного вызова для перехвата полученных чанков
  * @param callback функция обратного вызова
  */
@@ -386,12 +378,12 @@ void awh::client::Web::on(function <void (const vector <char> &, const awh::http
 	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
- * on Метод установки функции вывода полученного чанка бинарных данных с сервера
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
+void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const vector <char> &)> ("chunks", callback);
+	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока
@@ -408,6 +400,14 @@ void awh::client::Web::on(function <void (const int32_t, const mode_t)> callback
 void awh::client::Web::on(function <void (const int32_t, const int32_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
+}
+/**
+ * on Метод установки функции вывода полученного чанка бинарных данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const vector <char> &)> ("chunks", callback);
 }
 /**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
@@ -659,9 +659,9 @@ void awh::client::Web::authTypeProxy(const auth_t::type_t type, const auth_t::ha
  * @param log объект для работы с логами
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _aid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
- _unbind(true), _active(false), _stopped(false), _redirects(false),
- _attempt(0), _attempts(15), _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {
+ _aid(0), _uri(fmk), _callback(log), _scheme(fmk, log), _unbind(true),
+ _active(false), _stopped(false), _redirects(false), _attempt(0), _attempts(15),
+ _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(nullptr) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2));
 	// Устанавливаем событие на запуск системы
