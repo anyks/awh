@@ -43,8 +43,9 @@ namespace awh {
 				 */
 				enum class type_t : uint8_t {
 					NONE   = 0x00, // Прокси-сервер не установлен
-					HTTP   = 0x01, // Прокси-сервер HTTP(S)
-					SOCKS5 = 0x02  // Прокси-сервер Socks5
+					HTTP   = 0x01, // Прокси-сервер HTTP/1.1
+					HTTPS  = 0x02, // Прокси-сервер HTTP/2
+					SOCKS5 = 0x03  // Прокси-сервер Socks5
 				};
 			public:
 				// Семейство интернет-протоколов
@@ -74,7 +75,10 @@ namespace awh {
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 				 family(scheme_t::family_t::IPV4), type(type_t::NONE),
-				 socks5(log), http(fmk, log), fmk(fmk), log(log) {}
+				 socks5(log), http(fmk, log), fmk(fmk), log(log) {
+					// Устанавливаем идентичность протокола к прокси-серверу
+					this->http.identity(http_t::identity_t::PROXY); 
+				}
 				/**
 				 * ~Proxy Деструктор
 				 */

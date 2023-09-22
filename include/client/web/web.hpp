@@ -95,6 +95,18 @@ namespace awh {
 				} request_t;
 			protected:
 				/**
+				 * Proxy Структура работы с прокси-сервером
+				 */
+				typedef struct Proxy {
+					u_int status;         // Статус ответа прокси-сервера
+					string authorization; // Строка авторизации на прокси-сервере
+					/**
+					 * Proxy Конструктор
+					 */
+					Proxy() noexcept : status(0), authorization{""} {}
+				} proxy_t;
+			protected:
+				/**
 				 * Этапы обработки
 				 */
 				enum class status_t : uint8_t {
@@ -122,6 +134,8 @@ namespace awh {
 			protected:
 				// Объект работы с URI ссылками
 				uri_t _uri;
+				// Объект параметров работы с прокси-сервером
+				proxy_t _proxy;
 				// Объект функций обратного вызова
 				fn_t _callback;
 				// Объект рабочего

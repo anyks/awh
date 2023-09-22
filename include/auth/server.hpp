@@ -18,6 +18,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <auth/core.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -35,20 +36,6 @@ namespace awh {
 		 * AuthServer Класс работы с авторизацией на сервере
 		 */
 		typedef class Auth : public auth_t {
-			private:
-				/**
-				 * Callback Структура функций обратного вызова
-				 */
-				typedef struct Callback {
-					// Внешняя функция получения пароля пользователя авторизации Digest
-					function <string (const string &)> extractPass;
-					// Внешняя функция проверки авторизации Basic
-					function <bool (const string &, const string &)> auth;
-					/**
-					 * Callback Конструктор
-					 */
-					Callback() noexcept : extractPass(nullptr), auth(nullptr) {}
-				} fn_t;
 			private:
 				// Логин пользователя
 				string _user;
@@ -94,19 +81,20 @@ namespace awh {
 				 * @param header заголовок HTTP с параметрами авторизации
 				 */
 				void header(const string & header) noexcept;
+			public:
 				/**
-				 * header Метод получения строки авторизации HTTP заголовка
-				 * @param mode режим вывода только значения заголовка
-				 * @return     строка авторизации
+				 * Оператор вывода строки авторизации
+				 * @return строка авторизации
 				 */
-				string header(const bool mode = false) noexcept;
+				operator std::string() noexcept;
 			public:
 				/**
 				 * Auth Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user(""), _pass("") {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept :
+				 auth_t(fmk, log), _user{""}, _pass{""}, _callback(log) {}
 		} auth_t;
 	};
 };

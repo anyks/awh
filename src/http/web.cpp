@@ -59,7 +59,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Очищаем собранные данные
 						this->_chunk.clear();
 						// Определяем тип HTTP модуля
-						switch(static_cast <uint8_t> (this->_httpType)){
+						switch(static_cast <uint8_t> (this->_hid)){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (hid_t::CLIENT): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
@@ -241,7 +241,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Выполняем очистку чанка
 				this->_chunk.clear();
 				// Определяем тип HTTP модуля
-				switch(static_cast <uint8_t> (this->_httpType)){
+				switch(static_cast <uint8_t> (this->_hid)){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (hid_t::CLIENT): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
@@ -296,7 +296,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				// Если все данные получены
 				if(stop){
 					// Определяем тип HTTP модуля
-					switch(static_cast <uint8_t> (this->_httpType)){
+					switch(static_cast <uint8_t> (this->_hid)){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (hid_t::CLIENT): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
@@ -362,7 +362,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Если - это режим ожидания получения запроса
 						case static_cast <uint8_t> (state_t::QUERY): {
 							// Определяем тип HTTP модуля
-							switch(static_cast <uint8_t> (this->_httpType)){
+							switch(static_cast <uint8_t> (this->_hid)){
 								// Если мы работаем с клиентом
 								case static_cast <uint8_t> (hid_t::CLIENT): {
 									// Создаём буфер для проверки
@@ -601,16 +601,16 @@ vector <char> awh::Web::dump() const noexcept {
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
-		// Устанавливаем сепаратор для детекции в буфере
-		result.insert(result.end(), (const char *) &this->_separator, (const char *) &this->_separator + sizeof(this->_separator));
-		// Устанавливаем размер тела сообщения
-		result.insert(result.end(), (const char *) &this->_bodySize, (const char *) &this->_bodySize + sizeof(this->_bodySize));
-		// Устанавливаем массив позиций в буфере сепаратора
-		result.insert(result.end(), (const char *) &this->_pos, (const char *) &this->_pos + sizeof(this->_pos));
+		// Устанавливаем тип используемого HTTP модуля
+		result.insert(result.end(), (const char *) &this->_hid, (const char *) &this->_hid + sizeof(this->_hid));
 		// Устанавливаем стейт текущего запроса
 		result.insert(result.end(), (const char *) &this->_state, (const char *) &this->_state + sizeof(this->_state));
-		// Устанавливаем тип используемого HTTP модуля
-		result.insert(result.end(), (const char *) &this->_httpType, (const char *) &this->_httpType + sizeof(this->_httpType));
+		// Устанавливаем массив позиций в буфере сепаратора
+		result.insert(result.end(), (const char *) &this->_pos, (const char *) &this->_pos + sizeof(this->_pos));
+		// Устанавливаем размер тела сообщения
+		result.insert(result.end(), (const char *) &this->_bodySize, (const char *) &this->_bodySize + sizeof(this->_bodySize));
+		// Устанавливаем сепаратор для детекции в буфере
+		result.insert(result.end(), (const char *) &this->_separator, (const char *) &this->_separator + sizeof(this->_separator));
 		// Устанавливаем версию протокола HTTP запроса
 		result.insert(result.end(), (const char *) &this->_req.version, (const char *) &this->_req.version + sizeof(this->_req.version));
 		// Устанавливаем версию протокола HTTP ответа
@@ -689,26 +689,26 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
-		// Выполняем получение сепаратора для детекции в буфере
-		::memcpy((void *) &this->_separator, data.data() + offset, sizeof(this->_separator));
+		// Выполняем получение типа используемого HTTP модуля
+		::memcpy((void *) &this->_hid, data.data() + offset, sizeof(this->_hid));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_separator);
-		// Выполняем получение размера тела сообщения
-		::memcpy((void *) &this->_bodySize, data.data() + offset, sizeof(this->_bodySize));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_bodySize);
-		// Выполняем получение массива позиций в буфере сепаратора
-		::memcpy((void *) &this->_pos, data.data() + offset, sizeof(this->_pos));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_pos);
+		offset += sizeof(this->_hid);
 		// Выполняем получение стейта текущего запроса
 		::memcpy((void *) &this->_state, data.data() + offset, sizeof(this->_state));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_state);
-		// Выполняем получение типа используемого HTTP модуля
-		::memcpy((void *) &this->_httpType, data.data() + offset, sizeof(this->_httpType));
+		// Выполняем получение массива позиций в буфере сепаратора
+		::memcpy((void *) &this->_pos, data.data() + offset, sizeof(this->_pos));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_httpType);
+		offset += sizeof(this->_pos);
+		// Выполняем получение размера тела сообщения
+		::memcpy((void *) &this->_bodySize, data.data() + offset, sizeof(this->_bodySize));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_bodySize);
+		// Выполняем получение сепаратора для детекции в буфере
+		::memcpy((void *) &this->_separator, data.data() + offset, sizeof(this->_separator));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_separator);
 		// Выполняем получение версии протокола HTTP запроса
 		::memcpy((void *) &this->_req.version, data.data() + offset, sizeof(this->_req.version));
 		// Выполняем смещение в буфере
@@ -1019,12 +1019,20 @@ void awh::Web::headers(const unordered_multimap <string, string> & headers) noex
 	this->_headers = headers;
 }
 /**
- * init Метод инициализации модуля
- * @param hid тип используемого HTTP модуля
+ * hid Метод вывода идентификатора модуля
+ * @return тип используемого HTTP-модуля
  */
-void awh::Web::init(const hid_t hid) noexcept {
-	// Устанавливаем тип используемого HTTP мдуля
-	this->_httpType = hid;
+const awh::Web::hid_t awh::Web::hid() const noexcept {
+	// Выводим тип используемого HTTP-модуля
+	return this->_hid;
+}
+/**
+ * hid Метод установки идентификатора модуля
+ * @param hid тип используемого HTTP-модуля
+ */
+void awh::Web::hid(const hid_t hid) noexcept {
+	// Устанавливаем тип используемого HTTP-модуля
+	this->_hid = hid;
 }
 /** 
  * state Метод установки стейта ожидания данных

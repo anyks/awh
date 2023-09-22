@@ -93,10 +93,10 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
-					// Устанавливаем тип HTTP модуля (Сервер)
-					this->web.init(awh::web_t::hid_t::SERVER);
-					// Устанавливаем тип модуля (Сервер)
-					this->httpType = awh::web_t::hid_t::SERVER;
+					// Выполняем установку идентичность клиента к протоколу WebSocket
+					this->_identity = identity_t::WS;
+					// Устанавливаем тип HTTP-модуля (Сервер)
+					this->_web.hid(awh::web_t::hid_t::SERVER);
 				}
 				/**
 				 * ~WS Деструктор

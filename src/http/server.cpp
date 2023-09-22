@@ -23,17 +23,17 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->auth.server.type() != awh::auth_t::type_t::NONE){
+	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		const string & auth = this->web.header("authorization");
+		const string & auth = this->_web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Метод HTTP запроса
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->auth.server.header(auth);
+			this->_auth.server.header(auth);
 			// Определяем метод запроса
-			switch(static_cast <uint8_t> (this->web.request().method)){
+			switch(static_cast <uint8_t> (this->_web.request().method)){
 				// Если метод запроса указан как GET
 				case static_cast <uint8_t> (web_t::method_t::GET):
 					// Устанавливаем метод запроса
@@ -81,7 +81,7 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 				break;
 			}
 			// Выполняем проверку авторизации
-			if(this->auth.server.check(method))
+			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -96,7 +96,7 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
  */
 void awh::server::Http::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->auth.server.realm(realm);
+	if(!realm.empty()) this->_auth.server.realm(realm);
 }
 /**
  * opaque Метод установки временного ключа сессии сервера
@@ -104,7 +104,7 @@ void awh::server::Http::realm(const string & realm) noexcept {
  */
 void awh::server::Http::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth.server.opaque(opaque);
+	if(!opaque.empty()) this->_auth.server.opaque(opaque);
 }
 /**
  * extractPassCallback Метод добавления функции извлечения пароля
@@ -112,7 +112,7 @@ void awh::server::Http::opaque(const string & opaque) noexcept {
  */
 void awh::server::Http::extractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.extractPassCallback(callback);
+	this->_auth.server.extractPassCallback(callback);
 }
 /**
  * authCallback Метод добавления функции обработки авторизации
@@ -120,7 +120,7 @@ void awh::server::Http::extractPassCallback(function <string (const string &)> c
  */
 void awh::server::Http::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.authCallback(callback);
+	this->_auth.server.authCallback(callback);
 }
 /**
  * authType Метод установки типа авторизации
@@ -129,7 +129,7 @@ void awh::server::Http::authCallback(function <bool (const string &, const strin
  */
 void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.server.type(type, hash);
+	this->_auth.server.type(type, hash);
 }
 /**
  * Http Конструктор
@@ -137,8 +137,8 @@ void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * @param log объект для работы с логами
  */
 awh::server::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
-	// Устанавливаем тип HTTP парсера
-	this->web.init(web_t::hid_t::SERVER);
-	// Устанавливаем тип HTTP модуля
-	this->httpType = web_t::hid_t::SERVER;
+	// Выполняем установку идентичность клиента к протоколу HTTP
+	this->_identity = identity_t::HTTP;
+	// Устанавливаем тип HTTP-парсера
+	this->_web.hid(web_t::hid_t::SERVER);
 }

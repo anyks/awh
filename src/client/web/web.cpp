@@ -72,7 +72,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 			// Определяем тип прокси-сервера
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
-				case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
 					// Выполняем сброс состояния Socks5 парсера
 					this->_scheme.proxy.socks5.reset();
 					// Устанавливаем URL адрес запроса
@@ -87,28 +87,37 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 				} break;
 				// Если прокси-сервер является HTTP
-				case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
-					// Выполняем сброс состояния HTTP парсера
-					this->_scheme.proxy.http.reset();
-					// Выполняем очистку параметров HTTP запроса
-					this->_scheme.proxy.http.clear();
-					// Создаём объек запроса
-					awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
-					// Получаем бинарные данные WEB запроса
-					const auto & buffer = this->_scheme.proxy.http.proxy(std::move(query));
-					// Если бинарные данные запроса получены
-					if(!buffer.empty()){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры запроса
-							cout << string(buffer.begin(), buffer.end()) << endl;
-						#endif
-						// Выполняем отправку сообщения на сервер
-						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
+					// Если протокол активирован HTTPS или WSS защищённый поверх TLS
+					if(this->_fmk->compare(this->_scheme.url.schema, "https") || this->_fmk->compare(this->_scheme.url.schema, "wss")){
+						// Выполняем сброс состояния HTTP парсера
+						this->_scheme.proxy.http.reset();
+						// Выполняем очистку параметров HTTP запроса
+						this->_scheme.proxy.http.clear();
+						// Создаём объек запроса
+						awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
+						// Получаем бинарные данные WEB запроса
+						const auto & buffer = this->_scheme.proxy.http.proxy(std::move(query));
+						// Если бинарные данные запроса получены
+						if(!buffer.empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры запроса
+								cout << string(buffer.begin(), buffer.end()) << endl;
+							#endif
+							// Выполняем отправку сообщения на сервер
+							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
+						}
+					// Если протокол подключения не является защищённым подключением
+					} else if(this->_fmk->compare(this->_scheme.url.schema, "http") || this->_fmk->compare(this->_scheme.url.schema, "ws")) {
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем переключение на работу с сервером
+						dynamic_cast <client::core_t *> (core)->switchProxy(aid);
 					}
 				} break;
 				// Иначе завершаем работу
@@ -137,7 +146,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 			// Определяем тип прокси-сервера
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
-				case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
 					// Если данные не получены
 					if(!this->_scheme.proxy.socks5.isEnd()){
 						// Выполняем парсинг входящих данных
@@ -195,7 +204,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 					}
 				} break;
 				// Если прокси-сервер является HTTP
-				case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
 					// Выполняем парсинг полученных данных
 					this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
 					// Если все данные получены
@@ -573,15 +582,23 @@ void awh::client::Web::proxy(const string & uri, const scheme_t::family_t family
 			// Если протокол подключения SOCKS5
 			if(this->_fmk->compare(this->_scheme.proxy.url.schema, "socks5")){
 				// Устанавливаем тип прокси-сервера
-				this->_scheme.proxy.type = proxy_t::type_t::SOCKS5;
+				this->_scheme.proxy.type = client::proxy_t::type_t::SOCKS5;
 				// Если требуется авторизация на прокси-сервере
 				if(!this->_scheme.proxy.url.user.empty() && !this->_scheme.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
 					this->_scheme.proxy.socks5.user(this->_scheme.proxy.url.user, this->_scheme.proxy.url.pass);
-			// Если протокол подключения HTTP
-			} else if(this->_fmk->compare(this->_scheme.proxy.url.schema, "http") || this->_fmk->compare(this->_scheme.proxy.url.schema, "https")) {
+			// Если протокол подключения HTTP/1.1
+			} else if(this->_fmk->compare(this->_scheme.proxy.url.schema, "http")) {
 				// Устанавливаем тип прокси-сервера
-				this->_scheme.proxy.type = proxy_t::type_t::HTTP;
+				this->_scheme.proxy.type = client::proxy_t::type_t::HTTP;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->_scheme.proxy.url.user.empty() && !this->_scheme.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->_scheme.proxy.http.user(this->_scheme.proxy.url.user, this->_scheme.proxy.url.pass);
+			// Если протокол подключения HTTP/2
+			} else if(this->_fmk->compare(this->_scheme.proxy.url.schema, "https")) {
+				// Устанавливаем тип прокси-сервера
+				this->_scheme.proxy.type = client::proxy_t::type_t::HTTPS;
 				// Если требуется авторизация на прокси-сервере
 				if(!this->_scheme.proxy.url.user.empty() && !this->_scheme.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
@@ -596,7 +613,9 @@ void awh::client::Web::proxy(const string & uri, const scheme_t::family_t family
  */
 void awh::client::Web::attempts(const uint8_t attempts) noexcept {
 	// Если количество попыток передано, устанавливаем его
-	if(attempts > 0) this->_attempts = attempts;
+	if(attempts > 0)
+		// Устанавливаем количество попыток
+		this->_attempts = attempts;
 }
 /**
  * core Метод установки сетевого ядра

@@ -259,10 +259,10 @@ namespace awh {
 			// Объект собираемого чанка
 			chunk_t _chunk;
 		private:
+			// Тип используемого HTTP модуля
+			hid_t _hid;
 			// Стейт текущего запроса
 			state_t _state;
-			// Тип используемого HTTP модуля
-			hid_t _httpType;
 		private:
 			// Полученное тело HTTP запроса
 			vector <char> _body;
@@ -409,10 +409,15 @@ namespace awh {
 			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
-			 * init Метод инициализации модуля
-			 * @param hid тип используемого HTTP модуля
+			 * hid Метод вывода идентификатора модуля
+			 * @return тип используемого HTTP-модуля
 			 */
-			void init(const hid_t hid) noexcept;
+			const hid_t hid() const noexcept;
+			/**
+			 * hid Метод установки идентификатора модуля
+			 * @param hid тип используемого HTTP-модуля
+			 */
+			void hid(const hid_t hid) noexcept;
 		public:
 			/** 
 			 * state Метод установки стейта ожидания данных
@@ -471,7 +476,7 @@ namespace awh {
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept :
 			 _separator('\0'), _pos{-1,-1}, _bodySize(-1), _uri(fmk), _callback(log),
-			 _state(state_t::QUERY), _httpType(hid_t::NONE), _fmk(fmk), _log(log) {}
+			 _hid(hid_t::NONE), _state(state_t::QUERY), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Web Деструктор
 			 */

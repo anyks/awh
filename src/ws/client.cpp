@@ -20,26 +20,26 @@
  */
 void awh::client::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
-	this->crypt = false;
+	this->_crypt = false;
 	// Выполняем включение перехвата контекста
 	this->_server.takeover = true;
 	this->_client.takeover = true;
 	// Выполняем проверку авторизации
-	this->stath = this->checkAuth();
+	this->_stath = this->checkAuth();
 	// Если ключ соответствует
-	if(this->stath == stath_t::GOOD)
+	if(this->_stath == stath_t::GOOD)
 		// Устанавливаем стейт рукопожатия
-		this->state = state_t::GOOD;
+		this->_state = state_t::GOOD;
 	// Поменяем данные как бракованные
-	else this->state = state_t::BROKEN;
+	else this->_state = state_t::BROKEN;
 	// Отключаем сжатие ответа с сервера
 	this->_compress = compress_t::NONE;
 	// Список доступных расширений
 	vector <string> extensions;
 	// Переходим по всему списку заголовков
-	for(auto & header : this->web.headers()){
+	for(auto & header : this->_web.headers()){
 		// Если заголовок расширения найден
-		if(this->fmk->compare(header.first, "sec-websocket-extensions")){
+		if(this->_fmk->compare(header.first, "sec-websocket-extensions")){
 			// Запись названия расширения
 			string extension = "";
 			// Выполняем перебор записи расширения
@@ -92,7 +92,7 @@ void awh::client::WS::commit() noexcept {
 		// Выполняем добавление списка записей в список расширений
 		this->_extensions.push_back(std::move(extensions));
 	// Ищем подпротокол сервера
-	this->_sub = this->web.header("sec-websocket-protocol");
+	this->_sub = this->_web.header("sec-websocket-protocol");
 }
 /**
  * checkKey Метод проверки ключа сервера
@@ -102,13 +102,13 @@ bool awh::client::WS::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа сервера
-	const string & auth = this->web.header("sec-websocket-accept");
+	const string & auth = this->_web.header("sec-websocket-accept");
 	// Если параметры авторизации найдены
 	if(!auth.empty()){
 		// Получаем ключ для проверки
 		const string & key = this->sha1();
 		// Если ключи не соответствуют, запрещаем работу
-		result = this->fmk->compare(key, auth);
+		result = this->_fmk->compare(key, auth);
 	}
 	// Выводим результат
 	return result;
@@ -129,21 +129,21 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Получаем объект параметров ответа
-	const web_t::res_t & response = this->web.response();
+	const web_t::res_t & response = this->_web.response();
 	// Проверяем код ответа
 	switch(response.code){
 		// Если требуется авторизация
 		case 401: {
 			// Определяем тип авторизации
-			switch(static_cast <uint8_t> (this->auth.client.type())){
+			switch(static_cast <uint8_t> (this->_auth.client.type())){
 				// Если производится авторизация DIGEST
 				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
 					// Получаем параметры авторизации
-					const string & auth = this->web.header("www-authenticate");
+					const string & auth = this->_web.header("www-authenticate");
 					// Если параметры авторизации найдены
 					if(!auth.empty()){
 						// Устанавливаем заголовок HTTP в параметры авторизации
-						this->auth.client.header(auth);
+						this->_auth.client.header(auth);
 						// Просим повторить авторизацию ещё раз
 						result = http_t::stath_t::RETRY;
 					}
@@ -162,15 +162,15 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 		case 307:
 		case 308: {
 			// Получаем параметры переадресации
-			const string & location = this->web.header("location");
+			const string & location = this->_web.header("location");
 			// Если адрес перенаправления найден
 			if(!location.empty()){
 				// Получаем объект параметров запроса
-				web_t::req_t request = this->web.request();
+				web_t::req_t request = this->_web.request();
 				// Выполняем парсинг полученного URL-адреса
-				request.url = this->uri.parse(location);
+				request.url = this->_uri.parse(location);
 				// Выполняем установку параметров запроса
-				this->web.request(std::move(request));
+				this->_web.request(std::move(request));
 				// Просим повторить авторизацию ещё раз
 				result = http_t::stath_t::RETRY;
 			}
@@ -190,9 +190,9 @@ void awh::client::WS::user(const string & user, const string & pass) noexcept {
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		this->auth.client.user(user);
+		this->_auth.client.user(user);
 		// Устанавливаем пароль пользователя
-		this->auth.client.pass(pass);
+		this->_auth.client.pass(pass);
 	}
 }
 /**
@@ -202,5 +202,5 @@ void awh::client::WS::user(const string & user, const string & pass) noexcept {
  */
 void awh::client::WS::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.client.type(type, hash);
+	this->_auth.client.type(type, hash);
 }

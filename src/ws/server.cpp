@@ -20,30 +20,30 @@
  */
 void awh::server::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
-	this->crypt = false;
+	this->_crypt = false;
 	// Выполняем включение перехвата контекста
 	this->_server.takeover = true;
 	this->_client.takeover = true;
 	// Выполняем проверку авторизации
-	this->stath = this->checkAuth();
+	this->_stath = this->checkAuth();
 	// Если ключ соответствует
-	if(this->stath == stath_t::GOOD)
+	if(this->_stath == stath_t::GOOD)
 		// Устанавливаем стейт рукопожатия
-		this->state = state_t::GOOD;
+		this->_state = state_t::GOOD;
 	// Поменяем данные как бракованные
-	else this->state = state_t::BROKEN;
+	else this->_state = state_t::BROKEN;
 	// Список доступных расширений
 	vector <string> extensions;
 	// Переходим по всему списку заголовков
-	for(auto & header : this->web.headers()){
+	for(auto & header : this->_web.headers()){
 		// Если заголовок сабпротокола найден
-		if(this->fmk->compare(header.first, "sec-websocket-protocol")){
+		if(this->_fmk->compare(header.first, "sec-websocket-protocol")){
 			// Проверяем, соответствует ли желаемый подпротокол нашему
 			if(this->_subs.find(header.second) != this->_subs.end())
 				// Устанавливаем выбранный подпротокол
 				this->_sub = header.second;
 		// Если заголовок расширения найден
-		} else if(this->fmk->compare(header.first, "sec-websocket-extensions")) {
+		} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
 			// Запись названия расширения
 			string extension = "";
 			// Выполняем перебор записи расширения
@@ -104,7 +104,7 @@ bool awh::server::WS::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
-	const string & key = this->web.header("sec-websocket-key");
+	const string & key = this->_web.header("sec-websocket-key");
 	// Если параметры авторизации найдены
 	if((result = !key.empty()))
 		// Устанавливаем ключ клиента
@@ -120,9 +120,9 @@ bool awh::server::WS::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Переходим по всему списку заголовков
-	for(auto & header : this->web.headers()){
+	for(auto & header : this->_web.headers()){
 		// Если заголовок найден
-		if(this->fmk->compare(header.first, "sec-websocket-version")){
+		if(this->_fmk->compare(header.first, "sec-websocket-version")){
 			// Проверяем, совпадает ли желаемая версия протокола
 			result = (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
 			// Если версия протокола совпадает, выходим
@@ -140,15 +140,15 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->auth.server.type() != awh::auth_t::type_t::NONE){
+	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		const string & auth = this->web.header("authorization");
+		const string & auth = this->_web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->auth.server.header(auth);
+			this->_auth.server.header(auth);
 			// Выполняем проверку авторизации
-			if(this->auth.server.check("get"))
+			if(this->_auth.server.check("get"))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -163,7 +163,7 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
  */
 void awh::server::WS::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->auth.server.realm(realm);
+	if(!realm.empty()) this->_auth.server.realm(realm);
 }
 /**
  * opaque Метод установки временного ключа сессии сервера
@@ -171,7 +171,7 @@ void awh::server::WS::realm(const string & realm) noexcept {
  */
 void awh::server::WS::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth.server.opaque(opaque);
+	if(!opaque.empty()) this->_auth.server.opaque(opaque);
 }
 /**
  * extractPassCallback Метод добавления функции извлечения пароля
@@ -179,7 +179,7 @@ void awh::server::WS::opaque(const string & opaque) noexcept {
  */
 void awh::server::WS::extractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.extractPassCallback(callback);
+	this->_auth.server.extractPassCallback(callback);
 }
 /**
  * authCallback Метод добавления функции обработки авторизации
@@ -187,7 +187,7 @@ void awh::server::WS::extractPassCallback(function <string (const string &)> cal
  */
 void awh::server::WS::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.authCallback(callback);
+	this->_auth.server.authCallback(callback);
 }
 /**
  * authType Метод установки типа авторизации
@@ -196,5 +196,5 @@ void awh::server::WS::authCallback(function <bool (const string &, const string 
  */
 void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.server.type(type, hash);
+	this->_auth.server.type(type, hash);
 }

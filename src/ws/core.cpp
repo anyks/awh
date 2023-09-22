@@ -54,19 +54,19 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Добавляем максимальный размер скользящего окна
 				extensions.push_back({"client_max_window_bits"});
 			// Выполняем установку указанного размера скользящего окна
-			else extensions.push_back({this->fmk->format("client_max_window_bits=%u", this->_client.wbit)});
+			else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
 			// Если размер скользящего окна сервера установлен как максимальный
 			if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
 				// Добавляем максимальный размер скользящего окна
 				extensions.push_back({"server_max_window_bits"});
 			// Выполняем установку указанного размера скользящего окна сервера
-			else extensions.push_back({this->fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+			else extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
 		} break;
 	}
 	// Если данные должны быть зашифрованны
-	if(this->crypt)
+	if(this->_crypt)
 		// Выполняем установку указанного метода шифрования
-		extensions.push_back({this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()))});
+		extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
 	// Если список расширений не пустой
 	if(!this->_extensions.empty())
 		// Добавляем к списку расширений пользовательские расширения
@@ -148,7 +148,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Если сабпротоколов слишком много
 				} else {
 					// Получаем список заголовков
-					const auto & headers = this->web.headers();
+					const auto & headers = this->_web.headers();
 					// Переходим по всему списку сабпротоколов
 					for(auto & sub : this->_subs)
 						// Добавляем полученный заголовок
@@ -215,7 +215,7 @@ const string awh::WCore::key() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -259,22 +259,22 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Если заголовок передан
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
-		if((result = this->fmk->exists("permessage-encrypt=", extension))){
+		if((result = this->_fmk->exists("permessage-encrypt=", extension))){
 			// Запоминаем, что сообщение получено зашифрованное
-			this->crypt = result;
+			this->_crypt = result;
 			// Определяем размер шифрования
 			switch(static_cast <u_short> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
-				case 128: this->hash.cipher(hash_t::cipher_t::AES128); break;
+				case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
 				// Если шифрование произведено 192 битным ключём
-				case 192: this->hash.cipher(hash_t::cipher_t::AES192); break;
+				case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
 				// Если шифрование произведено 256 битным ключём
-				case 256: this->hash.cipher(hash_t::cipher_t::AES256); break;
+				case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
 			}
 		// Если клиент просит отключить перехват контекста сжатия для сервера
-		} else if((result = this->fmk->compare(extension, "server_no_context_takeover"))) {
+		} else if((result = this->_fmk->compare(extension, "server_no_context_takeover"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Выполняем отключение перехвата контекста
@@ -289,13 +289,13 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если клиент просит отключить перехват контекста сжатия для клиента
-		} else if((result = this->fmk->compare(extension, "client_no_context_takeover")))
+		} else if((result = this->_fmk->compare(extension, "client_no_context_takeover")))
 			// Выполняем отключение перехвата контекста
 			this->_client.takeover = false;
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
-		else if((result = this->fmk->compare(extension, "permessage-deflate") || this->fmk->compare(extension, "perframe-deflate"))) {
+		else if((result = this->_fmk->compare(extension, "permessage-deflate") || this->_fmk->compare(extension, "perframe-deflate"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
@@ -312,9 +312,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
-		} else if((result = this->fmk->compare(extension, "permessage-gzip") || this->fmk->compare(extension, "perframe-gzip"))) {
+		} else if((result = this->_fmk->compare(extension, "permessage-gzip") || this->_fmk->compare(extension, "perframe-gzip"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
@@ -331,9 +331,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
-		} else if((result = this->fmk->compare(extension, "permessage-br") || this->fmk->compare(extension, "perframe-br"))) {
+		} else if((result = this->_fmk->compare(extension, "permessage-br") || this->_fmk->compare(extension, "perframe-br"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
@@ -350,9 +350,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если размер скользящего окна для клиента получен
-		} else if((result = this->fmk->exists("client_max_window_bits=", extension))) {
+		} else if((result = this->_fmk->exists("client_max_window_bits=", extension))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем размер скользящего окна
@@ -360,7 +360,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					// Если размер скользящего окна установлен неправильно
 					if((this->_client.wbit < GZIP_MIN_WBITS) || (this->_client.wbit > GZIP_MAX_WBITS))
 						// Выводим сообщение об ошибке
-						this->log->print("deflate max_window_bits for the client is set incorrectly", log_t::flag_t::WARNING);
+						this->_log->print("deflate max_window_bits for the client is set incorrectly", log_t::flag_t::WARNING);
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -380,9 +380,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если разрешено использовать максимальный размер скользящего окна для клиента
-		} else if((result = this->fmk->compare(extension, "client_max_window_bits"))) {
+		} else if((result = this->_fmk->compare(extension, "client_max_window_bits"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем максимальный размер скользящего окна
@@ -397,9 +397,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если размер скользящего окна для сервера получен
-		} else if((result = this->fmk->exists("server_max_window_bits=", extension))) {
+		} else if((result = this->_fmk->exists("server_max_window_bits=", extension))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем размер скользящего окна
@@ -407,7 +407,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					// Если размер скользящего окна установлен неправильно
 					if((this->_server.wbit < GZIP_MIN_WBITS) || (this->_server.wbit > GZIP_MAX_WBITS))
 						// Выводим сообщение об ошибке
-						this->log->print("deflate max_window_bits for the server is set incorrectly", log_t::flag_t::WARNING);
+						this->_log->print("deflate max_window_bits for the server is set incorrectly", log_t::flag_t::WARNING);
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -427,9 +427,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		// Если разрешено использовать максимальный размер скользящего окна для сервера
-		} else if((result = this->fmk->compare(extension, "server_max_window_bits"))) {
+		} else if((result = this->_fmk->compare(extension, "server_max_window_bits"))) {
 			// Определяем флаг типа текущего модуля
-			switch(static_cast <uint8_t> (this->httpType)){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем максимальный размер скользящего окна
@@ -690,11 +690,11 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
  */
 bool awh::WCore::isHandshake() noexcept {
 	// Результат работы функции
-	bool result = (this->state == state_t::HANDSHAKE);
+	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
 	if(!result){
 		// Выполняем проверку на удачное завершение запроса
-		result = (this->stath == stath_t::GOOD);
+		result = (this->_stath == stath_t::GOOD);
 		// Если результат удачный
 		if(result)
 			// Выполняем проверку версии протокола
@@ -706,7 +706,7 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если версия протокола не соответствует
 		else {
 			// Выводим сообщение об ошибке
-			this->log->print("protocol version not supported", log_t::flag_t::CRITICAL);
+			this->_log->print("protocol version not supported", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return result;
 		}
@@ -715,14 +715,14 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если протокол не был переключён
 		else {
 			// Выводим сообщение об ошибке
-			this->log->print("protocol not upgraded", log_t::flag_t::CRITICAL);
+			this->_log->print("protocol not upgraded", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return result;
 		}
 		// Если рукопожатие выполнено, устанавливаем стейт рукопожатия
-		if(result) this->state = state_t::HANDSHAKE;
+		if(result) this->_state = state_t::HANDSHAKE;
 		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
-		else this->log->print("client and server keys are inconsistent", log_t::flag_t::CRITICAL);
+		else this->_log->print("client and server keys are inconsistent", log_t::flag_t::CRITICAL);
 	}
 	// Выводим результат
 	return result;
@@ -735,15 +735,15 @@ bool awh::WCore::checkUpgrade() const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем значение заголовка Upgrade
-	const string & upgrade = this->web.header("upgrade");
+	const string & upgrade = this->_web.header("upgrade");
 	// Получаем значение заголовка Connection
-	const string & connection = this->web.header("connection");
+	const string & connection = this->_web.header("connection");
 	// Если заголовки расширений найдены
 	if(!upgrade.empty() && !connection.empty()){
 		// Переводим значение заголовка Connection в нижний регистр
-		this->fmk->transform(connection, fmk_t::transform_t::LOWER);
+		this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
 		// Если заголовки соответствуют
-		result = (this->fmk->compare(upgrade, "websocket") && this->fmk->exists("upgrade", connection));
+		result = (this->_fmk->compare(upgrade, "websocket") && this->_fmk->exists("upgrade", connection));
 	}
 	// Выводим результат
 	return result;
@@ -800,11 +800,11 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				// Добавляем заголовок ключ клиента
 				const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Key", this->_key);
 				// Устанавливаем парарметры запроса
-				this->web.request(req);
+				this->_web.request(req);
 			// Если данные переданы неверные
 			} else {
 				// Выводим сообщение, что данные переданы неверные
-				this->log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
+				this->_log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
 				// Выходим из функции
 				return vector <char> ();
 			}
@@ -832,18 +832,18 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				// Если SHA1-ключ не сгенерирован
 				if(sha1.empty()){
 					// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
-					this->log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
+					this->_log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
 					// Выходим из приложения
 					exit(EXIT_FAILURE);
 				}
 				// Добавляем заголовок хеша ключа
 				const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Accept", sha1.c_str());
 				// Устанавливаем параметры ответа
-				this->web.response(res);
+				this->_web.response(res);
 			// Если данные переданы неверные
 			} else {
 				// Выводим сообщение, что данные переданы неверные
-				this->log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
+				this->_log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
 				// Выходим из функции
 				return vector <char> ();
 			}
@@ -880,11 +880,11 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 				// Добавляем заголовок протокола подключения
 				const_cast <ws_core_t *> (this)->header(":protocol", "websocket");
 				// Устанавливаем парарметры запроса
-				this->web.request(req);
+				this->_web.request(req);
 			// Если данные переданы неверные
 			} else {
 				// Выводим сообщение, что данные переданы неверные
-				this->log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
+				this->_log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
 				// Выходим из функции
 				return vector <pair <string, string>> ();
 			}
@@ -904,11 +904,11 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 				// Удаляем заголовок хеша ключа
 				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Accept");
 				// Устанавливаем параметры ответа
-				this->web.response(res);
+				this->_web.response(res);
 			// Если данные переданы неверные
 			} else {
 				// Выводим сообщение, что данные переданы неверные
-				this->log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
+				this->_log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
 				// Выходим из функции
 				return vector <pair <string, string>> ();
 			}

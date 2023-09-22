@@ -63,20 +63,20 @@ namespace awh {
 				 * @param header заголовок HTTP с параметрами авторизации
 				 */
 				void header(const string & header) noexcept;
+			public:
 				/**
-				 * header Метод получения строки авторизации HTTP заголовка
-				 * @param method метод HTTP запроса
-				 * @param mode   режим вывода только значения заголовка
+				 * auth Метод получения строки авторизации HTTP-заголовка
+				 * @param method метод HTTP-запроса
 				 * @return       строка авторизации
 				 */
-				string header(const string & method, const bool mode) noexcept;
+				string auth(const string & method) noexcept;
 			public:
 				/**
 				 * Auth Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user(""), _pass("") {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""} {}
 		} auth_t;
 	};
 };

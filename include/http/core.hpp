@@ -62,7 +62,16 @@ namespace awh {
 			enum class process_t : uint8_t {
 				NONE     = 0x00, // Операция не установлена
 				REQUEST  = 0x01, // Операция запроса
-				RESPONSE = 0x02, // Операция ответа
+				RESPONSE = 0x02  // Операция ответа
+			};
+			/**
+			 * Идентичность протокола
+			 */
+			enum class identity_t : uint8_t {
+				NONE  = 0x00, // Протокол не установлен
+				WS    = 0x01, // Протокол WebSocket
+				HTTP  = 0x02, // Протокол HTTP
+				PROXY = 0x03  // Протокол Proxy
 			};
 			/**
 			 * Формат сжатия тела запроса
@@ -182,31 +191,31 @@ namespace awh {
 			};
 		protected:
 			// Создаём объект работы с URI
-			uri_t uri;
+			uri_t _uri;
 		protected:
 			// Стейт проверки авторизации
-			stath_t stath;
+			stath_t _stath;
 			// Стейт текущего запроса
-			state_t state;
+			state_t _state;
+		protected:
+			// Идентичность протокола
+			identity_t _identity;
 		private:
 			// Объявляем функции обратного вызова
 			fn_t _callback;
 		protected:
 			// Создаём объект HTTP парсера
-			mutable web_t web;
+			mutable web_t _web;
 			// Создаём объект для работы с авторизацией
-			mutable auth_t auth;
+			mutable auth_t _auth;
 		protected:
 			// Создаём объект для работы с сжатыми данными
-			mutable hash_t hash;
+			mutable hash_t _hash;
 			// Создаём объект для работы с временными сжатыми данными
-			mutable hash_t dhash;
-		protected:
-			// Тип используемого HTTP модуля
-			web_t::hid_t httpType;
+			mutable hash_t _dhash;
 		protected:
 			// Флаг зашифрованных данных
-			mutable bool crypt;
+			mutable bool _crypt;
 		private:
 			// Флаг разрешающий передавать тело чанками
 			mutable bool _chunking;
@@ -224,12 +233,12 @@ namespace awh {
 			mutable string _userAgent;
 		protected:
 			// Чёрный список заголовков
-			mutable unordered_set <string> black;
+			mutable unordered_set <string> _black;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log;
+			const log_t * _log;
 		private:
 			/**
 			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
@@ -565,6 +574,17 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+		public:
+			/**
+			 * identity Метод извлечения идентичности протокола модуля
+			 * @return флаг идентичности протокола модуля
+			 */
+			identity_t identity() const noexcept;
+			/**
+			 * identity Метод установки идентичности протокола модуля
+			 * @param identity идентичность протокола модуля
+			 */
+			void identity(const identity_t identity) noexcept;
 		public:
 			/**
 			 * chunk Метод установки размера чанка

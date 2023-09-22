@@ -23,22 +23,22 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Получаем объект параметров запроса
-	const web_t::res_t & response = this->web.response();
+	const web_t::res_t & response = this->_web.response();
 	// Проверяем код ответа
 	switch(response.code){
 		// Если требуется авторизация
 		case 401:
 		case 407: {
 			// Определяем тип авторизации
-			switch(static_cast <uint8_t> (this->auth.client.type())){
+			switch(static_cast <uint8_t> (this->_auth.client.type())){
 				// Если производится авторизация DIGEST
 				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
 					// Получаем параметры авторизации
-					const string & auth = this->web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
+					const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
 					// Если параметры авторизации найдены
 					if(!auth.empty()){
 						// Устанавливаем заголовок HTTP в параметры авторизации
-						this->auth.client.header(auth);
+						this->_auth.client.header(auth);
 						// Просим повторить авторизацию ещё раз
 						result = stath_t::RETRY;
 					}
@@ -58,15 +58,15 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		case 307:
 		case 308: {
 			// Получаем параметры переадресации
-			const string & location = this->web.header("location");
+			const string & location = this->_web.header("location");
 			// Если адрес перенаправления найден
 			if(!location.empty()){
 				// Получаем объект параметров запроса
-				web_t::req_t request = this->web.request();
+				web_t::req_t request = this->_web.request();
 				// Выполняем парсинг полученного URL-адреса
-				request.url = this->uri.parse(location);
+				request.url = this->_uri.parse(location);
 				// Выполняем установку параметров запроса
-				this->web.request(std::move(request));
+				this->_web.request(std::move(request));
 				// Просим повторить авторизацию ещё раз
 				result = stath_t::RETRY;
 			}
@@ -93,9 +93,9 @@ void awh::client::Http::user(const string & user, const string & pass) noexcept 
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		this->auth.client.user(user);
+		this->_auth.client.user(user);
 		// Устанавливаем пароль пользователя
-		this->auth.client.pass(pass);
+		this->_auth.client.pass(pass);
 	}
 }
 /**
@@ -105,7 +105,7 @@ void awh::client::Http::user(const string & user, const string & pass) noexcept 
  */
 void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.client.type(type, hash);
+	this->_auth.client.type(type, hash);
 }
 /**
  * Http Конструктор
@@ -113,8 +113,8 @@ void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * @param log объект для работы с логами
  */
 awh::client::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
-	// Устанавливаем тип HTTP парсера
-	this->web.init(web_t::hid_t::CLIENT);
-	// Устанавливаем тип HTTP модуля
-	this->httpType = web_t::hid_t::CLIENT;
+	// Выполняем установку идентичность клиента к протоколу HTTP
+	this->_identity = identity_t::HTTP;
+	// Устанавливаем тип HTTP-парсера
+	this->_web.hid(web_t::hid_t::CLIENT);
 }

@@ -129,12 +129,11 @@ void awh::client::Auth::header(const string & header) noexcept {
 	}
 }
 /**
- * header Метод получения строки авторизации HTTP заголовка
- * @param method метод HTTP запроса
- * @param mode   режим вывода только значения заголовка
+ * auth Метод получения строки авторизации HTTP-заголовка
+ * @param method метод HTTP-запроса
  * @return       строка авторизации
  */
-string awh::client::Auth::header(const string & method, const bool mode) noexcept {
+string awh::client::Auth::auth(const string & method) noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -179,51 +178,27 @@ string awh::client::Auth::header(const string & method, const bool mode) noexcep
 							this->_user, this->_pass, digest
 						);
 						// Если ответ получен
-						if(!response.empty()){
-							// Если нужно вывести только значение заголовка
-							if(mode)
-								// Создаём строку запроса авторизации
-								result = this->_fmk->format(
-									"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"",
-									this->_user.c_str(),
-									this->_digest.realm.c_str(),
-									this->_digest.nonce.c_str(),
-									this->_digest.uri.c_str(),
-									this->_digest.qop.c_str(),
-									this->_digest.nc.c_str(),
-									this->_digest.cnonce.c_str(),
-									this->_digest.opaque.c_str(),
-									response.c_str()
-								);
-							// Если нужно вывести полную строку запроса
-							else {
-								result = this->_fmk->format(
-									"Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"\r\n",
-									this->_user.c_str(),
-									this->_digest.realm.c_str(),
-									this->_digest.nonce.c_str(),
-									this->_digest.uri.c_str(),
-									this->_digest.qop.c_str(),
-									this->_digest.nc.c_str(),
-									this->_digest.cnonce.c_str(),
-									this->_digest.opaque.c_str(),
-									response.c_str()
-								);
-							}
-						}
+						if(!response.empty())
+							// Создаём строку запроса авторизации
+							result = this->_fmk->format(
+								"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"",
+								this->_user.c_str(),
+								this->_digest.realm.c_str(),
+								this->_digest.nonce.c_str(),
+								this->_digest.uri.c_str(),
+								this->_digest.qop.c_str(),
+								this->_digest.nc.c_str(),
+								this->_digest.cnonce.c_str(),
+								this->_digest.opaque.c_str(),
+								response.c_str()
+							);
 					}
 				} break;
 				// Если тип авторизации Basic
-				case static_cast <uint8_t> (type_t::BASIC): {
-					// Выводим результат
-					result = base64_t().encode(this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str()));
-					// Если нужно вывести только значение заголовка
-					if(mode)
-						// Формируем заголовок авторизации
-						result = this->_fmk->format("Basic %s", result.c_str());
-					// Если нужно вывести полную строку запроса
-					else result = this->_fmk->format("Authorization: Basic %s\r\n", result.c_str());
-				} break;
+				case static_cast <uint8_t> (type_t::BASIC):
+					// Формируем заголовок авторизации
+					result = this->_fmk->format("Basic %s", base64_t().encode(this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str())).c_str());
+				break;
 			}
 		}
 	// Выполняем прехват ошибки

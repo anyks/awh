@@ -181,11 +181,11 @@ int main(int argc, char * argv[]){
 	// rest.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	
 	
-	// rest.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	rest.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// rest.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	
 	// rest.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
-	rest.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
+	// rest.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 	
 	// Устанавливаем тип компрессии
 	// rest.compress(http_t::compress_t::ALL_COMPRESS);
@@ -200,6 +200,7 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
 	// uri_t::url_t url = uri.parse("http://stalin.info");
+	// uri_t::url_t url = uri.parse("http://ww38.stalin.info/");
 	// uri_t::url_t url = uri.parse("http://anyks.com");
 	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
@@ -241,9 +242,9 @@ int main(int argc, char * argv[]){
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	// const auto & body = rest.GET(url);
+	const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
-	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"},{"Proxy-Authorization", "Basic M3B2aG9lOlU4UUZXZA=="}});
 	// Подготавливаем тело запроса
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер

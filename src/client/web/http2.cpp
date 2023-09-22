@@ -717,10 +717,14 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 						if(!jt->second->headers.empty())
 							// Выполняем установку заголовков запроса
 							request.headers = jt->second->headers;
+						// Выполняем очистку полученных заголовков
+						else request.headers.clear();
 						// Если тело запроса существует
 						if(!jt->second->entity.empty())
 							// Устанавливаем тело запроса
-							this->_http.body(jt->second->entity);
+							request.entity.assign(jt->second->entity.begin(), jt->second->entity.end());
+						// Выполняем очистку полученных данных тела запроса
+						else request.entity.clear();
 					}
 					// Выходим из цикла
 					break;

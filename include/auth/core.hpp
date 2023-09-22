@@ -76,9 +76,9 @@ namespace awh {
 				 * Digest Конструктор
 				 */
 				Digest() noexcept :
-				 nc("00000000"), uri(""), qop("auth"),
-				 realm(AWH_HOST), nonce(""), opaque(""),
-				 cnonce(""), resp(""), stamp(0), hash(hash_t::MD5) {}
+				 nc{"00000000"}, uri{""}, qop{"auth"},
+				 realm{AWH_HOST}, nonce{""}, opaque{""},
+				 cnonce{""}, resp{""}, stamp{0}, hash{hash_t::MD5} {}
 			} digest_t;
 		protected:
 			// Тип авторизации
