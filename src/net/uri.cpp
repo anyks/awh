@@ -585,14 +585,14 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 					if(!match[i].empty()){
 						// Определяем тип записи
 						switch(i){
+							// Если типом записи является доменным именем
+							case 4: result.emplace(flag_t::HOST, match[i]); break;
 							// Если типом записи является путём запроса
 							case 5: result.emplace(flag_t::PATH, match[i]); break;
 							// Если типом записи является параметрами запроса
 							case 7: result.emplace(flag_t::PARAMS, match[i]); break;
 							// Если типом записи является якорем запроса
 							case 9: result.emplace(flag_t::ANCHOR, match[i]); break;
-							// Если типом записи является доменным именем
-							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 							// Если типом записи является протокол
 							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 						}
@@ -630,20 +630,20 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 							// Устанавливаем схему протокола
 							result.emplace(flag_t::SCHEMA, "mailto");
 							// Устанавливаем тип хоста
-							result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER));
+							result.emplace(flag_t::HOST, match[i]);
 							// Выходим из цикла
 							break;
 						}
 						// Определяем тип записи
 						switch(i){
+							// Если типом записи является доменным именем
+							case 2: result.emplace(flag_t::HOST, match[i]); break;
 							// Если типом записи является путём запроса
 							case 5: result.emplace(flag_t::PATH, match[i]); break;
 							// Если типом записи является параметрами запроса
 							case 7: result.emplace(flag_t::PARAMS, match[i]); break;
 							// Если типом записи является якорем запроса
 							case 9: result.emplace(flag_t::ANCHOR, match[i]); break;
-							// Если типом записи является доменным именем
-							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -781,7 +781,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 						// Получаем данные пользователя
 						const string user = it->second.substr(0, pos);
 						// Формируем правильный хост
-						it->second = it->second.substr(pos + 1);
+						it->second = this->_fmk->transform(it->second.substr(pos + 1), fmk_t::transform_t::LOWER);
 						// Выполняем поиск разделителя логина и пароля
 						pos = user.find(":");
 						// Если разделитель логина и пароля найден
@@ -792,7 +792,8 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 							result.emplace(flag_t::LOGIN, user.substr(0, pos));
 						// Устанавливаем данные пользователя как они есть
 						} else result.emplace(flag_t::LOGIN, std::forward <const string> (user));
-					}
+					// Переводим название хоста в нижний регистр
+					} else it->second = this->_fmk->transform(it->second, fmk_t::transform_t::LOWER);
 				}
 			}
 		}

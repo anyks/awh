@@ -90,31 +90,44 @@ void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, 
 						// Получаем параметры запроса
 						const auto & response = it->second->http.response();
 						// Если нужно произвести запрос заново
-						if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-						   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
-						   (response.code == 308) || (response.code == 401) || (response.code == 407))){
-							// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-							if((response.code == 401) || (response.code == 407) || it->second->http.isHeader("location")){
-								// Получаем новый адрес запроса
-								const uri_t::url_t & url = it->second->http.getUrl();
-								// Если адрес запроса получен
-								if(!url.empty()){
+						if(!this->_stopped && ((response.code == 201) || (response.code == 301) || (response.code == 302) ||
+						  (response.code == 303) || (response.code == 307) || (response.code == 308) || (response.code == 401))){
+							// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+							this->_upgraded = false;
+							// Определяем код ответа сервера
+							switch(response.code){
+								// Если требуется повторить попытку авторизации
+								case 401: {
 									// Увеличиваем количество попыток
 									this->_attempt++;
-									// Выполняем поиск параметров запроса
-									auto jt = this->_requests.find(it->first);
-									// Если необходимые нам параметры запроса найдены
-									if(jt != this->_requests.end()){
-										// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-										this->_upgraded = false;
-										// Получаем параметры адреса запроса
-										jt->second->url = std::forward <const uri_t::url_t> (url);
-										// Меняем адрес подключения к серверу
-										this->_scheme.url = jt->second->url;
-										// Выполняем установку следующего экшена на открытие подключения
-										this->open();
-										// Завершаем работу
-										return;
+									// Выполняем установку следующего экшена на открытие подключения
+									this->open();
+									// Завершаем работу
+									return;
+								}
+								// Если требуется выполнить редирект
+								default: {
+									// Если адрес для выполнения переадресации указан
+									if(it->second->http.isHeader("location")){
+										// Получаем новый адрес запроса
+										const uri_t::url_t & url = it->second->http.getUrl();
+										// Если адрес запроса получен
+										if(!url.empty()){
+											// Увеличиваем количество попыток
+											this->_attempt++;
+											// Устанавливаем новый адрес запроса
+											this->_uri.combine(this->_scheme.url, url);
+											// Выполняем поиск параметров запроса
+											auto jt = this->_requests.find(it->first);
+											// Если необходимые нам параметры запроса найдены
+											if(jt != this->_requests.end())
+												// Устанавливаем новый адрес запроса
+												jt->second->url = this->_scheme.url;
+											// Выполняем установку следующего экшена на открытие подключения
+											this->open();
+											// Завершаем работу
+											return;
+										}
 									}
 								}
 							}
@@ -127,61 +140,97 @@ void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, 
 					// Получаем параметры запроса
 					const auto & response = this->_http1._http.response();
 					// Если нужно произвести запрос заново
-					if(!this->_http1._stopped && ((response.code == 201) || (response.code == 301) ||
-					   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
-					   (response.code == 308) || (response.code == 401) || (response.code == 407))){
-						// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-						if((it->second->update = (response.code == 401) || (response.code == 407) || this->_http1._http.isHeader("location"))){
-							// Получаем количество попыток
-							this->_attempt = this->_http1._attempt;
-							// Выполняем поиск параметров запроса
-							auto jt = this->_requests.find(it->first);
-							// Если необходимые нам параметры запроса найдены
-							if(jt != this->_requests.end()){
-								// Получаем параметры адреса запроса
-								jt->second->url = this->_http1._scheme.url;
-								// Меняем адрес подключения к серверу
-								this->_scheme.url = jt->second->url;
+					if((it->second->update = !this->_http1._stopped && ((response.code == 201) ||
+					  (response.code == 301) || (response.code == 302) || (response.code == 303) ||
+					  (response.code == 307) || (response.code == 308) || (response.code == 401)))){
+						// Определяем код ответа сервера
+						switch(response.code){
+							// Если требуется повторить попытку авторизации
+							case 401: {
+								// Выполняем очистку оставшихся данных
+								this->_http1._buffer.clear();
+								// Получаем количество попыток
+								this->_attempt = this->_http1._attempt;
 								// Выполняем установку следующего экшена на открытие подключения
 								this->open();
+								// Завершаем работу
+								return;
+							}
+							// Если требуется выполнить редирект
+							default: {
+								// Если адрес для выполнения переадресации указан
+								if(this->_http1._http.isHeader("location")){
+									// Выполняем очистку оставшихся данных
+									this->_http1._buffer.clear();
+									// Получаем количество попыток
+									this->_attempt = this->_http1._attempt;
+									// Устанавливаем новый адрес запроса
+									this->_uri.combine(this->_scheme.url, this->_http1._scheme.url);
+									// Выполняем поиск параметров запроса
+									auto jt = this->_requests.find(it->first);
+									// Если необходимые нам параметры запроса найдены
+									if(jt != this->_requests.end())
+										// Устанавливаем новый адрес запроса
+										jt->second->url = this->_scheme.url;
+									// Выполняем установку следующего экшена на открытие подключения
+									this->open();
+									// Завершаем работу
+									return;
+								}
 							}
 						}
 					}
-					// Завершаем работу функции
-					return;
 				}
 			} break;
 			// Если протоколом агента является WebSocket-клиент
 			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+				// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+				this->_upgraded = false;
+				// Отключаем флаг HTTP/2 у WebSocket-клиента, так-как сессия уже закрыта
+				this->_ws2._upgraded = false;
 				// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
 				this->_ws2.disconnectCallback(aid, sid, core);
 				// Получаем параметры запроса
 				const auto & response = this->_ws2._http.response();
 				// Если нужно произвести запрос заново
-				if(!this->_ws2._stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401) || (response.code == 407))){
-					// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-					if((it->second->update = (response.code == 401) || (response.code == 407) || this->_ws2._http.isHeader("location"))){
-						// Получаем количество попыток
-						this->_attempt = this->_ws2._attempt;
-						// Выполняем поиск параметров запроса
-						auto jt = this->_requests.find(it->first);
-						// Если необходимые нам параметры запроса найдены
-						if(jt != this->_requests.end()){
-							// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-							this->_upgraded = false;
-							// Отключаем флаг HTTP/2 у WebSocket-клиента, так-как сессия уже закрыта
-							this->_ws2._upgraded = false;
-							// Получаем параметры адреса запроса
-							jt->second->url = this->_ws2._scheme.url;
-							// Меняем адрес подключения к серверу
-							this->_scheme.url = jt->second->url;
+				if((it->second->update = !this->_ws2._stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401)))){
+					// Определяем код ответа сервера
+					switch(response.code){
+						// Если требуется повторить попытку авторизации
+						case 401: {
+							// Выполняем очистку оставшихся данных
+							this->_ws2._buffer.clear();
+							// Получаем количество попыток
+							this->_attempt = this->_ws2._attempt;
 							// Выполняем установку следующего экшена на открытие подключения
 							this->open();
+							// Завершаем работу
+							return;
+						}
+						// Если требуется выполнить редирект
+						default: {
+							// Если адрес для выполнения переадресации указан
+							if(this->_ws2._http.isHeader("location")){
+								// Выполняем очистку оставшихся данных
+								this->_ws2._buffer.clear();
+								// Получаем количество попыток
+								this->_attempt = this->_ws2._attempt;
+								// Устанавливаем новый адрес запроса
+								this->_uri.combine(this->_scheme.url, this->_ws2._scheme.url);
+								// Выполняем поиск параметров запроса
+								auto jt = this->_requests.find(it->first);
+								// Если необходимые нам параметры запроса найдены
+								if(jt != this->_requests.end())
+									// Устанавливаем новый адрес запроса
+									jt->second->url = this->_scheme.url;
+								// Выполняем установку следующего экшена на открытие подключения
+								this->open();
+								// Завершаем работу
+								return;
+							}
 						}
 					}
 				}
-				// Завершаем работу функции
-				return;
 			}
 		}
 	}
@@ -713,26 +762,44 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 			case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
 				// Если попытки повторить переадресацию ещё не закончились
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
-					// Получаем новый адрес запроса
-					const uri_t::url_t & url = it->second->http.getUrl();
-					// Если адрес запроса получен
-					if(!url.empty()){
-						// Выполняем поиск параметров запроса
-						auto jt = this->_requests.find(sid);
-						// Если параметры запроса получены
-						if((it->second->update = (jt != this->_requests.end()))){
+					// Выполняем поиск параметров запроса
+					auto jt = this->_requests.find(sid);
+					// Если параметры запроса получены
+					if((it->second->update = (jt != this->_requests.end()))){
+						// Получаем новый адрес запроса
+						const uri_t::url_t & url = it->second->http.getUrl();
+						// Если адрес запроса получен
+						if(!url.empty()){
 							// Выполняем проверку соответствие протоколов
 							const bool schema = (this->_fmk->compare(url.schema, jt->second->url.schema));
-							// Устанавливаем новый адрес запроса
-							jt->second->url = std::forward <const uri_t::url_t> (url);
 							// Если соединение является постоянным
 							if(schema && it->second->http.isAlive()){
 								// Увеличиваем количество попыток
 								this->_attempt++;
+								// Устанавливаем новый адрес запроса
+								this->_uri.combine(jt->second->url, url);
 								// Отправляем повторный запрос
 								this->send(it->second->agent, * jt->second.get());
+								// Завершаем работу
+								return status_t::SKIP;
+							}
 							// Если нам необходимо отключиться
-							} else core->close(aid);
+							core->close(aid);
+							// Завершаем работу
+							return status_t::SKIP;
+						// Если URL-адрес запроса не получен
+						} else {
+							// Если соединение является постоянным
+							if(it->second->http.isAlive()){
+								// Увеличиваем количество попыток
+								this->_attempt++;
+								// Отправляем повторный запрос
+								this->send(it->second->agent, * jt->second.get());
+								// Завершаем работу
+								return status_t::SKIP;
+							}
+							// Если нам необходимо отключиться
+							core->close(aid);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -1334,6 +1401,8 @@ void awh::client::Http2::chunk(const size_t size) noexcept {
 	web2_t::chunk(size);
 	// Устанавливаем размер чанка для WebSocket-клиента
 	this->_ws2.chunk(size);
+	// Устанавливаем размер чанка для HTTP-парсера
+	this->_http.chunk(size);
 	// Устанавливаем размер чанка для HTTP-клиента
 	this->_http1.chunk(size);
 }
@@ -1432,6 +1501,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 void awh::client::Http2::user(const string & login, const string & password) noexcept {
 	// Устанавливаем логин и пароль пользователя для WebSocket-клиента
 	this->_ws2.user(login, password);
+	// Устанавливаем логин и пароль пользователя для HTTP-арсера
+	this->_http.user(login, password);
 	// Устанавливаем логин и пароль пользователя для HTTP-клиента
 	this->_http1.user(login, password);
 }
@@ -1446,6 +1517,8 @@ void awh::client::Http2::userAgent(const string & userAgent) noexcept {
 		web2_t::userAgent(userAgent);
 		// Устанавливаем пользовательского агента для WebSocket-клиента
 		this->_ws2.userAgent(userAgent);
+		// Устанавливаем пользовательского агента для HTTP-парсера
+		this->_http.userAgent(userAgent);
 		// Устанавливаем пользовательского агента для HTTP-клиента
 		this->_http1.userAgent(userAgent);
 	}
@@ -1463,6 +1536,8 @@ void awh::client::Http2::serv(const string & id, const string & name, const stri
 		web2_t::serv(id, name, ver);
 		// Устанавливаем данные сервиса для WebSocket-клиента
 		this->_ws2.serv(id, name, ver);
+		// Устанавливаем данные сервиса для HTTP-парсера
+		this->_http.serv(id, name, ver);
 		// Устанавливаем данные сервиса для HTTP-клиента
 		this->_http1.serv(id, name, ver);
 	}
@@ -1488,6 +1563,8 @@ void awh::client::Http2::multiThreads(const size_t threads, const bool mode) noe
 void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем параметры авторизации для WebSocket-клиента
 	this->_ws2.authType(type, hash);
+	// Устанавливаем параметры авторизации для HTTP-парсера
+	this->_http.authType(type, hash);
 	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http1.authType(type, hash);
 }
@@ -1500,6 +1577,8 @@ void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 void awh::client::Http2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования для WebSocket-клиента
 	this->_ws2.crypto(pass, salt, cipher);
+	// Устанавливаем параметры шифрования для HTTP-парсера
+	this->_http.crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента
 	this->_http1.crypto(pass, salt, cipher);
 }

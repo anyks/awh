@@ -99,17 +99,28 @@ void awh::client::Auth::header(const string & header) noexcept {
 								// Переводим в нижний регистр
 								this->_fmk->transform(value, fmk_t::transform_t::LOWER);
 								// Если алгоритм является MD5
-								if(this->_fmk->compare(value, "md5")) this->_digest.hash = hash_t::MD5;
+								if(this->_fmk->compare(value, "MD5"))
+									// Выполняем установку типа хэша MD5
+									this->_digest.hash = hash_t::MD5;
 								// Если алгоритм является SHA1
-								else if(this->_fmk->compare(value, "sha1")) this->_digest.hash = hash_t::SHA1;
+								else if(this->_fmk->compare(value, "SHA1"))
+									// Выполняем установку типа хэша SHA1
+									this->_digest.hash = hash_t::SHA1;
 								// Если алгоритм является SHA256
-								else if(this->_fmk->compare(value, "sha256")) this->_digest.hash = hash_t::SHA256;
+								else if(this->_fmk->compare(value, "SHA256"))
+									// Выполняем установку типа хэша SHA256
+									this->_digest.hash = hash_t::SHA256;
 								// Если алгоритм является SHA512
-								else if(this->_fmk->compare(value, "sha512")) this->_digest.hash = hash_t::SHA512;
+								else if(this->_fmk->compare(value, "SHA512"))
+									// Выполняем установку типа хэша SHA512
+									this->_digest.hash = hash_t::SHA512;
 							// Если параметр является типом авторизации
-							} else if(this->_fmk->compare(key, "qop"))
+							} else if(this->_fmk->compare(key, "qop")) {
 								// Если тип авторизации передан верно
-								if(value.find("auth") != wstring::npos) this->_digest.qop = "auth";
+								if(value.find("auth") != wstring::npos)
+									// Выполняем установку типа авторизации
+									this->_digest.qop = "auth";
+							}
 						}
 					}
 				}

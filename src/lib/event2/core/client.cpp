@@ -1253,6 +1253,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 				case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 					// Останавливаем работу таймера
 					adj->bev.timers.write.stop();
+					// Если нужно использовать асинхронный режим работы
+					if(this->_mode == mode_t::ASYNC)
+						// Переводим сокет в неблокирующий режим
+						adj->ectx.noblock();
 					// Выполняем отправку всех данных
 					for(;;){
 						// Если данных достаточно для записи в сокет

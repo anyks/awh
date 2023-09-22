@@ -84,7 +84,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 					// Если данные получены
 					if(!buffer.empty())
 						// Выполняем отправку сообщения на сервер
-						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
+						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 				} break;
 				// Если прокси-сервер является HTTP
 				case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
@@ -92,8 +92,10 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 					this->_scheme.proxy.http.reset();
 					// Выполняем очистку параметров HTTP запроса
 					this->_scheme.proxy.http.clear();
+					// Создаём объек запроса
+					awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
 					// Получаем бинарные данные WEB запроса
-					const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
+					const auto & buffer = this->_scheme.proxy.http.proxy(std::move(query));
 					// Если бинарные данные запроса получены
 					if(!buffer.empty()){
 						/**
@@ -106,11 +108,11 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 							cout << string(buffer.begin(), buffer.end()) << endl;
 						#endif
 						// Выполняем отправку сообщения на сервер
-						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
+						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 					}
 				} break;
 				// Иначе завершаем работу
-				default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+				default: dynamic_cast <client::core_t *> (core)->close(aid);
 			}
 		}
 	}
@@ -147,7 +149,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Выполняем очистку буфера данных
 							this->_buffer.clear();
 							// Выполняем отправку запроса на сервер
-							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), this->_aid);
+							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 							// Завершаем работу
 							return;
 						// Если данные все получены
@@ -157,7 +159,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Если рукопожатие выполнено
 							if(this->_scheme.proxy.socks5.isHandshake()){
 								// Выполняем переключение на работу с сервером
-								dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
+								dynamic_cast <client::core_t *> (core)->switchProxy(aid);
 								// Завершаем работу
 								return;
 							// Если рукопожатие не выполнено
@@ -185,7 +187,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 									// Выводим функцию обратного вызова
 									this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, code, message);
 								// Завершаем работу
-								dynamic_cast <client::core_t *> (core)->close(this->_aid);
+								dynamic_cast <client::core_t *> (core)->close(aid);
 								// Завершаем работу
 								return;
 							}
@@ -241,25 +243,42 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 									// Если адрес запроса получен
 									if(!this->_scheme.proxy.url.empty()){
-										// Увеличиваем количество попыток
-										this->_attempt++;
-										// Если соединение является постоянным
-										if(this->_scheme.proxy.http.isAlive())
-											// Устанавливаем новый экшен выполнения
-											this->proxyConnectCallback(aid, sid, core);
-										// Если соединение должно быть закрыто
-										else dynamic_cast <client::core_t *> (core)->close(this->_aid);
-										// Завершаем работу
-										return;
+										// Получаем новый адрес запроса
+										const uri_t::url_t & url = this->_scheme.proxy.http.getUrl();
+										// Если URL-адрес запроса получен
+										if(!url.empty()){
+											// Устанавливаем новый адрес запроса
+											this->_uri.combine(this->_scheme.proxy.url, url);
+											// Если соединение является постоянным
+											if(this->_scheme.proxy.http.isAlive()){
+												// Увеличиваем количество попыток
+												this->_attempt++;
+												// Устанавливаем новый экшен выполнения
+												this->proxyConnectCallback(aid, sid, core);
+											// Если соединение должно быть закрыто
+											} else dynamic_cast <client::core_t *> (core)->close(aid);
+											// Завершаем работу
+											return;
+										// Если URL-адрес запроса не получен
+										} else {
+											// Если соединение является постоянным
+											if(this->_scheme.proxy.http.isAlive()){
+												// Увеличиваем количество попыток
+												this->_attempt++;
+												// Устанавливаем новый экшен выполнения
+												this->proxyConnectCallback(aid, sid, core);
+											// Если соединение должно быть закрыто
+											} else dynamic_cast <client::core_t *> (core)->close(aid);
+											// Завершаем работу
+											return;
+										}
 									}
 								}
 							} break;
 							// Если запрос выполнен удачно
 							case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-								// Выполняем сброс количества попыток
-								this->_attempt = 0;
 								// Выполняем переключение на работу с сервером
-								dynamic_cast <client::core_t *> (core)->switchProxy(this->_aid);
+								dynamic_cast <client::core_t *> (core)->switchProxy(aid);
 								// Завершаем работу
 								return;
 							} break;
@@ -282,13 +301,13 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, response.code, response.message, this->_scheme.proxy.http.body());
 						// Завершаем работу
-						dynamic_cast <client::core_t *> (core)->close(this->_aid);
+						dynamic_cast <client::core_t *> (core)->close(aid);
 						// Завершаем работу
 						return;
 					}
 				} break;
 				// Иначе завершаем работу
-				default: dynamic_cast <client::core_t *> (core)->close(this->_aid);
+				default: dynamic_cast <client::core_t *> (core)->close(aid);
 			}
 		}
 	}

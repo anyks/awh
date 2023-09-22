@@ -163,7 +163,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	rest.user("user", "password");
+	// rest.user("user", "password");
 	// Устанавливаем длительное подключение
 	// rest.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение
@@ -179,12 +179,18 @@ int main(int argc, char * argv[]){
 	// rest.proxy("http://127.0.0.1:2222");
 	// rest.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// rest.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
-	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
+	
+	
+	// rest.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	// rest.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
+	
+	// rest.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
+	rest.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
+	
 	// Устанавливаем тип компрессии
 	// rest.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	// rest.authTypeProxy();
+	rest.authTypeProxy();
 	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// rest.authType();
@@ -197,10 +203,10 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("http://anyks.com");
 	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
-	uri_t::url_t url = uri.parse("https://www.anyks.com");
+	// uri_t::url_t url = uri.parse("https://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
