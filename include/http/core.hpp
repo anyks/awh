@@ -358,6 +358,19 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			stath_t getAuth() const noexcept;
+			/**
+			 * getAuth Метод извлечения строки авторизации
+			 * @param flag   флаг выполняемого процесса
+			 * @param method метод выполняемого запроса
+			 * @return       строка авторизации на удалённом сервере
+			 */
+			string getAuth(const process_t flag, const web_t::method_t method = web_t::method_t::NONE) const noexcept;
+		public:
+			/**
+			 * getUrl Метод извлечения параметров запроса
+			 * @return установленные параметры запроса
+			 */
+			const uri_t::url_t & getUrl() const noexcept;
 		public:
 			/**
 			 * compression Метод извлечения метода компрессии
@@ -374,12 +387,6 @@ namespace awh {
 			 * @param compress метод компрессии сообщений
 			 */
 			virtual void compress(const compress_t compress) noexcept;
-		public:
-			/**
-			 * getUrl Метод извлечения параметров запроса
-			 * @return установленные параметры запроса
-			 */
-			const uri_t::url_t & getUrl() const noexcept;
 		public:
 			/**
 			 * dump Метод получения бинарного дампа

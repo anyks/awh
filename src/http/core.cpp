@@ -598,6 +598,73 @@ awh::Http::stath_t awh::Http::getAuth() const noexcept {
 	return this->_stath;
 }
 /**
+ * getAuth Метод извлечения строки авторизации
+ * @param flag   флаг выполняемого процесса
+ * @param method метод выполняемого запроса
+ * @return       строка авторизации на удалённом сервере
+ */
+string awh::Http::getAuth(const process_t flag, const web_t::method_t method) const noexcept {
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Определяем метод запроса
+			switch(static_cast <uint8_t> (method)){
+				// Если метод запроса указан как GET
+				case static_cast <uint8_t> (web_t::method_t::GET):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("get");
+				// Если метод запроса указан как PUT
+				case static_cast <uint8_t> (web_t::method_t::PUT):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("put");
+				// Если метод запроса указан как POST
+				case static_cast <uint8_t> (web_t::method_t::POST):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("post");
+				// Если метод запроса указан как HEAD
+				case static_cast <uint8_t> (web_t::method_t::HEAD):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("head");
+				// Если метод запроса указан как DELETE
+				case static_cast <uint8_t> (web_t::method_t::DEL):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("delete");
+				// Если метод запроса указан как PATCH
+				case static_cast <uint8_t> (web_t::method_t::PATCH):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("patch");
+				// Если метод запроса указан как TRACE
+				case static_cast <uint8_t> (web_t::method_t::TRACE):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("trace");
+				// Если метод запроса указан как OPTIONS
+				case static_cast <uint8_t> (web_t::method_t::OPTIONS):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("options");
+				// Если метод запроса указан как CONNECT
+				case static_cast <uint8_t> (web_t::method_t::CONNECT):
+					// Получаем параметры авторизации
+					return this->_auth.client.auth("connect");
+			}
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE):
+			// Получаем параметры авторизации
+			return this->_auth.server;
+	}
+	// Выводим результат
+	return "";
+}
+/**
+ * getUrl Метод извлечения параметров запроса
+ * @return установленные параметры запроса
+ */
+const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
+	// Выводим параметры запроса
+	return this->_web.request().url;
+}
+/**
  * compression Метод извлечения метода компрессии
  * @return метод компрессии
  */
@@ -673,14 +740,6 @@ awh::Http::compress_t awh::Http::compress() const noexcept {
 void awh::Http::compress(const compress_t compress) noexcept {
 	// Устанавливаем метод компрессии сообщений
 	this->_compress = compress;
-}
-/**
- * getUrl Метод извлечения параметров запроса
- * @return установленные параметры запроса
- */
-const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
-	// Выводим параметры запроса
-	return this->_web.request().url;
 }
 /**
  * dump Метод получения бинарного дампа

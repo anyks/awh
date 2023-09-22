@@ -113,7 +113,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 						}
 					// Если протокол подключения не является защищённым подключением
-					} else if(this->_fmk->compare(this->_scheme.url.schema, "http") || this->_fmk->compare(this->_scheme.url.schema, "ws")) {
+					} else if((this->_proxy.authorization = (this->_fmk->compare(this->_scheme.url.schema, "http") || this->_fmk->compare(this->_scheme.url.schema, "ws")))) {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем переключение на работу с сервером
@@ -235,12 +235,12 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 						const auto & response = this->_scheme.proxy.http.response();
 						// Получаем статус ответа
 						awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
+						// Устанавливаем ответ прокси-сервера
+						this->_proxy.answer = response.code;
 						// Если выполнять редиректы запрещено
 						if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
-							// Если нужно произвести запрос заново
-							if((response.code == 201) || (response.code == 301) ||
-							   (response.code == 302) || (response.code == 303) ||
-							   (response.code == 307) || (response.code == 308))
+							// Если ответом сервера не является запросом авторизации
+							if(response.code != 407)
 								// Запрещаем выполнять редирект
 								status = awh::http_t::stath_t::GOOD;
 						}
@@ -252,35 +252,16 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 									// Если адрес запроса получен
 									if(!this->_scheme.proxy.url.empty()){
-										// Получаем новый адрес запроса
-										const uri_t::url_t & url = this->_scheme.proxy.http.getUrl();
-										// Если URL-адрес запроса получен
-										if(!url.empty()){
-											// Устанавливаем новый адрес запроса
-											this->_uri.combine(this->_scheme.proxy.url, url);
-											// Если соединение является постоянным
-											if(this->_scheme.proxy.http.isAlive()){
-												// Увеличиваем количество попыток
-												this->_attempt++;
-												// Устанавливаем новый экшен выполнения
-												this->proxyConnectCallback(aid, sid, core);
-											// Если соединение должно быть закрыто
-											} else dynamic_cast <client::core_t *> (core)->close(aid);
-											// Завершаем работу
-											return;
-										// Если URL-адрес запроса не получен
-										} else {
-											// Если соединение является постоянным
-											if(this->_scheme.proxy.http.isAlive()){
-												// Увеличиваем количество попыток
-												this->_attempt++;
-												// Устанавливаем новый экшен выполнения
-												this->proxyConnectCallback(aid, sid, core);
-											// Если соединение должно быть закрыто
-											} else dynamic_cast <client::core_t *> (core)->close(aid);
-											// Завершаем работу
-											return;
-										}
+										// Если соединение является постоянным
+										if(this->_scheme.proxy.http.isAlive()){
+											// Увеличиваем количество попыток
+											this->_attempt++;
+											// Устанавливаем новый экшен выполнения
+											this->proxyConnectCallback(aid, sid, core);
+										// Если соединение должно быть закрыто
+										} else dynamic_cast <client::core_t *> (core)->close(aid);
+										// Завершаем работу
+										return;
 									}
 								}
 							} break;

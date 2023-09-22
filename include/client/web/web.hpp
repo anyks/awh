@@ -98,12 +98,12 @@ namespace awh {
 				 * Proxy Структура работы с прокси-сервером
 				 */
 				typedef struct Proxy {
-					u_int status;         // Статус ответа прокси-сервера
-					string authorization; // Строка авторизации на прокси-сервере
+					u_int answer;       // Статус ответа прокси-сервера
+					bool authorization; // Флаг требования авторизации на прокси-сервере
 					/**
 					 * Proxy Конструктор
 					 */
-					Proxy() noexcept : status(0), authorization{""} {}
+					Proxy() noexcept : answer(0), authorization(false) {}
 				} proxy_t;
 			protected:
 				/**
@@ -354,7 +354,7 @@ namespace awh {
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
 				 */
-				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+				virtual void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
 				 * attempts Метод установки общего количества попыток
@@ -411,17 +411,17 @@ namespace awh {
 				virtual void serv(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * authTypeProxy Метод установки типа авторизации прокси-сервера
-				 * @param type тип авторизации
-				 * @param hash алгоритм шифрования для Digest-авторизации
-				 */
-				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
-				/**
 				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				virtual void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept = 0;
+				/**
+				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest-авторизации
+				 */
+				virtual void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * crypto Метод установки параметров шифрования

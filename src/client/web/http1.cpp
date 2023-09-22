@@ -43,68 +43,10 @@ void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh
  * @param core объект сетевого ядра
  */
 void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Если список ответов получен
-	if(!this->_requests.empty()){
-		// Получаем параметры запроса
-		const auto & response = this->_http.response();
-		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((response.code == 201) || (response.code == 301) || (response.code == 302) ||
-		  (response.code == 303) || (response.code == 307) || (response.code == 308) || (response.code == 401))){
-			// Определяем код ответа сервера
-			switch(response.code){
-				// Если требуется повторить попытку авторизации
-				case 401: {
-					// Увеличиваем количество попыток
-					this->_attempt++;
-					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
-					// Если функция обратного вызова на вывод редиректа потоков установлена
-					if(this->_callback.is("redirect")){
-						// Получаем идентификатор потока
-						const int32_t sid = this->_requests.begin()->first;
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
-					}
-					// Выполняем установку следующего экшена на открытие подключения
-					this->open();
-					// Завершаем работу
-					return;
-				}
-				// Если требуется выполнить редирект
-				default: {
-					// Если адрес для выполнения переадресации указан
-					if(this->_http.isHeader("location")){
-						// Выполняем очистку оставшихся данных
-						this->_buffer.clear();
-						// Получаем новый адрес запроса
-						const uri_t::url_t & url = this->_http.getUrl();
-						// Если адрес запроса получен
-						if(!url.empty()){
-							// Увеличиваем количество попыток
-							this->_attempt++;
-							// Устанавливаем новый адрес запроса
-							this->_uri.combine(this->_scheme.url, url);
-							// Получаем объект текущего запроса
-							request_t & request = this->_requests.begin()->second;
-							// Устанавливаем новый адрес запроса
-							request.url = this->_scheme.url;
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect")){
-								// Получаем идентификатор потока
-								const int32_t sid = this->_requests.begin()->first;
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
-							}
-							// Выполняем установку следующего экшена на открытие подключения
-							this->open();
-							// Завершаем работу
-							return;
-						}
-					}
-				}
-			}
-		}
-	}
+	// Выполняем редирект, если редирект выполнен
+	if(this->redirect())
+		// Выходим из функции
+		return;
 	// Если подключение является постоянным
 	if(this->_scheme.alive)
 		// Выполняем очистку оставшихся данных
@@ -235,6 +177,92 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 			}
 		}
 	}
+}
+/**
+ * redirect Метод выполнения редиректа если требуется
+ * @return результат выполнения редиректа
+ */
+bool awh::client::Http1::redirect() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если список ответов получен
+	if((result = !this->_stopped && !this->_requests.empty())){
+		// Получаем параметры запроса
+		const auto & response = this->_http.response();
+		// Если необходимо выполнить ещё одну попытку выполнения авторизации
+		if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+			// Увеличиваем количество попыток
+			this->_attempt++;
+			// Выполняем очистку оставшихся данных
+			this->_buffer.clear();
+			// Если функция обратного вызова на вывод редиректа потоков установлена
+			if(this->_callback.is("redirect")){
+				// Получаем идентификатор потока
+				const int32_t sid = this->_requests.begin()->first;
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
+			}
+			// Выполняем установку следующего экшена на открытие подключения
+			this->open();
+			// Завершаем работу
+			return result;
+		}
+		// Выполняем определение ответа сервера
+		switch(response.code){
+			// Если ответ сервера: Created
+			case 201:
+			// Если ответ сервера: Moved Permanently
+			case 301:
+			// Если ответ сервера: Found
+			case 302:
+			// Если ответ сервера: See Other
+			case 303:
+			// Если ответ сервера: Temporary Redirect
+			case 307:
+			// Если ответ сервера: Permanent Redirect
+			case 308: break;
+			// Если мы получили любой другой ответ, выходим
+			default: return result;
+		}
+		// Если адрес для выполнения переадресации указан
+		if((result = this->_http.isHeader("location"))){
+			// Выполняем очистку оставшихся данных
+			this->_buffer.clear();
+			// Получаем новый адрес запроса
+			const uri_t::url_t & url = this->_http.getUrl();
+			// Если адрес запроса получен
+			if((result = !url.empty())){
+				// Увеличиваем количество попыток
+				this->_attempt++;
+				// Устанавливаем новый адрес запроса
+				this->_uri.combine(this->_scheme.url, url);
+				// Получаем объект текущего запроса
+				request_t & request = this->_requests.begin()->second;
+				// Устанавливаем новый адрес запроса
+				request.url = this->_scheme.url;
+				// Если необходимо метод изменить на GET и основной метод не является GET
+				if(((response.code == 201) || (response.code == 303)) && (request.method != awh::web_t::method_t::GET)){
+					// Выполняем очистку тела запроса
+					request.entity.clear();
+					// Выполняем установку метода запроса
+					request.method = awh::web_t::method_t::GET;
+				}
+				// Если функция обратного вызова на вывод редиректа потоков установлена
+				if(this->_callback.is("redirect")){
+					// Получаем идентификатор потока
+					const int32_t sid = this->_requests.begin()->first;
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
+				}
+				// Выполняем установку следующего экшена на открытие подключения
+				this->open();
+				// Завершаем работу
+				return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * response Метод получения ответа сервера
@@ -485,6 +513,15 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				this->_http.body(request.entity);
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, request.url);
+			// Если необходимо произвести авторизацию на проксе-сервере
+			if(this->_proxy.authorization){
+				// Получаем строку авторизации на проксе-сервере
+				const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, request.method);
+				// Если строка автоирации получена
+				if(!auth.empty())
+					// Выполняем добавление заголовка авторизации
+					this->_http.header("Proxy-Authorization", auth);
+			}
 			// Получаем бинарные данные WEB запроса
 			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 			// Если бинарные данные запроса получены
@@ -709,6 +746,15 @@ void awh::client::Http1::serv(const string & id, const string & name, const stri
 	}
 }
 /**
+ * proxy Метод установки прокси-сервера
+ * @param uri    параметры прокси-сервера
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ */
+void awh::client::Http1::proxy(const string & uri, const scheme_t::family_t family) noexcept {
+	// Выполняем установку параметры прокси-сервера
+	web_t::proxy(uri, family);
+}
+/**
  * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
@@ -716,6 +762,15 @@ void awh::client::Http1::serv(const string & id, const string & name, const stri
 void awh::client::Http1::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http.authType(type, hash);
+}
+/**
+ * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @param type тип авторизации
+ * @param hash алгоритм шифрования для Digest-авторизации
+ */
+void awh::client::Http1::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+	// Устанавливаем тип авторизации на проксе-сервере
+	web_t::authTypeProxy(type, hash);
 }
 /**
  * crypto Метод установки параметров шифрования

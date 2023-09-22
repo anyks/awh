@@ -961,6 +961,15 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl;
 							#endif
+							// Если необходимо произвести авторизацию на проксе-сервере
+							if(this->_proxy.authorization){
+								// Получаем строку авторизации на проксе-сервере
+								const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, request.method);
+								// Если строка автоирации получена
+								if(!auth.empty())
+									// Выполняем добавление заголовка авторизации
+									this->_http.header("Proxy-Authorization", auth);
+							}
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем перебор всех заголовков HTTP/2 запроса
@@ -1103,6 +1112,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
+						// Выполняем установку флага прохождения авторизации на прокси-сервере
+						this->_http1._proxy.authorization = this->_proxy.authorization;
 						// Выполняем отправку на сервер запроса
 						result = this->_http1.send(request);
 					}
@@ -1111,6 +1122,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 					// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 					sid = this->update(* const_cast <request_t *> (&request));
+					// Выполняем установку флага прохождения авторизации на прокси-сервере
+					this->_ws2._proxy.authorization = this->_proxy.authorization;
 					// Выполняем установку подключения с WebSocket-сервером
 					this->_ws2.connectCallback(this->_aid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения
@@ -1560,6 +1573,19 @@ void awh::client::Http2::multiThreads(const size_t threads, const bool mode) noe
 	else this->_threads = -1;
 }
 /**
+ * proxy Метод установки прокси-сервера
+ * @param uri    параметры прокси-сервера
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ */
+void awh::client::Http2::proxy(const string & uri, const scheme_t::family_t family) noexcept {
+	// Выполняем установку параметры прокси-сервера
+	web2_t::proxy(uri, family);
+	// Выполняем установку параметры прокси-сервера для WebSocket-клиента
+	this->_ws2.proxy(uri, family);
+	// Выполняем установку параметры прокси-сервера для HTTP-клиента
+	this->_http1.proxy(uri, family);
+}
+/**
  * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
@@ -1571,6 +1597,19 @@ void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 	this->_http.authType(type, hash);
 	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http1.authType(type, hash);
+}
+/**
+ * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @param type тип авторизации
+ * @param hash алгоритм шифрования для Digest-авторизации
+ */
+void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+	// Устанавливаем тип авторизации на проксе-сервере
+	web2_t::authTypeProxy(type, hash);
+	// Устанавливаем тип авторизации на проксе-сервере для WebSocket-клиента
+	this->_ws2.authTypeProxy(type, hash);
+	// Устанавливаем тип авторизации на проксе-сервере для HTTP-клиента
+	this->_http1.authTypeProxy(type, hash);
 }
 /**
  * crypto Метод установки параметров шифрования

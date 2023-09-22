@@ -214,6 +214,15 @@ namespace awh {
 				int signalHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
+				 * redirect Метод выполнения редиректа если требуется
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 * @return     результат выполнения редиректа
+				 */
+				bool redirect(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
@@ -415,11 +424,24 @@ namespace awh {
 				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
+				 * proxy Метод установки прокси-сервера
+				 * @param uri    параметры прокси-сервера
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 */
+				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+			public:
+				/**
 				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				/**
+				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest-авторизации
+				 */
+				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * crypto Метод установки параметров шифрования

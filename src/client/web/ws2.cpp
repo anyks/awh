@@ -56,6 +56,15 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Создаём объек запроса
 			awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
+			// Если необходимо произвести авторизацию на проксе-сервере
+			if(this->_proxy.authorization){
+				// Получаем строку авторизации на проксе-сервере
+				const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, awh::web_t::method_t::CONNECT);
+				// Если строка автоирации получена
+				if(!auth.empty())
+					// Выполняем добавление заголовка авторизации
+					this->_http.header("Proxy-Authorization", auth);
+			}
 			/**
 			 * Если включён режим отладки
 			 */
@@ -109,6 +118,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			this->_ws1._core = this->_core;
 			// Выполняем установку данных URL-адреса
 			this->_ws1._scheme.url = this->_scheme.url;
+			// Выполняем установку флага прохождения авторизации на прокси-сервере
+			this->_ws1._proxy.authorization = this->_proxy.authorization;
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выполняем установку функции обратного вызова
@@ -140,109 +151,10 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
-	// Если переключение протокола на HTTP/2 не выполнено
-	if(this->_proto != engine_t::proto_t::HTTP2){
-		// Выполняем переброс вызова дисконнекта на клиент WebSocket
-		this->_ws1.disconnectCallback(aid, sid, core);
-		// Получаем параметры запроса
-		const auto & response = this->_ws1._http.response();
-		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401))){
-			// Определяем код ответа сервера
-			switch(response.code){
-				// Если требуется повторить попытку авторизации
-				case 401: {
-					// Выполняем очистку оставшихся данных
-					this->_ws1._buffer.clear();
-					// Получаем количество попыток
-					this->_attempt = this->_ws1._attempt;
-					// Выполняем установку следующего экшена на открытие подключения
-					this->open();
-					// Завершаем работу
-					return;
-				}
-				// Если требуется выполнить редирект
-				default: {
-					// Если адрес для выполнения переадресации указан
-					if(this->_ws1._http.isHeader("location")){
-						// Выполняем очистку оставшихся данных
-						this->_ws1._buffer.clear();
-						// Получаем новый адрес запроса
-						const uri_t::url_t & url = this->_ws1._http.getUrl();
-						// Если адрес запроса получен
-						if(!url.empty()){
-							// Получаем количество попыток
-							this->_attempt = this->_ws1._attempt;
-							// Устанавливаем новый адрес запроса
-							this->_uri.combine(this->_scheme.url, url);
-							// Выполняем установку следующего экшена на открытие подключения
-							this->open();
-							// Завершаем работу
-							return;
-						}
-					}
-				}
-			}
-		}
-	// Если переключение протокола на HTTP/2 выполнено
-	} else {
-		// Если сессия HTTP/2 активна
-		if(this->_upgraded && (this->_session != nullptr))
-			// Выполняем остановку активной сессии
-			nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
-		// Получаем параметры запроса
-		const auto & response = this->_http.response();
-		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401))){
-			// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-			this->_upgraded = false;
-			// Выполняем переключение протокола интернета обратно на HTTP/1.1
-			this->_proto = engine_t::proto_t::HTTP1_1;
-			// Определяем код ответа сервера
-			switch(response.code){
-				// Если требуется повторить попытку авторизации
-				case 401: {
-					// Увеличиваем количество попыток
-					this->_attempt++;
-					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
-					// Если функция обратного вызова на вывод редиректа потоков установлена
-					if(this->_callback.is("redirect"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
-					// Выполняем установку следующего экшена на открытие подключения
-					this->open();
-					// Завершаем работу
-					return;
-				}
-				// Если требуется выполнить редирект
-				default: {
-					// Если адрес для выполнения переадресации указан
-					if(this->_http.isHeader("location")){
-						// Выполняем очистку оставшихся данных
-						this->_buffer.clear();
-						// Получаем новый адрес запроса
-						const uri_t::url_t & url = this->_http.getUrl();
-						// Если адрес запроса получен
-						if(!url.empty()){
-							// Увеличиваем количество попыток
-							this->_attempt++;
-							// Устанавливаем новый адрес запроса
-							this->_uri.combine(this->_scheme.url, url);
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
-							// Выполняем установку следующего экшена на открытие подключения
-							this->open();
-							// Завершаем работу
-							return;
-						}
-					}
-				}
-			}
-		}
-	}
+	// Выполняем редирект, если редирект выполнен
+	if(this->redirect(aid, sid, core))
+		// Выходим из функции
+		return;
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Выполняем очистку оставшихся данных
@@ -721,6 +633,128 @@ int awh::client::WebSocket2::signalHeader(const int32_t sid, const string & key,
 	}
 	// Выводим результат
 	return 0;
+}
+/**
+ * redirect Метод выполнения редиректа если требуется
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ * @return     результат выполнения редиректа
+ */
+bool awh::client::WebSocket2::redirect(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(this->_proto != engine_t::proto_t::HTTP2){
+		// Выполняем переброс вызова дисконнекта на клиент WebSocket
+		this->_ws1.disconnectCallback(aid, sid, core);
+		// Если список ответов получен
+		if((result = !this->_ws1._stopped)){
+			// Получаем параметры запроса
+			const auto & response = this->_ws1._http.response();
+			// Если необходимо выполнить ещё одну попытку выполнения авторизации
+			if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+				// Выполняем очистку оставшихся данных
+				this->_ws1._buffer.clear();
+				// Получаем количество попыток
+				this->_attempt = this->_ws1._attempt;
+				// Выполняем установку следующего экшена на открытие подключения
+				this->open();
+				// Завершаем работу
+				return result;
+			}
+			// Выполняем определение ответа сервера
+			switch(response.code){
+				// Если ответ сервера: Moved Permanently
+				case 301:
+				// Если ответ сервера: Permanent Redirect
+				case 308: break;
+				// Если мы получили любой другой ответ, выходим
+				default: return result;
+			}
+			// Если адрес для выполнения переадресации указан
+			if((result = this->_ws1._http.isHeader("location"))){
+				// Выполняем очистку оставшихся данных
+				this->_ws1._buffer.clear();
+				// Получаем новый адрес запроса
+				const uri_t::url_t & url = this->_ws1._http.getUrl();
+				// Если адрес запроса получен
+				if((result = !url.empty())){
+					// Получаем количество попыток
+					this->_attempt = this->_ws1._attempt;
+					// Устанавливаем новый адрес запроса
+					this->_uri.combine(this->_scheme.url, url);
+					// Выполняем установку следующего экшена на открытие подключения
+					this->open();
+					// Завершаем работу
+					return result;
+				}
+			}
+		}
+	// Если переключение протокола на HTTP/2 выполнено
+	} else {
+		// Если сессия HTTP/2 активна
+		if(this->_upgraded && (this->_session != nullptr))
+			// Выполняем остановку активной сессии
+			nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
+		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+		this->_upgraded = false;
+		// Выполняем переключение протокола интернета обратно на HTTP/1.1
+		this->_proto = engine_t::proto_t::HTTP1_1;
+		// Если список ответов получен
+		if((result = !this->_stopped)){
+			// Получаем параметры запроса
+			const auto & response = this->_http.response();
+			// Если необходимо выполнить ещё одну попытку выполнения авторизации
+			if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+				// Увеличиваем количество попыток
+				this->_attempt++;
+				// Выполняем очистку оставшихся данных
+				this->_buffer.clear();
+				// Если функция обратного вызова на вывод редиректа потоков установлена
+				if(this->_callback.is("redirect"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
+				// Выполняем установку следующего экшена на открытие подключения
+				this->open();
+				// Завершаем работу
+				return result;
+			}
+			// Выполняем определение ответа сервера
+			switch(response.code){
+				// Если ответ сервера: Moved Permanently
+				case 301:
+				// Если ответ сервера: Permanent Redirect
+				case 308: break;
+				// Если мы получили любой другой ответ, выходим
+				default: return result;
+			}
+			// Если адрес для выполнения переадресации указан
+			if((result = this->_http.isHeader("location"))){
+				// Выполняем очистку оставшихся данных
+				this->_buffer.clear();
+				// Получаем новый адрес запроса
+				const uri_t::url_t & url = this->_http.getUrl();
+				// Если адрес запроса получен
+				if((result = !url.empty())){
+					// Увеличиваем количество попыток
+					this->_attempt++;
+					// Устанавливаем новый адрес запроса
+					this->_uri.combine(this->_scheme.url, url);
+					// Если функция обратного вызова на вывод редиректа потоков установлена
+					if(this->_callback.is("redirect"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
+					// Выполняем установку следующего экшена на открытие подключения
+					this->open();
+					// Завершаем работу
+					return result;
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * flush Метод сброса параметров запроса
@@ -1740,6 +1774,17 @@ void awh::client::WebSocket2::multiThreads(const size_t threads, const bool mode
 	} else this->_thr.wait();
 }
 /**
+ * proxy Метод установки прокси-сервера
+ * @param uri    параметры прокси-сервера
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ */
+void awh::client::WebSocket2::proxy(const string & uri, const scheme_t::family_t family) noexcept {
+	// Выполняем установку параметры прокси-сервера
+	web2_t::proxy(uri, family);
+	// Выполняем установку параметры прокси-сервера для WebSocket-клиента
+	this->_ws1.proxy(uri, family);
+}
+/**
  * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
@@ -1749,6 +1794,17 @@ void awh::client::WebSocket2::authType(const auth_t::type_t type, const auth_t::
 	this->_ws1.authType(type, hash);
 	// Устанавливаем параметры авторизации для HTTP-клиента
 	this->_http.authType(type, hash);
+}
+/**
+ * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @param type тип авторизации
+ * @param hash алгоритм шифрования для Digest-авторизации
+ */
+void awh::client::WebSocket2::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+	// Устанавливаем тип авторизации на проксе-сервере
+	web2_t::authTypeProxy(type, hash);
+	// Устанавливаем тип авторизации на проксе-сервере для WebSocket-клиента
+	this->_ws1.authTypeProxy(type, hash);
 }
 /**
  * crypto Метод установки параметров шифрования
