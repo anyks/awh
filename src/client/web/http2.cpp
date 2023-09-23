@@ -1339,7 +1339,7 @@ void awh::client::Http2::on(function <void (const mode_t)> callback) noexcept {
  */
 void awh::client::Http2::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const u_int, const string &)> ("error", callback);
+	this->_callback.set <void (const u_int, const string &)> ("wsError", callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(callback);
 }
