@@ -77,163 +77,10 @@ void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, 
 	if(this->_upgraded && (this->_session != nullptr))
 		// Выполняем остановку активной сессии
 		nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
-	// Выполняем поиск активного воркера который необходимо перезапустить
-	for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
-		// Определяем тип агента
-		switch(static_cast <uint8_t> (it->second->agent)){
-			// Если протоколом агента является HTTP-клиент
-			case static_cast <uint8_t> (agent_t::HTTP): {
-				// Если протокол подключения установлен как HTTP/2
-				if(it->second->proto == engine_t::proto_t::HTTP2){
-					// Если мы нашли нужный нам воркер
-					if(it->second->update){
-						// Получаем параметры запроса
-						const auto & response = it->second->http.response();
-						// Если нужно произвести запрос заново
-						if(!this->_stopped && ((response.code == 201) || (response.code == 301) || (response.code == 302) ||
-						  (response.code == 303) || (response.code == 307) || (response.code == 308) || (response.code == 401))){
-							// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-							this->_upgraded = false;
-							// Определяем код ответа сервера
-							switch(response.code){
-								// Если требуется повторить попытку авторизации
-								case 401: {
-									// Увеличиваем количество попыток
-									this->_attempt++;
-									// Выполняем установку следующего экшена на открытие подключения
-									this->open();
-									// Завершаем работу
-									return;
-								}
-								// Если требуется выполнить редирект
-								default: {
-									// Если адрес для выполнения переадресации указан
-									if(it->second->http.isHeader("location")){
-										// Получаем новый адрес запроса
-										const uri_t::url_t & url = it->second->http.getUrl();
-										// Если адрес запроса получен
-										if(!url.empty()){
-											// Увеличиваем количество попыток
-											this->_attempt++;
-											// Устанавливаем новый адрес запроса
-											this->_uri.combine(this->_scheme.url, url);
-											// Выполняем поиск параметров запроса
-											auto jt = this->_requests.find(it->first);
-											// Если необходимые нам параметры запроса найдены
-											if(jt != this->_requests.end())
-												// Устанавливаем новый адрес запроса
-												jt->second->url = this->_scheme.url;
-											// Выполняем установку следующего экшена на открытие подключения
-											this->open();
-											// Завершаем работу
-											return;
-										}
-									}
-								}
-							}
-						}
-					}
-				// Если активирован режим работы с HTTP/1.1 протоколом
-				} else {
-					// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-					this->_http1.disconnectCallback(aid, sid, core);
-					// Получаем параметры запроса
-					const auto & response = this->_http1._http.response();
-					// Если нужно произвести запрос заново
-					if((it->second->update = !this->_http1._stopped && ((response.code == 201) ||
-					  (response.code == 301) || (response.code == 302) || (response.code == 303) ||
-					  (response.code == 307) || (response.code == 308) || (response.code == 401)))){
-						// Определяем код ответа сервера
-						switch(response.code){
-							// Если требуется повторить попытку авторизации
-							case 401: {
-								// Выполняем очистку оставшихся данных
-								this->_http1._buffer.clear();
-								// Получаем количество попыток
-								this->_attempt = this->_http1._attempt;
-								// Выполняем установку следующего экшена на открытие подключения
-								this->open();
-								// Завершаем работу
-								return;
-							}
-							// Если требуется выполнить редирект
-							default: {
-								// Если адрес для выполнения переадресации указан
-								if(this->_http1._http.isHeader("location")){
-									// Выполняем очистку оставшихся данных
-									this->_http1._buffer.clear();
-									// Получаем количество попыток
-									this->_attempt = this->_http1._attempt;
-									// Устанавливаем новый адрес запроса
-									this->_uri.combine(this->_scheme.url, this->_http1._scheme.url);
-									// Выполняем поиск параметров запроса
-									auto jt = this->_requests.find(it->first);
-									// Если необходимые нам параметры запроса найдены
-									if(jt != this->_requests.end())
-										// Устанавливаем новый адрес запроса
-										jt->second->url = this->_scheme.url;
-									// Выполняем установку следующего экшена на открытие подключения
-									this->open();
-									// Завершаем работу
-									return;
-								}
-							}
-						}
-					}
-				}
-			} break;
-			// Если протоколом агента является WebSocket-клиент
-			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-				// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-				this->_upgraded = false;
-				// Отключаем флаг HTTP/2 у WebSocket-клиента, так-как сессия уже закрыта
-				this->_ws2._upgraded = false;
-				// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
-				this->_ws2.disconnectCallback(aid, sid, core);
-				// Получаем параметры запроса
-				const auto & response = this->_ws2._http.response();
-				// Если нужно произвести запрос заново
-				if((it->second->update = !this->_ws2._stopped && ((response.code == 301) || (response.code == 308) || (response.code == 401)))){
-					// Определяем код ответа сервера
-					switch(response.code){
-						// Если требуется повторить попытку авторизации
-						case 401: {
-							// Выполняем очистку оставшихся данных
-							this->_ws2._buffer.clear();
-							// Получаем количество попыток
-							this->_attempt = this->_ws2._attempt;
-							// Выполняем установку следующего экшена на открытие подключения
-							this->open();
-							// Завершаем работу
-							return;
-						}
-						// Если требуется выполнить редирект
-						default: {
-							// Если адрес для выполнения переадресации указан
-							if(this->_ws2._http.isHeader("location")){
-								// Выполняем очистку оставшихся данных
-								this->_ws2._buffer.clear();
-								// Получаем количество попыток
-								this->_attempt = this->_ws2._attempt;
-								// Устанавливаем новый адрес запроса
-								this->_uri.combine(this->_scheme.url, this->_ws2._scheme.url);
-								// Выполняем поиск параметров запроса
-								auto jt = this->_requests.find(it->first);
-								// Если необходимые нам параметры запроса найдены
-								if(jt != this->_requests.end())
-									// Устанавливаем новый адрес запроса
-									jt->second->url = this->_scheme.url;
-								// Выполняем установку следующего экшена на открытие подключения
-								this->open();
-								// Завершаем работу
-								return;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+	// Выполняем редирект, если редирект выполнен
+	if(this->redirect(aid, sid, core))
+		// Выходим из функции
+		return;
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
 	// Выполняем очистку списка запросов
@@ -677,6 +524,227 @@ int awh::client::Http2::signalHeader(const int32_t sid, const string & key, cons
 	}
 	// Выводим результат
 	return 0;
+}
+/**
+ * redirect Метод выполнения редиректа если требуется
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ * @return     результат выполнения редиректа
+ */
+bool awh::client::Http2::redirect(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если список ответов получен
+	if((result = !this->_stopped && !this->_requests.empty())){
+		// Выполняем поиск активного воркера который необходимо перезапустить
+		for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
+			// Определяем тип агента
+			switch(static_cast <uint8_t> (it->second->agent)){
+				// Если протоколом агента является HTTP-клиент
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Если протокол подключения установлен как HTTP/2
+					if(it->second->proto == engine_t::proto_t::HTTP2){
+						// Если мы нашли нужный нам воркер
+						if(it->second->update){
+							// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+							this->_upgraded = false;
+							// Если список ответов получен
+							if((result = !this->_stopped)){
+								// Получаем параметры запроса
+								const auto & response = it->second->http.response();
+								// Если необходимо выполнить ещё одну попытку выполнения авторизации
+								if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+									// Увеличиваем количество попыток
+									this->_attempt++;
+									// Выполняем установку следующего экшена на открытие подключения
+									this->open();
+									// Завершаем работу
+									return result;
+								}
+								// Выполняем определение ответа сервера
+								switch(response.code){
+									// Если ответ сервера: Created
+									case 201:
+									// Если ответ сервера: Moved Permanently
+									case 301:
+									// Если ответ сервера: Found
+									case 302:
+									// Если ответ сервера: See Other
+									case 303:
+									// Если ответ сервера: Temporary Redirect
+									case 307:
+									// Если ответ сервера: Permanent Redirect
+									case 308: break;
+									// Если мы получили любой другой ответ, выходим
+									default: return result;
+								}
+								// Если адрес для выполнения переадресации указан
+								if((result = it->second->http.isHeader("location"))){
+									// Получаем новый адрес запроса
+									const uri_t::url_t & url = it->second->http.getUrl();
+									// Если адрес запроса получен
+									if((result = !url.empty())){
+										// Увеличиваем количество попыток
+										this->_attempt++;
+										// Устанавливаем новый адрес запроса
+										this->_uri.combine(this->_scheme.url, url);
+										// Выполняем поиск параметров запроса
+										auto jt = this->_requests.find(it->first);
+										// Если необходимые нам параметры запроса найдены
+										if((result = (jt != this->_requests.end()))){
+											// Устанавливаем новый адрес запроса
+											jt->second->url = this->_scheme.url;
+											// Если необходимо метод изменить на GET и основной метод не является GET
+											if(((response.code == 201) || (response.code == 303)) && (jt->second->method != awh::web_t::method_t::GET)){
+												// Выполняем очистку тела запроса
+												jt->second->entity.clear();
+												// Выполняем установку метода запроса
+												jt->second->method = awh::web_t::method_t::GET;
+											}
+										}
+										// Выполняем установку следующего экшена на открытие подключения
+										this->open();
+										// Завершаем работу
+										return result;
+									}
+								}
+							}
+						}
+					// Если активирован режим работы с HTTP/1.1 протоколом
+					} else {
+						// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
+						this->_http1.disconnectCallback(aid, sid, core);
+						// Если список ответов получен
+						if((result = it->second->update = !this->_http1._stopped)){
+							// Получаем параметры запроса
+							const auto & response = this->_http1._http.response();
+							// Если необходимо выполнить ещё одну попытку выполнения авторизации
+							if((result = it->second->update = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+								// Выполняем очистку оставшихся данных
+								this->_http1._buffer.clear();
+								// Получаем количество попыток
+								this->_attempt = this->_http1._attempt;
+								// Выполняем установку следующего экшена на открытие подключения
+								this->open();
+								// Завершаем работу
+								return result;
+							}
+							// Выполняем определение ответа сервера
+							switch(response.code){
+								// Если ответ сервера: Created
+								case 201:
+								// Если ответ сервера: Moved Permanently
+								case 301:
+								// Если ответ сервера: Found
+								case 302:
+								// Если ответ сервера: See Other
+								case 303:
+								// Если ответ сервера: Temporary Redirect
+								case 307:
+								// Если ответ сервера: Permanent Redirect
+								case 308: break;
+								// Если мы получили любой другой ответ, выходим
+								default: return result;
+							}
+							// Если адрес для выполнения переадресации указан
+							if((result = it->second->update = this->_http1._http.isHeader("location"))){
+								// Выполняем очистку оставшихся данных
+								this->_http1._buffer.clear();
+								// Получаем новый адрес запроса
+								const uri_t::url_t & url = this->_http1._http.getUrl();
+								// Если адрес запроса получен
+								if((result = it->second->update = !url.empty())){
+									// Получаем количество попыток
+									this->_attempt = this->_http1._attempt;
+									// Устанавливаем новый адрес запроса
+									this->_uri.combine(this->_scheme.url, url);
+									// Выполняем поиск параметров запроса
+									auto jt = this->_requests.find(it->first);
+									// Если необходимые нам параметры запроса найдены
+									if((result = it->second->update = (jt != this->_requests.end()))){
+										// Устанавливаем новый адрес запроса
+										jt->second->url = this->_scheme.url;
+										// Если необходимо метод изменить на GET и основной метод не является GET
+										if(((response.code == 201) || (response.code == 303)) && (jt->second->method != awh::web_t::method_t::GET)){
+											// Выполняем очистку тела запроса
+											jt->second->entity.clear();
+											// Выполняем установку метода запроса
+											jt->second->method = awh::web_t::method_t::GET;
+										}
+									}
+									// Выполняем установку следующего экшена на открытие подключения
+									this->open();
+									// Завершаем работу
+									return result;
+								}
+							}
+						}
+					}
+				} break;
+				// Если протоколом агента является WebSocket-клиент
+				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+					// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+					this->_upgraded = false;
+					// Отключаем флаг HTTP/2 у WebSocket-клиента, так-как сессия уже закрыта
+					this->_ws2._upgraded = false;
+					// Выполняем переброс вызова дисконнекта на клиент WebSocket
+					this->_ws2.disconnectCallback(aid, sid, core);
+					// Если список ответов получен
+					if((result = it->second->update = !this->_ws2._stopped)){
+						// Получаем параметры запроса
+						const auto & response = this->_ws2._http.response();
+						// Если необходимо выполнить ещё одну попытку выполнения авторизации
+						if((result = it->second->update = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+							// Выполняем очистку оставшихся данных
+							this->_ws2._buffer.clear();
+							// Получаем количество попыток
+							this->_attempt = this->_ws2._attempt;
+							// Выполняем установку следующего экшена на открытие подключения
+							this->open();
+							// Завершаем работу
+							return result;
+						}
+						// Выполняем определение ответа сервера
+						switch(response.code){
+							// Если ответ сервера: Moved Permanently
+							case 301:
+							// Если ответ сервера: Permanent Redirect
+							case 308: break;
+							// Если мы получили любой другой ответ, выходим
+							default: return result;
+						}
+						// Если адрес для выполнения переадресации указан
+						if((result = it->second->update = this->_ws2._http.isHeader("location"))){
+							// Выполняем очистку оставшихся данных
+							this->_ws2._buffer.clear();
+							// Получаем новый адрес запроса
+							const uri_t::url_t & url = this->_ws2._http.getUrl();
+							// Если адрес запроса получен
+							if((result = it->second->update = !url.empty())){
+								// Получаем количество попыток
+								this->_attempt = this->_ws2._attempt;
+								// Устанавливаем новый адрес запроса
+								this->_uri.combine(this->_scheme.url, url);
+								// Выполняем поиск параметров запроса
+								auto jt = this->_requests.find(it->first);
+								// Если необходимые нам параметры запроса найдены
+								if((result = it->second->update = (jt != this->_requests.end())))
+									// Устанавливаем новый адрес запроса
+									jt->second->url = this->_scheme.url;
+								// Выполняем установку следующего экшена на открытие подключения
+								this->open();
+								// Завершаем работу
+								return result;
+							}
+						}
+					}
+				} break;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * flush Метод сброса параметров запроса

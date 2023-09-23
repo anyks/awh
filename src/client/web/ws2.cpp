@@ -151,6 +151,10 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Если сессия HTTP/2 активна
+	if(this->_upgraded && (this->_session != nullptr))
+		// Выполняем остановку активной сессии
+		nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(aid, sid, core))
 		// Выходим из функции
@@ -693,10 +697,6 @@ bool awh::client::WebSocket2::redirect(const size_t aid, const size_t sid, awh::
 		}
 	// Если переключение протокола на HTTP/2 выполнено
 	} else {
-		// Если сессия HTTP/2 активна
-		if(this->_upgraded && (this->_session != nullptr))
-			// Выполняем остановку активной сессии
-			nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
 		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
 		this->_upgraded = false;
 		// Выполняем переключение протокола интернета обратно на HTTP/1.1

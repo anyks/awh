@@ -158,6 +158,15 @@ namespace awh {
 				int signalHeader(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
+				 * redirect Метод выполнения редиректа если требуется
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 * @return     результат выполнения редиректа
+				 */
+				bool redirect(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
