@@ -48,11 +48,12 @@ namespace awh {
 					SOCKS5 = 0x03  // Прокси-сервер Socks5
 				};
 			public:
+				// Тип прокси-сервера
+				type_t type;
+			public:
 				// Семейство интернет-протоколов
 				scheme_t::family_t family;
 			public:
-				// Тип прокси-сервера
-				type_t type;
 				// Параметры сокет-сервера
 				uri_t::url_t url;
 			public:
@@ -74,7 +75,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 family(scheme_t::family_t::IPV4), type(type_t::NONE),
+				 type(type_t::NONE), family(scheme_t::family_t::IPV4),
 				 socks5(log), http(fmk, log), fmk(fmk), log(log) {
 					// Устанавливаем идентичность протокола к прокси-серверу
 					this->http.identity(http_t::identity_t::PROXY); 

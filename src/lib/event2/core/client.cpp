@@ -214,8 +214,10 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							shm->status.real = scheme_t::mode_t::DISCONNECT;
 							// Выводим сообщение об ошибке
 							this->log->print("connection server host is not set", log_t::flag_t::CRITICAL);
-							// Выводим сообщение об ошибке
-							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							// Если разрешено выводить информационные сообщения
+							if(!this->noinfo)
+								// Выводим сообщение об ошибке
+								this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
@@ -234,8 +236,10 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							shm->status.real = scheme_t::mode_t::DISCONNECT;
 							// Выводим сообщение об ошибке
 							this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
-							// Выводим сообщение об ошибке
-							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							// Если разрешено выводить информационные сообщения
+							if(!this->noinfo)
+								// Выводим сообщение об ошибке
+								this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
@@ -383,8 +387,10 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							this->dns.setToBlackList(AF_INET6, url.domain, url.ip);
 						break;
 					}
-					// Выводим сообщение об ошибке
-					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+					// Если разрешено выводить информационные сообщения
+					if(!this->noinfo)
+						// Выводим сообщение об ошибке
+						this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
@@ -913,8 +919,10 @@ void awh::client::Core::close(const size_t aid) noexcept {
 		this->_locking.erase(aid);
 		// Если функция дисконнекта установлена
 		if(callback.is("disconnect")){
-			// Выводим сообщение об ошибке
-			if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			// Если разрешено выводить информационные сообщения
+			if(!this->noinfo)
+				// Выводим сообщение об ошибке
+				this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выполняем функцию обратного вызова дисконнекта
 			callback.bind <const size_t, const size_t, awh::core_t *> ("disconnect");
 			// Если функция реконнекта установлена
@@ -1090,8 +1098,10 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					this->dns.cancel(AF_INET);
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
-					// Выводим в лог сообщение
-					if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+					// Если разрешено выводить информационные сообщения
+					if(!this->noinfo)
+						// Выводим в лог сообщение
+						this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				} break;
 				// Если тип протокола подключения IPv6
 				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
@@ -1103,15 +1113,19 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					this->dns.cancel(AF_INET6);
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
-					// Выводим в лог сообщение
-					if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+					// Если разрешено выводить информационные сообщения
+					if(!this->noinfo)
+						// Выводим в лог сообщение
+						this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				} break;
 				// Если тип протокола подключения unix-сокет
 				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
-					// Выводим в лог сообщение
-					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+					// Если разрешено выводить информационные сообщения
+					if(!this->noinfo)
+						// Выводим в лог сообщение
+						this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 				} break;
 			}
 			// Если подключение производится через, прокси-сервер

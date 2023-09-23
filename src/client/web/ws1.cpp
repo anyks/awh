@@ -36,6 +36,10 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 		this->_http.clear();
 		// Выполняем очистку функций обратного вызова
 		this->_resultCallback.clear();
+		// Если HTTP-заголовки установлены
+		if(!this->_headers.empty())
+			// Выполняем установку HTTP-заголовков
+			this->_http.headers(this->_headers);
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
 		// Разрешаем перехватывать контекст компрессии
@@ -48,8 +52,8 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
 		this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 		// Создаём объек запроса
 		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
-		// Если необходимо произвести авторизацию на проксе-сервере
-		if(this->_proxy.authorization){
+		// Если метод CONNECT запрещён для прокси-сервера
+		if(!this->_proxy.connect){
 			// Получаем строку авторизации на проксе-сервере
 			const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, awh::web_t::method_t::GET);
 			// Если строка автоирации получена
@@ -1252,6 +1256,8 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг запрещающий выполнять метод CONNECT для прокси-клиента
+	this->_proxy.connect = (flags.count(flag_t::PROXY_NOCONNECT) == 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
@@ -1314,6 +1320,14 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 void awh::client::WebSocket1::user(const string & login, const string & password) noexcept {
 	// Устанавливаем логин и пароль пользователя
 	this->_http.user(login, password);
+}
+/**
+ * setHeaders Метод установки списка заголовков
+ * @param headers список заголовков для установки
+ */
+void awh::client::WebSocket1::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем установку HTTP-заголовков для отправки на сервер
+	this->_headers = headers;
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса

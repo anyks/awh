@@ -340,7 +340,7 @@ int awh::client::Http2::signalChunk(const int32_t sid, const uint8_t * buffer, c
 	return 0;
 }
 /**
- * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+ * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2 сервера
  * @param sid идентификатор потока
  * @return    статус полученных данных
  */
@@ -493,7 +493,7 @@ int awh::client::Http2::signalStreamClosed(const int32_t sid, const uint32_t err
 	return 0;
 }
 /**
- * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+ * signalHeader Метод обратного вызова при получении заголовка HTTP/2 сервера
  * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
@@ -885,7 +885,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					it->second->callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), response.code, response.message, it->second->http.body());
+					it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 				// Устанавливаем размер стопбайт
 				if(!it->second->http.isAlive()){
 					// Завершаем работу
@@ -909,7 +909,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
-						it->second->callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), response.code, response.message, it->second->http.body());
+						it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 					// Выполняем удаление параметров запроса
 					this->_requests.erase(sid);
 					// Завершаем обработку
@@ -920,7 +920,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 		if(this->_callback.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
-			it->second->callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), response.code, response.message, it->second->http.body());
+			it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 		// Завершаем работу
 		core->close(aid);
 		// Выполняем удаление параметров запроса
@@ -1001,8 +1001,12 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 						this->_http.reset();
 						// Выполняем очистку параметров HTTP запроса
 						this->_http.clear();
+						// Если метод компрессии установлен
+						if(request.compress != http_t::compress_t::NONE)
+							// Устанавливаем метод компрессии переданный пользователем
+							this->_http.compress(request.compress);
 						// Устанавливаем метод компрессии
-						this->_http.compress(this->_compress);
+						else this->_http.compress(this->_compress);
 						{
 							// Список заголовков для запроса
 							vector <nghttp2_nv> nva;
@@ -1029,8 +1033,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl;
 							#endif
-							// Если необходимо произвести авторизацию на проксе-сервере
-							if(this->_proxy.authorization){
+							// Если метод CONNECT запрещён для прокси-сервера
+							if(!this->_proxy.connect){
 								// Получаем строку авторизации на проксе-сервере
 								const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, request.method);
 								// Если строка автоирации получена
@@ -1171,6 +1175,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 								if((rv = nghttp2_session_send(this->_session)) != 0){
 									// Выводим сообщение об полученной ошибке
 									this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+									// Выполняем закрытие подключения
+									core->close(this->_aid);
 									// Выходим из функции
 									return -1;
 								}
@@ -1180,8 +1186,10 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
-						// Выполняем установку флага прохождения авторизации на прокси-сервере
-						this->_http1._proxy.authorization = this->_proxy.authorization;
+						// Если метод компрессии не установлен
+						if(request.compress == http_t::compress_t::NONE)
+							// Устанавливаем метод компрессии
+							this->_http1._compress = this->_compress;
 						// Выполняем отправку на сервер запроса
 						result = this->_http1.send(request);
 					}
@@ -1190,8 +1198,16 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 					// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 					sid = this->update(* const_cast <request_t *> (&request));
-					// Выполняем установку флага прохождения авторизации на прокси-сервере
-					this->_ws2._proxy.authorization = this->_proxy.authorization;
+					// Если HTTP-заголовки установлены
+					if(!request.headers.empty())
+						// Выполняем установку HTTP-заголовков
+						this->_ws2.setHeaders(request.headers);
+					// Если метод компрессии установлен
+					if(request.compress != http_t::compress_t::NONE)
+						// Устанавливаем метод компрессии переданный пользователем
+						this->_ws2._compress = request.compress;
+					// Устанавливаем метод компрессии
+					else this->_ws2._compress = this->_compress;
 					// Выполняем установку подключения с WebSocket-сервером
 					this->_ws2.connectCallback(this->_aid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения
@@ -1224,8 +1240,12 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 					ret.first->second->http.reset();
 					// Выполняем очистку параметров HTTP запроса
 					ret.first->second->http.clear();
+					// Если метод компрессии установлен
+					if(request.compress != http_t::compress_t::NONE)
+						// Устанавливаем метод компрессии переданный пользователем
+						ret.first->second->http.compress(request.compress);
 					// Устанавливаем метод компрессии
-					ret.first->second->http.compress(this->_compress);
+					else ret.first->second->http.compress(this->_compress);
 					// Если активирован режим работы с HTTP/2 протоколом
 					if(this->_upgraded)
 						// Выполняем смену активного протокола на HTTP/2

@@ -501,8 +501,12 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			this->_http.clear();
 			// Выполняем очистку функций обратного вызова
 			this->_resultCallback.clear();
+			// Если метод компрессии установлен
+			if(request.compress != http_t::compress_t::NONE)
+				// Устанавливаем метод компрессии переданный пользователем
+				this->_http.compress(request.compress);
 			// Устанавливаем метод компрессии
-			this->_http.compress(this->_compress);
+			else this->_http.compress(this->_compress);
 			// Если список заголовков получен
 			if(!request.headers.empty())
 				// Устанавливаем заголовоки запроса
@@ -513,8 +517,8 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				this->_http.body(request.entity);
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, request.url);
-			// Если необходимо произвести авторизацию на проксе-сервере
-			if(this->_proxy.authorization){
+			// Если метод CONNECT запрещён для прокси-сервера
+			if(!this->_proxy.connect){
 				// Получаем строку авторизации на проксе-сервере
 				const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, request.method);
 				// Если строка автоирации получена
@@ -700,6 +704,8 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг запрещающий выполнять метод CONNECT для прокси-клиента
+	this->_proxy.connect = (flags.count(flag_t::PROXY_NOCONNECT) == 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

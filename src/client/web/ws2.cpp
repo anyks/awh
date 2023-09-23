@@ -36,6 +36,10 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		this->_http.clear();
 		// Выполняем очистку функций обратного вызова
 		this->_resultCallback.clear();
+		// Если HTTP-заголовки установлены
+		if(!this->_headers.empty())
+			// Выполняем установку HTTP-заголовков
+			this->_http.headers(this->_headers);
 		// Устанавливаем метод сжатия
 		this->_http.compress(this->_compress);
 		// Разрешаем перехватывать контекст компрессии
@@ -56,8 +60,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Создаём объек запроса
 			awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
-			// Если необходимо произвести авторизацию на проксе-сервере
-			if(this->_proxy.authorization){
+			// Если метод CONNECT запрещён для прокси-сервера
+			if(!this->_proxy.connect){
 				// Получаем строку авторизации на проксе-сервере
 				const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, awh::web_t::method_t::CONNECT);
 				// Если строка автоирации получена
@@ -108,6 +112,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 				if((rv = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выполняем закрытие подключения
+					dynamic_cast <client::core_t *> (core)->close(this->_sid);
 					// Выходим из функции
 					return;
 				}
@@ -116,10 +122,14 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 		} else {
 			// Выполняем установку сетевого ядра
 			this->_ws1._core = this->_core;
+			// Устанавливаем метод сжатия
+			this->_ws1._compress = this->_compress;
 			// Выполняем установку данных URL-адреса
 			this->_ws1._scheme.url = this->_scheme.url;
-			// Выполняем установку флага прохождения авторизации на прокси-сервере
-			this->_ws1._proxy.authorization = this->_proxy.authorization;
+			// Если HTTP-заголовки установлены
+			if(!this->_headers.empty())
+				// Выполняем установку HTTP-заголовков
+				this->_ws1.setHeaders(this->_headers);
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выполняем установку функции обратного вызова
@@ -488,7 +498,7 @@ int awh::client::WebSocket2::signalChunk(const int32_t sid, const uint8_t * buff
 	return 0;
 }
 /**
- * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+ * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2 сервера
  * @param sid идентификатор потока
  * @return    статус полученных данных
  */
@@ -619,7 +629,7 @@ int awh::client::WebSocket2::signalStreamClosed(const int32_t sid, const uint32_
 	return 0;
 }
 /**
- * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+ * signalHeader Метод обратного вызова при получении заголовка HTTP/2 сервера
  * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
@@ -1712,6 +1722,14 @@ void awh::client::WebSocket2::user(const string & login, const string & password
 	this->_ws1.user(login, password);
 	// Устанавливаем логин и пароль пользователя для HTTP-клиента
 	this->_http.user(login, password);
+}
+/**
+ * setHeaders Метод установки списка заголовков
+ * @param headers список заголовков для установки
+ */
+void awh::client::WebSocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем установку HTTP-заголовков для отправки на сервер
+	this->_headers = headers;
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса

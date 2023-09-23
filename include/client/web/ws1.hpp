@@ -122,6 +122,8 @@ namespace awh {
 			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
+				// Полученные HTTP заголовки
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
@@ -378,6 +380,12 @@ namespace awh {
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & login, const string & password) noexcept;
+			public:
+				/**
+				 * setHeaders Метод установки списка заголовков
+				 * @param headers список заголовков для установки
+				 */
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP запроса

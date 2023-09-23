@@ -76,8 +76,9 @@ namespace awh {
 					WAIT_MESS       = 0x04, // Флаг ожидания входящих сообщений
 					VERIFY_SSL      = 0x05, // Флаг выполнения проверки сертификата SSL
 					REDIRECTS       = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
-					TAKEOVER_CLIENT = 0x07, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER = 0x08  // Флаг ожидания входящих сообщений для сервера
+					PROXY_NOCONNECT = 0x07, // Флаг отключающий метод CONNECT для прокси-клиента
+					TAKEOVER_CLIENT = 0x08, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER = 0x09  // Флаг ожидания входящих сообщений для сервера
 				};
 			public:
 				/**
@@ -86,25 +87,27 @@ namespace awh {
 				typedef struct Request {
 					uri_t::url_t url;                            // URL-запроса запроса
 					web_t::method_t method;                      // Метод запроса
+					http_t::compress_t compress;                 // Метод компрессии данных
 					vector <char> entity;                        // Тело запроса
 					unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : method(web_t::method_t::NONE) {}
+					Request() noexcept : method(web_t::method_t::NONE), compress(http_t::compress_t::NONE) {}
 				} request_t;
 			protected:
 				/**
 				 * Proxy Структура работы с прокси-сервером
 				 */
 				typedef struct Proxy {
-					u_int answer;       // Статус ответа прокси-сервера
-					bool authorization; // Флаг требования авторизации на прокси-сервере
+					int32_t sid;  // Идентификатор потока HTTP/2
+					bool connect; // Флаг применения метода CONNECT
+					u_int answer; // Статус ответа прокси-сервера
 					/**
 					 * Proxy Конструктор
 					 */
-					Proxy() noexcept : answer(0), authorization(false) {}
-				} proxy_t;
+					Proxy() noexcept : sid(-1), connect(true), answer(0) {}
+				} __attribute__((packed)) proxy_t;
 			protected:
 				/**
 				 * Этапы обработки
@@ -207,14 +210,14 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				virtual void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
-			private:
+			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -223,7 +226,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * enableTLSCallback Метод активации зашифрованного канала TLS
@@ -587,11 +590,26 @@ namespace awh {
 				static ssize_t onRead(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 			protected:
 				/**
+				 * signalFrameProxy Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера-сервера
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @return        статус полученных данных
+				 */
+				int signalFrameProxy(const nghttp2_frame * frame) noexcept;
+				/**
 				 * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
 				 * @param frame   объект фрейма заголовков HTTP/2
 				 * @return        статус полученных данных
 				 */
 				virtual int signalFrame(const nghttp2_frame * frame) noexcept = 0;
+			protected:
+				/**
+				 * signalChunkProxy Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+				 * @param sid    идентификатор потока
+				 * @param buffer буфер данных который содержит полученный чанк
+				 * @param size   размер полученного буфера данных чанка
+				 * @return       статус полученных данных
+				 */
+				int signalChunkProxy(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
 				 * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -602,11 +620,18 @@ namespace awh {
 				virtual int signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
-				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+				 * signalBeginHeadersProxy Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+				 * @param sid идентификатор потока
+				 * @return    статус полученных данных
+				 */
+				int signalBeginHeadersProxy(const int32_t sid) noexcept;
+				/**
+				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
 				virtual int signalBeginHeaders(const int32_t sid) noexcept = 0;
+			protected:
 				/**
 				 * signalStreamClosed Метод завершения работы потока
 				 * @param sid   идентификатор потока
@@ -614,8 +639,17 @@ namespace awh {
 				 * @return      статус полученных данных
 				 */
 				virtual int signalStreamClosed(const int32_t sid, const uint32_t error) noexcept = 0;
+			protected:
 				/**
-				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+				 * signalHeaderProxy Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+				 * @param sid идентификатор потока
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
+				 */
+				int signalHeaderProxy(const int32_t sid, const string & key, const string & val) noexcept;
+				/**
+				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
@@ -644,6 +678,30 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				virtual void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+			protected:
+				/**
+				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 */
+				void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param aid    идентификатор адъютанта
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
+				 */
+				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * implementation Метод выполнения активации сессии HTTP/2
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 */
+				void implementation(const size_t aid, client::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга сервера

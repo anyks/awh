@@ -66,7 +66,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::OPEN, event_t::PROXY_READ}, event_t::PROXY_CONNECT)){
+		if(hold.access({event_t::OPEN, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::PROXY_CONNECT)){
 			// Запоминаем идентификатор адъютанта
 			this->_aid = aid;
 			// Определяем тип прокси-сервера
@@ -89,7 +89,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 				// Если прокси-сервер является HTTP
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
 					// Если протокол активирован HTTPS или WSS защищённый поверх TLS
-					if(this->_fmk->compare(this->_scheme.url.schema, "https") || this->_fmk->compare(this->_scheme.url.schema, "wss")){
+					if(this->_proxy.connect){
 						// Выполняем сброс состояния HTTP парсера
 						this->_scheme.proxy.http.reset();
 						// Выполняем очистку параметров HTTP запроса
@@ -113,7 +113,7 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 						}
 					// Если протокол подключения не является защищённым подключением
-					} else if((this->_proxy.authorization = (this->_fmk->compare(this->_scheme.url.schema, "http") || this->_fmk->compare(this->_scheme.url.schema, "ws")))) {
+					} else {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем переключение на работу с сервером
@@ -140,7 +140,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::PROXY_CONNECT}, event_t::PROXY_READ)){
+		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
 			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 			// Определяем тип прокси-сервера
@@ -278,6 +278,10 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								this->_stopped = true;
 							break;
 						}
+						// Если функция обратного вызова активности потока установлена
+						if(this->_callback.is("stream"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const mode_t> ("stream", 1, mode_t::CLOSE);
 						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 						if(this->_callback.is("response"))
 							// Выводим функцию обратного вызова

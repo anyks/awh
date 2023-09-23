@@ -136,7 +136,7 @@ namespace awh {
 				int signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2
+				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
@@ -149,7 +149,7 @@ namespace awh {
 				 */
 				int signalStreamClosed(const int32_t sid, const uint32_t error) noexcept;
 				/**
-				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2
+				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
