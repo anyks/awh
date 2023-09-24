@@ -1341,5 +1341,5 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Разрешаем автоматический перезапуск упавших процессов
 	this->_core.server.clusterAutoRestart(this->_scheme.sid, true);
 	// Устанавливаем функцию активации ядра сервера
-	this->_core.server.callback(std::bind(&proxy_t::eventsCallback, this, _1, _2));
+	this->_core.server.on(std::bind(&proxy_t::eventsCallback, this, _1, _2));
 }

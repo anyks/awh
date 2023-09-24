@@ -86,6 +86,22 @@ namespace awh {
 				ENABLED  = 0x01, // Включено
 				DISABLED = 0x00  // Отключено
 			};
+			/**
+			 * Коды ошибок клиента
+			 */
+			enum class error_t : uint8_t {
+				NONE      = 0x00, // Ошибка не установлена
+				SCTP      = 0x01, // Ошибка протокола SCTP
+				DTLS      = 0x02, // Ошибка протокола DTLS
+				WRAP      = 0x03, // Ошибка обертывания подключения на SSL
+				START     = 0x04, // Ошибка запуска приложения
+				ACCEPT    = 0x05, // Ошибка разрешения подключения
+				ADDRESS   = 0x06, // Ошибка получения адреса
+				TIMEOUT   = 0x07, // Подключение завершено по таймауту
+				CONNECT   = 0x08, // Ошибка подключения
+				ENCRYPT   = 0x09, // Ошибка активации шифрования
+				OS_BROKEN = 0x0A  // Ошибка неподдерживаемой ОС
+			};
 		private:
 			/**
 			 * Timer Класс таймера
@@ -356,15 +372,20 @@ namespace awh {
 			void unbind(Core * core) noexcept;
 		public:
 			/**
-			 * crash Метод установки функции обратного вызова при краше приложения
+			 * on Метод установки функции обратного вызова при краше приложения
 			 * @param callback функция обратного вызова для установки
 			 */
-			void crash(function <void (const int)> callback) noexcept;
+			virtual void on(function <void (const int)> callback) noexcept;
 			/**
-			 * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
+			 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void callback(function <void (const status_t, Core *)> callback) noexcept;
+			virtual void on(function <void (const status_t, Core *)> callback) noexcept;
+			/**
+			 * on установки функции обратного вызова на событие получения ошибки
+			 * @param callback функция обратного вызова
+			 */
+			virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента

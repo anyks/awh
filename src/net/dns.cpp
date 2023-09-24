@@ -368,7 +368,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Выводим в лог сообщение
-			this->_self->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
+			this->_self->_log->print("File descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
 			// Выходим из приложения
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
@@ -390,7 +390,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 			// Выполняем бинд на сокет
 			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
-				this->_self->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выходим из функции
 				return result;
 			}
@@ -622,7 +622,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 						// Если доменное имя указанное в запросе не существует
 						case 3:
 							// Выводим в лог сообщение
-							self->_log->print("the domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, this->_domain.c_str(), to.c_str());
+							self->_log->print("Domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, this->_domain.c_str(), to.c_str());
 						break;
 						// Если DNS-сервер не поддерживает подобный тип запросов
 						case 4:
@@ -702,7 +702,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Выполняем кодирования доменного имени
 				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("idn encode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
+					this->_log->print("IDN encode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring(buffer));
 			/**
@@ -716,7 +716,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
-					this->_log->print("idn encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+					this->_log->print("IDN encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
 				// Получаем результат кодирования
 				else result = buffer;
 				// Очищаем буфер данных
@@ -750,7 +750,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Выполняем кодирования доменного имени
 				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("idn decode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
+					this->_log->print("IDN decode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring(buffer));
 			/**
@@ -764,7 +764,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
-					this->_log->print("idn decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+					this->_log->print("IDN decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
 				// Получаем результат декодирования
 				else result = buffer;
 				// Очищаем буфер данных
@@ -1984,7 +1984,7 @@ void awh::DNS::network(const vector <string> & network) noexcept {
 								// Выполняем добавление полученного хоста в список
 								this->_workerIPv4->_network.push_back(ip);
 							// Выводим сообщение об ошибке
-							else this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+							else this->_log->print("Passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
 						}
 					}
 				}
@@ -2098,14 +2098,14 @@ void awh::DNS::readHosts(const string & filename) noexcept {
 								// Выполняем добавление в кэш новый IP-адрес
 								this->setToCache(family, hosts.at(i), hosts.front(), true);
 						// Сообщаем, что определить IP-адрес не удалось
-						} else this->_log->print("the entry provided [%s] is not an IP address", log_t::flag_t::WARNING, hosts.front().c_str());
+						} else this->_log->print("Entry provided [%s] is not an IP address", log_t::flag_t::WARNING, hosts.front().c_str());
 					// Выводим сообщение, что текст передан неверный
-					} else this->_log->print("hosts in entry %s not found", log_t::flag_t::WARNING, entry.c_str());
+					} else this->_log->print("Hosts in entry %s not found", log_t::flag_t::WARNING, entry.c_str());
 				}
 			});
 		}
 	// Если имя сервера не получено, выводим в лог сообщение
-	} else this->_log->print("hosts file address is not passed", log_t::flag_t::WARNING);
+	} else this->_log->print("Hosts file address is not passed", log_t::flag_t::WARNING);
 }
 /**
  * host Метод определение локального IP-адреса по имени домена
@@ -2160,13 +2160,13 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Если хост мы не нашли
 							if(error == WSAHOST_NOT_FOUND)
 								// Выводим сообщение об ошибке
-								this->_log->print("hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("Hosts %s not found", log_t::flag_t::WARNING, name.c_str());
 							// Если в записи записи хоста в DNS-сервере обнаружено
 							else if(error == WSANO_DATA)
 								// Выводим сообщение об ошибке
-								this->_log->print("no data record found for %s", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("No data record found for %s", log_t::flag_t::WARNING, name.c_str());
 							// Выводим сообщение об ошибке
-							else this->_log->print("an error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
+							else this->_log->print("An error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
 						}
 						// Выходим из функции
 						return result;
@@ -2186,7 +2186,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Если DNS-сервер в данный момент не доступен
 							case TRY_AGAIN:
 								// Выводим сообщение об ошибке
-								this->_log->print("unable to obtain an answer from a DNS-server for %s", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("Unable to obtain an answer from a DNS-server for %s", log_t::flag_t::WARNING, name.c_str());
 							break;
 							// Если адрес не найден
 							case NO_ADDRESS:
@@ -2196,10 +2196,10 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Если доменное имя не найдено
 							case HOST_NOT_FOUND:
 								// Выводим сообщение об ошибке
-								this->_log->print("hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("Hosts %s not found", log_t::flag_t::WARNING, name.c_str());
 							break;
 							// Выводим сообщение по умолчанию
-							default: this->_log->print("an error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
+							default: this->_log->print("An error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
 						}
 						// Выходим из функции
 						return result;

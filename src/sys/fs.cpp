@@ -33,7 +33,7 @@ uid_t awh::FS::uid(const string & name) const noexcept {
 			// Если идентификатор пользователя не найден
 			if(pwd == nullptr){
 				// Выводим сообщение об ошибке
-				this->_log->print("failed to get userId from username [%s]", log_t::flag_t::WARNING, name.c_str());
+				this->_log->print("Failed to get userId from username [%s]", log_t::flag_t::WARNING, name.c_str());
 				// Сообщаем что ничего не найдено
 				return result;
 			}
@@ -63,7 +63,7 @@ gid_t awh::FS::gid(const string & name) const noexcept {
 			// Если идентификатор группы не найден
 			if(grp == nullptr){
 				// Выводим сообщение об ошибке
-				this->_log->print("failed to get groupId from groupname [%s]", log_t::flag_t::WARNING, name.c_str());
+				this->_log->print("Failed to get groupId from groupname [%s]", log_t::flag_t::WARNING, name.c_str());
 				// Сообщаем что ничего не найдено
 				return result;
 			}
@@ -262,7 +262,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 			::closedir(dir);
 		}
 	// Выводим сообщение об ошибке
-	} else this->_log->print("the path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
+	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
 	// Выводим результат
 	return result;
 }
@@ -312,7 +312,7 @@ int awh::FS::delPath(const string & path) const noexcept {
 		// Удаляем последний каталог
 		if(!result) result = ::rmdir(path.c_str());
 	// Выводим сообщение об ошибке
-	} else this->_log->print("the path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
+	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
 	// Выводим результат
 	return result;
 }
@@ -574,11 +574,11 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 			// Если файл не открыт
 			if((fd = ::open(filename.c_str(), O_RDONLY)) < 0)
 				// Выводим сообщение об ошибке
-				this->_log->print("the file name: \"%s\" is broken", log_t::flag_t::WARNING, filename.c_str());
+				this->_log->print("Filename: \"%s\" is broken", log_t::flag_t::WARNING, filename.c_str());
 			// Если файл открыт удачно
 			else if(fstat(fd, &info) < 0)
 				// Выводим сообщение об ошибке
-				this->_log->print("the file name: \"%s\" is unknown size", log_t::flag_t::WARNING, filename.c_str());
+				this->_log->print("Filename: \"%s\" is unknown size", log_t::flag_t::WARNING, filename.c_str());
 			// Иначе продолжаем
 			else {
 				// Создаём смещение в тексте
@@ -588,7 +588,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 				// Если смещение в файше превышает размер файла
 				if(offset >= info.st_size){
 					// Выводим сообщение об ошибке
-					this->_log->print("file offset position of %zu bytes cannot exceed the file size of %zu bytes", log_t::flag_t::CRITICAL, offset, info.st_size);
+					this->_log->print("File offset position of %zu bytes cannot exceed the file size of %zu bytes", log_t::flag_t::CRITICAL, offset, info.st_size);
 					// Выходим из функции
 					return;
 				}
@@ -599,7 +599,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 				// Если произошла ошибка чтения данных файла
 				if(buffer == MAP_FAILED)
 					// Выводим сообщение что прочитать файл не удалось
-					this->_log->print("the file name: \"%s\" is not read", log_t::flag_t::WARNING, filename.c_str());
+					this->_log->print("Filename: \"%s\" is not read", log_t::flag_t::WARNING, filename.c_str());
 				// Если файл прочитан удачно
 				else if(buffer != nullptr) {
 					// Значение текущей и предыдущей буквы
@@ -641,7 +641,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 			// Если файл открыт, закрываем его
 			if(fd > -1) ::close(fd);
 		// Выводим сообщение об ошибке
-		} else this->_log->print("the file name: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
+		} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
 	#endif
 }
 /**
@@ -711,7 +711,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 			file.close();
 		}
 	// Выводим сообщение об ошибке
-	} else this->_log->print("the file name: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
+	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
 }
 /**
  * readDir Метод рекурсивного получения файлов во всех подкаталогах
@@ -780,7 +780,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 		// Запрашиваем данные первого каталога
 		readFn(path, ext, rec);
 	// Выводим сообщение об ошибке
-	} else this->_log->print("the path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
+	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
 /**
  * readPath Метод рекурсивного чтения файлов во всех подкаталогах
@@ -803,5 +803,5 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 			});
 		});
 	// Выводим сообщение об ошибке
-	} else this->_log->print("the path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
+	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }

@@ -688,7 +688,7 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 		// Если поток инициализировать не удалось, выходим
 		if(deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "deflate stream is not create");
+			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
 			 * Если операционной системой является Nix-подобная
 			 */
@@ -729,7 +729,7 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 		// Если поток инициализировать не удалось, выходим
 		if(inflateInit2(&this->_zinf, -1 * this->_wbit) != Z_OK){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "inflate stream is not create");
+			this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
 			 * Если операционной системой является Nix-подобная
 			 */

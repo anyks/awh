@@ -127,7 +127,7 @@ bool awh::Engine::Address::list() noexcept {
 			if(!(result = (::listen(this->fd, SOMAXCONN) == 0))){
 			// if(!(result = (::listen(this->fd, 5) == 0))){
 				// Выводим сообщени об активном сервисе
-				this->_log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+				this->_log->print("Listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
 				// Выходим из функции
 				return result;
 			}
@@ -148,7 +148,7 @@ bool awh::Engine::Address::list() noexcept {
 					// Если BIO не создано, выходим
 					if(this->_bio == nullptr){
 						// Выводим в лог информацию
-						this->_log->print("unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
+						this->_log->print("Unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
 						// Выходим из приложения
 						exit(EXIT_FAILURE);
 					}
@@ -331,7 +331,7 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 		// Хост подключённого клиента
 		const string & client = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
 		// Выводим в лог сообщение
-		this->_log->print("bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
+		this->_log->print("Bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
 		// Выходим
 		return false;
 	}
@@ -555,7 +555,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если сокет не создан то выходим
 			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
 				// Выводим сообщение в консоль
-				this->_log->print("creating socket %s", log_t::flag_t::CRITICAL, unixsocket.c_str());
+				this->_log->print("Creating socket %s", log_t::flag_t::CRITICAL, unixsocket.c_str());
 				// Выходим
 				return;
 			}
@@ -647,7 +647,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							// Выполняем бинд на сокет
 							if(::bind(this->fd, (struct sockaddr *) &this->_peer.client, size) < 0){
 								// Выводим в лог сообщение
-								this->_log->print("bind local network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
+								this->_log->print("Bind local network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
 								// Выходим
 								return;
 							}
@@ -662,7 +662,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Выполняем бинд на сокет
 				if(::bind(this->fd, (struct sockaddr *) &this->_peer.server, size) < 0)
 					// Выводим в лог сообщение
-					this->_log->print("bind local network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
+					this->_log->print("Bind local network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
 			}
 		#endif
 	}
@@ -792,7 +792,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если тип сети не определен
 				default: {
 					// Выводим сообщение в консоль
-					this->_log->print("network not allow from server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+					this->_log->print("Network not allow from server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 					// Выходим
 					return;
 				}
@@ -802,7 +802,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			// Если сокет не создан то выходим
 			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
 				// Выводим сообщение в консоль
-				this->_log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+				this->_log->print("Creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 				// Выходим
 				return;
 			}
@@ -889,14 +889,14 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) < 0)
 						// Выводим в лог сообщение
-						this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
 				// Если приложение является клиентом
 				case static_cast <uint8_t> (type_t::CLIENT): {
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
 						// Выводим в лог сообщение
-						this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
 			}
 		}
@@ -925,7 +925,7 @@ void awh::Engine::Context::error(const int status) const noexcept {
 				// Если удалённая сторона произвела закрытие подключения
 				if(SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)
 					// Выводим в лог сообщение
-					this->_log->print("the remote side closed the connection", log_t::flag_t::INFO);
+					this->_log->print("Remote side closed the connection", log_t::flag_t::INFO);
 			} break;
 			// Если произошла ошибка вызова
 			case SSL_ERROR_SYSCALL: {
@@ -1048,7 +1048,7 @@ void awh::Engine::Context::info() const noexcept {
 		// Если мажорная и минорная версия OpenSSL не совпадают
 		if((OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20)){
 			// Выводим в лог сообщение
-			this->_log->print("major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
+			this->_log->print("Major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
@@ -1216,7 +1216,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Выполняем извлечение события
 					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
 					// Выводим в лог информационное сообщение
-					this->_log->print("read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+					this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 				}
 			#endif
 		}
@@ -1392,7 +1392,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int> (result), info.snd_sid, info.snd_ppid);
+							this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int> (result), info.snd_sid, info.snd_ppid);
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
 						case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
@@ -1403,7 +1403,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+							this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 						} break;
 					}
 				}
@@ -1726,7 +1726,7 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 					// Получаем ассоциацию
 					struct sctp_assoc_change * sac = &snp->sn_assoc_change;
 					// Выводим в лог информационное сообщение
-					context->_log->print("assoc_change: state = %hu, error = %hu, instr = %hu, outstr = %hu", log_t::flag_t::INFO, sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
+					context->_log->print("Assoc_change: state = %hu, error = %hu, instr = %hu, outstr = %hu", log_t::flag_t::INFO, sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
 				} break;
 				// Если изменился адрес подключения клиента
 				case SCTP_PEER_ADDR_CHANGE: {
@@ -1760,36 +1760,36 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 						break;
 					}
 					// Выводим в лог информационное сообщение
-					context->_log->print("intf_change: ip = %s, state = %d, error = %d", log_t::flag_t::INFO, ip.c_str(), spc->spc_state, spc->spc_error);
+					context->_log->print("Intf_change: ip = %s, state = %d, error = %d", log_t::flag_t::INFO, ip.c_str(), spc->spc_state, spc->spc_error);
 				} break;
 				// Если произошла ошибка удалённого подключения
 				case SCTP_REMOTE_ERROR: {
 					// Получаем данные ошибки удалённого подключения
 					struct sctp_remote_error * sre = &snp->sn_remote_error;
 					// Выводим в лог информационное сообщение
-					context->_log->print("remote_error: err = %hu, len = %hu", log_t::flag_t::INFO, ntohs(sre->sre_error), ntohs(sre->sre_length));
+					context->_log->print("Remote_error: err = %hu, len = %hu", log_t::flag_t::INFO, ntohs(sre->sre_error), ntohs(sre->sre_length));
 				} break;
 				// Если произошло событие неудачной отправки
 				case SCTP_SEND_FAILED: {
 					// Получаем объект ошибки
 					struct sctp_send_failed * ssf = &snp->sn_send_failed;
 					// Выводим в лог информационное сообщение
-					context->_log->print("sendfailed: err = %d, len = %u", log_t::flag_t::INFO, ssf->ssf_error, ssf->ssf_length);
+					context->_log->print("Sendfailed: err = %d, len = %u", log_t::flag_t::INFO, ssf->ssf_error, ssf->ssf_length);
 				} break;
 				// Если произошло событие отключения подключения
 				case SCTP_SHUTDOWN_EVENT:
 					// Выводим в лог информационное сообщение
-					context->_log->print("shutdown event", log_t::flag_t::INFO);
+					context->_log->print("Shutdown event", log_t::flag_t::INFO);
 				break;
 				// Если произошло событие адаптации
 				case SCTP_ADAPTATION_INDICATION:
 					// Выводим в лог информационное сообщение
-					context->_log->print("adaptation event", log_t::flag_t::INFO);
+					context->_log->print("Adaptation event", log_t::flag_t::INFO);
 				break;
 				// Если произошло сообщение частичной передачи данных
 				case SCTP_PARTIAL_DELIVERY_EVENT:
 					// Выводим в лог информационное сообщение
-					context->_log->print("partial delivery", log_t::flag_t::INFO);
+					context->_log->print("Partial delivery", log_t::flag_t::INFO);
 				break;
 				/**
 				 * Если требуется аутентификация
@@ -1798,7 +1798,7 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 					// Если произошло событие аутентификации
 					case SCTP_AUTHENTICATION_EVENT:
 						// Выводим в лог информационное сообщение
-						context->_log->print("authentication event", log_t::flag_t::INFO);
+						context->_log->print("Authentication event", log_t::flag_t::INFO);
 					break;
 				#endif
 				/**
@@ -1808,13 +1808,13 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 					// Отправитель прислал сухое событие
 					case SCTP_SENDER_DRY_EVENT:
 						// Выводим в лог информационное сообщение
-						context->_log->print("sender dry event", log_t::flag_t::INFO);
+						context->_log->print("Sender dry event", log_t::flag_t::INFO);
 					break;
 				#endif
 				// Если произошло неизвестное событие
 				default:
 					// Выводим в лог информационное сообщение
-					context->_log->print("unknown type: %hu", log_t::flag_t::INFO, snp->sn_header.sn_type);
+					context->_log->print("Unknown type: %hu", log_t::flag_t::INFO, snp->sn_header.sn_type);
 			}
 		}
 	}
@@ -1906,7 +1906,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог сообщение
-				verify->engine->_log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
+				verify->engine->_log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
 			#endif
 			// Выводим сообщение, что проверка пройдена
 			return 1;
@@ -2029,7 +2029,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 			// Создаём объект фреймворка
 			fmk_t fmk;
 			// Выводим в лог сообщение
-			log_t(&fmk).print("setting random cookie secret", log_t::flag_t::CRITICAL);
+			log_t(&fmk).print("Setting random cookie secret", log_t::flag_t::CRITICAL);
 			// Выходим и сообщаем, что генерация куков не удалась
 			return 0;
 		}
@@ -2060,7 +2060,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		// Создаём объект фреймворка
 		fmk_t fmk;
 		// Выводим в лог сообщение
-		log_t(&fmk).print("out of memory cookie", log_t::flag_t::CRITICAL);
+		log_t(&fmk).print("Out of memory cookie", log_t::flag_t::CRITICAL);
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
@@ -2140,7 +2140,7 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		// Создаём объект фреймворка
 		fmk_t fmk;
 		// Выводим в лог сообщение
-		log_t(&fmk).print("out of memory cookie", log_t::flag_t::CRITICAL);
+		log_t(&fmk).print("Out of memory cookie", log_t::flag_t::CRITICAL);
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
@@ -2421,7 +2421,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Если системный стор не получен
 						if(!sys){
 							// Выводим в лог сообщение
-							this->_log->print("failed to open system certificate store", log_t::flag_t::CRITICAL);
+							this->_log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
 							// Выходим
 							return -1;
 						}
@@ -2457,7 +2457,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(!(result = (X509_STORE_set_default_paths(store) == 1)))
 				// Выводим в лог сообщение
-				this->_log->print("set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
 		}
 	}
 	// Выводим результат
@@ -2802,7 +2802,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2819,7 +2819,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -2835,7 +2835,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
 				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
 					// Выводим в лог сообщение
-					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -2849,7 +2849,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){
 						// Выводим в лог сообщение
-						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 						// Выходим
 						return;
 					}
@@ -2880,7 +2880,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
+					this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
 					// Выходим
 					return;
 				}
@@ -2908,7 +2908,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("set SSL ecdh: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2929,7 +2929,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
 							// Выводим в лог сообщение
-							this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
 							target.clear();
 							// Выходим
@@ -2941,7 +2941,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 							// Выводим в лог сообщение
-							this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
 							target.clear();
 							// Выходим
@@ -2955,7 +2955,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2964,7 +2964,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3128,7 +3128,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3145,7 +3145,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -3161,7 +3161,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
 				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
 					// Выводим в лог сообщение
-					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -3175,7 +3175,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){
 						// Выводим в лог сообщение
-						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 						// Выходим
 						return;
 					}
@@ -3202,7 +3202,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
+				this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -3211,7 +3211,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("set SSL ecdh: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3235,7 +3235,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3247,7 +3247,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3256,7 +3256,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3266,7 +3266,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если доверенный сертификат недействителен
 			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
 				// Выводим в лог сообщение
-				this->_log->print("trusted certificate is invalid", log_t::flag_t::CRITICAL);
+				this->_log->print("Trusted certificate is invalid", log_t::flag_t::CRITICAL);
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
@@ -3300,7 +3300,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 					// Выходим
 					return;
 				}
@@ -3422,7 +3422,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3435,7 +3435,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
 				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
 					// Выводим в лог сообщение
-					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -3449,7 +3449,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){
 						// Выводим в лог сообщение
-						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 						// Выходим
 						return;
 					}
@@ -3489,7 +3489,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -3503,7 +3503,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3515,7 +3515,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3524,7 +3524,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3568,7 +3568,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("host SSL verification failed", log_t::flag_t::CRITICAL);
+				this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -3581,7 +3581,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 				}
 			}
 			// Устанавливаем флаг активации TLS
@@ -3780,7 +3780,7 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	// Активируем рандомный генератор
 	if(RAND_poll() < 1){
 		// Выводим в лог сообщение
-		this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
+		this->_log->print("Rand poll is not allow", log_t::flag_t::CRITICAL);
 		// Выходим из приложения
 		exit(EXIT_FAILURE);
 	}

@@ -522,7 +522,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Если разрешено в лог выводим информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
-						this->_log->print("authorization on the WebSocket-server was successful", log_t::flag_t::INFO);
+						this->_log->print("Authorization on the WebSocket-server was successful", log_t::flag_t::INFO);
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Устанавливаем полученную функцию обратного вызова
@@ -1298,7 +1298,7 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 		// Активируем асинхронный режим работы
 		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->callback(std::bind(&ws1_t::eventsCallback, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->on(std::bind(&ws1_t::eventsCallback, this, _1, _2));
 		// Если многопоточность активированна
 		if(this->_thr.is())
 			// Устанавливаем простое чтение базы событий
@@ -1312,8 +1312,6 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Отключаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->callback(nullptr);
 		// Деактивируем персистентный запуск для работы пингов
 		const_cast <client::core_t *> (this->_core)->persistEnable(false);
 		// Удаляем схему сети из сетевого ядра

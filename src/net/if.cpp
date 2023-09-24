@@ -37,7 +37,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Если файловый дескриптор не создан, выходим
 	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+		this->_log->print("Socket failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -50,7 +50,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(fd);
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+		this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -111,7 +111,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Если файловый дескриптор не создан, выходим
 	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+		this->_log->print("Socket failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -124,7 +124,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(fd);
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+		this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -186,7 +186,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Если буфер данных не существует
 	if(addr == nullptr){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "memory allocation failed for IP_ADAPTER_ADDRESSES struct");
+		this->_log->print("Memory allocation failed for IP_ADAPTER_ADDRESSES struct", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -235,11 +235,11 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Если данные адаптера прочитать не вышло
 	} else {
 		// Выводим сообщение об ошибке
-		this->_log->print("сall to GetAdaptersAddresses failed with error: %d", log_t::flag_t::WARNING, result);
+		this->_log->print("Call to GetAdaptersAddresses failed with error: %d", log_t::flag_t::WARNING, result);
 		// Если ошибка связана с отсутствием данных
 		if(result == ERROR_NO_DATA)
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "no addresses were found for the requested parameters");
+			this->_log->print("No addresses were found for the requested parameters", log_t::flag_t::WARNING);
 		// Если данные существуют
 		else {
 			// Создаём объект сообщения
@@ -279,7 +279,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Если файловый дескриптор не создан, выходим
 	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+		this->_log->print("Socket failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -292,7 +292,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(fd);
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+		this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -343,7 +343,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Если файловый дескриптор не создан, выходим
 	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+		this->_log->print("Socket failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -356,7 +356,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(fd);
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+		this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -387,7 +387,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 				}
 			}
 		// Если подключение к сокету не удалось, выводим сообщение об ошибке
-		} else this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+		} else this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 	}
 	// Закрываем сетевой сокет
 	this->close(fd);
@@ -409,7 +409,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Если буфер данных не существует
 	if(addr == nullptr){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "memory allocation failed for IP_ADAPTER_ADDRESSES struct");
+		this->_log->print("Memory allocation failed for IP_ADAPTER_ADDRESSES struct", log_t::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -438,11 +438,11 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Если данные адаптера прочитать не вышло
 	} else {
 		// Выводим сообщение об ошибке
-		this->_log->print("сall to GetAdaptersAddresses failed with error: %d", log_t::flag_t::WARNING, result);
+		this->_log->print("Call to GetAdaptersAddresses failed with error: %d", log_t::flag_t::WARNING, result);
 		// Если ошибка связана с отсутствием данных
 		if(result == ERROR_NO_DATA)
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "no addresses were found for the requested parameters");
+			this->_log->print("No addresses were found for the requested parameters", log_t::flag_t::WARNING);
 		// Если данные существуют
 		else {
 			// Создаём объект сообщения
@@ -537,7 +537,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 		// Если буфер данных не существует
 		if(addr == nullptr){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
+			this->_log->print("Error allocating memory needed to call GetAdaptersinfo", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -550,7 +550,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 			// Если буфер данных не существует
 			if(addr == nullptr){
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
+				this->_log->print("Error allocating memory needed to call GetAdaptersinfo", log_t::flag_t::WARNING);
 				// Выходим из функции
 				return result;
 			}
@@ -627,7 +627,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем получение размера буфера
 		if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "route sysctl estimate");
+			this->_log->print("Route sysctl estimate", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -636,7 +636,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем получение данных сетевого интерфейса
 		if(::sysctl(mib, 6, buffer.data(), &size, nullptr, 0) < 0){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "actual retrieval of routing table");
+			this->_log->print("Actual retrieval of routing table", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -712,7 +712,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем получение размера буфера
 		if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "route sysctl estimate");
+			this->_log->print("Route sysctl estimate", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -721,7 +721,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем получение данных сетевого интерфейса
 		if(::sysctl(mib, 6, buffer.data(), &size, nullptr, 0) < 0){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "actual retrieval of routing table");
+			this->_log->print("Actual retrieval of routing table", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -773,7 +773,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем копирование IP адреса
 		if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
+			this->_log->print("Invalid IPv6 address", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -790,7 +790,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Очищаем объект сетевой карты
 			freeifaddrs(headIfa);
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "invalid ifaddrs");
+			this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -799,7 +799,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -886,7 +886,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выполняем копирование IP адреса
 		if(inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "invalid IPv4 address");
+			this->_log->print("Invalid IPv4 address", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -899,7 +899,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Очищаем объект сетевой карты
 			freeifaddrs(headIfa);
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "invalid ifaddrs");
+			this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -908,7 +908,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
+			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
 			return result;
 		}
@@ -1011,7 +1011,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выполняем копирование IP адреса
 			if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
+				this->_log->print("Invalid IPv6 address", log_t::flag_t::WARNING);
 				// Выходим из функции
 				return result;
 			}

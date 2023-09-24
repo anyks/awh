@@ -208,11 +208,15 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Устанавливаем флаг ожидания статуса
 							shm->status.wait = scheme_t::mode_t::DISCONNECT;
 							// Выводим сообщение об ошибке
-							this->log->print("connection server host is not set", log_t::flag_t::CRITICAL);
+							this->log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
 							// Если разрешено выводить информационные сообщения
 							if(!this->noinfo)
 								// Выводим сообщение об ошибке
-								this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+								this->log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
@@ -232,11 +236,15 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Устанавливаем флаг ожидания статуса
 							shm->status.wait = scheme_t::mode_t::DISCONNECT;
 							// Выводим сообщение об ошибке
-							this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+							this->log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 							// Если разрешено выводить информационные сообщения
 							if(!this->noinfo)
 								// Выводим сообщение об ошибке
-								this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+								this->log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Encryption mode cannot be activated");
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
@@ -258,7 +266,11 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						// Устанавливаем флаг ожидания статуса
 						shm->status.wait = scheme_t::mode_t::DISCONNECT;
 						// Выводим сообщение об ошибке
-						this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+						this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
 						// Выполняем переподключение
 						this->reconnect(sid);
 						// Выходим из функции
@@ -285,11 +297,22 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						// Устанавливаем флаг ожидания статуса
 						shm->status.wait = scheme_t::mode_t::DISCONNECT;
 						// Если unix-сокет используется
-						if(family == scheme_t::family_t::NIX)
+						if(family == scheme_t::family_t::NIX){
 							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
-						// Выводим ионформацию об обрыве подключении по хосту и порту
-						else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+							this->log->print("Connecting to socket = %s", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->fmk->format("Connecting to socket = %s", this->settings.filename.c_str()));
+						// Если используется хост и порт
+						} else {
+							// Выводим ионформацию об обрыве подключении по хосту и порту
+							this->log->print("Connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
+						}
 						// Выполняем сброс кэша резолвера
 						this->dns.flush();
 						// Определяем тип подключения
@@ -337,9 +360,9 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->settings.filename.c_str(), ret.first->second->addr.fd);
+								this->log->print("Good host %s, socket = %d", log_t::flag_t::INFO, this->settings.filename.c_str(), ret.first->second->addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->log->print("good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
+							else this->log->print("Good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
 						}
 					}
 					// Выходим из функции
@@ -347,11 +370,22 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Если сокет не создан, выводим в консоль информацию
 				} else {
 					// Если unix-сокет используется
-					if(family == scheme_t::family_t::NIX)
+					if(family == scheme_t::family_t::NIX){
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
-						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
-					// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
-					else this->log->print("client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+						this->log->print("Client cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->fmk->format("Client cannot be started [%s]", this->settings.filename.c_str()));
+					// Если используется хост и порт
+					} else {
+						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
+						this->log->print("Client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
+					}
 				}
 				// Если нужно выполнить автоматическое переподключение
 				if(shm->alive){
@@ -391,7 +425,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(!this->noinfo)
 						// Выводим сообщение об ошибке
-						this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+						this->log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
@@ -925,7 +959,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Если разрешено выводить информационные сообщения
 			if(!this->noinfo)
 				// Выводим сообщение об ошибке
-				this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+				this->log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 			// Выполняем функцию обратного вызова дисконнекта
 			callback.bind <const size_t, const size_t, awh::core_t *> ("disconnect");
 			// Если функция реконнекта установлена
@@ -986,14 +1020,22 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Если подключение не обёрнуто
 				if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 					// Выводим сообщение об ошибке
-					this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+					this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::WRAP, "Wrap engine context is failed");
 					// Выходим из функции
 					return;
 				}
 			// Если хост сервера не получен
 			} else {
 				// Выводим сообщение об ошибке
-				this->log->print("connection server host is not set", log_t::flag_t::CRITICAL);
+				this->log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
 				// Выходим из функции
 				return;
 			}
@@ -1046,13 +1088,21 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 					}
 				}			
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
+				this->log->print("Timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host %s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
 			} break;
 			// Если тип протокола подключения unix-сокет
-			case static_cast <uint8_t> (scheme_t::family_t::NIX):
+			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
-			break;
+				this->log->print("Timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host %s", this->settings.filename.c_str()));
+			} break;
 		}
 		// Останавливаем чтение данных
 		this->disabled(engine_t::method_t::READ, it->first);
@@ -1104,7 +1154,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(!this->noinfo)
 						// Выводим в лог сообщение
-						this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+						this->log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				} break;
 				// Если тип протокола подключения IPv6
 				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
@@ -1119,7 +1169,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(!this->noinfo)
 						// Выводим в лог сообщение
-						this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+						this->log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				} break;
 				// Если тип протокола подключения unix-сокет
 				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
@@ -1128,12 +1178,12 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(!this->noinfo)
 						// Выводим в лог сообщение
-						this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+						this->log->print("Connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 				} break;
 			}
 			// Если подключение производится через, прокси-сервер
 			if(shm->isProxy()){
-				// Если функция обратного вызова для прокси-сервера
+				// Если функция обратного вызова для прокси-сервера установлена
 				if(shm->callback.is("connectProxy"))
 					// Выполняем функцию обратного вызова
 					shm->callback.call <const size_t, const size_t, awh::core_t *> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));

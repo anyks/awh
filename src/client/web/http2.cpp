@@ -1664,7 +1664,7 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		}
 		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->callback(std::bind(&http2_t::eventsCallback, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->on(std::bind(&http2_t::eventsCallback, this, _1, _2));
 		// Если многопоточность активированна
 		if(this->_threads > 0)
 			// Устанавливаем простое чтение базы событий
@@ -1675,8 +1675,6 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 		if(this->_threads <= 0)
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
-		// Отключаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->callback(nullptr);
 		// Если протокол подключения желательно установить HTTP/2
 		if(this->_core->proto() == engine_t::proto_t::HTTP2){
 			// Деактивируем персистентный запуск для работы пингов

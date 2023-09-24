@@ -590,11 +590,11 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 		// Если мы получили ошибку
 		else {
 			// Выводим сообщение об ошибке
-			this->_log->print("number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+			this->_log->print("Number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP1_SEND, "number of redirect attempts has not been reset");
+				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP1_SEND, "Number of redirect attempts has not been reset");
 		}
 	}
 	// Сообщаем что идентификатор не получен

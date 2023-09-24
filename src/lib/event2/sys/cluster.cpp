@@ -91,7 +91,7 @@
 						exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
+					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
 					// Если был завершён активный процесс и функция обратного вызова установлена
 					if(this->cluster->_processFn != nullptr)
 						// Выводим функцию обратного вызова
@@ -193,11 +193,11 @@
 						}
 					}
 				// Выводим сообщение что данные пришли битые
-				} else this->_log->print("[%u] data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+				} else this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 			// Если данные не прочитаны
 			} else {
 				// Выводим сообщение об ошибке в лог
-				this->_log->print("[%u] data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+				this->_log->print("[%u] Data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 				// Выходим из приложения
 				exit(EXIT_FAILURE);
 			}
@@ -296,12 +296,12 @@
 							// Выходим из приложения
 							exit(SIGCHLD);
 						// Выводим сообщение что данные пришли битые
-						} else this->_log->print("[%u] data from main process arrives corrupted", log_t::flag_t::CRITICAL, getpid());
+						} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, getpid());
 					}
 				// Если данные не прочитаны
 				} else {
 					// Выводим сообщение об ошибке в лог
-					this->_log->print("[%u] data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
+					this->_log->print("[%u] Data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
 					// Выходим из приложения
 					exit(EXIT_FAILURE);
 				}
@@ -309,7 +309,7 @@
 		// Если процесс превратился в зомби
 		} else {
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Останавливаем чтение данных с родительского процесса
 			this->cluster->stop(this->wid);
 			// Выходим из приложения
@@ -450,7 +450,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 					// Если поток не создан
 					case -1: {
 						// Выводим в лог сообщение
-						this->_log->print("child process could not be created", log_t::flag_t::CRITICAL);
+						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 						// Выходим принудительно из приложения
 						exit(EXIT_FAILURE);
 					} break;
@@ -505,7 +505,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 						// Если процесс превратился в зомби
 						} else {
 							// Процесс превратился в зомби, самоликвидируем его
-							this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 							// Выходим из приложения
 							exit(EXIT_FAILURE);
 						}
@@ -599,7 +599,7 @@ void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size
 		// Если процесс превратился в зомби
 		if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (getppid()))){
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
@@ -686,7 +686,7 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
@@ -747,7 +747,7 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
@@ -887,7 +887,7 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			// Выполняем закрытие подключения передачи сообщений
 			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}

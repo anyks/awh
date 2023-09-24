@@ -55,7 +55,11 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Выполняем очистку контекста двигателя
 					adj->ectx.clear();
 					// Если подключение не установлено, выводим сообщение об ошибке
-					this->core->log->print("client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+					this->core->log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+					// Если функция обратного вызова установлена
+					if(this->core->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->fmk->format("Client address not received, pid = %d", getpid()));
 				// Если все данные получены
 				} else {
 					// Получаем адрес подключения клиента
@@ -70,7 +74,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						if(adj->port > 0){
 							// Выводим сообщение об ошибке
 							this->core->log->print(
-								"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+								"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
 								adj->ip.c_str(),
 								adj->port,
@@ -78,17 +82,48 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 								adj->addr.fd,
 								getpid()
 							);
+							// Если функция обратного вызова установлена
+							if(this->core->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->core->_callback.call <const log_t::flag_t, const error_t, const string &> (
+									"error",
+									log_t::flag_t::WARNING,
+									error_t::ACCEPT,
+									this->core->fmk->format(
+										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+										adj->ip.c_str(),
+										adj->port,
+										adj->mac.c_str(),
+										adj->addr.fd,
+										getpid()
+									)
+								);
 						// Если порт не установлен
 						} else {
 							// Выводим сообщение об ошибке
 							this->core->log->print(
-								"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+								"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
 								adj->ip.c_str(),
 								adj->mac.c_str(),
 								adj->addr.fd,
 								getpid()
 							);
+							// Если функция обратного вызова установлена
+							if(this->core->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->core->_callback.call <const log_t::flag_t, const error_t, const string &> (
+									"error",
+									log_t::flag_t::WARNING,
+									error_t::ACCEPT,
+									this->core->fmk->format(
+										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+										adj->ip.c_str(),
+										adj->mac.c_str(),
+										adj->addr.fd,
+										getpid()
+									)
+								);
 						}
 						// Выполняем отключение адъютанта
 						this->core->close(this->aid);
@@ -105,7 +140,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						if(adj->port > 0){
 							// Выводим в консоль информацию
 							this->core->log->print(
-								"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+								"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								adj->ip.c_str(),
 								adj->port,
@@ -116,7 +151,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						} else {
 							// Выводим в консоль информацию
 							this->core->log->print(
-								"connect to server client [%s], mac = %s, socket = %d, pid = %d",
+								"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								adj->ip.c_str(),
 								adj->mac.c_str(),
@@ -129,8 +164,15 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						// Выполняем функцию обратного вызова
 						shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
 				}
-			// Подключение не установлено, выводим сообщение об ошибке
-			} else this->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+			// Подключение не установлено
+			} else {
+				// Выводим сообщение об ошибке
+				this->core->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+				// Если функция обратного вызова установлена
+				if(this->core->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->fmk->format("Accepting failed, pid = %d", getpid()));
+			}
 		// Запускаем таймер вновь на 100мс
 		} else timer.start(.1);
 	}
@@ -255,7 +297,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Если подключение не обёрнуто
 						if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 							// Выводим сообщение об ошибке
-							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+							this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
 							// Выходим из функции
 							return;
 						}
@@ -275,15 +321,26 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
 							shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
-					// Подключение не установлено, выводим сообщение об ошибке
-					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+					// Подключение не установлено
+					} else {
+						// Выводим сообщение об ошибке
+						this->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Accepting failed, pid = %d", getpid()));
+					}
 				} break;
 				// Если подключение зашифрованно
 				case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
-						this->log->print("the number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						this->log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
 						// Выходим
 						break;
 					}
@@ -327,7 +384,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
-						this->log->print("the number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						this->log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
 						// Выходим
 						break;
 					}
@@ -359,7 +420,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							// Выполняем очистку контекста двигателя
 							adj->ectx.clear();
 							// Если подключение не установлено, выводим сообщение об ошибке
-							this->log->print("client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+							this->log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Client address not received, pid = %d", getpid()));
 						// Если все данные получены
 						} else {
 							// Получаем адрес подключения клиента
@@ -374,7 +439,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								if(adj->port > 0){
 									// Выводим сообщение об ошибке
 									this->log->print(
-										"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
 										adj->ip.c_str(),
 										adj->port,
@@ -382,17 +447,48 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 										adj->addr.fd,
 										getpid()
 									);
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const error_t, const string &> (
+											"error",
+											log_t::flag_t::WARNING,
+											error_t::ACCEPT,
+											this->fmk->format(
+												"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+												adj->ip.c_str(),
+												adj->port,
+												adj->mac.c_str(),
+												adj->addr.fd,
+												getpid()
+											)
+										);
 								// Если порт не установлен
 								} else {
 									// Выводим сообщение об ошибке
 									this->log->print(
-										"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
 										adj->ip.c_str(),
 										adj->mac.c_str(),
 										adj->addr.fd,
 										getpid()
 									);
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const error_t, const string &> (
+											"error",
+											log_t::flag_t::WARNING,
+											error_t::ACCEPT,
+											this->fmk->format(
+												"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+												adj->ip.c_str(),
+												adj->mac.c_str(),
+												adj->addr.fd,
+												getpid()
+											)
+										);
 								}
 								// Выполняем очистку контекста двигателя
 								adj->ectx.clear();
@@ -412,7 +508,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 									// Выполняем очистку контекста двигателя
 									adj->ectx.clear();
 									// Выводим сообщение об ошибке
-									this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+									this->log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Encryption mode cannot be activated");
 									// Выходим
 									break;
 								}
@@ -420,7 +520,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							// Если подключение не обёрнуто
 							if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 								// Выводим сообщение об ошибке
-								this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+								this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
 								// Выходим
 								break;
 							}
@@ -442,7 +546,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								if(ret.first->second->port > 0){
 									// Выводим в консоль информацию
 									this->log->print(
-										"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+										"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
 										ret.first->second->ip.c_str(),
 										ret.first->second->port,
@@ -453,7 +557,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								} else {
 									// Выводим в консоль информацию
 									this->log->print(
-										"connect to server client [%s], mac = %s, socket = %d, pid = %d",
+										"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
 										ret.first->second->ip.c_str(),
 										ret.first->second->mac.c_str(),
@@ -466,8 +570,15 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								// Выполняем функцию обратного вызова
 								shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
 						}
-					// Если подключение не установлено, выводим сообщение об ошибке
-					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+					// Если подключение не установлено
+					} else {
+						// Выводим сообщение об ошибке
+						this->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Accepting failed, pid = %d", getpid()));
+					}
 				} break;
 			}
 		}
@@ -749,8 +860,10 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				shm->adjutants.erase(aid);
 				// Удаляем адъютанта из списка подключений
 				this->adjutants.erase(aid);
-				// Выводим сообщение об ошибке
-				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
+				// Если разрешено выводить информационыне уведомления
+				if(!core->noinfo)
+					// Выводим информацию об удачном отключении от сервера
+					this->log->print("%s", log_t::flag_t::INFO, "Disconnect client from server");
 				// Если функция обратного вызова установлена
 				if(shm->callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
@@ -801,15 +914,23 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 			// Если тип протокола подключения IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Если тип протокола подключения IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
-			break;
+				this->log->print("Timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host = %s, mac = %s", adj->ip.c_str(), adj->mac.c_str()));
+			} break;
 			// Если тип протокола подключения unix-сокет
-			case static_cast <uint8_t> (scheme_t::family_t::NIX):
+			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
-			break;
+				this->log->print("Timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host %s", this->settings.filename.c_str()));
+			} break;
 		}
 		// Останавливаем чтение данных
 		this->disabled(engine_t::method_t::READ, it->first);
@@ -1034,9 +1155,9 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 							// Если unix-сокет используется
 							if(this->settings.family == scheme_t::family_t::NIX)
 								// Выводим информацию о запущенном сервере на unix-сокете
-								this->log->print("run server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+								this->log->print("Start server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-							else this->log->print("run server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
+							else this->log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
 						}
 						// Если операционная система является Windows или количество процессов всего один
 						if(this->_cluster.count(shm->sid) == 1)
@@ -1109,9 +1230,9 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 								// Если unix-сокет используется
 								if(this->settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->log->print("run server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+									this->log->print("Start server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->log->print("run server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
+								else this->log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
 							}
 							// Если операционная система является Windows или количество процессов всего один
 							if(this->_cluster.count(shm->sid) == 1){
@@ -1130,16 +1251,34 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 						// Если сокет не создан, выводим в консоль информацию
 						} else {
 							// Если unix-сокет используется
-							if(this->settings.family == scheme_t::family_t::NIX)
+							if(this->settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
-							// Если unix-сокет не используется, выводим сообщение об незапущенном сервере за порту
-							else this->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->host.c_str(), shm->port);
+								this->log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Server cannot be started [%s]", this->settings.filename.c_str()));
+							// Если unix-сокет не используется
+							} else {
+								// Выводим сообщение об незапущенном сервере за порту
+								this->log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->host.c_str(), shm->port);
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Server cannot be started [%s:%u]", shm->host.c_str(), shm->port));
+							}
 						}
 					}
 				}
-			// Если IP адрес сервера не получен, выводим в консоль информацию
-			} else this->log->print("broken host server %s", log_t::flag_t::CRITICAL, shm->host.c_str());
+			// Если IP адрес сервера не получен
+			} else {
+				// Выводим в консоль информацию
+				this->log->print("Broken host server %s", log_t::flag_t::CRITICAL, shm->host.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Broken host server %s", shm->host.c_str()));
+			}
 			// Останавливаем работу сервера
 			this->stop();
 		}
@@ -1197,6 +1336,10 @@ void awh::server::Core::clusterSize(const size_t size) noexcept {
 	#else
 		// Выводим предупредительное сообщение в лог
 		this->log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -1219,6 +1362,10 @@ void awh::server::Core::clusterAutoRestart(const size_t sid, const bool mode) no
 	#else
 		// Выводим предупредительное сообщение в лог
 		this->log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**

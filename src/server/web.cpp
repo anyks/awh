@@ -960,5 +960,5 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback(std::bind(&web_t::eventsCallback, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->on(std::bind(&web_t::eventsCallback, this, _1, _2));
 }

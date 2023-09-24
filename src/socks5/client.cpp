@@ -223,9 +223,9 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 												// Если порт установлен
 												if(server.port > 0)
 													// Выводим сообщение о данных сервера
-													this->_log->print("%s [%s:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+													this->_log->print("Socks5 proxy-server [%s:%u] is accepted", log_t::flag_t::INFO, ip.c_str(), server.port);
 												// Если порт не установлен, выводим сообщение о данных сервера
-												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), "is accepted");
+												else this->_log->print("Socks5 proxy-server [%s] is accepted", log_t::flag_t::INFO, ip.c_str());
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;
@@ -251,9 +251,9 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 												// Если порт установлен
 												if(server.port > 0)
 													// Выводим сообщение о данных сервера
-													this->_log->print("%s [[%s]:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+													this->_log->print("Socks5 proxy-server [[%s]:%u] is accepted", log_t::flag_t::INFO, ip.c_str(), server.port);
 												// Если порт не установлен, выводим сообщение о данных сервера
-												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), "is accepted");
+												else this->_log->print("Socks5 proxy-server [%s] is accepted", log_t::flag_t::INFO, ip.c_str());
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;
@@ -281,9 +281,9 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 												// Если порт установлен
 												if(port > 0)
 													// Выводим сообщение о данных сервера
-													this->_log->print("%s [%s:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+													this->_log->print("Socks5 proxy-server [%s:%u] is accepted", log_t::flag_t::INFO, domain.c_str(), port);
 												// Если порт не установлен, выводим сообщение о данных сервера
-												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), "is accepted");
+												else this->_log->print("Socks5 proxy-server [%s] is accepted", log_t::flag_t::INFO, domain.c_str());
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;

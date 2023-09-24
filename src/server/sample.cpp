@@ -605,5 +605,5 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback(std::bind(&sample_t::eventsCallback, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->on(std::bind(&sample_t::eventsCallback, this, _1, _2));
 }

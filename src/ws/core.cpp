@@ -237,7 +237,7 @@ const string awh::WCore::sha1() const noexcept {
 		// Массив полученных значений
 		u_char digest[20];
 		// Формируем магический ключ
-		const string text = (this->_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		const string text = this->_fmk->format("%s258EAFA5-E914-47DA-95CA-C5AB0DC85B11", this->_key.c_str());
 		// Выполняем расчет суммы
 		SHA1_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
@@ -360,7 +360,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					// Если размер скользящего окна установлен неправильно
 					if((this->_client.wbit < GZIP_MIN_WBITS) || (this->_client.wbit > GZIP_MAX_WBITS))
 						// Выводим сообщение об ошибке
-						this->_log->print("deflate max_window_bits for the client is set incorrectly", log_t::flag_t::WARNING);
+						this->_log->print("Deflate max_window_bits for the client is set incorrectly", log_t::flag_t::WARNING);
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -407,7 +407,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					// Если размер скользящего окна установлен неправильно
 					if((this->_server.wbit < GZIP_MIN_WBITS) || (this->_server.wbit > GZIP_MAX_WBITS))
 						// Выводим сообщение об ошибке
-						this->_log->print("deflate max_window_bits for the server is set incorrectly", log_t::flag_t::WARNING);
+						this->_log->print("Deflate max_window_bits for the server is set incorrectly", log_t::flag_t::WARNING);
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -706,7 +706,7 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если версия протокола не соответствует
 		else {
 			// Выводим сообщение об ошибке
-			this->_log->print("protocol version not supported", log_t::flag_t::CRITICAL);
+			this->_log->print("Protocol version not supported", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return result;
 		}
@@ -715,14 +715,14 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если протокол не был переключён
 		else {
 			// Выводим сообщение об ошибке
-			this->_log->print("protocol not upgraded", log_t::flag_t::CRITICAL);
+			this->_log->print("Protocol not upgraded", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return result;
 		}
 		// Если рукопожатие выполнено, устанавливаем стейт рукопожатия
 		if(result) this->_state = state_t::HANDSHAKE;
 		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
-		else this->_log->print("client and server keys are inconsistent", log_t::flag_t::CRITICAL);
+		else this->_log->print("Client and server keys are inconsistent", log_t::flag_t::CRITICAL);
 	}
 	// Выводим результат
 	return result;

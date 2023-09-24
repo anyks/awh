@@ -372,18 +372,18 @@ void awh::Core::launching() noexcept {
 		callback.bind <const size_t, core_t *> ();
 	}
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("active")){
+	if(this->_callback.is("status")){
 		// Если нужно запустить функцию в основном потоке
 		if(!this->activeOnTrhead)
 			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("active", status_t::START, this);
+			this->_callback.call <const status_t, core_t *> ("status", status_t::START, this);
 		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("active"), status_t::START, this).detach();
+		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), status_t::START, this).detach();
 	}
 	// Если разрешено выводить информацию в лог
 	if(!this->noinfo)
 		// Выводим в консоль информацию
-		this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+		this->log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 	if(this->persist){
 		// Устанавливаем флаг персистентного вызова
@@ -415,18 +415,18 @@ void awh::Core::closedown() noexcept {
 	// Выполняем отключение всех адъютантов
 	this->close();
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("active")){
+	if(this->_callback.is("status")){
 		// Если нужно запустить функцию в основном потоке
 		if(!this->activeOnTrhead)
 			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("active", status_t::STOP, this);
+			this->_callback.call <const status_t, core_t *> ("status", status_t::STOP, this);
 		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("active"), status_t::STOP, this).detach();
+		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), status_t::STOP, this).detach();
 	}
 	// Если разрешено выводить информацию в лог
 	if(!this->noinfo)
 		// Выводим в консоль информацию
-		this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
+		this->log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
  * persistent Метод персистентного вызова по таймеру
@@ -472,34 +472,34 @@ void awh::Core::signal(const int signal) noexcept {
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
+				this->log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
 				// Выходим из приложения
 				exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
+				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
+				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
+				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
+				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
+				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
 		// Выходим принудительно из приложения
@@ -614,24 +614,34 @@ void awh::Core::unbind(Core * core) noexcept {
 	}
 }
 /**
- * crash Метод установки функции обратного вызова при краше приложения
+ * on Метод установки функции обратного вызова при краше приложения
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::crash(function <void (const int)> callback) noexcept {
+void awh::Core::on(function <void (const int)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const int)> ("crash", callback);
 }
 /**
- * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
+ * on Метод установки функции обратного вызова при запуске/остановки работы модуля
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::callback(function <void (const status_t, Core *)> callback) noexcept {
+void awh::Core::on(function <void (const status_t, Core *)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const status_t, core_t *)> ("active", callback);
+	this->_callback.set <void (const status_t, core_t *)> ("status", callback);
+}
+/**
+ * on установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
 }
 /**
  * stop Метод остановки клиента
@@ -1398,6 +1408,10 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 	#else
 		// Выводим в лог сообщение
 		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
 		// Выходим принудительно из приложения
 		exit(EXIT_FAILURE);
 	#endif
@@ -1465,6 +1479,10 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 		if(this->settings.sonet == scheme_t::sonet_t::SCTP){
 			// Выводим в лог сообщение
 			this->log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
 			// Выходим принудительно из приложения
 			exit(EXIT_FAILURE);
 		}

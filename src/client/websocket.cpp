@@ -116,7 +116,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 							// Разрешаем перехватывать контекст компрессии для сервера
 							ws->_hash.takeoverDecompress(ws->_ws.takeover(awh::web_t::hid_t::SERVER));
 							// Выводим в лог сообщение
-							if(!ws->_noinfo) ws->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
+							if(!ws->_noinfo) ws->_log->print("Authorization on the WebSocket server was successful", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена, выполняем
 							if(ws->_callback.active != nullptr)
 								// Выполняем функцию обратного вызова
@@ -737,7 +737,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Разрешаем перехватывать контекст компрессии для сервера
 						this->_hash.takeoverDecompress(this->_ws.takeover(awh::web_t::hid_t::SERVER));
 						// Выводим в лог сообщение
-						if(!this->_noinfo) this->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
+						if(!this->_noinfo) this->_log->print("Authorization on the WebSocket server was successful", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена, выполняем
 						if(this->_callback.active != nullptr) this->_callback.active(mode_t::CONNECT, this);
 						// Есла данных передано больше чем обработано
@@ -2217,5 +2217,5 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
 	// Активируем асинхронный режим работы
 	const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 	// Устанавливаем функцию активации ядра клиента
-	const_cast <client::core_t *> (this->_core)->callback(std::bind(&websocket_t::eventsCallback, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->on(std::bind(&websocket_t::eventsCallback, this, _1, _2));
 }

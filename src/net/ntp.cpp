@@ -213,7 +213,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Выводим в лог сообщение
-			this->_self->_log->print("file descriptor needed for the NTP request could not be allocated", log_t::flag_t::WARNING);
+			this->_self->_log->print("File descriptor needed for the NTP request could not be allocated", log_t::flag_t::WARNING);
 			// Выходим из приложения
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
@@ -235,7 +235,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 			// Выполняем бинд на сокет
 			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
-				this->_self->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выходим из функции
 				return result;
 			}
@@ -889,7 +889,7 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 								// Выполняем добавление полученного хоста в список
 								this->_workerIPv4->_network.push_back(ip);
 							// Выводим сообщение об ошибке
-							else this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+							else this->_log->print("Passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
 						}
 					}
 				}

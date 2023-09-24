@@ -1451,7 +1451,7 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback(std::bind(&websocket_t::eventsCallback, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->on(std::bind(&websocket_t::eventsCallback, this, _1, _2));
 }
 /**
  * ~WebSocket Деструктор

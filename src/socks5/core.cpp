@@ -56,9 +56,9 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int family) const no
 			// Если формат IP адреса не верный
 			if(conv == 0)
 				// Выводим сообщение об ошибке
-				this->_log->print("%s: [%s]", log_t::flag_t::CRITICAL, "not in presentation format", ip.c_str());
+				this->_log->print("Not in presentation format: [%s]", log_t::flag_t::CRITICAL, ip.c_str());
 			// Иначе это ошибка функции конвертации
-			else this->_log->print("%s: [%s]", log_t::flag_t::CRITICAL, "address conversion could not be performed", ip.c_str());
+			else this->_log->print("Address conversion could not be performed: [%s]", log_t::flag_t::CRITICAL, ip.c_str());
 			// Очищаем бинарный буфер
 			result.clear();
 		}
@@ -87,7 +87,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
 				// Выполняем конвертацию
 				if(inet_ntop(family, buffer, str, INET_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
+					this->_log->print("IP-address could not be obtained", log_t::flag_t::CRITICAL);
 				// Получаем IPv4 адрес
 				else result = str;
 			} break;
@@ -98,7 +98,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
 				// Выполняем конвертацию
 				if(inet_ntop(family, buffer, str, INET6_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
+					this->_log->print("IP-address could not be obtained", log_t::flag_t::CRITICAL);
 				// Получаем IPv6 адрес
 				else result = str;
 			} break;

@@ -259,8 +259,10 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				}
 				// Тело в запросе не передано
 				this->_state = state_t::END;
-				// Сообщаем, что переданное тело содержит ошибки
-				if(error != '\0') this->_log->print("body chunk contains errors, [\\%c] is expected", log_t::flag_t::WARNING, error);
+				// Если мы получили ошибку обработки данных
+				if(error != '\0')
+					// Сообщаем, что переданное тело содержит ошибки
+					this->_log->print("Body chunk contains errors, [\\%c] is expected", log_t::flag_t::WARNING, error);
 			}
 		}
 	}
@@ -396,7 +398,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
-										this->_log->print("%s", log_t::flag_t::WARNING, "broken response server");
+										this->_log->print("Broken response server", log_t::flag_t::WARNING);
 									}
 								} break;
 								// Если мы работаем с сервером
@@ -470,7 +472,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
-										this->_log->print("%s", log_t::flag_t::WARNING, "broken request client");
+										this->_log->print("Broken request client", log_t::flag_t::WARNING);
 									}
 								} break;
 							}

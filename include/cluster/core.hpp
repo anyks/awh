@@ -136,6 +136,22 @@ namespace awh {
 				void close() noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова при краше приложения
+				 * @param callback функция обратного вызова для установки
+				 */
+				void on(function <void (const int)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
+				 * @param callback функция обратного вызова для установки
+				 */
+				void on(function <void (const status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on установки функции обратного вызова на событие получения ошибки
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова при получении события
 				 * @param callback функция обратного вызова для установки
 				 */

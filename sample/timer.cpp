@@ -141,7 +141,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
+	core.on((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

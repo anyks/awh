@@ -128,7 +128,7 @@ void awh::Event::start(const time_t delay) noexcept {
 						evtimer_add(&this->_ev, &this->_tv);
 					}
 				// Выводим сообщение об ошибке
-				} else this->_log->print("the signal type for the timer is formed incorrectly", log_t::flag_t::WARNING);
+				} else this->_log->print("Signal type for the timer is formed incorrectly", log_t::flag_t::WARNING);
 			} break;
 			// Если событие является сокетом
 			case static_cast <uint8_t> (type_t::EVENT): {
@@ -147,10 +147,10 @@ void awh::Event::start(const time_t delay) noexcept {
 					// Выполняем активацию события
 					} else event_add(&this->_ev, nullptr);
 				// Выводим сообщение об ошибке
-				} else this->_log->print("file descriptor is not set", log_t::flag_t::WARNING);
+				} else this->_log->print("File descriptor is not set", log_t::flag_t::WARNING);
 			} break;
 			// Если событие не установлено
-			default: this->_log->print("event type is not set", log_t::flag_t::CRITICAL);
+			default: this->_log->print("Event type is not set", log_t::flag_t::CRITICAL);
 		}
 	}
 }

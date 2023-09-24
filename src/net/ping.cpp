@@ -353,7 +353,7 @@ void awh::Ping::ping(const string & host) noexcept {
 						// Если разрешено выводить информацию в лог
 						if(!this->_noInfo)
 							// Выводим сообщение об ошибке
-							this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+							this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 						// Выходим из функции
 						return;
 					}
@@ -406,7 +406,7 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
 				// Если результат не получен и разрешено выводить информацию в лог
 				else if(!this->_noInfo)
 					// Выводим сообщение об ошибке
-					this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+					this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 			}
 		}
 	}
@@ -529,7 +529,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Если разрешено выводить информацию в лог
 				if(!this->_noInfo)
 					// Выводим в лог сообщение
-					this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
+					this->_log->print("File descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
 				// Выходим из приложения
 				return;
 			// Если сокет создан удачно и работа резолвера не остановлена
@@ -551,7 +551,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Выполняем бинд на сокет
 				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
 					// Выводим в лог сообщение
-					this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				// Выполняем отправку отправку запросов до тех пор пока не остановят
 				while(this->_mode){
 					// Запоминаем текущее значение времени в миллисекундах
@@ -651,7 +651,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 						// Если разрешено выводить информацию в лог
 						if(!this->_noInfo)
 							// Выводим сообщение об ошибке
-							this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+							this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 						// Выходим из функции
 						return result;
 					}
@@ -711,7 +711,7 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
 				// Если результат не получен и разрешено выводить информацию в лог
 				else if(!this->_noInfo)
 					// Выводим сообщение об ошибке
-					this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+					this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 			}
 		}
 	}
@@ -840,7 +840,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Если разрешено выводить информацию в лог
 				if(!this->_noInfo)
 					// Выводим в лог сообщение
-					this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
+					this->_log->print("File descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
 				// Выходим из приложения
 				return result;
 			// Если сокет создан удачно и работа резолвера не остановлена
@@ -860,7 +860,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Выполняем бинд на сокет
 				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
 					// Выводим в лог сообщение
-					this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				// Выполняем отправку указанного количества запросов
 				for(uint16_t i = 0; i < count; i++){
 					// Запоминаем текущее значение времени в миллисекундах
@@ -995,7 +995,7 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 							// Если IP-адрес не получен и разрешено выводить информацию в лог
 							else if(!this->_noInfo)
 								// Выводим сообщение об ошибке
-								this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+								this->_log->print("Passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
 						}
 					}
 				}

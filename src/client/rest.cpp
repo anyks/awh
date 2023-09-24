@@ -351,7 +351,7 @@ void awh::client::Rest::REQUEST(const awh::web_t::method_t method, const uri_t::
 			// Если возникла ошибка, выводим сообщение
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+				this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
 		});
 		// Подписываемся на событие коннекта и дисконнекта клиента
 		this->on([method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
