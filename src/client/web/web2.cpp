@@ -512,85 +512,101 @@ void awh::client::Web2::proxyConnectCallback(const size_t aid, const size_t sid,
 				break;
 				// Если прокси-сервер является HTTP/2
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
-					// Запоминаем идентификатор адъютанта
-					this->_aid = aid;
-					// Если протокол активирован HTTPS или WSS защищённый поверх TLS
-					if(this->_proxy.connect){
-						// Выполняем сброс состояния HTTP парсера
-						this->_scheme.proxy.http.reset();
-						// Выполняем очистку параметров HTTP запроса
-						this->_scheme.proxy.http.clear();
-						// Выполняем инициализацию сессии HTTP/2
-						this->implementation(aid, dynamic_cast <client::core_t *> (core));
-						// Если активирован режим работы с HTTP/2 протоколом
-						if(this->_upgraded){
-							// Список заголовков для запроса
-							vector <nghttp2_nv> nva;
-							// Создаём объек запроса
-							awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-								// Получаем бинарные данные WEB запроса
-								const auto & buffer = this->_scheme.proxy.http.proxy(query);
-								// Выводим параметры запроса
-								cout << string(buffer.begin(), buffer.end()) << endl;
-							#endif
-							// Выполняем запрос на получение заголовков
-							const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
-							// Выполняем перебор всех заголовков HTTP/2 запроса
-							for(auto & header : headers){
-								// Выполняем добавление метода запроса
-								nva.push_back({
-									(uint8_t *) header.first.c_str(),
-									(uint8_t *) header.second.c_str(),
-									header.first.size(),
-									header.second.size(),
-									NGHTTP2_NV_FLAG_NONE
-								});
-							}
-							// Если тело запроса не существует, выполняем установленный запрос
-							this->_proxy.sid = nghttp2_submit_request(this->_session, nullptr, nva.data(), nva.size(), nullptr, this);
-							// Если запрос не получилось отправить
-							if(this->_proxy.sid < 0){
-								// Выводим в лог сообщение
-								this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_proxy.sid));
-								// Выполняем закрытие подключения
-								dynamic_cast <client::core_t *> (core)->close(aid);
-								// Выходим из функции
-								return;
-							}{
-								// Результат фиксации сессии
-								int rv = -1;
-								// Фиксируем отправленный результат
-								if((rv = nghttp2_session_send(this->_session)) != 0){
-									// Выводим сообщение об полученной ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если протокол подключения является HTTP/2
+					if(core->proto(aid) == engine_t::proto_t::HTTP2){
+						// Запоминаем идентификатор адъютанта
+						this->_aid = aid;
+						// Если протокол активирован HTTPS или WSS защищённый поверх TLS
+						if(this->_proxy.connect){
+							// Выполняем сброс состояния HTTP парсера
+							this->_scheme.proxy.http.reset();
+							// Выполняем очистку параметров HTTP запроса
+							this->_scheme.proxy.http.clear();
+							// Выполняем инициализацию сессии HTTP/2
+							this->implementation(aid, dynamic_cast <client::core_t *> (core));
+							// Если активирован режим работы с HTTP/2 протоколом
+							if(this->_upgraded){
+								// Список заголовков для запроса
+								vector <nghttp2_nv> nva;
+								// Создаём объек запроса
+								awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим заголовок запроса
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+									// Получаем бинарные данные WEB запроса
+									const auto & buffer = this->_scheme.proxy.http.proxy(query);
+									// Выводим параметры запроса
+									cout << string(buffer.begin(), buffer.end()) << endl;
+								#endif
+								// Выполняем запрос на получение заголовков
+								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
+								// Выполняем перебор всех заголовков HTTP/2 запроса
+								for(auto & header : headers){
+									// Выполняем добавление метода запроса
+									nva.push_back({
+										(uint8_t *) header.first.c_str(),
+										(uint8_t *) header.second.c_str(),
+										header.first.size(),
+										header.second.size(),
+										NGHTTP2_NV_FLAG_NONE
+									});
+								}
+								// Если тело запроса не существует, выполняем установленный запрос
+								this->_proxy.sid = nghttp2_submit_request(this->_session, nullptr, nva.data(), nva.size(), nullptr, this);
+								// Если запрос не получилось отправить
+								if(this->_proxy.sid < 0){
+									// Выводим в лог сообщение
+									this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_proxy.sid));
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROXY_HTTP2_SUBMIT, nghttp2_strerror(this->_proxy.sid));
 									// Выполняем закрытие подключения
 									dynamic_cast <client::core_t *> (core)->close(aid);
 									// Выходим из функции
 									return;
+								}{
+									// Результат фиксации сессии
+									int rv = -1;
+									// Фиксируем отправленный результат
+									if((rv = nghttp2_session_send(this->_session)) != 0){
+										// Выводим сообщение об полученной ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+										// Если функция обратного вызова на на вывод ошибок установлена
+										if(this->_callback.is("error"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROXY_HTTP2_SEND, nghttp2_strerror(rv));
+										// Выполняем закрытие подключения
+										dynamic_cast <client::core_t *> (core)->close(aid);
+										// Выходим из функции
+										return;
+									}
 								}
+							// Если инициализировать сессию HTTP/2 не удалось
+							} else {
+								// Выводим сообщение об ошибке подключения к прокси-серверу
+								this->_log->print("Proxy server does not support the HTTP/2 protocol", log_t::flag_t::CRITICAL);
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROXY_HTTP2_NO_INIT, "Proxy server does not support the HTTP/2 protocol");
+								// Выполняем закрытие подключения
+								dynamic_cast <client::core_t *> (core)->close(aid);
+								// Выполняем завершение работы приложения
+								return;
 							}
-						// Если инициализировать сессию HTTP/2 не удалось
+						// Если протокол подключения не является защищённым подключением
 						} else {
-							// Выводим сообщение об ошибке подключения к прокси-серверу
-							this->_log->print("Proxy server does not support the HTTP/2 protocol", log_t::flag_t::CRITICAL);
-							// Выполняем закрытие подключения
-							dynamic_cast <client::core_t *> (core)->close(aid);
-							// Выполняем завершение работы приложения
-							return;
+							// Выполняем переключение на работу с сервером
+							this->_scheme.switchConnect();
+							// Выполняем запуск работы основного модуля
+							this->connectCallback(aid, sid, core);
 						}
-					// Если протокол подключения не является защищённым подключением
-					} else {
-						// Выполняем переключение на работу с сервером
-						this->_scheme.switchConnect();
-						// Выполняем запуск работы основного модуля
-						this->connectCallback(aid, sid, core);
-					}
+					// Выполняем передачу сигнала родительскому модулю
+					} else web_t::proxyConnectCallback(aid, sid, core);
 				} break;
 				// Иначе завершаем работу
 				default: dynamic_cast <client::core_t *> (core)->close(aid);
@@ -632,6 +648,10 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 						if(bytes < 0){
 							// Выводим сообщение об полученной ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROXY_HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
 							// Выходим из функции
 							return;
 						}
@@ -639,16 +659,15 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 						if((bytes = nghttp2_session_send(this->_session)) != 0){
 							// Выводим сообщение об полученной ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROXY_HTTP2_SEND, nghttp2_strerror(static_cast <int> (bytes)));
 							// Выходим из функции
 							return;
 						}
 					// Если активирован режим работы с HTTP/1.1 протоколом
-					} else {
-						// Выводим сообщение об ошибке подключения к прокси-серверу
-						this->_log->print("Received data from the proxy server does not match the HTTP/2 protocol frame.", log_t::flag_t::CRITICAL);
-						// Выполняем закрытие подключения
-						dynamic_cast <client::core_t *> (core)->close(aid);
-					}
+					} else web_t::proxyReadCallback(buffer, size, aid, sid, core);
 				} break;
 				// Иначе завершаем работу
 				default: dynamic_cast <client::core_t *> (core)->close(aid);
@@ -701,6 +720,10 @@ void awh::client::Web2::implementation(const size_t aid, client::core_t * core) 
 			core->close(aid);
 			// Выводим сообщение об ошибке
 			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SETTINGS, nghttp2_strerror(rv));
 			// Если сессия HTTP/2 создана удачно
 			if(this->_session != nullptr)
 				// Выполняем удаление сессии
@@ -729,6 +752,10 @@ bool awh::client::Web2::ping() noexcept {
 			if((rv = nghttp2_submit_ping(this->_session, 0, nullptr)) != 0){
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_PING, nghttp2_strerror(rv));
 				// Выходим из функции
 				return false;
 			}
@@ -736,6 +763,10 @@ bool awh::client::Web2::ping() noexcept {
 			if((rv = nghttp2_session_send(this->_session)) != 0){
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SEND, nghttp2_strerror(rv));
 				// Выходим из функции
 				return false;
 			}
@@ -779,6 +810,10 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 			if(rv != 0){
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_PIPE_INIT, strerror(errno));
 				// Выполняем закрытие подключения
 				const_cast <client::core_t *> (this->_core)->close(this->_aid);
 				// Выходим из функции
@@ -796,6 +831,10 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 					_close(fds[1]);
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_PIPE_WRITE, strerror(errno));
 					// Выполняем закрытие подключения
 					const_cast <client::core_t *> (this->_core)->close(this->_aid);
 					// Выходим из функции
@@ -813,6 +852,10 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 					::close(fds[1]);
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_PIPE_WRITE, strerror(errno));
 					// Выполняем закрытие подключения
 					const_cast <client::core_t *> (this->_core)->close(this->_aid);
 					// Выходим из функции
@@ -847,6 +890,10 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 				if((rv = nghttp2_submit_data(this->_session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
 					// Выходим из функции
 					return;
 				}
@@ -854,6 +901,10 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 				if((rv = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SEND, nghttp2_strerror(rv));
 					// Выходим из функции
 					return;
 				}

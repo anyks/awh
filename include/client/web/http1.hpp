@@ -160,6 +160,12 @@ namespace awh {
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибки
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */

@@ -87,7 +87,9 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 						dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 				} break;
 				// Если прокси-сервер является HTTP
-				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
+				// Если прокси-сервер является HTTPS
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Если протокол активирован HTTPS или WSS защищённый поверх TLS
 					if(this->_proxy.connect){
 						// Выполняем сброс состояния HTTP парсера
@@ -116,8 +118,14 @@ void awh::client::Web::proxyConnectCallback(const size_t aid, const size_t sid, 
 					} else {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
+						// Если защищённое подключение уже активированно
+						if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
+							// Выполняем переключение на работу с сервером
+							this->_scheme.switchConnect();
+							// Выполняем запуск работы основного модуля
+							this->connectCallback(aid, sid, core);
 						// Выполняем переключение на работу с сервером
-						dynamic_cast <client::core_t *> (core)->switchProxy(aid);
+						} else dynamic_cast <client::core_t *> (core)->switchProxy(aid);
 					}
 				} break;
 				// Иначе завершаем работу
@@ -204,7 +212,9 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 					}
 				} break;
 				// Если прокси-сервер является HTTP
-				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
+				// Если прокси-сервер является HTTPS
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Выполняем парсинг полученных данных
 					this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
 					// Если все данные получены
@@ -267,8 +277,14 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							} break;
 							// Если запрос выполнен удачно
 							case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+								// Если защищённое подключение уже активированно
+								if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
+									// Выполняем переключение на работу с сервером
+									this->_scheme.switchConnect();
+									// Выполняем запуск работы основного модуля
+									this->connectCallback(aid, sid, core);
 								// Выполняем переключение на работу с сервером
-								dynamic_cast <client::core_t *> (core)->switchProxy(aid);
+								} else dynamic_cast <client::core_t *> (core)->switchProxy(aid);
 								// Завершаем работу
 								return;
 							} break;
@@ -397,6 +413,14 @@ void awh::client::Web::on(function <void (const vector <char> &, const awh::http
 void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока

@@ -587,8 +587,15 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 		} else if(!this->_requests.empty())
 			// Выполняем запрос на удалённый сервер
 			this->submit(this->_requests.begin()->second);
-		// Выводим сообщение об ошибке
-		else this->_log->print("number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+		// Если мы получили ошибку
+		else {
+			// Выводим сообщение об ошибке
+			this->_log->print("number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP1_SEND, "number of redirect attempts has not been reset");
+		}
 	}
 	// Сообщаем что идентификатор не получен
 	return -1;
@@ -618,6 +625,14 @@ void awh::client::Http1::on(function <void (const vector <char> &, const awh::ht
  * @param callback функция обратного вызова
  */
 void awh::client::Http1::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }
