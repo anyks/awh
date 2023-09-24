@@ -199,9 +199,9 @@ void awh::Core::Dispatch::start() noexcept {
 						// Выводим сообщение об ошибке
 						this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_core->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::START, error.what());
+							this->_core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::START, error.what());
 					#endif
 				}
 			}
