@@ -1673,12 +1673,12 @@ if("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" 
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 
-# Устанавливаем хидеры
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
-
 # Устанавливаем основные зависимости
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hh")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
+
+# Устанавливаем хидеры
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
 
 # Устанавливаем библиотеку
 if(CMAKE_SHARED_BUILD_LIB)
