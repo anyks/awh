@@ -327,9 +327,9 @@ int main(int argc, char * argv[]){
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream");
-	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
-	// ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
-	// ws.init("wss://92.63.110.56:2222", http_t::compress_t::DEFLATE);
+	// ws.init("ws://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
+	// ws.init("wss://mimi.anyks.net:2222", awh::http_t::compress_t::DEFLATE);
+	// ws.init("wss://92.63.110.56:2222", awh::http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);

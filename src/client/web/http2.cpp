@@ -1076,6 +1076,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 							if(!request.entity.empty())
 								// Устанавливаем тело запроса
 								this->_http.body(request.entity);
+							// Устанавливаем новый адрес запроса
+							this->_uri.combine(this->_scheme.url, request.url);
 							// Создаём объек запроса
 							awh::web_t::req_t query(2.0f, request.method, request.url);
 							/**
@@ -1284,6 +1286,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 						this->_ws2._compress = request.compress;
 					// Устанавливаем метод компрессии
 					else this->_ws2._compress = this->_compress;
+					// Устанавливаем новый адрес запроса
+					this->_uri.combine(this->_ws2._scheme.url, request.url);
 					// Выполняем установку подключения с WebSocket-сервером
 					this->_ws2.connectCallback(this->_aid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения

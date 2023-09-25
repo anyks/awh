@@ -788,7 +788,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			// Получаем объект ответа клиенту
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
 			// Если параметры запроса получены
-			if(!req.url.empty() && (req.method == web_t::method_t::GET)){
+			if(!req.url.empty() && (req.version >= 2.0f ? req.method == web_t::method_t::CONNECT : req.method == web_t::method_t::GET)){
 				// Генерируем ключ клиента
 				const_cast <ws_core_t *> (this)->_key = this->key();
 				// Удаляем заголовок апгрейд
@@ -820,7 +820,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
 			// Если параметры запроса получены
-			if(res.code == 101){
+			if(res.version >= 2.0f ? res.code == 200 : res.code == 101){
 				// Удаляем статус ответа
 				const_cast <ws_core_t *> (this)->rmHeader(":status");
 				// Удаляем заголовок апгрейд

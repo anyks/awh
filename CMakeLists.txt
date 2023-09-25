@@ -354,7 +354,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/web/ws2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/websocket.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
@@ -380,8 +379,6 @@ set(SOURCE_FILES
 
 # Задаем именя библиотеки и бинарника
 set(IP_APP_NAME ip)
-set(WSC_APP_NAME wsc)
-set(WSS_APP_NAME wss)
 set(DNS_APP_NAME dns)
 set(NTP_APP_NAME ntp)
 set(PING_APP_NAME ping)
@@ -390,6 +387,8 @@ set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
+set(WS_CLIENT_APP_NAME wsClient)
+set(WS_SERVER_APP_NAME wsServer)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
 set(CURRENT_LIB_NAME_STATIC ${PROJECT_NAME})
@@ -429,14 +428,14 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
     add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
     add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
-    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
-    add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
     add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
     add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
+    add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp ${RES_FILES})
+    add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
 
@@ -447,8 +446,6 @@ else()
     add_executable(${IP_APP_NAME} sample/ip.cpp)
     add_executable(${DNS_APP_NAME} sample/dns.cpp)
     add_executable(${NTP_APP_NAME} sample/ntp.cpp)
-    add_executable(${WSS_APP_NAME} sample/wss.cpp)
-    add_executable(${WSC_APP_NAME} sample/wsc.cpp)
     add_executable(${PING_APP_NAME} sample/ping.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
@@ -456,6 +453,8 @@ else()
     add_executable(${CLIENT_APP_NAME} sample/client.cpp)
     add_executable(${SERVER_APP_NAME} sample/server.cpp)
     add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp)
+    add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp)
+    add_executable(${WS_CLIENT_APP_NAME} sample/wsClient2.cpp)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
 
@@ -493,7 +492,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -501,7 +500,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -618,14 +617,14 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${AWH_IDN}
         )
@@ -734,13 +733,13 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
         )
 
@@ -835,7 +834,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -852,7 +851,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1061,7 +1060,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1080,7 +1079,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1327,7 +1326,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
-            ${WSC_APP_NAME}
+            ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1343,7 +1342,7 @@ else(CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
-            ${WSS_APP_NAME}
+            ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1549,17 +1548,17 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${WSC_APP_NAME}" POST_BUILD
-            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WSC_APP_NAME}>"
+        add_custom_command(TARGET "${WS_CLIENT_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WS_CLIENT_APP_NAME}>"
             COMMAND ulimit -c unlimited
-            COMMENT "sign target \"${WSC_APP_NAME}\" to enable core dump on MacOS X"
+            COMMENT "sign target \"${WS_CLIENT_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
 
-        add_custom_command(TARGET "${WSS_APP_NAME}" POST_BUILD
-            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WSS_APP_NAME}>"
+        add_custom_command(TARGET "${WS_SERVER_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WS_SERVER_APP_NAME}>"
             COMMAND ulimit -c unlimited
-            COMMENT "sign target \"${WSS_APP_NAME}\" to enable core dump on MacOS X"
+            COMMENT "sign target \"${WS_SERVER_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
 
@@ -1653,8 +1652,8 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
         # Выполняем анализ собранных приложений
         pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${WSC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WSC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${WSS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WSS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WS_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WS_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WS_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WS_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -1692,8 +1691,8 @@ endif(CMAKE_SHARED_BUILD_LIB)
 
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WS_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

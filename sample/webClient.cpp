@@ -249,7 +249,7 @@ int main(int argc, char * argv[]){
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
 	// const auto & body = rest.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
-	// Выводим время запроса // 3862 || 3869 == 3893
+	// Выводим время запроса
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены
 	if(!body.empty()){

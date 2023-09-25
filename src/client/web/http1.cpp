@@ -577,6 +577,8 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 		if(this->_attempt == 0){
 			// Результат работы функции
 			int32_t result = (this->_requests.size() + 1);
+			// Устанавливаем новый адрес запроса
+			this->_uri.combine(this->_scheme.url, request.url);
 			// Выполняем добавление активного запроса
 			this->_requests.emplace(result, request);
 			// Если В списке запросов ещё нет активных запросов

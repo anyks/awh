@@ -76,7 +76,7 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 				// Получаем бинарные данные REST запроса
-				const auto & buffer = this->_http.process(http_t::process_t::RESPONSE, std::move(query));
+				const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 				// Если бинарные данные запроса получены
 				if(!buffer.empty())
 					// Выводим параметры запроса
@@ -128,6 +128,8 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
+			// Устанавливаем идентификатор потока
+			this->_sid = 1;
 			// Выполняем установку сетевого ядра
 			this->_ws1._core = this->_core;
 			// Устанавливаем метод сжатия
