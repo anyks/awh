@@ -1083,7 +1083,7 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_scheme.url, request.url);
 							// Создаём объек запроса
-							awh::web_t::req_t query(2.0f, request.method, request.url);
+							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
 							/**
 							 * Если включён режим отладки
 							 */

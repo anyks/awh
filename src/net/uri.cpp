@@ -494,6 +494,8 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 		dest.ip = src.ip;
 		// Выполняем установку хоста
 		dest.host = src.host;
+		// Выполняем установку порта
+		dest.port = src.port;
 		// Выполняем установку доменного имени
 		dest.domain = src.domain;
 		// Выполняем установку схемы протокола
@@ -501,10 +503,6 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 		// Выполняем установку семейство протоколов
 		dest.family = src.family;
 	}
-	// Если порт установлен
-	if(src.port > 0)
-		// Выполняем установку порта
-		dest.port = src.port;
 	// Если якорь установлен
 	if(!src.anchor.empty())
 		// Выполняем установку якоря

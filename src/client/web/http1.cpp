@@ -495,8 +495,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			if(!request.entity.empty())
 				// Устанавливаем тело запроса
 				this->_http.body(request.entity);
+			// Устанавливаем новый адрес запроса
+			this->_uri.combine(this->_scheme.url, request.url);
 			// Создаём объек запроса
-			awh::web_t::req_t query(request.method, request.url);
+			awh::web_t::req_t query(request.method, this->_scheme.url);
 			// Если метод CONNECT запрещён для прокси-сервера
 			if(!this->_proxy.connect){
 				// Получаем строку авторизации на проксе-сервере
@@ -555,8 +557,6 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 		if(this->_attempt == 0){
 			// Результат работы функции
 			int32_t result = (this->_requests.size() + 1);
-			// Устанавливаем новый адрес запроса
-			this->_uri.combine(this->_scheme.url, request.url);
 			// Выполняем добавление активного запроса
 			this->_requests.emplace(result, request);
 			// Если В списке запросов ещё нет активных запросов

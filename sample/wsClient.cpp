@@ -352,7 +352,7 @@ int main(int argc, char * argv[]){
 	// Подписываемся на событие запуска/остановки сервера
 	ws.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&Executor::status, &executor, _1, _2));
 	// Выполняем запуск WebSocket клиента
-	ws.start();	
+	ws.start();
 	// Выводим результат
 	return 0;
 }
