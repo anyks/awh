@@ -39,7 +39,7 @@ class WebClient {
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
+				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
 		}
 		/**
 		 * active Метод идентификации активности на Web-клиенте

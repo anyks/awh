@@ -159,9 +159,8 @@ namespace awh {
 					SEND          = 0x03, // Событие отправки данных на сервер
 					SUBMIT        = 0x04, // Событие HTTP-запроса на удаленный сервер
 					CONNECT       = 0x05, // Событие подключения к серверу
-					DISCONNECT    = 0x06, // Событие отключения от сервера
-					PROXY_READ    = 0x07, // Событие чтения данных с прокси-сервера
-					PROXY_CONNECT = 0x08  // Событие подключения к прокси-серверу
+					PROXY_READ    = 0x06, // Событие чтения данных с прокси-сервера
+					PROXY_CONNECT = 0x07  // Событие подключения к прокси-серверу
 				};
 			protected:
 				// Идентификатор подключения
@@ -326,11 +325,6 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const int32_t, const mode_t)> callback) noexcept;
-				/**
-				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
-				 * @param callback функция обратного вызова
-				 */
-				virtual void on(function <void (const int32_t, const int32_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова

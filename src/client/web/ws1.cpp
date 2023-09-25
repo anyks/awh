@@ -292,10 +292,6 @@ bool awh::client::WebSocket1::redirect() noexcept {
 			this->_attempt++;
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
-			// Если функция обратного вызова на вывод редиректа потоков установлена
-			if(this->_callback.is("redirect"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 			// Выполняем установку следующего экшена на открытие подключения
 			this->open();
 			// Завершаем работу
@@ -322,10 +318,6 @@ bool awh::client::WebSocket1::redirect() noexcept {
 				this->_attempt++;
 				// Устанавливаем новый адрес запроса
 				this->_uri.combine(this->_scheme.url, url);
-				// Если функция обратного вызова на вывод редиректа потоков установлена
-				if(this->_callback.is("redirect"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const int32_t, const int32_t> ("redirect", 1, 1);
 				// Выполняем установку следующего экшена на открытие подключения
 				this->open();
 				// Завершаем работу
@@ -471,10 +463,6 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 							this->_attempt++;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_scheme.url, url);
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Устанавливаем полученную функцию обратного вызова
@@ -491,10 +479,6 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 							this->flush();
 							// Увеличиваем количество попыток
 							this->_attempt++;
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Устанавливаем полученную функцию обратного вызова
@@ -1157,14 +1141,6 @@ void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const erro
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web_t::on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket1::on(function <void (const int32_t, const int32_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

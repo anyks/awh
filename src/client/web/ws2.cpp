@@ -492,7 +492,7 @@ int awh::client::WebSocket2::signalChunk(const int32_t sid, const uint8_t * buff
 			// Если подключение закрыто
 			if(this->_close){
 				// Принудительно выполняем отключение лкиента
-				dynamic_cast <client::core_t *> (const_cast <core_t *> (this->_core))->close(this->_aid);
+				const_cast <client::core_t *> (this->_core)->close(this->_aid);
 				// Выходим из функции
 				return 0;
 			}
@@ -791,10 +791,6 @@ bool awh::client::WebSocket2::redirect(const size_t aid, const size_t sid, awh::
 				this->_attempt++;
 				// Выполняем очистку оставшихся данных
 				this->_buffer.clear();
-				// Если функция обратного вызова на вывод редиректа потоков установлена
-				if(this->_callback.is("redirect"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
 				// Выполняем установку следующего экшена на открытие подключения
 				this->open();
 				// Завершаем работу
@@ -821,10 +817,6 @@ bool awh::client::WebSocket2::redirect(const size_t aid, const size_t sid, awh::
 					this->_attempt++;
 					// Устанавливаем новый адрес запроса
 					this->_uri.combine(this->_scheme.url, url);
-					// Если функция обратного вызова на вывод редиректа потоков установлена
-					if(this->_callback.is("redirect"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const int32_t, const int32_t> ("redirect", this->_sid, this->_sid);
 					// Выполняем установку следующего экшена на открытие подключения
 					this->open();
 					// Завершаем работу
@@ -926,10 +918,6 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							this->_attempt++;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_scheme.url, url);
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Выполняем попытку повторить запрос
 							this->connectCallback(aid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
@@ -942,10 +930,6 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							this->flush();
 							// Увеличиваем количество попыток
 							this->_attempt++;
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Выполняем попытку повторить запрос
 							this->connectCallback(aid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
@@ -1586,16 +1570,6 @@ void awh::client::WebSocket2::on(function <void (const log_t::flag_t, const erro
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket2::on(function <void (const int32_t, const mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws1.on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket2::on(function <void (const int32_t, const int32_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента

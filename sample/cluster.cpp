@@ -128,11 +128,11 @@ int main(int argc, char * argv[]){
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.clusterAutoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.on((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
+	core.on((function <void (const awh::core_t::status_t, core_t *)>) std::bind(&Executor::run, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении событий
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) bind(&Executor::events, &executor, _1, _2, _3, _4));
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) std::bind(&Executor::events, &executor, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки входящих сообщений
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t, cluster::core_t *)>) bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t, cluster::core_t *)>) std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

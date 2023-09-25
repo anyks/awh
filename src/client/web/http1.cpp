@@ -197,13 +197,6 @@ bool awh::client::Http1::redirect() noexcept {
 			this->_attempt++;
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
-			// Если функция обратного вызова на вывод редиректа потоков установлена
-			if(this->_callback.is("redirect")){
-				// Получаем идентификатор потока
-				const int32_t sid = this->_requests.begin()->first;
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
-			}
 			// Выполняем установку следующего экшена на открытие подключения
 			this->open();
 			// Завершаем работу
@@ -248,13 +241,6 @@ bool awh::client::Http1::redirect() noexcept {
 					request.entity.clear();
 					// Выполняем установку метода запроса
 					request.method = awh::web_t::method_t::GET;
-				}
-				// Если функция обратного вызова на вывод редиректа потоков установлена
-				if(this->_callback.is("redirect")){
-					// Получаем идентификатор потока
-					const int32_t sid = this->_requests.begin()->first;
-					// Выводим функцию обратного вызова
-					this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 				}
 				// Выполняем установку следующего экшена на открытие подключения
 				this->open();
@@ -374,10 +360,6 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							this->_attempt++;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(it->second.url, url);
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Выполняем запрос на удалённый сервер
 							this->send(it->second);
 							// Если функция обратного вызова активности потока установлена
@@ -395,10 +377,6 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							this->flush();
 							// Увеличиваем количество попыток
 							this->_attempt++;
-							// Если функция обратного вызова на вывод редиректа потоков установлена
-							if(this->_callback.is("redirect"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, sid);
 							// Выполняем запрос на удалённый сервер
 							this->send(it->second);
 							// Если функция обратного вызова активности потока установлена
@@ -645,14 +623,6 @@ void awh::client::Http1::on(function <void (const log_t::flag_t, const error_t, 
  * @param callback функция обратного вызова
  */
 void awh::client::Http1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web_t::on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::Http1::on(function <void (const int32_t, const int32_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

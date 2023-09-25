@@ -328,10 +328,14 @@ int awh::client::Http2::signalChunk(const int32_t sid, const uint8_t * buffer, c
 			// Определяем протокол клиента
 			switch(static_cast <uint8_t> (it->second->agent)){
 				// Если агент является клиентом HTTP
-				case static_cast <uint8_t> (agent_t::HTTP):
+				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Добавляем полученный чанк в тело данных
 					it->second->http.body(vector <char> (buffer, buffer + size));
-				break;
+					// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
+					if(this->_callback.is("chunks"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const vector <char> &> ("chunks", sid, vector <char> (buffer, buffer + size));
+				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем передачу полученных данных на WebSocket-клиент
@@ -1239,7 +1243,7 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 								return result;
 							}{
 								// Если функция обратного вызова на вывод редиректа потоков установлена
-								if((sid > -1) && this->_callback.is("redirect"))
+								if((sid > -1) && (sid != result) && this->_callback.is("redirect"))
 									// Выводим функцию обратного вызова
 									this->_callback.call <const int32_t, const int32_t> ("redirect", sid, result);
 							}{
@@ -1478,12 +1482,8 @@ void awh::client::Http2::on(function <void (const int32_t, const mode_t)> callba
  * @param callback функция обратного вызова
  */
 void awh::client::Http2::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
 }
 /**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера

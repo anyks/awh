@@ -45,15 +45,15 @@ class Executor {
 			// Определяем флаг статуса сервера
 			switch(static_cast <uint8_t> (status)){
 				// Если сервер запущен
-				case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				case static_cast <uint8_t> (awh::core_t::status_t::START):
 					// Выводим информацию в лог
 					this->_log->print("START", log_t::flag_t::INFO);
-				} break;
+				break;
 				// Если сервер остановлен
-				case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					// Выводим информацию в лог
 					this->_log->print("STOP", log_t::flag_t::INFO);
-				} break;
+				break;
 			}
 		}
 		/**

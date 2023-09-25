@@ -441,6 +441,14 @@ void awh::client::Rest::on(function <void (const vector <char> &, const awh::htt
 	this->_http.on(callback);
 }
 /**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::client::Rest::on(function <void (const log_t::flag_t, const web_t::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера
  * @param callback функция обратного вызова
  */

@@ -21,12 +21,14 @@
  * @param core объект сетевого ядра
  */
 void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noexcept {
-	// Если дисконнекта ещё не произошло
-	if(this->_action == action_t::NONE){
-		// Устанавливаем экшен выполнения
-		this->_action = action_t::OPEN;
-		// Выполняем запуск обработчика событий
-		this->handler();
+	// Если данные переданы верные
+	if((sid > 0) && (core != nullptr)){
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN))
+			// Выполняем подключение
+			const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	}
 }
 /**
@@ -37,10 +39,10 @@ void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noe
 void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
-		// Если функция обратного вызова установлена
-		if(this->_callback.events != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.events(status, core);
+		// Если функция получения событий запуска и остановки сетевого ядра установлена
+		if(this->_callback.is("events"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
 	}
 }
 /**
@@ -52,12 +54,19 @@ void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh
 void awh::client::Sample::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Запоминаем идентификатор адъютанта
-		this->_aid = aid;
-		// Устанавливаем экшен выполнения
-		this->_action = action_t::CONNECT;
-		// Выполняем запуск обработчика событий
-		this->handler();
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::OPEN, event_t::READ}, event_t::CONNECT)){
+			// Запоминаем идентификатор адъютанта
+			this->_aid = aid;
+			// Выполняем очистку оставшихся данных
+			this->_buffer.clear();
+			// Если функция обратного вызова существует
+			if(this->_callback.is("active"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+		}
 	}
 }
 /**
@@ -69,10 +78,21 @@ void awh::client::Sample::connectCallback(const size_t aid, const size_t sid, aw
 void awh::client::Sample::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
-		// Устанавливаем экшен выполнения
-		this->_action = action_t::DISCONNECT;
-		// Выполняем запуск обработчика событий
-		this->handler();
+		// Если подключение не является постоянным
+		if(!this->_scheme.alive){
+			// Выполняем очистку оставшихся данных
+			this->_buffer.clear();
+			// Очищаем адрес сервера
+			this->_scheme.url.clear();
+			// Завершаем работу
+			if(this->_unbind)
+				// Выполняем остановку работы сетевого ядра
+				const_cast <client::core_t *> (this->_core)->stop();
+		}
+		// Если функция обратного вызова существует
+		if(this->_callback.is("active"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
 	}
 }
 /**
@@ -86,114 +106,17 @@ void awh::client::Sample::disconnectCallback(const size_t aid, const size_t sid,
 void awh::client::Sample::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Если дисконнекта ещё не произошло
-		if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
-			// Устанавливаем экшен выполнения
-			this->_action = action_t::READ;
+		// Создаём объект холдирования
+		hold_t <event_t> hold(this->_events);
+		// Если событие соответствует разрешённому
+		if(hold.access({event_t::CONNECT}, event_t::READ)){
 			// Добавляем полученные данные в буфер
 			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-			// Выполняем запуск обработчика событий
-			this->handler();
+			// Если функция обратного вызова существует
+			if(this->_callback.is("message"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const vector <char> &> ("message", this->_buffer);
 		}
-	}
-}
-/**
- * handler Метод управления входящими методами
- */
-void awh::client::Sample::handler() noexcept {
-	// Если управляющий блокировщик не заблокирован
-	if(!this->_locker.mode){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_locker.mtx);
-		// Флаг разрешающий циклический перебор экшенов
-		bool loop = true;
-		// Выполняем блокировку обработчика
-		this->_locker.mode = true;
-		// Выполняем обработку всех экшенов
-		while(loop && (this->_action != action_t::NONE)){
-			// Определяем обрабатываемый экшен
-			switch(static_cast <uint8_t> (this->_action)){
-				// Если необходимо запустить экшен открытия подключения
-				case static_cast <uint8_t> (action_t::OPEN): this->actionOpen(); break;
-				// Если необходимо запустить экшен обработки данных поступающих с сервера
-				case static_cast <uint8_t> (action_t::READ): this->actionRead(); break;
-				// Если необходимо запустить экшен обработки подключения к серверу
-				case static_cast <uint8_t> (action_t::CONNECT): this->actionConnect(); break;
-				// Если необходимо запустить экшен обработки отключения от сервера
-				case static_cast <uint8_t> (action_t::DISCONNECT): this->actionDisconnect(); break;
-				// Если сработал неизвестный экшен, выходим
-				default: loop = false;
-			}
-		}
-		// Выполняем разблокировку обработчика
-		this->_locker.mode = false;
-	}
-}
-/**
- * actionOpen Метод обработки экшена открытия подключения
- */
-void awh::client::Sample::actionOpen() noexcept {
-	// Выполняем подключение
-	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::OPEN)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-}
-/**
- * actionRead Метод обработки экшена чтения с сервера
- */
-void awh::client::Sample::actionRead() noexcept {
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::READ)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-	// Если функция обратного вызова установлена, выводим сообщение
-	if(this->_callback.message != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.message(this->_buffer, this);
-}
-/**
- * actionConnect Метод обработки экшена подключения к серверу
- */
-void awh::client::Sample::actionConnect() noexcept {
-	// Выполняем очистку оставшихся данных
-	this->_buffer.clear();
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::CONNECT)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-	// Если функция обратного вызова существует
-	if(this->_callback.active != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.active(mode_t::CONNECT, this);
-}
-/**
- * actionDisconnect Метод обработки экшена отключения от сервера
- */
-void awh::client::Sample::actionDisconnect() noexcept {
-	// Если подключение является постоянным
-	if(this->_scheme.alive){
-		// Если функция обратного вызова установлена
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(mode_t::DISCONNECT, this);
-	// Если подключение не является постоянным
-	} else {
-		// Выполняем очистку оставшихся данных
-		this->_buffer.clear();
-		// Очищаем адрес сервера
-		this->_scheme.url.clear();
-		// Завершаем работу
-		if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
-		// Если экшен соответствует, выполняем его сброс
-		if(this->_action == action_t::DISCONNECT)
-			// Выполняем сброс экшена
-			this->_action = action_t::NONE;
-		// Если функция обратного вызова существует
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(mode_t::DISCONNECT, this);
 	}
 }
 /**
@@ -295,43 +218,48 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
  * on Метод установки функции обратного вызова при подключении/отключении
  * @param callback функция обратного вызова
  */
-void awh::client::Sample::on(function <void (const mode_t, Sample *)> callback) noexcept {
+void awh::client::Sample::on(function <void (const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.active = callback;
+	this->_callback.set <void (const mode_t)> ("active", callback);
 }
 /**
  * setMessageCallback Метод установки функции обратного вызова при получении сообщения
  * @param callback функция обратного вызова
  */
-void awh::client::Sample::on(function <void (const vector <char> &, Sample *)> callback) noexcept {
+void awh::client::Sample::on(function <void (const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.message = callback;
+	this->_callback.set <void (const vector <char> &)> ("message", callback);
 }
 /**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
-void awh::client::Sample::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+void awh::client::Sample::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.events = callback;
+	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
 }
 /**
  * response Метод отправки сообщения адъютанту
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
-void awh::client::Sample::send(const char * buffer, const size_t size) const noexcept {
-	// Если подключение выполнено
-	if(this->_core->working()){
-		// Если включён режим отладки
-		#if defined(DEBUG_MODE)
-			// Выводим заголовок ответа
-			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-			// Выводим параметры ответа
-			cout << string(buffer, size) << endl;
-		#endif
-		// Отправляем тело на сервер
-		((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_aid);
+void awh::client::Sample::send(const char * buffer, const size_t size) noexcept {
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+		// Если подключение выполнено
+		if(this->_core->working()){
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры ответа
+				cout << string(buffer, size) << endl;
+			#endif
+			// Отправляем тело на сервер
+			((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_aid);
+		}
 	}
 }
 /**
@@ -368,20 +296,20 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
 	this->_scheme.timeouts.connect = connect;
 }
 /**
- * mode Метод установки флага модуля
- * @param flag флаг модуля для установки
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Sample::mode(const u_short flag) noexcept {
+void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
+	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
+	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
+	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
+	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
+	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -404,8 +332,7 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _scheme(fmk, log), _action(action_t::NONE),
- _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
+ _callback(log), _scheme(fmk, log), _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения

@@ -26,7 +26,7 @@ void awh::client::Web::openCallback(const size_t sid, awh::core_t * core) noexce
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::READ, event_t::CONNECT, event_t::DISCONNECT}, event_t::OPEN)){
+		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN)){
 			// Если подключение уже выполнено
 			if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
 				// Если подключение производится через, прокси-сервер
@@ -429,14 +429,6 @@ void awh::client::Web::on(function <void (const log_t::flag_t, const error_t, co
 void awh::client::Web::on(function <void (const int32_t, const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const int32_t, const mode_t)> ("stream", callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::Web::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
 }
 /**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера

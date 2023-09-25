@@ -18,11 +18,14 @@
 /**
  * Стандартная библиотека
  */
+#include <stack>
 #include <functional>
 
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
+#include <sys/hold.hpp>
 #include <core/client.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -41,17 +44,6 @@ namespace awh {
 		 * Sample Класс работы с примером клиента
 		 */
 		typedef class Sample {
-			private:
-				/**
-				 * Основные экшены
-				 */
-				enum class action_t : uint8_t {
-					NONE       = 0x01, // Отсутствие события
-					OPEN       = 0x02, // Событие открытия подключения
-					READ       = 0x03, // Событие чтения с сервера
-					CONNECT    = 0x04, // Событие подключения к серверу
-					DISCONNECT = 0x05  // Событие отключения от сервера
-				};
 			public:
 				/**
 				 * Режим работы клиента
@@ -72,31 +64,15 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Locker Структура локера
+				 * Идентификаторы текущего события
 				 */
-				typedef struct Locker {
-					bool mode;           // Флаг блокировки
-					recursive_mutex mtx; // Мютекс для блокировки потока
-					/**
-					 * Locker Конструктор
-					 */
-					Locker() noexcept : mode(false) {}
-				} locker_t;
-				/**
-				 * Callback Структура функций обратного вызова
-				 */
-				typedef struct Callback {
-					// Функция обратного вызова при подключении/отключении
-					function <void (const mode_t, Sample *)> active;
-					// Функция обратного вызова, вывода сообщения при его получении
-					function <void (const vector <char> &, Sample *)> message;
-					// Функция получения событий запуска и остановки сетевого ядра
-					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
-					/**
-					 * Callback Конструктор
-					 */
-					Callback() noexcept : active(nullptr), message(nullptr), events(nullptr) {}
-				} fn_t;
+				enum class event_t : uint8_t {
+					NONE    = 0x00, // Событие не установлено
+					OPEN    = 0x01, // Событие открытия подключения
+					READ    = 0x02, // Событие чтения данных с сервера
+					SEND    = 0x03, // Событие отправки данных на сервер
+					CONNECT = 0x04  // Событие подключения к серверу
+				};
 			private:
 				// Объект для работы с сетью
 				net_t _net;
@@ -104,13 +80,12 @@ namespace awh {
 				fn_t _callback;
 				// Объект сетевой схемы
 				scheme_t _scheme;
-				// Объект блокировщика
-				locker_t _locker;
-				// Экшен события
-				action_t _action;
 			private:
 				// Буфер бинарных данных
 				vector <char> _buffer;
+			private:
+				// Список рабочих событий
+				stack <event_t> _events;
 			private:
 				// Идентификатор подключения
 				size_t _aid;
@@ -160,28 +135,6 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * handler Метод управления входящими методами
-				 */
-				void handler() noexcept;
-			private:
-				/**
-				 * actionOpen Метод обработки экшена открытия подключения
-				 */
-				void actionOpen() noexcept;
-				/**
-				 * actionRead Метод обработки экшена чтения с сервера
-				 */
-				void actionRead() noexcept;
-				/**
-				 * actionConnect Метод обработки экшена подключения к серверу
-				 */
-				void actionConnect() noexcept;
-				/**
-				 * actionDisconnect Метод обработки экшена отключения от сервера
-				 */
-				void actionDisconnect() noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -213,24 +166,24 @@ namespace awh {
 				 * on Метод установки функции обратного вызова при подключении/отключении
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const mode_t, Sample *)> callback) noexcept;
+				void on(function <void (const mode_t)> callback) noexcept;
 				/**
 				 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const vector <char> &, Sample *)> callback) noexcept;
+				void on(function <void (const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
+				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
 				 * response Метод отправки сообщения адъютанту
 				 * @param buffer буфер бинарных данных для отправки
 				 * @param size   размер бинарных данных для отправки
 				 */
-				void send(const char * buffer, const size_t size) const noexcept;
+				void send(const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт
@@ -247,10 +200,10 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * mode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const u_short flag) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
