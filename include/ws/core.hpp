@@ -102,7 +102,7 @@ namespace awh {
 			 * @return          результат извлечения
 			 */
 			bool extractExtension(const string & extension) noexcept;
-		protected:
+		public:
 			/**
 			 * commit Метод применения полученных результатов
 			 */

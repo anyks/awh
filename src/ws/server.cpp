@@ -53,12 +53,11 @@ void awh::server::WS::commit() noexcept {
 					// Если буква соответствует разделителю расширения
 					case ';': {
 						// Если слово собранно
-						if(!extension.empty() && !this->extractExtension(extension)){
+						if(!extension.empty() && !this->extractExtension(extension))
 							// Выполняем добавление слова в список записей
 							extensions.push_back(std::move(extension));
-							// Выполняем очистку слова записи
-							extension.clear();
-						}
+						// Выполняем очистку слова записи
+						extension.clear();
 						// Если список записей собран
 						if(!extensions.empty()){
 							// Выполняем добавление списка записей в список расширений
@@ -70,12 +69,11 @@ void awh::server::WS::commit() noexcept {
 					// Если буква соответствует разделителю группы расширений
 					case ',': {
 						// Если слово собранно
-						if(!extension.empty() && !this->extractExtension(extension)){
+						if(!extension.empty() && !this->extractExtension(extension))
 							// Выполняем добавление слова в список записей
 							extensions.push_back(std::move(extension));
-							// Выполняем очистку слова записи
-							extension.clear();
-						}
+						// Выполняем очистку слова записи
+						extension.clear();
 					} break;
 					// Если буква соответствует пробелу
 					case ' ': break;
@@ -89,6 +87,8 @@ void awh::server::WS::commit() noexcept {
 			if(!extension.empty() && !this->extractExtension(extension))
 				// Выполняем добавление слова в список записей
 				extensions.push_back(std::move(extension));
+			// Выполняем очистку слова записи
+			extension.clear();
 		}
 	}
 	// Если список записей собран

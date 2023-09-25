@@ -48,10 +48,6 @@ void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh
 		this->_ws2._upgraded = this->_upgraded;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
-		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callback.is("active"))
-			// Выполняем установку функции обратного вызова
-			this->_ws2._callback.set <void (const mode_t)> ("active", this->_callback.get <void (const mode_t)> ("active"));
 		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выполняем установку функции обратного вызова
@@ -836,7 +832,7 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 					// Устанавливаем текущий идентификатор
 					result = jt->first;
 					// Если объект запроса не является одним и тем же
-					if(reinterpret_cast <request_t *> (&request) != jt->second.get()){
+					if(dynamic_cast <request_t *> (&request) != jt->second.get()){
 						// Выполняем установку адреса URL-запроса
 						request.url = jt->second->url;
 						// Выполняем копирование метода запроса

@@ -169,6 +169,8 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 					if(this->_resultCallback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+					// Выполняем очистку функций обратного вызова
+					this->_resultCallback.clear();
 					// Если подключение выполнено и список запросов не пустой
 					if((this->_aid > 0) && !this->_requests.empty())
 						// Выполняем запрос на удалённый сервер

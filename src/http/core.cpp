@@ -2126,7 +2126,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Выполняем првоерку заголовка
 							switch(i){
 								case 6:
-								case 8:
 								case 9:
 								case 10:
 								case 11: allow = !available[i]; break;
@@ -2161,7 +2160,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Добавляем заголовок в запрос
 					request.append(this->_fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
 				// Если нужно запросить компрессию в удобном нам виде
-				if((this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
+				if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
 					// Определяем метод сжатия который поддерживает клиент
 					switch(static_cast <uint8_t> (this->_compress)){
 						// Если клиент поддерживает методот сжатия BROTLI
@@ -2676,7 +2675,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								switch(i){
 									case 0:
 									case 6:
-									case 8:
 									case 9:
 									case 10:
 									case 11: allow = !available[i]; break;
@@ -2705,7 +2703,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 					// Добавляем заголовок в запрос
 					result.push_back(make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
 				// Если нужно запросить компрессию в удобном нам виде
-				if((this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-encoding")){
+				if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-encoding")){
 					// Определяем метод сжатия который поддерживает клиент
 					switch(static_cast <uint8_t> (this->_compress)){
 						// Если клиент поддерживает методот сжатия BROTLI

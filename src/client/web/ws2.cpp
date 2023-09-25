@@ -138,10 +138,6 @@ void awh::client::WebSocket2::connectCallback(const size_t aid, const size_t sid
 			if(!this->_headers.empty())
 				// Выполняем установку HTTP-заголовков
 				this->_ws1.setHeaders(this->_headers);
-			// Если функция обратного вызова при подключении/отключении установлена
-			if(this->_callback.is("active"))
-				// Выполняем установку функции обратного вызова
-				this->_ws1._callback.set <void (const mode_t)> ("active", this->_callback.get <void (const mode_t)> ("active"));
 			// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callback.is("chunks"))
 				// Выполняем установку функции обратного вызова
@@ -216,15 +212,15 @@ void awh::client::WebSocket2::disconnectCallback(const size_t aid, const size_t 
 void awh::client::WebSocket2::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		// Если подключение закрыто
+		if(this->_close){
+			// Принудительно выполняем отключение лкиента
+			dynamic_cast <client::core_t *> (core)->close(aid);
+			// Выходим из функции
+			return;
+		}
 		// Если протокол подключения является HTTP/2
 		if(core->proto(aid) == engine_t::proto_t::HTTP2){
-			// Если подключение закрыто
-			if(this->_close){
-				// Принудительно выполняем отключение лкиента
-				reinterpret_cast <client::core_t *> (core)->close(aid);
-				// Выходим из функции
-				return;
-			}
 			// Если получение данных не разрешено
 			if(!this->_allow.receive)
 				// Выходим из функции
@@ -323,18 +319,18 @@ int awh::client::WebSocket2::signalFrame(const nghttp2_frame * frame) noexcept {
 			// Если мы получили входящие данные тела ответа
 			case NGHTTP2_DATA: {
 				// Если рукопожатие не выполнено
-				if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
+				if(!this->_shake){
 					// Если мы получили флаг завершения потока
 					if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM){
-						// Получаем объект HTTP-ответа
-						http_t * http = reinterpret_cast <http_t *> (&this->_http);
 						// Выполняем коммит полученного результата
-						http->commit();
+						this->_http.commit();
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							{
+								// Получаем объект работы с HTTP-запросами
+								http_t * http = reinterpret_cast <http_t *> (&this->_http);
 								// Если тело ответа существует
 								if(!http->body().empty())
 									// Выводим сообщение о выводе чанка тела
@@ -344,7 +340,7 @@ int awh::client::WebSocket2::signalFrame(const nghttp2_frame * frame) noexcept {
 							}
 						#endif
 						// Выполняем анализ результата авторизации
-						switch(static_cast <uint8_t> (http->getAuth())){
+						switch(static_cast <uint8_t> (this->_http.getAuth())){
 							// Если нужно попытаться ещё раз
 							case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
 								// Если попытки повторить переадресацию закончились
@@ -366,6 +362,8 @@ int awh::client::WebSocket2::signalFrame(const nghttp2_frame * frame) noexcept {
 						if(this->_resultCallback.is("entity"))
 							// Выполняем функцию обратного вызова дисконнекта
 							this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+						// Выполняем очистку функций обратного вызова
+						this->_resultCallback.clear();
 					}
 				// Если рукопожатие выполнено
 				} else if(this->_allow.receive) {
@@ -408,8 +406,10 @@ int awh::client::WebSocket2::signalFrame(const nghttp2_frame * frame) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						{
+							// Получаем объект работы с HTTP-запросами
+							http_t * http = reinterpret_cast <http_t *> (&this->_http);
 							// Получаем данные ответа
-							const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
+							const auto & response = http->process(http_t::process_t::RESPONSE, true);
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
@@ -490,12 +490,12 @@ int awh::client::WebSocket2::signalChunk(const int32_t sid, const uint8_t * buff
 			// Если подключение закрыто
 			if(this->_close){
 				// Принудительно выполняем отключение лкиента
-				reinterpret_cast <client::core_t *> (const_cast <core_t *> (this->_core))->close(this->_aid);
+				dynamic_cast <client::core_t *> (const_cast <core_t *> (this->_core))->close(this->_aid);
 				// Выходим из функции
 				return 0;
 			}
 			// Если рукопожатие не выполнено
-			if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake())
+			if(!this->_shake)
 				// Добавляем полученный чанк в тело данных
 				this->_http.body(vector <char> (buffer, buffer + size));
 			// Если рукопожатие выполнено
@@ -519,6 +519,8 @@ int awh::client::WebSocket2::signalChunk(const int32_t sid, const uint8_t * buff
 int awh::client::WebSocket2::signalBeginHeaders(const int32_t sid) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_sid == sid){
+		// Выполняем сброс флага рукопожатия
+		this->_shake = false;
 		// Выполняем очистку параметров HTTP запроса
 		this->_http.clear();
 		// Очищаем буфер собранных данных
@@ -901,7 +903,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Если рукопожатие не выполнено
-	if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
+	if(!this->_shake){
 		// Получаем параметры запроса
 		auto response = this->_http.response();
 		// Выполняем проверку авторизации
@@ -958,7 +960,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 				// Если рукопожатие выполнено
-				if(this->_http.isHandshake()){
+				if((this->_shake = this->_http.isHandshake())){
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
@@ -1920,7 +1922,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(fmk, log), _sid(0), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
@@ -1934,7 +1936,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(0), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(core, fmk, log), _sid(0), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));

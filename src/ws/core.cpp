@@ -701,8 +701,10 @@ bool awh::WCore::isHandshake() noexcept {
 			result = this->checkVer();
 		// Если подключение не выполнено
 		else return result;
-		// Если результат удачный, проверяем произошло ли переключение протокола
-		if(result) result = this->checkUpgrade();
+		// Если результат удачный
+		if(result)
+			// Проверяем произошло ли переключение протокола
+			result = this->checkUpgrade();
 		// Если версия протокола не соответствует
 		else {
 			// Выводим сообщение об ошибке
@@ -710,8 +712,10 @@ bool awh::WCore::isHandshake() noexcept {
 			// Выходим из функции
 			return result;
 		}
-		// Если результат удачный, проверяем ключ клиента
-		if(result) result = this->checkKey();
+		// Если результат удачный
+		if(result)
+			// Проверяем ключ клиента
+			result = this->checkKey();
 		// Если протокол не был переключён
 		else {
 			// Выводим сообщение об ошибке
@@ -719,8 +723,10 @@ bool awh::WCore::isHandshake() noexcept {
 			// Выходим из функции
 			return result;
 		}
-		// Если рукопожатие выполнено, устанавливаем стейт рукопожатия
-		if(result) this->_state = state_t::HANDSHAKE;
+		// Если рукопожатие выполнено
+		if(result)
+			// Устанавливаем стейт рукопожатия
+			this->_state = state_t::HANDSHAKE;
 		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
 		else this->_log->print("Client and server keys are inconsistent", log_t::flag_t::CRITICAL);
 	}

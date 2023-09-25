@@ -36,7 +36,7 @@ namespace awh {
 		 * WS Класс для работы с сервером WebSocket
 		 */
 		typedef class WS : public ws_core_t {
-			private:
+			public:
 				/**
 				 * commit Метод применения полученных результатов
 				 */

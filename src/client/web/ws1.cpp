@@ -129,12 +129,21 @@ void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t 
 void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		// Если подключение закрыто
+		if(this->_close){
+			// Принудительно выполняем отключение лкиента
+			dynamic_cast <client::core_t *> (core)->close(aid);
+			// Выходим из функции
+			return;
+		}
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT}, event_t::READ)){
 			// Если рукопожатие не выполнено
-			if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
+			if(!(this->_shake = reinterpret_cast <http_t *> (&this->_http)->isHandshake())){
+				// Добавляем полученные данные в буфер
+				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
 				const size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
 				// Если все данные получены
@@ -143,20 +152,24 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
-						// Получаем данные ответа
-						const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
-						// Если параметры ответа получены
-						if(!response.empty()){
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl;
-							// Если тело ответа существует
-							if(!this->_http.body().empty())
-								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
-							// Иначе устанавливаем перенос строки
-							else cout << endl;
+						{
+							// Получаем объект работы с HTTP-запросами
+							http_t * http = reinterpret_cast <http_t *> (&this->_http);
+							// Получаем данные ответа
+							const auto & response = http->process(http_t::process_t::RESPONSE, true);
+							// Если параметры ответа получены
+							if(!response.empty()){
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры ответа
+								cout << string(response.begin(), response.end()) << endl;
+								// Если тело ответа существует
+								if(!http->body().empty())
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("<body %u>", http->body().size()) << endl << endl;
+								// Иначе устанавливаем перенос строки
+								else cout << endl;
+							}
 						}
 					#endif
 					// Выполняем препарирование полученных данных
@@ -187,11 +200,15 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 					if(this->_resultCallback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+					// Выполняем очистку функций обратного вызова
+					this->_resultCallback.clear();
 				}
 				// Завершаем работу
 				return;
 			// Если рукопожатие выполнено
 			} else if(this->_allow.receive) {
+				// Добавляем полученные данные в буфер
+				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем препарирование полученных данных
 				switch(static_cast <uint8_t> (this->prepare(1, aid, dynamic_cast <client::core_t *> (core)))){
 					// Если необходимо выполнить остановку обработки
@@ -214,6 +231,8 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 			if(this->_resultCallback.is("stream"))
 				// Выводим функцию обратного вызова
 				this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
+			// Выполняем очистку функций обратного вызова
+			this->_resultCallback.clear();
 		}
 	}
 }
@@ -429,7 +448,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Если рукопожатие не выполнено
-	if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
+	if(!this->_shake){
 		// Получаем параметры запроса
 		auto response = this->_http.response();
 		// Выполняем проверку авторизации
@@ -500,7 +519,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 				// Если рукопожатие выполнено
-				if(this->_http.isHandshake()){
+				if((this->_shake = this->_http.isHandshake())){
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
@@ -735,6 +754,8 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 			// Если данные мы все получили, выходим
 			if(!receive || this->_buffer.empty()) break;
 		}
+		// Выполняем завершение работы
+		return status_t::STOP;
 	}
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callback.is("stream"))
@@ -1436,7 +1457,7 @@ void awh::client::WebSocket1::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ web_t(fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
@@ -1452,7 +1473,7 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _close(false), _crypt(false), _noinfo(false), _freeze(false), _deflate(false),
+ web_t(core, fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
