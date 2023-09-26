@@ -596,7 +596,7 @@ bool awh::client::Http2::redirect(const size_t aid, const size_t sid, awh::core_
 	// Результат работы функции
 	bool result = false;
 	// Если список ответов получен
-	if((result = !this->_stopped && !this->_requests.empty())){
+	if(!this->_stopped && !this->_requests.empty() && !this->_workers.empty()){
 		// Выполняем поиск активного воркера который необходимо перезапустить
 		for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
 			// Определяем тип агента

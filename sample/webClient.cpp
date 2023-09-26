@@ -235,9 +235,9 @@ int main(int argc, char * argv[]){
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
-	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"},{"Proxy-Authorization", "Basic M3B2aG9lOlU4UUZXZA=="}});
+	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Подготавливаем тело запроса
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
