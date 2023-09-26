@@ -710,7 +710,8 @@ void awh::client::Web2::implementation(const size_t aid, client::core_t * core) 
 		nghttp2_session_client_new(&this->_session, callbacks, this);
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
-		{
+		// Если список параметров настроек не пустой
+		if(!this->_settings.empty()){
 			// Создаём параметры сессии подключения с HTTP/2 сервером
 			vector <nghttp2_settings_entry> iv;
 			// Выполняем переход по всему списку настроек
@@ -755,7 +756,7 @@ void awh::client::Web2::implementation(const size_t aid, client::core_t * core) 
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SETTINGS, nghttp2_strerror(rv));
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SETTINGS, this->_fmk->format("Could not submit SETTINGS: %s", nghttp2_strerror(rv)));
 				// Если сессия HTTP/2 создана удачно
 				if(this->_session != nullptr)
 					// Выполняем удаление сессии
@@ -763,9 +764,23 @@ void awh::client::Web2::implementation(const size_t aid, client::core_t * core) 
 				// Выходим из функции
 				return;
 			}
+			// Выполняем активацию работы с протоколом HTTP/2
+			this->_upgraded = !this->_upgraded;
+		// Если список параметров настроек пустой
+		} else {
+			// Выполняем закрытие подключения
+			core->close(aid);
+			// Выводим сообщение об ошибке
+			this->_log->print("SETTINGS list is empty: %s", log_t::flag_t::CRITICAL);
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::HTTP2_SETTINGS, "SETTINGS list is empty");
+			// Если сессия HTTP/2 создана удачно
+			if(this->_session != nullptr)
+				// Выполняем удаление сессии
+				nghttp2_session_del(this->_session);
 		}
-		// Выполняем активацию работы с протоколом HTTP/2
-		this->_upgraded = !this->_upgraded;
 	}
 }
 /**
