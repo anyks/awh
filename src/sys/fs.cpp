@@ -444,8 +444,9 @@ void awh::FS::makePath(const string & path) const noexcept {
 /**
  * fileComponents Метод извлечения названия и расширения файла
  * @param filename адрес файла для извлечения его параметров
+ * @param before   флаг определения первой точки расширения слева
  */
-pair <string, string> awh::FS::fileComponents(const string & filename) const noexcept {
+pair <string, string> awh::FS::fileComponents(const string & filename, const bool before) const noexcept {
 	// Результат работы функции
 	pair <string, string> result;
 	// Если файл передан
@@ -463,7 +464,7 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
 				// Извлекаем имя файла
 				const string & name = filename.substr(pos + 1);
 				// Ищем расширение файла
-				if((pos = name.find(".")) != string::npos){
+				if((pos = (before ? name.find('.') : name.rfind('.'))) != string::npos){
 					// Устанавливаем имя файла
 					result.first = name.substr(0, pos);
 					// Устанавливаем расширение файла

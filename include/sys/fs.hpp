@@ -178,8 +178,9 @@ namespace awh {
 			/**
 			 * fileComponents Метод извлечения названия и расширения файла
 			 * @param filename адрес файла для извлечения его параметров
+			 * @param before   флаг определения первой точки расширения слева
 			 */
-			pair <string, string> fileComponents(const string & filename) const noexcept;
+			pair <string, string> fileComponents(const string & filename, const bool before = false) const noexcept;
 		public:
 			/**
 			 * Выполняем работу для Unix
