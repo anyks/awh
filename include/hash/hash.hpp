@@ -76,8 +76,6 @@ namespace awh {
 				State() noexcept : num(0), ivec{0} {}
 			} __attribute__((packed)) _state;
 		public:
-			// Уровень сжатия
-			u_int levelGzip = Z_DEFAULT_COMPRESSION;
 			/**
 			 * Набор размеров шифрования
 			 */
@@ -100,6 +98,9 @@ namespace awh {
 			short _wbit;
 			// Устанавливаем количество раундов
 			int _rounds;
+		public:
+			// Уровень сжатия
+			u_int levelGzip;
 		private:
 			// Соль и пароль для шифрования
 			string _salt, _pass;
@@ -110,12 +111,7 @@ namespace awh {
 			bool _takeOverDecompress;
 		private:
 			// Хвостовой буфер для удаления из финального сообщения
-			const char _btype[4] = {
-				static_cast <char> (0x00),
-				static_cast <char> (0x00),
-				static_cast <char> (0xFF),
-				static_cast <char> (0xFF)
-			};
+			const char _btype[4];
 		private:
 			// Определяем размер шифрования по умолчанию
 			cipher_t _cipher;
@@ -278,9 +274,9 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Hash(const log_t * log) noexcept :
-			 _wbit(MAX_WBITS), _rounds(5), _salt(""), _pass(""),
-			 _takeOverCompress(false), _takeOverDecompress(false),
-			 _cipher(cipher_t::AES128), _key{}, _zinf{0}, _zdef{0}, _log(log) {}
+			 _wbit(MAX_WBITS), _rounds(5), levelGzip(Z_DEFAULT_COMPRESSION),
+			 _salt(""), _pass(""), _takeOverCompress(false), _takeOverDecompress(false),
+			 _btype{0x00, 0x00, 0xFF, 0xFF}, _cipher(cipher_t::AES128), _key{}, _zinf{0}, _zdef{0}, _log(log) {}
 			/**
 			 * ~Hash Деструктор
 			 */
