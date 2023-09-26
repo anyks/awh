@@ -497,7 +497,7 @@ namespace awh {
 				// Количество потоков по умолчанию
 				static constexpr uint32_t CONCURRENT_STREAMS = 128;
 				// Максимальный размер таблицы заголовков по умолчанию
-				static constexpr uint32_t HEADER_TABLE_SIZE = 1024;
+				static constexpr uint32_t HEADER_TABLE_SIZE = 4096;
 				// Минимальный размер фрейма по умолчанию
 				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16384;
 				// Максимальный размер фрейма по умолчанию
