@@ -493,6 +493,29 @@ namespace awh {
 		 * Web2 Базовый класс web2-клиента
 		 */
 		typedef class Web2 : public web_t {
+			public:
+				// Количество потоков по умолчанию
+				static constexpr uint32_t CONCURRENT_STREAMS = 128;
+				// Максимальный размер таблицы заголовков по умолчанию
+				static constexpr uint32_t HEADER_TABLE_SIZE = 1024;
+				// Минимальный размер фрейма по умолчанию
+				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16384;
+				// Максимальный размер фрейма по умолчанию
+				static constexpr uint32_t MAX_FRAME_SIZE_MAX = 16777215;
+				// Максимальный размер окна по умолчанию
+				static constexpr uint32_t MAX_WINDOW_SIZE = 2147483647;
+			public:
+				/**
+				 * Параметры настроек HTTP/2
+				 */
+				enum class settings_t : uint8_t {
+					NONE              = 0x00, // Настройки не установлены
+					STREAMS           = 0x01, // Максимальное количество потоков
+					FRAME_SIZE        = 0x02, // Максимальный размер фрейма
+					ENABLE_PUSH       = 0x03, // Разрешение присылать пуш-уведомления
+					WINDOW_SIZE       = 0x04, // Максимальный размер окна полезной нагрузки
+					HEADER_TABLE_SIZE = 0x05  // Максимальный размер таблицы заголовков
+				};
 			protected:
 				/**
 				 * Serv Структура идентификации сервиса
@@ -544,6 +567,9 @@ namespace awh {
 				bool _upgraded;
 				// Ессия HTTP/2 подключения
 				nghttp2_session * _session;
+			private:
+				// Список параметров настроек протокола HTTP/2
+				map <settings_t, uint32_t> _settings;
 			protected:
 				/**
 				 * debug Функция обратного вызова при получении отладочной информации
@@ -760,6 +786,12 @@ namespace awh {
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				virtual void mode(const set <flag_t> & flags) noexcept;
+			public:
+				/**
+				 * settings Модуль установки настроек протокола HTTP/2
+				 * @param settings список настроек протокола HTTP/2
+				 */
+				void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

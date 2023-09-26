@@ -175,7 +175,7 @@ namespace awh {
 					Head(const bool fin = true, const bool mask = true) noexcept :
 					fin(fin), mask(mask), rsv{false, false, false},
 					size(0), frame(0), payload(0), optcode(opcode_t::TEXT) {}
-				} head_t;
+				} __attribute__((packed)) head_t;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;

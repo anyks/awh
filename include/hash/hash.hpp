@@ -73,8 +73,8 @@ namespace awh {
 				/**
 				 * State Конструктор
 				 */
-				State() : num(0), ivec{0} {}
-			} _state;
+				State() noexcept : num(0), ivec{0} {}
+			} __attribute__((packed)) _state;
 		public:
 			// Уровень сжатия
 			u_int levelGzip = Z_DEFAULT_COMPRESSION;

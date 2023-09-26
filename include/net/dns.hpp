@@ -122,7 +122,7 @@ namespace awh {
 				 * Server Конструктор
 				 */
 				Server() noexcept : port(53), ip{0} {}
-			};
+			} __attribute__((packed));
 			/**
 			 * Шаблон формата данных DNS-кэша
 			 * @tparam T размерность буфера DNS-кэша
@@ -140,7 +140,7 @@ namespace awh {
 				 * Cache Конструктор
 				 */
 				Cache() noexcept : create(0), localhost(false), forbidden(false), ip{0} {}
-			};
+			} __attribute__((packed));
 			/**
 			 * Шаблон формата данных DNS-кэша
 			 * @tclass T размерность буфера DNS-кэша
@@ -190,7 +190,7 @@ namespace awh {
 				 * Header Конструктор
 				 */
 				Header() noexcept : qdcount(0), ancount(0), nscount(0), arcount(0) {}
-			} head_t;
+			} __attribute__((packed)) head_t;
 			/**
 			 * QFlags Структура флагов DNS запросов
 			 */
