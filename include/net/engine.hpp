@@ -91,11 +91,6 @@
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
 
-/**
- * Подключаем NgHttp2
- */
-#include <nghttp2/nghttp2.h>
-
 // Устанавливаем область видимости
 using namespace std;
 
@@ -452,6 +447,18 @@ namespace awh {
 					 * @return      результат работы функции
 					 */
 					bool buffer(const int read, const int write, const u_int total) noexcept;
+				private:
+					/**
+					 * selectProto Метод выполнения выбора следующего протокола
+					 * @param out     буфер назначения
+					 * @param outSize размер буфера назначения
+					 * @param in      буфер входящих данных
+					 * @param inSize  размер буфера входящих данных
+					 * @param key     ключ копирования
+					 * @param keySize размер ключа для копирования
+					 * @return        результат переключения протокола
+					 */
+					bool selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept;
 				public:
 					/**
 					 * Context Конструктор
@@ -513,7 +520,7 @@ namespace awh {
 			 * @param second второе доменное имя
 			 * @return       результат проверки
 			 */
-			const bool rawEqual(const string & first, const string & second) const noexcept;
+			bool rawEqual(const string & first, const string & second) const noexcept;
 			/**
 			 * rawNequal Метод проверки на не эквивалентность доменных имён
 			 * @param first  первое доменное имя
@@ -521,7 +528,7 @@ namespace awh {
 			 * @param max    количество начальных символов для проверки
 			 * @return       результат проверки
 			 */
-			const bool rawNequal(const string & first, const string & second, const size_t max = 0) const noexcept;
+			bool rawNequal(const string & first, const string & second, const size_t max = 0) const noexcept;
 		private:
 			/**
 			 * hostmatch Метод проверки эквивалентности доменного имени с учетом шаблона
@@ -529,14 +536,14 @@ namespace awh {
 			 * @param patt шаблон домена
 			 * @return     результат проверки
 			 */
-			const bool hostmatch(const string & host, const string & patt) const noexcept;
+			bool hostmatch(const string & host, const string & patt) const noexcept;
 			/**
 			 * certHostcheck Метод проверки доменного имени по шаблону
 			 * @param host доменное имя
 			 * @param patt шаблон домена
 			 * @return     результат проверки
 			 */
-			const bool certHostcheck(const string & host, const string & patt) const noexcept;
+			bool certHostcheck(const string & host, const string & patt) const noexcept;
 		private:
 			/**
 			 * Если операционной системой является Linux или FreeBSD
@@ -579,11 +586,6 @@ namespace awh {
 				 * @return     результат переключения протокола
 				 */
 				static int nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx = nullptr) noexcept;
-			#endif // !OPENSSL_NO_NEXTPROTONEG
-			/**
-			 * OpenSSL собран без следующих переговорщиков по протоколам
-			 */
-			#ifndef OPENSSL_NO_NEXTPROTONEG
 				/**
 				 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
 				 * @param ssl     объект SSL
@@ -652,14 +654,14 @@ namespace awh {
 			 * @param cert сертификат
 			 * @return     результат проверки
 			 */
-			const validate_t matchesCommonName(const string & host, const X509 * cert = nullptr) const noexcept;
+			validate_t matchesCommonName(const string & host, const X509 * cert = nullptr) const noexcept;
 			/**
 			 * matchSubjectName Метод проверки доменного имени по списку доменных имён из сертификата
 			 * @param host доменное имя
 			 * @param cert сертификат
 			 * @return     результат проверки
 			 */
-			const validate_t matchSubjectName(const string & host, const X509 * cert = nullptr) const noexcept;
+			validate_t matchSubjectName(const string & host, const X509 * cert = nullptr) const noexcept;
 		private:
 			/**
 			 * validateHostname Метод проверки доменного имени
@@ -667,7 +669,7 @@ namespace awh {
 			 * @param cert сертификат
 			 * @return     результат проверки
 			 */
-			const validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
+			validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
 		private:
 			/**
 			 * storeCA Метод инициализации магазина доверенных сертификатов

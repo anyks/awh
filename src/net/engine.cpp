@@ -1574,6 +1574,32 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
 	return false;
 }
 /**
+ * selectProto Метод выполнения выбора следующего протокола
+ * @param out     буфер назначения
+ * @param outSize размер буфера назначения
+ * @param in      буфер входящих данных
+ * @param inSize  размер буфера входящих данных
+ * @param key     ключ копирования
+ * @param keySize размер ключа для копирования
+ * @return        результат переключения протокола
+ */
+bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept {
+	// Выполняем перебор всех данных в входящем буфере
+	for(u_int i = 0; (i + keySize) <= inSize; i += (u_int) (in[i] + 1)){
+		// Если данные ключа скопированны удачно
+		if(::memcmp(&in[i], key, keySize) == 0){
+			// Выполняем установку размеров исходящего буфера
+			(* outSize) = in[i];
+			// Выполняем установку полученных данных в исходящий буфер
+			(* out) = (u_char *) &in[i + 1];
+			// Выходим из функции
+			return true;
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
  * Context Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -1582,9 +1608,9 @@ awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
  _tls(false), _verb(false), _type(type_t::NONE), _proto(proto_t::RAW), _protoList{0},
  _bio(nullptr), _ssl(nullptr), _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем размер названия протокола
-	this->_protoList[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+	this->_protoList[0] = 2;
 	// Выполняем копирование в буфер название следующего протокола
-	::memcpy(&this->_protoList[1], NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
+	::memcpy(&this->_protoList[1], "h2", 2);
 }
  /**
  * ~Context Деструктор
@@ -1599,7 +1625,7 @@ awh::Engine::Context::~Context() noexcept {
  * @param second второе доменное имя
  * @return       результат проверки
  */
-const bool awh::Engine::rawEqual(const string & first, const string & second) const noexcept {
+bool awh::Engine::rawEqual(const string & first, const string & second) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1616,7 +1642,7 @@ const bool awh::Engine::rawEqual(const string & first, const string & second) co
  * @param max    количество начальных символов для проверки
  * @return       результат проверки
  */
-const bool awh::Engine::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
+bool awh::Engine::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1639,7 +1665,7 @@ const bool awh::Engine::rawNequal(const string & first, const string & second, c
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::Engine::hostmatch(const string & host, const string & patt) const noexcept {
+bool awh::Engine::hostmatch(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные переданы
@@ -1692,7 +1718,7 @@ const bool awh::Engine::hostmatch(const string & host, const string & patt) cons
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::Engine::certHostcheck(const string & host, const string & patt) const noexcept {
+bool awh::Engine::certHostcheck(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1933,21 +1959,16 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
+			// Выполняем установку размер буфера данных протокола
+			(* len) = static_cast <u_int> (3);
 			// Выполняем установку буфера данных
 			(* data) = reinterpret_cast <ctx_t *> (ctx)->_protoList;
-			// Выполняем установку размер буфера данных протокола
-			(* len) = static_cast <u_int> (1 + NGHTTP2_PROTO_VERSION_ID_LEN);
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
 	}
-#endif // !OPENSSL_NO_NEXTPROTONEG
-/**
- * OpenSSL собран без следующих переговорщиков по протоколам
- */
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	/**
 	 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
 	 * @param ssl     объект SSL
@@ -1963,12 +1984,23 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
-			// Выполняем выбор активного протокола
-			if(nghttp2_select_next_protocol(out, outSize, in, inSize) == 1)
+			// Название протокола HTTP/2
+			const char * http2 = "\x2h2";
+			// Название протокола HTTP/1.1
+			const char * http1 = "\x8http/1.1";
+			// Получаем объект контекста модуля
+			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
+			// Если протокол переключить получилось на HTTP/2
+			if(context->selectProto(out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
-			// Выполняем переключение протокола на HTTP/1.1
-			reinterpret_cast <ctx_t *> (ctx)->_proto = proto_t::HTTP1_1;
+			// Если протокол переключить не получилось
+			else {
+				// Выполняем переключение протокола обратно на HTTP/1.1
+				context->selectProto(out, outSize, in, inSize, http1, (sizeof(http1) - 1));
+				// Выполняем переключение протокола на HTTP/1.1
+				context->_proto = proto_t::HTTP1_1;
+			}
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -1993,12 +2025,23 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
-			// Выполняем выбор активного протокола
-			if(nghttp2_select_next_protocol((u_char **) out, outSize, in, inSize) == 1)
+			// Название протокола HTTP/2
+			const char * http2 = "\x2h2";
+			// Название протокола HTTP/1.1
+			const char * http1 = "\x8http/1.1";
+			// Получаем объект контекста модуля
+			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
+			// Если протокол переключить получилось на HTTP/2
+			if(context->selectProto((u_char **) out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
-			// Выполняем переключение протокола на HTTP/1.1
-			reinterpret_cast <ctx_t *> (ctx)->_proto = proto_t::HTTP1_1;
+			// Если протокол переключить не получилось
+			else {
+				// Выполняем переключение протокола обратно на HTTP/1.1
+				context->selectProto((u_char **) out, outSize, in, inSize, http1, (sizeof(http1) - 1));
+				// Выполняем переключение протокола на HTTP/1.1
+				context->_proto = proto_t::HTTP1_1;
+			}
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2208,7 +2251,7 @@ int awh::Engine::verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t 
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, const X509 * cert) const noexcept {
+awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -2241,7 +2284,7 @@ const awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const X509 * cert) const noexcept {
+awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -2287,7 +2330,7 @@ const awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host,
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const X509 * cert) const noexcept {
+awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::Error;
 	// Если данные переданы
