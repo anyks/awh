@@ -70,9 +70,23 @@ void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh
  */
 void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если протокол подключения установлен как HTTP/2
-	if(this->_upgraded && (this->_session != nullptr))
+	if(this->_upgraded && (this->_session != nullptr)){
+
+		cout << " ################1 " << endl;
+
 		// Выполняем остановку активной сессии
 		nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR);
+
+		cout << " ################2 " << endl;
+
+		// nghttp2_session_del(this->_session);
+
+		// this->_session = nullptr;
+
+		this->_upgraded = false;
+
+		cout << " ################3 " << endl;
+	}
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(aid, sid, core))
 		// Выходим из функции

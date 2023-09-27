@@ -354,6 +354,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/web/ws2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/web/nghttp2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"

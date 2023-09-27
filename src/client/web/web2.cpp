@@ -461,12 +461,19 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 	if(core != nullptr){
 		// Если система была остановлена
 		if(status == awh::core_t::status_t::STOP){
+			
+			cout << " $$$$$$$$$$$$$$$$ " << endl;
+			
 			// Если контекст сессии HTTP/2 создан
-			if(this->_upgraded && (this->_session != nullptr))
+			// if(this->_upgraded && (this->_session != nullptr))
 				// Выполняем удаление сессии
 				nghttp2_session_del(this->_session);
+
+				this->_session = nullptr;
+
+				// nghttp2_session_del(this->_session);
 			// Деактивируем флаг работы с протоколом HTTP/2
-			this->_upgraded = false;
+			// this->_upgraded = false;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
