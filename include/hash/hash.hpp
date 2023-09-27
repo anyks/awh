@@ -74,7 +74,7 @@ namespace awh {
 				 * State Конструктор
 				 */
 				State() noexcept : num(0), ivec{0} {}
-			} __attribute__((packed)) _state;
+			} _state;
 		public:
 			/**
 			 * Набор размеров шифрования
