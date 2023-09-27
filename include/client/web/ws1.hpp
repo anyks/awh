@@ -196,13 +196,6 @@ namespace awh {
 				void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
-				 * chunking Метод обработки получения чанков
-				 * @param chunk бинарный буфер чанка
-				 * @param http  объект модуля HTTP
-				 */
-				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
-			private:
-				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;

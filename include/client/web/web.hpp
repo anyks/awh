@@ -18,6 +18,7 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <stack>
 #include <string>
 #include <vector>
@@ -237,7 +238,7 @@ namespace awh {
 				 * @return     результат активации зашифрованного канала TLS
 				 */
 				bool enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
-			private:
+			protected:
 				/**
 				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
@@ -536,14 +537,14 @@ namespace awh {
 				map <settings_t, uint32_t> _settings;
 			protected:
 				/**
-				 * sendSignal Метод обратного вызова при отправки данных на HTTP/2 сервер
+				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
 				 * @param buffer буфер бинарных данных
 				 * @param size  размер буфера данных для отправки
 				 */
 				void sendSignal(const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
-				 * frameProxySignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера-сервера
+				 * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
 				 * @param sid   идентификатор потока
 				 * @param type  тип полученного фрейма
 				 * @param flags флаг полученного фрейма
@@ -551,7 +552,7 @@ namespace awh {
 				 */
 				int frameProxySignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept;
 				/**
-				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid   идентификатор потока
 				 * @param type  тип полученного фрейма
 				 * @param flags флаг полученного фрейма

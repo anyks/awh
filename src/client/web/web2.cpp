@@ -16,7 +16,7 @@
 #include <client/web/web.hpp>
 
 /**
- * sendSignal Метод обратного вызова при отправки данных на HTTP/2 сервер
+ * sendSignal Метод обратного вызова при отправки данных HTTP/2
  * @param buffer буфер бинарных данных
  * @param size  размер буфера данных для отправки
  */
@@ -25,7 +25,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 	const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_aid);
 }
 /**
- * frameProxySignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера-сервера
+ * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
  * @param sid   идентификатор потока
  * @param type  тип полученного фрейма
  * @param flags флаг полученного фрейма

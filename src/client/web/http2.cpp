@@ -201,7 +201,7 @@ void awh::client::Http2::persistCallback(const size_t aid, const size_t sid, awh
 	}
 }
 /**
- * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+ * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
  * @param sid   идентификатор потока
  * @param type  тип полученного фрейма
  * @param flags флаг полученного фрейма

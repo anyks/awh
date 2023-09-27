@@ -363,22 +363,6 @@ void awh::client::WebSocket1::headers(const u_int code, const string & message, 
 		this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, code, message, this->_http.headers());
 }
 /**
- * chunking Метод обработки получения чанков
- * @param chunk бинарный буфер чанка
- * @param http  объект модуля HTTP
- */
-void awh::client::WebSocket1::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
-	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()){
-		// Выполняем добавление полученного чанка в тело ответа
-		const_cast <awh::http_t *> (http)->body(chunk);
-		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callback.is("chunks"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const vector <char> &> ("chunks", 1, chunk);
-	}
-}
-/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::WebSocket1::flush() noexcept {

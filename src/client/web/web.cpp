@@ -345,9 +345,14 @@ bool awh::client::Web::enableTLSCallback(const uri_t::url_t & url, const size_t 
  */
 void awh::client::Web::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty())
+	if(!chunk.empty()){
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
+		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
+		if(this->_callback.is("chunks"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const vector <char> &> ("chunks", 1, chunk);
+	}
 }
 /**
  * init Метод инициализации WEB клиента
