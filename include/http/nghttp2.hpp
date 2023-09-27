@@ -25,7 +25,6 @@
  * Методы только для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <sys/un.h>
 	// Разрешаем статическую сборку для NGTCP2
 	#define NGTCP2_STATICLIB
 	// Разрешаем статическую сборку для NGHTTP2
