@@ -418,9 +418,9 @@ void awh::client::Web::on(function <void (const awh::core_t::status_t, awh::core
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+void awh::client::Web::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
+	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока

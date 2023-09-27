@@ -163,7 +163,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока

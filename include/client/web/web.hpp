@@ -32,11 +32,7 @@
 #include <net/uri.hpp>
 #include <http/client.hpp>
 #include <core/client.hpp>
-
-/**
- * Подключаем NgHttp2
- */
-#include <nghttp2/nghttp2.h>
+#include <http/nghttp2.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -84,38 +80,6 @@ namespace awh {
 					PROXY_NOCONNECT = 0x07, // Флаг отключающий метод CONNECT для прокси-клиента
 					TAKEOVER_CLIENT = 0x08, // Флаг ожидания входящих сообщений для клиента
 					TAKEOVER_SERVER = 0x09  // Флаг ожидания входящих сообщений для сервера
-				};
-				/**
-				 * Коды ошибок клиента
-				 */
-				enum class error_t : uint8_t {
-					NONE                      = 0x00, // Ошибка не установлена
-					WEBSOCKET                 = 0x01, // Ошибка WebSocket-клиента
-					HTTP1_SEND                = 0x02, // Ошибка отправки сообщения на протокол HTTP/1.1
-					HTTP2_SEND                = 0x03, // Ошибка отправки сообщения на протокол HTTP/2
-					HTTP2_PING                = 0x04, // Ошибка выполнения пинга на протокол HTTP/2
-					HTTP2_RECV                = 0x05, // Ошибка чтения данных из протокола HTTP/2
-					HTTP2_CANCEL              = 0x06, // Ошибка подключения, произведена отмена передачи данных по протоколу HTTP/2
-					HTTP2_SUBMIT              = 0x07, // Ошибка предоставления данных для протокола HTTP/2
-					HTTP2_CONNECT             = 0x08, // Ошибка выполнения подключения по протоколу HTTP/2
-					HTTP2_PROTOCOL            = 0x09, // Ошибка протокола HTTP/2
-					HTTP2_INTERNAL            = 0x0A, // Ошибка внутренняя у протокола HTTP/2
-					HTTP2_SETTINGS            = 0x0B, // Ошибка установки настроек для протокола HTTP/2
-					HTTP2_PIPE_INIT           = 0x0C, // Ошибка инициализации PIPE для протокола HTTP/2
-					HTTP2_PIPE_WRITE          = 0x0D, // Ошибка записи данных в PIPE для протокола HTTP/2
-					HTTP2_FRAME_SIZE          = 0x0E, // Ошибка размера фрейма для протокола HTTP/2
-					HTTP2_COMPRESSION         = 0x0F, // Ошибка сжатия данных для протокола HTTP/2
-					HTTP2_FLOW_CONTROL        = 0x10, // Ошибка управления потоком для протокола HTTP/2
-					HTTP2_STREAM_CLOSED       = 0x11, // Ошибка закрытия потока протокола HTTP/2
-					HTTP2_REFUSED_STREAM      = 0x12, // Ошибка раннего закрытия подключения протокола HTTP/2 
-					HTTP2_SETTINGS_TIMEOUT    = 0x13, // Ошибка настроек таймера для протокола HTTP/2
-					HTTP2_HTTP_1_1_REQUIRED   = 0x14, // Ошибка обмена данными, требуется протокола HTTP/1.1 а используется HTTP/2
-					HTTP2_ENHANCE_YOUR_CALM   = 0x15, // Ошибка повышения спокойствия для протокола HTTP/2
-					HTTP2_INADEQUATE_SECURITY = 0x16, // Ошибка недостаточной безопасности для протокола HTTP/2
-					PROXY_HTTP2_RECV          = 0x17, // Ошибка получения данных прокси-сервера для протокола HTTP/2
-					PROXY_HTTP2_SEND          = 0x18, // Ошибка отправки сообщения прокси-серверу на протокол HTTP/2
-					PROXY_HTTP2_SUBMIT        = 0x19, // Ошибка предоставления данных прокси-серверу для протокола HTTP/2
-					PROXY_HTTP2_NO_INIT       = 0x1A  // Ошибка инициализации протокола HTTP/2 для прокси-сервера
 				};
 			public:
 				/**
@@ -323,7 +287,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока
@@ -541,111 +505,6 @@ namespace awh {
 					 */
 					Crypto() noexcept : pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} crypto_t;
-			private:
-				/**
-				 * NgHttp2 Класс работы с фреймами NgHttp2
-				 */
-				typedef class NgHttp2 {
-					public:
-						// Флаг переключения на протокол HTTP/2
-						bool _upgraded;
-						// Ессия HTTP/2 подключения
-						nghttp2_session * _session;
-					private:
-						/**
-						 * debug Функция обратного вызова при получении отладочной информации
-						 * @param format формат вывода отладочной информации
-						 * @param args   список аргументов отладочной информации
-						 */
-						static void debug(const char * format, va_list args) noexcept;
-						/**
-						 * frame Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-						 * @param session объект сессии HTTP/2
-						 * @param frame   объект фрейма заголовков HTTP/2
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        статус полученных данных
-						 */
-						static int frame(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
-						/**
-						 * begin Функция начала получения фрейма заголовков HTTP/2
-						 * @param session объект сессии HTTP/2
-						 * @param frame   объект фрейма заголовков HTTP/2
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        статус полученных данных
-						 */
-						static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
-						/**
-						 * close Функция закрытия подключения с сервером HTTP/2
-						 * @param session объект сессии HTTP/2
-						 * @param sid     идентификатор потока
-						 * @param error   флаг ошибки HTTP/2 если присутствует
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        статус полученного события
-						 */
-						static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
-						/**
-						 * chunk Функция обратного вызова при получении чанка с сервера HTTP/2
-						 * @param session объект сессии HTTP/2
-						 * @param flags   флаги события для сессии HTTP/2
-						 * @param sid     идентификатор потока
-						 * @param buffer  буфер данных который содержит полученный чанк
-						 * @param size    размер полученного буфера данных чанка
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        статус полученных данных
-						 */
-						static int chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
-						/**
-						 * header Функция обратного вызова при получении заголовка HTTP/2
-						 * @param session объект сессии HTTP/2
-						 * @param frame   объект фрейма заголовков HTTP/2
-						 * @param key     данные ключа заголовка
-						 * @param keySize размер ключа заголовка
-						 * @param val     данные значения заголовка
-						 * @param valSize размер значения заголовка
-						 * @param flags   флаги события для сессии HTTP/2
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        статус полученных данных
-						 */
-						static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
-					private:
-						/**
-						 * send Функция обратного вызова при подготовки данных для отправки на сервер
-						 * @param session объект сессии HTTP/2
-						 * @param buffer  буфер данных которые следует отправить
-						 * @param size    размер буфера данных для отправки
-						 * @param flags   флаги события для сессии HTTP/2
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        количество отправленных байт
-						 */
-						static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
-						/**
-						 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
-						 * @param session объект сессии HTTP/2
-						 * @param sid     идентификатор потока
-						 * @param buffer  буфер данных которые следует отправить
-						 * @param size    размер буфера данных для отправки
-						 * @param flags   флаги события для сессии HTTP/2
-						 * @param source  объект промежуточных данных локального подключения
-						 * @param ctx     передаваемый промежуточный контекст
-						 * @return        количество отправленных байт
-						 */
-						static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
-					public:
-						/**
-						 * init Метод инициализации
-						 * @param self объект модуля родительского объекта
-						 */
-						void init(Web2 * self) noexcept;
-					public:
-						/**
-						 * NgHttp2 Конструктор
-						 */
-						NgHttp2() noexcept : _upgraded(false), _session(nullptr) {}
-						/**
-						 * ~NgHttp2 Деструктор
-						 */
-						~NgHttp2() noexcept {}
-				} nghttp2_t;
 			protected:
 				// Объект идентификации сервиса
 				serv_t _serv;
@@ -670,162 +529,90 @@ namespace awh {
 				// Алгоритм шифрования для Digest-авторизации
 				auth_t::hash_t _authHash;
 			protected:
-				// Флаг переключения на протокол HTTP/2
-				bool _upgraded;
-				// Ессия HTTP/2 подключения
-				nghttp2_session * _session;
+				// Флаг выполнения подключения к серверу
+				bool _sessionInitialized;
 			private:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
 			protected:
 				/**
-				 * debug Функция обратного вызова при получении отладочной информации
-				 * @param format формат вывода отладочной информации
-				 * @param args   список аргументов отладочной информации
+				 * sendSignal Метод обратного вызова при отправки данных на HTTP/2 сервер
+				 * @param buffer буфер бинарных данных
+				 * @param size  размер буфера данных для отправки
 				 */
-				static void debug(const char * format, va_list args) noexcept;
+				void sendSignal(const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
-				 * onFrame Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-				 * @param session объект сессии HTTP/2
-				 * @param frame   объект фрейма заголовков HTTP/2
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        статус полученных данных
+				 * frameProxySignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера-сервера
+				 * @param sid   идентификатор потока
+				 * @param type  тип полученного фрейма
+				 * @param flags флаг полученного фрейма
+				 * @return      статус полученных данных
 				 */
-				static int onFrame(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+				int frameProxySignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept;
 				/**
-				 * onClose Функция закрытия подключения с сервером HTTP/2
-				 * @param session объект сессии HTTP/2
-				 * @param sid     идентификатор потока
-				 * @param error   флаг ошибки HTTP/2 если присутствует
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        статус полученного события
+				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * @param sid   идентификатор потока
+				 * @param type  тип полученного фрейма
+				 * @param flags флаг полученного фрейма
+				 * @return      статус полученных данных
 				 */
-				static int onClose(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
-				/**
-				 * onChunk Функция обратного вызова при получении чанка с сервера HTTP/2
-				 * @param session объект сессии HTTP/2
-				 * @param flags   флаги события для сессии HTTP/2
-				 * @param sid     идентификатор потока
-				 * @param buffer  буфер данных который содержит полученный чанк
-				 * @param size    размер полученного буфера данных чанка
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        статус полученных данных
-				 */
-				static int onChunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+				virtual int frameSignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
-				 * onBeginHeaders Функция начала получения фрейма заголовков HTTP/2
-				 * @param session объект сессии HTTP/2
-				 * @param frame   объект фрейма заголовков HTTP/2
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        статус полученных данных
-				 */
-				static int onBeginHeaders(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
-				/**
-				 * onHeader Функция обратного вызова при получении заголовка HTTP/2
-				 * @param session объект сессии HTTP/2
-				 * @param frame   объект фрейма заголовков HTTP/2
-				 * @param key     данные ключа заголовка
-				 * @param keySize размер ключа заголовка
-				 * @param val     данные значения заголовка
-				 * @param valSize размер значения заголовка
-				 * @param flags   флаги события для сессии HTTP/2
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        статус полученных данных
-				 */
-				static int onHeader(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
-			protected:
-				/**
-				 * onSend Функция обратного вызова при подготовки данных для отправки на сервер
-				 * @param session объект сессии HTTP/2
-				 * @param buffer  буфер данных которые следует отправить
-				 * @param size    размер буфера данных для отправки
-				 * @param flags   флаги события для сессии HTTP/2
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        количество отправленных байт
-				 */
-				static ssize_t onSend(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
-				/**
-				 * onRead Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
-				 * @param session объект сессии HTTP/2
-				 * @param sid     идентификатор потока
-				 * @param buffer  буфер данных которые следует отправить
-				 * @param size    размер буфера данных для отправки
-				 * @param flags   флаги события для сессии HTTP/2
-				 * @param source  объект промежуточных данных локального подключения
-				 * @param ctx     передаваемый промежуточный контекст
-				 * @return        количество отправленных байт
-				 */
-				static ssize_t onRead(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
-			protected:
-				/**
-				 * signalFrameProxy Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера-сервера
-				 * @param frame   объект фрейма заголовков HTTP/2
-				 * @return        статус полученных данных
-				 */
-				int signalFrameProxy(const nghttp2_frame * frame) noexcept;
-				/**
-				 * signalFrame Метод обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-				 * @param frame   объект фрейма заголовков HTTP/2
-				 * @return        статус полученных данных
-				 */
-				virtual int signalFrame(const nghttp2_frame * frame) noexcept = 0;
-			protected:
-				/**
-				 * signalChunkProxy Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				int signalChunkProxy(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
+				int chunkProxySignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
-				 * signalChunk Метод обратного вызова при получении чанка с сервера HTTP/2
+				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int signalChunk(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
-				 * signalBeginHeadersProxy Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+				 * beginProxySignal Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				int signalBeginHeadersProxy(const int32_t sid) noexcept;
+				int beginProxySignal(const int32_t sid) noexcept;
 				/**
-				 * signalBeginHeaders Метод начала получения фрейма заголовков HTTP/2 сервера
+				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				virtual int signalBeginHeaders(const int32_t sid) noexcept = 0;
+				virtual int beginSignal(const int32_t sid) noexcept = 0;
 			protected:
 				/**
-				 * signalStreamClosed Метод завершения работы потока
+				 * streamClosedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param error флаг ошибки HTTP/2 если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int signalStreamClosed(const int32_t sid, const uint32_t error) noexcept = 0;
+				virtual int closedSignal(const int32_t sid, const uint32_t error) noexcept = 0;
 			protected:
 				/**
-				 * signalHeaderProxy Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+				 * headerProxySignal Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				int signalHeaderProxy(const int32_t sid, const string & key, const string & val) noexcept;
+				int headerProxySignal(const int32_t sid, const string & key, const string & val) noexcept;
 				/**
-				 * signalHeader Метод обратного вызова при получении заголовка HTTP/2 сервера
+				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int signalHeader(const int32_t sid, const string & key, const string & val) noexcept = 0;
+				virtual int headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера

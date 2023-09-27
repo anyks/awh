@@ -25,9 +25,9 @@
  */
 namespace awh {
 	/**
-	 * web пространство имён
+	 * http пространство имён
 	 */
-	namespace web {
+	namespace http {
 		/**
 		 * Коды ошибок клиента
 		 */

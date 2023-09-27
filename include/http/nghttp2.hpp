@@ -27,7 +27,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <client/web/errors.hpp>
+#include <http/errors.hpp>
 
 /**
  * Подключаем NgHttp2
@@ -120,6 +120,7 @@ namespace awh {
 			 * @return        количество отправленных байт
 			 */
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
+		public:
 			/**
 			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
 			 * @param session объект сессии HTTP/2
@@ -156,11 +157,6 @@ namespace awh {
 			 */
 			void on(function <int (const int32_t)> callback) noexcept;
 			/**
-			 * on Метод установки функции обратного вызова при получении фрейма заголовков
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const nghttp2_frame *)> callback) noexcept;
-			/**
 			 * on Метод установки функции обратного вызова при закрытии потока
 			 * @param callback функция обратного вызова
 			 */
@@ -169,7 +165,12 @@ namespace awh {
 			 * on Метод установки функции обратного вызова при отправки сообщения на сервер
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const uint8_t *, const size_t, const int)> callback) noexcept;
+			void on(function <void (const uint8_t *, const size_t)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при получении фрейма
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <int (const int32_t, const uint8_t, const uint8_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при получении чанка с сервера
 			 * @param callback функция обратного вызова
@@ -184,7 +185,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова на событие получения ошибки
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const log_t::flag_t, const web::error_t, const string &)> callback) noexcept;
+			void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 		public:
 			/**
 			 * NgHttp2 Конструктор

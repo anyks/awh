@@ -97,6 +97,14 @@ void awh::client::WebSocket::on(function <void (const vector <char> &, const awh
 	this->_ws.on(callback);
 }
 /**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
  * on Метод установки функции вывода полученного чанка бинарных данных с сервера
  * @param callback функция обратного вызова
  */

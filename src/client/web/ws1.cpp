@@ -774,7 +774,7 @@ void awh::client::WebSocket1::error(const ws::mess_t & message) const noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::WEBSOCKET, this->_fmk->format("%s [%u]", message.code, message.text.c_str()));
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", message.code, message.text.c_str()));
 		}
 	}
 }
@@ -1132,7 +1132,7 @@ void awh::client::WebSocket1::on(function <void (const awh::core_t::status_t, aw
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

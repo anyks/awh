@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <client/web/nghttp2.hpp>
+#include <http/nghttp2.hpp>
 
 /**
  * debug Функция обратного вызова при получении отладочной информации
@@ -79,7 +79,7 @@ int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, 
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
-		return self->_callback.apply <int, const nghttp2_frame *> ("frame", frame);
+		return self->_callback.apply <int, const int32_t, const uint8_t, const uint8_t> ("frame", frame->hd.stream_id, frame->hd.type, frame->hd.flags);
 	// Выводим результат
 	return 0;
 }
@@ -224,7 +224,7 @@ ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, co
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
 		// Выводим функцию обратного вызова
-		self->_callback.call <const uint8_t *, const size_t, const int> ("send", buffer, size, flags);
+		self->_callback.call <const uint8_t *, const size_t> ("send", buffer, size);
 	// Возвращаем количество отправленных байт
 	return static_cast <ssize_t> (size);
 }
@@ -358,7 +358,7 @@ bool awh::NgHttp2::init(const vector <nghttp2_settings_entry> & settings) noexce
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const web::error_t, const string &> ("error", log_t::flag_t::CRITICAL, web::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not submit SETTINGS: %s", nghttp2_strerror(rv)));
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not submit SETTINGS: %s", nghttp2_strerror(rv)));
 				// Выполняем очистку предыдущей сессии
 				this->free();
 			}
@@ -369,7 +369,7 @@ bool awh::NgHttp2::init(const vector <nghttp2_settings_entry> & settings) noexce
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const web::error_t, const string &> ("error", log_t::flag_t::CRITICAL, web::error_t::HTTP2_SETTINGS, "SETTINGS list is empty");
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, "SETTINGS list is empty");
 			// Выполняем очистку предыдущей сессии
 			this->free();
 		}
@@ -386,14 +386,6 @@ void awh::NgHttp2::on(function <int (const int32_t)> callback) noexcept {
 	this->_callback.set <int (const int32_t)> ("begin", callback);
 }
 /**
- * on Метод установки функции обратного вызова при получении фрейма заголовков
- * @param callback функция обратного вызова
- */
-void awh::NgHttp2::on(function <int (const nghttp2_frame *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const nghttp2_frame *)> ("frame", callback);
-}
-/**
  * on Метод установки функции обратного вызова при закрытии потока
  * @param callback функция обратного вызова
  */
@@ -405,9 +397,17 @@ void awh::NgHttp2::on(function <int (const int32_t, const uint32_t)> callback) n
  * on Метод установки функции обратного вызова при отправки сообщения на сервер
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <void (const uint8_t *, const size_t, const int)> callback) noexcept {
+void awh::NgHttp2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint8_t *, const size_t, const int)> ("send", callback);
+	this->_callback.set <void (const uint8_t *, const size_t)> ("send", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при получении фрейма
+ * @param callback функция обратного вызова
+ */
+void awh::NgHttp2::on(function <int (const int32_t, const uint8_t, const uint8_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <int (const int32_t, const uint8_t, const uint8_t)> ("frame", callback);
 }
 /**
  * on Метод установки функции обратного вызова при получении чанка с сервера
@@ -429,7 +429,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const string &, const string
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <void (const log_t::flag_t, const web::error_t, const string &)> callback) noexcept {
+void awh::NgHttp2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const web::error_t, const string &)> ("error", callback);
+	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
