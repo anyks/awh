@@ -45,39 +45,6 @@ namespace awh {
 		typedef struct SchemeWEB : public scheme_t {
 			public:
 				/**
-				 * Основные экшены
-				 */
-				enum class action_t : uint8_t {
-					NONE       = 0x01, // Отсутствие события
-					READ       = 0x02, // Событие чтения с сервера
-					CONNECT    = 0x03, // Событие подключения к серверу
-					DISCONNECT = 0x04  // Событие отключения от сервера
-				};
-			public:
-				/**
-				 * Locker Структура локера // +++++++++++++++++++++++++++++++
-				 */
-				typedef struct Locker {
-					bool mode;           // Флаг блокировки
-					recursive_mutex mtx; // Мютекс для блокировки потока
-					/**
-					 * Locker Конструктор
-					 */
-					Locker() noexcept : mode(false) {}
-				} locker_t;
-				/**
-				 * Allow Структура флагов разрешения обменом данных // +++++++++++++++++++++++++++++++
-				 */
-				typedef struct Allow {
-					bool send;    // Флаг разрешения отправки данных
-					bool receive; // Флаг разрешения чтения данных
-					/**
-					 * Allow Конструктор
-					 */
-					Allow() noexcept : send(true), receive(true) {}
-				} allow_t;
-			public:
-				/**
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
@@ -85,9 +52,6 @@ namespace awh {
 					bool alive;                       // Флаг долгоживущего подключения
 					bool close;                       // Флаг требования закрыть адъютанта
 					bool stopped;                     // Флаг принудительной остановки
-					action_t action;                  // Экшен активного события // +++++++++++++++++++++++++++++++
-					allow_t allow;                    // Объект разрешения обмена данными // +++++++++++++++++++++++++++++++
-					locker_t locker;                  // Объект блокировщика // +++++++++++++++++++++++++++++++
 					size_t requests;                  // Количество выполненных запросов
 					time_t checkPoint;                // Контрольная точка ответа на пинг
 					http_t http;                      // Создаём объект для работы с HTTP
@@ -99,8 +63,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
-					 crypt(false), alive(false), close(false), stopped(false),
-					 action(action_t::NONE), requests(0), checkPoint(0),
+					 crypt(false), alive(false), close(false),
+					 stopped(false), requests(0), checkPoint(0),
 					 http(fmk, log), compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор

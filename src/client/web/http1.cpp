@@ -28,6 +28,8 @@ void awh::client::Http1::connectCallback(const uint64_t aid, const uint16_t sid,
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
+		// Выполняем установку идентификатора объекта
+		this->_http.id(aid);
 		// Снимаем флаг активации получения данных
 		this->_mode = false;
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -335,7 +337,7 @@ void awh::client::Http1::flush() noexcept {
 awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept {
 	// Результат работы функции
 	status_t result = status_t::STOP;
-	// Получаем параметры запроса
+	// Получаем параметры ответа сервера
 	const auto & response = this->_http.response();
 	// Получаем статус ответа
 	awh::http_t::stath_t status = this->_http.getAuth();

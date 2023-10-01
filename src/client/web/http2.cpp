@@ -28,12 +28,16 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
+		// Выполняем установку идентификатора объекта
+		this->_http.id(aid);
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(aid, sid, core);
 		// Если флаг инициализации сессии HTTP2 не установлен
 		if(!this->_sessionInitialized){
 			// Запоминаем идентификатор адъютанта
 			this->_http1._aid = this->_aid;
+			// Выполняем установку идентификатора объекта
+			this->_http1._http.id(this->_aid);
 			// Выполняем установку сетевого ядра
 			this->_http1._core = this->_core;
 			// Выполняем установку данных URL-адреса
@@ -42,6 +46,8 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 			dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::SYNC);
 		// Активируем асинхронный режим работы
 		} else dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::ASYNC);
+		// Выполняем установку идентификатора объекта
+		this->_ws2._http.id(aid);
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = this->_core;
 		// Выполняем установку данных URL-адреса
@@ -1357,6 +1363,8 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 					ret.first->second->http.reset();
 					// Выполняем очистку параметров HTTP запроса
 					ret.first->second->http.clear();
+					// Выполняем установку идентификатора объекта
+					ret.first->second->http.id(this->_aid);
 					// Если метод компрессии установлен
 					if(request.compress != http_t::compress_t::NONE)
 						// Устанавливаем метод компрессии переданный пользователем

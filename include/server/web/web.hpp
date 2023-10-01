@@ -80,15 +80,6 @@ namespace awh {
 				};
 			protected:
 				/**
-				 * Этапы обработки
-				 */
-				enum class status_t : uint8_t {
-					STOP = 0x00, // Остановить обработку
-					NEXT = 0x01, // Следующий этап обработки
-					SKIP = 0x02  // Пропустить этап обработки
-				};
-			protected:
-				/**
 				 * Serv Структура идентификации сервиса
 				 */
 				typedef struct Serv {
@@ -254,15 +245,6 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				virtual void garbage(const u_short tid, awh::core_t * core) noexcept;
-			protected:
-				/**
-				 * prepare Метод выполнения препарирования полученных данных
-				 * @param id   идентификатор запроса
-				 * @param aid  идентификатор адъютанта
-				 * @param core объект сетевого ядра
-				 * @return     результат препарирования
-				 */
-				virtual status_t prepare(const int32_t id, const uint64_t aid, server::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта

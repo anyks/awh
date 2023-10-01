@@ -26,14 +26,16 @@ void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
-		// Запоминаем идентификатор адъютанта
-		this->_aid = aid;
 		// Выполняем сброс параметров запроса
 		this->flush();
+		// Запоминаем идентификатор адъютанта
+		this->_aid = aid;
 		// Выполняем сброс состояния HTTP парсера
 		this->_http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		this->_http.clear();
+		// Выполняем установку идентификатора объекта
+		this->_http.id(aid);
 		// Выполняем очистку функций обратного вызова
 		this->_resultCallback.clear();
 		// Если HTTP-заголовки установлены

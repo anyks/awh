@@ -1107,9 +1107,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const uint64_t
 							// Выводим функцию обратного вызова
 							shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					}
-					// Если адъютант ещё существует и подключён
-					if((this->adjutants.count(aid) > 0) && adj->bev.locked.write &&
-					   !adj->buffer.empty() && (adj->buffer.size() >= adj->marker.write.min)){
+					// Если адъютант ещё существует и подключён, запись заблокированна и данные в буфере данных ещё есть
+					if((this->adjutants.count(aid) > 0) && adj->bev.locked.write && !adj->buffer.empty() && (adj->buffer.size() >= adj->marker.write.min)){
 						// Снимаем блокировку с записи данных
 						adj->bev.locked.write = !adj->bev.locked.write;
 						// Выполняем запись в сокет оставшихся данных из буфера

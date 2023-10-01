@@ -136,6 +136,16 @@ namespace awh {
 				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 			public:
 				/**
+				 * send Метод отправки сообщения адъютанту
+				 * @param aid     идентификатор адъютанта
+				 * @param code    код сообщения для адъютанта
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param entity  данные полезной нагрузки (тело сообщения)
+				 * @param headers HTTP заголовки сообщения
+				 */
+				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */

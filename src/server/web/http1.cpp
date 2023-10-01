@@ -93,7 +93,15 @@ void awh::server::Http1::connectCallback(const uint64_t aid, const uint16_t sid,
  * @param core объект сетевого ядра
  */
 void awh::server::Http1::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные переданы верные
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Добавляем в очередь список мусорных адъютантов
+		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
+	}
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с клиента
@@ -104,7 +112,130 @@ void awh::server::Http1::disconnectCallback(const uint64_t aid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::server::Http1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные существуют
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Если подключение закрыто
+			if(adj->close){
+				// Принудительно выполняем отключение лкиента
+				dynamic_cast <server::core_t *> (core)->close(aid);
+				// Выходим из функции
+				return;
+			}
+			// Если разрешено получение данных
+			if(adj->allow.receive){
+				// Добавляем полученные данные в буфер
+				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+				// Выполняем обработку полученных данных
+				while(!adj->close){
+					// Выполняем парсинг полученных данных
+					size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
+					// Если все данные получены
+					if(adj->http.isEnd()){
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные запроса
+								const auto & request = adj->http.process(http_t::process_t::REQUEST, true);
+								// Если параметры запроса получены
+								if(!request.empty()){
+									// Выводим заголовок запроса
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры запроса
+									cout << string(request.begin(), request.end()) << endl;
+									// Если тело запроса существует
+									if(!adj->http.body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
+								}
+							}
+						#endif
+						// Если подключение не установлено как постоянное
+						if(!this->_service.alive && !adj->alive){
+							// Увеличиваем количество выполненных запросов
+							adj->requests++;
+							// Если количество выполненных запросов превышает максимальный
+							if(adj->requests >= this->_maxRequests)
+								// Устанавливаем флаг закрытия подключения
+								adj->close = true;
+							// Получаем текущий штамп времени
+							else adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						// Выполняем сброс количества выполненных запросов
+						} else adj->requests = 0;
+						// Выполняем проверку авторизации
+						switch(static_cast <uint8_t> (adj->http.getAuth())){
+							// Если запрос выполнен удачно
+							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+								// Получаем флаг шифрованных данных
+								adj->crypt = adj->http.isCrypt();
+								// Получаем поддерживаемый метод компрессии
+								adj->compress = adj->http.compress();
+								// Выполняем извлечение параметров запроса
+								const auto & request = adj->http.request();
+								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+								if(this->_callback.is("entity"))
+									// Устанавливаем полученную функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());								
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
+								// Завершаем обработку
+								goto Next;
+							} break;
+							// Если запрос неудачный
+							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
+								// Выполняем очистку буфера полученных данных
+								adj->buffer.clear();
+								// Формируем запрос авторизации
+								const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+								// Если ответ получен
+								if(!response.empty()){
+									// Тело полезной нагрузки
+									vector <char> payload;
+									// Отправляем ответ адъютанту
+									dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
+									// Получаем данные тела запроса
+									while(!(payload = adj->http.payload()).empty()){
+										// Устанавливаем флаг закрытия подключения
+										adj->stopped = adj->http.body().empty();
+										// Отправляем тело на сервер
+										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+									}
+								// Выполняем отключение адъютанта
+								} else dynamic_cast <server::core_t *> (core)->close(aid);
+								// Выходим из функции
+								return;
+							}
+						}
+					}
+					// Устанавливаем метку продолжения обработки пайплайна
+					Next:
+					// Если парсер обработал какое-то количество байт
+					if((bytes > 0) && !adj->buffer.empty()){
+						// Если размер буфера больше количества удаляемых байт
+						if(adj->buffer.size() >= bytes)
+							// Удаляем количество обработанных байт
+							adj->buffer.assign(adj->buffer.begin() + bytes, adj->buffer.end());
+						// Если байт в буфере меньше, просто очищаем буфер
+						else adj->buffer.clear();
+						// Если данных для обработки не осталось, выходим
+						if(adj->buffer.empty()) break;
+					// Если данных для обработки недостаточно, выходим
+					} else break;
+				}
+			}
+		}
+	}
 }
 /**
  * writeCallback Функция обратного вызова при записи сообщение адъютанту
@@ -115,7 +246,21 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
  * @param core   объект сетевого ядра
  */
 void awh::server::Http1::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные существуют
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Если необходимо выполнить закрыть подключение
+			if(!adj->close && adj->stopped){
+				// Устанавливаем флаг закрытия подключения
+				adj->close = !adj->close;
+				// Принудительно выполняем отключение лкиента
+				const_cast <server::core_t *> (this->_core)->close(aid);
+			}
+		}
+	}
 }
 /**
  * persistCallback Функция персистентного вызова
@@ -237,6 +382,67 @@ void awh::server::Http1::init(const u_int port, const string & host, const http_
 	this->_scheme.compress = compress;
 	// Выполняем инициализацию родительского объекта
 	web_t::init(port, host, compress);
+}
+/**
+ * send Метод отправки сообщения адъютанту
+ * @param aid     идентификатор адъютанта
+ * @param code    код сообщения для адъютанта
+ * @param mess    отправляемое сообщение об ошибке
+ * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::Http1::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+	// Если подключение выполнено
+	if(this->_core->working()){
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Тело полезной нагрузки
+			vector <char> payload;
+			// Устанавливаем полезную нагрузку
+			adj->http.body(entity);
+			// Устанавливаем заголовки ответа
+			adj->http.headers(headers);
+			// Если подключение не установлено как постоянное, но подключение долгоживущее
+			if(!this->_service.alive && !adj->alive && adj->http.isAlive())
+				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
+			// Если сообщение ответа не установлено
+			if(mess.empty())
+				// Выполняем установку сообщения по умолчанию
+				const_cast <string &> (mess) = adj->http.message(code);
+			// Формируем запрос авторизации
+			const auto & response = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (code), mess));
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры ответа
+				cout << string(response.begin(), response.end()) << endl;
+			#endif
+			// Если тело данных не установлено для отправки
+			if(adj->http.body().empty())
+				// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+				adj->stopped = (!this->_service.alive && !adj->alive);
+			// Отправляем серверу сообщение
+			const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), aid);
+			// Получаем данные полезной нагрузки ответа
+			while(!(payload = adj->http.payload()).empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение о выводе чанка полезной нагрузки
+					cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+				#endif
+				// Если тела данных для отправки больше не осталось
+				if(adj->http.body().empty())
+					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+					adj->stopped = (!this->_service.alive && !adj->alive);
+				// Отправляем тело на сервер
+				const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), aid);
+			}
+		}
+	}
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
