@@ -71,7 +71,7 @@ namespace awh {
 				 */
 				typedef class Timeout {
 					public:
-						size_t sid;            // Идентификатор схемы сети
+						uint16_t sid;          // Идентификатор схемы сети
 						Core * core;           // Объект ядра клиента
 						ev::timer timer;       // Объект события таймера
 						scheme_t::mode_t mode; // Режим работы клиента
@@ -96,38 +96,38 @@ namespace awh {
 				mode_t _mode;
 			private:
 				// Список блокированных объектов
-				set <size_t> _locking;
+				set <uint64_t> _locking;
 				// Список таймеров
-				map <size_t, unique_ptr <timeout_t>> _timeouts;
+				map <uint64_t, unique_ptr <timeout_t>> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу
 				 * @param sid идентификатор схемы сети
 				 */
-				void connect(const size_t sid) noexcept;
+				void connect(const uint16_t sid) noexcept;
 				/**
 				 * reconnect Метод восстановления подключения
 				 * @param sid идентификатор схемы сети
 				 */
-				void reconnect(const size_t sid) noexcept;
+				void reconnect(const uint16_t sid) noexcept;
 			private:
 				/**
 				 * createTimeout Метод создания таймаута
 				 * @param sid  идентификатор схемы сети
 				 * @param mode режим работы клиента
 				 */
-				void createTimeout(const size_t sid, const scheme_t::mode_t mode) noexcept;
+				void createTimeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки принудительного таймаута
 				 * @param aid идентификатор адъютанта
 				 */
-				void sendTimeout(const size_t aid) noexcept;
+				void sendTimeout(const uint64_t aid) noexcept;
 				/**
 				 * clearTimeout Метод удаления установленного таймаута
 				 * @param sid идентификатор схемы сети
 				 */
-				void clearTimeout(const size_t sid) noexcept;
+				void clearTimeout(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * close Метод отключения всех адъютантов
@@ -148,47 +148,47 @@ namespace awh {
 				 * open Метод открытия подключения
 				 * @param sid идентификатор схемы сети
 				 */
-				void open(const size_t sid) noexcept;
+				void open(const uint16_t sid) noexcept;
 				/**
 				 * remove Метод удаления схемы сети
 				 * @param sid идентификатор схемы сети
 				 */
-				void remove(const size_t sid) noexcept;
+				void remove(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения
 				 * @param aid идентификатор адъютанта
 				 */
-				void close(const size_t aid) noexcept;
+				void close(const uint64_t aid) noexcept;
 				/**
 				 * switchProxy Метод переключения с прокси-сервера
 				 * @param aid идентификатор адъютанта
 				 */
-				void switchProxy(const size_t aid) noexcept;
+				void switchProxy(const uint64_t aid) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
 				 * @param aid идентификатор адъютанта
 				 */
-				void timeout(const size_t aid) noexcept;
+				void timeout(const uint64_t aid) noexcept;
 				/**
 				 * connected Метод вызова при удачном подключении к серверу
 				 * @param aid идентификатор адъютанта
 				 */
-				void connected(const size_t aid) noexcept;
+				void connected(const uint64_t aid) noexcept;
 				/**
 				 * transfer Метед передачи данных между клиентом и сервером
 				 * @param method метод режима работы
 				 * @param aid    идентификатор адъютанта
 				 */
-				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+				void transfer(const engine_t::method_t method, const uint64_t aid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
-				void resolving(const size_t sid, const string & ip, const int family) noexcept;
+				void resolving(const uint16_t sid, const string & ip, const int family) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети
@@ -196,7 +196,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const uint64_t aid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * Core Конструктор

@@ -88,7 +88,7 @@ namespace awh {
 				stack <event_t> _events;
 			private:
 				// Идентификатор подключения
-				size_t _aid;
+				uint64_t _aid;
 			private:
 				// Выполнять анбиндинг после завершения запроса
 				bool _unbind;
@@ -105,7 +105,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
@@ -118,14 +118,14 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -134,7 +134,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента

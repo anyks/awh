@@ -69,7 +69,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Получаем порт подключения клиента
 					adj->port = adj->addr.port;
 					// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this->core)){
+					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this->core)){
 						// Если порт установлен
 						if(adj->port > 0){
 							// Выводим сообщение об ошибке
@@ -162,7 +162,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("connect"))
 						// Выполняем функцию обратного вызова
-						shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
+						shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
 				}
 			// Подключение не установлено
 			} else {
@@ -183,7 +183,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
  * @param pid   идентификатор процесса
  * @param event идентификатор события
  */
-void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
+void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto it = this->schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -234,7 +234,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
  * @param fd  файловый дескриптор (сокет) подключившегося клиента
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
+void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if((sid > 0) && (fd != INVALID_SOCKET) && (fd < MAX_SOCKETS)){
 		// Выполняем поиск идентификатора схемы сети
@@ -320,7 +320,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
-							shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
+							shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
 					// Подключение не установлено
 					} else {
 						// Выводим сообщение об ошибке
@@ -434,7 +434,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							// Получаем порт подключения клиента
 							adj->port = adj->addr.port;
 							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this)){
+							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this)){
 								// Если порт установлен
 								if(adj->port > 0){
 									// Выводим сообщение об ошибке
@@ -568,7 +568,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
+								shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
 						}
 					// Если подключение не установлено
 					} else {
@@ -617,7 +617,7 @@ void awh::server::Core::close() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (it->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (it->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -638,7 +638,7 @@ void awh::server::Core::close() noexcept {
 			shm->addr.clear();
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, const size_t, awh::core_t *> ();
+		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 	}
 }
 /**
@@ -674,7 +674,7 @@ void awh::server::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -697,14 +697,14 @@ void awh::server::Core::remove() noexcept {
 			it = this->schemes.erase(it);
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, const size_t, awh::core_t *> ();
+		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 	}
 }
 /**
  * run Метод запуска сервера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::run(const size_t sid) noexcept {
+void awh::server::Core::run(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){		
 		// Выполняем поиск идентификатора схемы сети
@@ -771,7 +771,7 @@ void awh::server::Core::run(const size_t sid) noexcept {
  * remove Метод удаления схемы сети
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::remove(const size_t sid) noexcept {
+void awh::server::Core::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
@@ -801,7 +801,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Если список объектов DTLS не пустой
@@ -823,7 +823,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 			// Выполняем удаление схемы сети
 			this->schemes.erase(sid);
 			// Выполняем все функции обратного вызова
-			callback.bind <const size_t, const size_t, awh::core_t *> ();
+			callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 		}
 	}
 }
@@ -831,7 +831,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
  * close Метод закрытия подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::Core::close(const size_t aid) noexcept {
+void awh::server::Core::close(const uint64_t aid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если тип сокета установлен как не UDP, останавливаем чтение
@@ -867,13 +867,13 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Если функция обратного вызова установлена
 				if(shm->callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const size_t, const size_t, awh::core_t *)> (aid, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
+					callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (aid, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 				if(this->settings.sonet == scheme_t::sonet_t::DTLS){
 					// Если функция обратного вызова установлена
 					if(callback.is(aid)){
 						// Выполняем все функции обратного вызова
-						callback.bind <const size_t, const size_t, awh::core_t *> (aid);
+						callback.bind <const uint64_t, const uint16_t, awh::core_t *> (aid);
 						// Очищаем список функций обратного вызова
 						callback.rm(aid);
 					}
@@ -892,7 +892,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			// Если функция обратного вызова установлена
 			if(callback.is(aid))
 				// Выполняем все функции обратного вызова
-				callback.bind <const size_t, const size_t, awh::core_t *> (aid);
+				callback.bind <const uint64_t, const uint16_t, awh::core_t *> (aid);
 		}
 	}
 }
@@ -900,7 +900,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
  * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
-void awh::server::Core::timeout(const size_t aid) noexcept {
+void awh::server::Core::timeout(const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -945,7 +945,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::server::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
+void awh::server::Core::transfer(const engine_t::method_t method, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1010,14 +1010,14 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 										// Если функция обратного вызова на получение данных установлена
 										if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
-											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 										// Увеличиваем смещение в буфере
 										offset += actual;
 									}
 								// Если данных достаточно и функция обратного вызова на получение данных установлена
 								} else if(shm->callback.is("read"))
 									// Выводим функцию обратного вызова
-									shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+									shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							// Если данные не получены и нужно повторить попытку снова
 							} else if(bytes == -2) {
 								// Если подключение ещё существует
@@ -1097,7 +1097,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						// Если функция обратного вызова на запись данных установлена
 						if(shm->callback.is("write"))
 							// Выводим функцию обратного вызова
-							shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("write", (!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+							shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", (!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем запись данных
@@ -1105,7 +1105,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						// Если функция обратного вызова на запись данных установлена
 						if(shm->callback.is("write"))
 							// Выводим функцию обратного вызова
-							shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+							shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если адъютант ещё существует и подключён
 					if((this->adjutants.count(aid) > 0) && adj->bev.locked.write &&
@@ -1132,7 +1132,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::server::Core::resolving(const size_t sid, const string & ip, const int family) noexcept {
+void awh::server::Core::resolving(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
@@ -1290,7 +1290,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::server::Core::bandWidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::server::Core::bandWidth(const uint64_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1321,7 +1321,7 @@ void awh::server::Core::bandWidth(const size_t aid, const string & read, const s
  * clusterSize Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
-void awh::server::Core::clusterSize(const size_t size) noexcept {
+void awh::server::Core::clusterSize(const uint16_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -1347,7 +1347,7 @@ void awh::server::Core::clusterSize(const size_t size) noexcept {
  * @param sid  идентификатор схемы сети
  * @param mode флаг перезапуска процессов
  */
-void awh::server::Core::clusterAutoRestart(const size_t sid, const bool mode) noexcept {
+void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -1383,7 +1383,7 @@ void awh::server::Core::ipV6only(const bool mode) noexcept {
  * @param sid   идентификатор схемы сети
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Core::total(const size_t sid, const u_short total) noexcept {
+void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
@@ -1402,7 +1402,7 @@ void awh::server::Core::total(const size_t sid, const u_short total) noexcept {
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::server::Core::init(const size_t sid, const u_int port, const string & host) noexcept {
+void awh::server::Core::init(const uint16_t sid, const u_int port, const string & host) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети

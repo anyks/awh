@@ -222,7 +222,7 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -236,7 +236,7 @@ void awh::client::Web2::connectCallback(const size_t aid, const size_t sid, awh:
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
@@ -364,7 +364,7 @@ void awh::client::Web2::proxyConnectCallback(const size_t aid, const size_t sid,
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -422,7 +422,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
  * @param aid  идентификатор адъютанта
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::implementation(const size_t aid, client::core_t * core) noexcept {
+void awh::client::Web2::implementation(const uint64_t aid, client::core_t * core) noexcept {
 	// Если флаг инициализации сессии HTTP2 не активирован, но протокол HTTP/2 поддерживается сервером
 	if(!this->_sessionInitialized && (core->proto(aid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
@@ -825,7 +825,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }
 /**
  * Web2 Конструктор
@@ -841,5 +841,5 @@ awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const lo
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }

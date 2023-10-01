@@ -64,7 +64,7 @@ namespace awh {
 				 */
 				typedef class DTLS {
 					public:
-						size_t aid;    // Идентификатор адъютанта
+						uint64_t aid;  // Идентификатор адъютанта
 						Core * core;   // Объект ядра клиента
 						event_t event; // Объект события таймера
 					public:
@@ -90,7 +90,7 @@ namespace awh {
 				mtx_t _mtx;
 			private:
 				// Идентификатор активного дочернего прцоесса
-				size_t _pid;
+				pid_t _pid;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -103,9 +103,9 @@ namespace awh {
 				bool _clusterAutoRestart;
 			private:
 				// Список блокированных объектов
-				set <size_t> _locking;
+				set <uint64_t> _locking;
 				// Список серверов DTLS
-				map <size_t, unique_ptr <dtls_t>> _dtls;
+				map <uint64_t, unique_ptr <dtls_t>> _dtls;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
@@ -113,14 +113,14 @@ namespace awh {
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
-				void cluster(const size_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
+				void cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 			private:
 				/**
 				 * accept Метод вызова при подключении к серверу
 				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
 				 * @param sid идентификатор схемы сети
 				 */
-				void accept(const int fd, const size_t sid) noexcept;
+				void accept(const int fd, const uint16_t sid) noexcept;
 			public:
 				/**
 				 * close Метод отключения всех адъютантов
@@ -135,37 +135,37 @@ namespace awh {
 				 * run Метод запуска сервера
 				 * @param sid идентификатор схемы сети
 				 */
-				void run(const size_t sid) noexcept;
+				void run(const uint16_t sid) noexcept;
 				/**
 				 * remove Метод удаления схемы сети
 				 * @param sid идентификатор схемы сети
 				 */
-				void remove(const size_t sid) noexcept;
+				void remove(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void close(const size_t aid) noexcept;
+				void close(const uint64_t aid) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
 				 * @param aid идентификатор адъютанта
 				 */
-				void timeout(const size_t aid) noexcept;
+				void timeout(const uint64_t aid) noexcept;
 				/**
 				 * transfer Метед передачи данных между клиентом и сервером
 				 * @param method метод режима работы
 				 * @param aid    идентификатор адъютанта
 				 */
-				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+				void transfer(const engine_t::method_t method, const uint64_t aid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
-				void resolving(const size_t sid, const string & ip, const int family) noexcept;
+				void resolving(const uint16_t sid, const string & ip, const int family) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети
@@ -173,19 +173,19 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const uint64_t aid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * clusterSize Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const size_t size = 0) noexcept;
+				void clusterSize(const uint16_t size = 0) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param sid  идентификатор схемы сети
 				 * @param mode флаг перезапуска процессов
 				 */
-				void clusterAutoRestart(const size_t sid, const bool mode) noexcept;
+				void clusterAutoRestart(const uint16_t sid, const bool mode) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
@@ -197,14 +197,14 @@ namespace awh {
 				 * @param sid   идентификатор схемы сети
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const size_t sid, const u_short total) noexcept;
+				void total(const uint16_t sid, const u_short total) noexcept;
 				/**
 				 * init Метод инициализации сервера
 				 * @param sid  идентификатор схемы сети
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const size_t sid, const u_int port, const string & host = "") noexcept;
+				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

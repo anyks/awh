@@ -366,10 +366,10 @@ void awh::Core::launching() noexcept {
 			// Если функция обратного вызова установлена
 			if(scheme.second->callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const size_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
+				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, core_t *> ();
+		callback.bind <const uint16_t, core_t *> ();
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("status")){
@@ -451,11 +451,11 @@ void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept
 					// Переходим по всему списку адъютантов и формируем список их идентификаторов
 					for(auto & adj : this->adjutants)
 						// Получаем функцию обратного вызова
-						callback.set <void (const size_t, const size_t, core_t *)> (adj.first, shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
+						callback.set <void (const uint64_t, const uint16_t, core_t *)> (adj.first, shm->callback.get <void (const uint64_t, const uint16_t, core_t *)> ("persist"), adj.first, item.first, this);
 				}
 			}
 			// Выполняем все функции обратного вызова
-			callback.bind <const size_t, const size_t, core_t *> ();
+			callback.bind <const uint64_t, const uint16_t, core_t *> ();
 		}
 		// Запускаем работу таймера
 		this->_timer.event.start();
@@ -518,7 +518,7 @@ void awh::Core::signal(const int signal) noexcept {
  * clean Метод буфера событий
  * @param aid идентификатор адъютанта
  */
-void awh::Core::clean(const size_t aid) const noexcept {
+void awh::Core::clean(const uint64_t aid) const noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -705,9 +705,9 @@ bool awh::Core::working() const noexcept {
  * @param scheme схема рабочей сети
  * @return       идентификатор схемы сети
  */
-size_t awh::Core::add(const scheme_t * scheme) noexcept {
+uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 	// Результат работы функции
-	size_t result = 0;
+	uint16_t result = 0;
 	// Если схема сети передана и URL адрес существует
 	if(scheme != nullptr){
 		// Выполняем блокировку потока
@@ -742,7 +742,7 @@ void awh::Core::remove() noexcept {
  * close Метод закрытия подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::Core::close(const size_t aid) noexcept {
+void awh::Core::close(const uint64_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 }
@@ -750,7 +750,7 @@ void awh::Core::close(const size_t aid) noexcept {
  * remove Метод удаления схемы сети
  * @param sid идентификатор схемы сети
  */
-void awh::Core::remove(const size_t sid) noexcept {
+void awh::Core::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
@@ -765,7 +765,7 @@ void awh::Core::remove(const size_t sid) noexcept {
  * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
-void awh::Core::timeout(const size_t aid) noexcept {
+void awh::Core::timeout(const uint64_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 }
@@ -773,7 +773,7 @@ void awh::Core::timeout(const size_t aid) noexcept {
  * connected Метод вызова при удачном подключении к серверу
  * @param aid идентификатор адъютанта
  */
-void awh::Core::connected(const size_t aid) noexcept {
+void awh::Core::connected(const uint64_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 }
@@ -782,7 +782,7 @@ void awh::Core::connected(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
+void awh::Core::transfer(const engine_t::method_t method, const uint64_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 	(void) method;
@@ -793,7 +793,7 @@ void awh::Core::transfer(const engine_t::method_t method, const size_t aid) noex
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::Core::bandWidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::Core::bandWidth(const uint64_t aid, const string & read, const string & write) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 	(void) read;
@@ -888,7 +888,7 @@ void awh::Core::rebase() noexcept {
  * @param aid идентификатор адъютанта
  * @return    результат работы функции
  */
-awh::engine_t::method_t awh::Core::method(const size_t aid) const noexcept {
+awh::engine_t::method_t awh::Core::method(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	engine_t::method_t result = engine_t::method_t::DISCONNECT;
 	// Выполняем извлечение адъютанта
@@ -919,7 +919,7 @@ awh::engine_t::method_t awh::Core::method(const size_t aid) const noexcept {
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexcept {
+void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
@@ -1027,7 +1027,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noexcept {
+void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
@@ -1077,7 +1077,7 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
  * @param size   размер записываемых данных
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
+void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
 	// Если данные переданы
 	if(this->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
@@ -1122,7 +1122,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
  * @param mode   флаг блокировки метода
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const size_t aid) noexcept {
+void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1156,7 +1156,7 @@ void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, con
  * @param seconds время ожидания в секундах
  * @param aid     идентификатор адъютанта
  */
-void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const size_t aid) noexcept {
+void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1188,7 +1188,7 @@ void awh::Core::dataTimeout(const engine_t::method_t method, const time_t second
  * @param min    максимальный размер детектируемых байт
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const size_t aid) noexcept {
+void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1431,7 +1431,7 @@ awh::engine_t::proto_t awh::Core::proto() const noexcept {
  * @param aid идентификатор адъютанта
  * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
-awh::engine_t::proto_t awh::Core::proto(const size_t aid) const noexcept {
+awh::engine_t::proto_t awh::Core::proto(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	engine_t::proto_t result = engine_t::proto_t::NONE;
 	// Если данные переданы верные

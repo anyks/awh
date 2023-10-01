@@ -24,13 +24,13 @@ void awh::server::SchemeSample::clear() noexcept {
 	// Очищаем список параметров адъютантов
 	this->_coffers.clear();
 	// Освобождаем выделенную память
-	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
+	map <uint64_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
 }
 /**
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeSample::set(const size_t aid) noexcept {
+void awh::server::SchemeSample::set(const uint64_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1))
 		// Добавляем адъютанта в список адъютантов
@@ -40,7 +40,7 @@ void awh::server::SchemeSample::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeSample::rm(const size_t aid) noexcept {
+void awh::server::SchemeSample::rm(const uint64_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -54,7 +54,7 @@ void awh::server::SchemeSample::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::SchemeSample::coffer_t * awh::server::SchemeSample::get(const size_t aid) const noexcept {
+const awh::server::SchemeSample::coffer_t * awh::server::SchemeSample::get(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан

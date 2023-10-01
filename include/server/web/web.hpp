@@ -72,10 +72,20 @@ namespace awh {
 				enum class flag_t : uint8_t {
 					ALIVE           = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO        = 0x02, // Флаг запрещающий вывод информационных сообщений
-					WAIT_MESS       = 0x03, // Флаг ожидания входящих сообщений
-					VERIFY_SSL      = 0x04, // Флаг выполнения проверки сертификата SSL
-					TAKEOVER_CLIENT = 0x05, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER = 0x06  // Флаг ожидания входящих сообщений для сервера
+					NOT_STOP        = 0x03, // Флаг запрета остановки биндинга
+					WAIT_MESS       = 0x04, // Флаг ожидания входящих сообщений
+					VERIFY_SSL      = 0x05, // Флаг выполнения проверки сертификата SSL
+					TAKEOVER_CLIENT = 0x06, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER = 0x07  // Флаг ожидания входящих сообщений для сервера
+				};
+			protected:
+				/**
+				 * Этапы обработки
+				 */
+				enum class status_t : uint8_t {
+					STOP = 0x00, // Остановить обработку
+					NEXT = 0x01, // Следующий этап обработки
+					SKIP = 0x02  // Пропустить этап обработки
 				};
 			protected:
 				/**
@@ -94,20 +104,19 @@ namespace awh {
 				 * Crypto Структура параметров шифрования
 				 */
 				typedef struct Crypto {
+					bool mode;               // Флаг активности механизма шифрования
 					string pass;             // Пароль шифрования передаваемых данных
 					string salt;             // Соль шифрования передаваемых данных
 					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
 					/**
 					 * Crypto Конструктор
 					 */
-					Crypto() noexcept : pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+					Crypto() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} crypto_t;
 				/**
 				 * Service Структура сервиса
 				 */
 				typedef struct Service {
-					// Флаг шифрования сообщений
-					bool crypt;
 					// Флаг долгоживущего подключения
 					bool alive;
 					// Порт сервера
@@ -121,9 +130,7 @@ namespace awh {
 					/**
 					 * Service Конструктор
 					 */
-					Service() noexcept :
-					 crypt(false), alive(false),
-					 port(SERVER_PORT), host{""}, realm{""}, opaque{""} {}
+					Service() noexcept : alive(false), port(SERVER_PORT), host{""}, realm{""}, opaque{""} {}
 				} service_t;
 			protected:
 				// Идентификатор основного процесса
@@ -148,15 +155,18 @@ namespace awh {
 				// Тип авторизации
 				auth_t::type_t _authType;
 			protected:
+				// Выполнять анбиндинг после завершения запроса
+				bool _unbind;
+			protected:
+				// Максимальный интервал времени жизни подключения
+				time_t _timeAlive;
 				// Размер одного чанка
 				size_t _chunkSize;
-				// Максимальный интервал времени жизни подключения
-				size_t _timeAlive;
 				// Максимальное количество запросов
 				size_t _maxRequests;
 			protected:
 				// Список мусорных адъютантов
-				map <time_t, size_t> _garbage;
+				map <time_t, uint64_t> _garbage;
 			protected:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -170,7 +180,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
@@ -184,23 +194,23 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении от сервера
+				 * disconnectCallback Метод обратного вызова при отключении клиента
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с сервера
+				 * readCallback Метод обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * writeCallback Функция обратного вызова при записи сообщение адъютанту
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -209,8 +219,16 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
-			private:
+				virtual void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+			protected:
+				/**
+				 * persistCallback Функция персистентного вызова
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 */
+				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+			protected:
 				/**
 				 * acceptCallback Функция обратного вызова при проверке подключения адъютанта
 				 * @param ip   адрес интернет подключения адъютанта
@@ -220,21 +238,22 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению адъютанта
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept;
+				bool acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
+				 * @param aid   идентификатор адъютанта
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				virtual void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
-			private:
+				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+			protected:
 				/**
 				 * garbage Метод удаления мусорных адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void garbage(const u_short tid, awh::core_t * core) noexcept;
+				virtual void garbage(const u_short tid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -243,27 +262,38 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				virtual status_t prepare(const int32_t id, const size_t aid, server::core_t * core) noexcept = 0;
+				virtual status_t prepare(const int32_t id, const uint64_t aid, server::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта
 				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				virtual void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 				/**
 				 * init Метод инициализации WEB адъютанта
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				virtual void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const size_t, const mode_t)> callback) noexcept;
+				virtual void on(function <void (const uint64_t, const mode_t)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова для извлечения пароля
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <string (const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для обработки авторизации
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова для перехвата полученных чанков
@@ -292,52 +322,52 @@ namespace awh {
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const mode_t)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
-				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
+				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const vector <char> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const vector <char> &)> callback) noexcept;
 				/**
-				 * on Метод установки функции вывода полученного заголовка с сервера
+				 * on Метод установки функции вывода полученного заголовка с клиента
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const string &, const string &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
+				 * on Метод установки функции вывода запроса клиента к серверу
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
 				/**
-				 * on Метод установки функции вывода полученного тела данных с сервера
+				 * on Метод установки функции вывода полученного тела данных с клиента
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
 				/**
-				 * on Метод установки функции вывода полученных заголовков с сервера
+				 * on Метод установки функции вывода полученных заголовков с клиента
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const size_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    порт подключения адъютанта
 				 */
-				u_int port(const size_t aid) const noexcept;
+				virtual u_int port(const uint64_t aid) const noexcept = 0;
 				/**
 				 * ip Метод получения IP адреса адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    адрес интернет подключения адъютанта
 				 */
-				const string & ip(const size_t aid) const noexcept;
+				virtual const string & ip(const uint64_t aid) const noexcept = 0;
 				/**
 				 * mac Метод получения MAC адреса адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    адрес устройства адъютанта
 				 */
-				const string & mac(const size_t aid) const noexcept;
+				virtual const string & mac(const uint64_t aid) const noexcept = 0;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -348,13 +378,13 @@ namespace awh {
 				 * alive Метод установки времени жизни подключения
 				 * @param time время жизни подключения
 				 */
-				void alive(const size_t time) noexcept;
+				void alive(const time_t time) noexcept;
 				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param aid  идентификатор адъютанта
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void alive(const size_t aid, const bool mode) noexcept;
+				virtual void alive(const uint64_t aid, const bool mode) noexcept = 0;
 			public:
 				/**
 				 * core Метод установки сетевого ядра
@@ -375,7 +405,7 @@ namespace awh {
 				 * close Метод закрытия подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void close(const size_t aid) noexcept;
+				virtual void close(const uint64_t aid) noexcept = 0;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
@@ -388,13 +418,13 @@ namespace awh {
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				void waitTimeDetect(const time_t read, const time_t write) noexcept;
+				virtual void waitTimeDetect(const time_t read, const time_t write) noexcept = 0;
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
+				virtual void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept = 0;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -413,33 +443,33 @@ namespace awh {
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * total Метод установки максимального количества одновременных подключений
-				 * @param total максимальное количество одновременных подключений
-				 */
-				void total(const u_short total) noexcept;
-				/**
 				 * maxRequests Метод установки максимального количества запросов
 				 * @param max максимальное количество запросов
 				 */
 				void maxRequests(const size_t max) noexcept;
 			public:
 				/**
+				 * total Метод установки максимального количества одновременных подключений
+				 * @param total максимальное количество одновременных подключений
+				 */
+				virtual void total(const u_short total) noexcept = 0;
+				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов
 				 */
-				void clusterAutoRestart(const bool mode) noexcept;
+				virtual void clusterAutoRestart(const bool mode) noexcept = 0;
 				/**
 				 * compress Метод установки метода сжатия
 				 * @param метод сжатия сообщений
 				 */
-				void compress(const http_t::compress_t compress) noexcept;
+				virtual void compress(const http_t::compress_t compress) noexcept = 0;
 				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				virtual void keepAlive(const int cnt, const int idle, const int intvl) noexcept = 0;
 			public:
 				/**
 				 * serv Метод установки данных сервиса
@@ -583,7 +613,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * persistCallback Функция персистентного вызова
@@ -591,17 +621,17 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * implementation Метод выполнения активации сессии HTTP/2
 				 * @param aid  идентификатор адъютанта
 				 * @param core объект сетевого ядра
 				 */
-				void implementation(const size_t aid, server::core_t * core) noexcept;
+				void implementation(const uint64_t aid, server::core_t * core) noexcept;
 			protected:
 				/**
-				 * ping Метод выполнения пинга сервера
+				 * ping Метод выполнения пинга клиента
 				 * @return результат работы пинга
 				 */
 				bool ping() noexcept;

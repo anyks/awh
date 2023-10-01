@@ -26,13 +26,13 @@ void awh::server::SchemeWEB::clear() noexcept {
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 	// Освобождаем выделенную память
-	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
+	map <uint64_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
 }
 /**
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeWEB::set(const size_t aid) noexcept {
+void awh::server::SchemeWEB::set(const uint64_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
@@ -47,7 +47,7 @@ void awh::server::SchemeWEB::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeWEB::rm(const size_t aid) noexcept {
+void awh::server::SchemeWEB::rm(const uint64_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -61,7 +61,7 @@ void awh::server::SchemeWEB::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::SchemeWEB::coffer_t * awh::server::SchemeWEB::get(const size_t aid) const noexcept {
+const awh::server::SchemeWEB::coffer_t * awh::server::SchemeWEB::get(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан

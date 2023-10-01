@@ -39,7 +39,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("chunking"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const vector <char> &, const web_t *> ("chunking", this->_chunk.data, this);
+						this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
@@ -53,7 +53,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("chunking"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const vector <char> &, const web_t *> ("chunking", this->_chunk.data, this);
+						this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
 					// Если тело сообщения полностью собранно
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
@@ -65,14 +65,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entity"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const u_int, const string &, const vector <char> &> ("entity", this->_res.code, this->_res.message, this->_body);
+									this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entity"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_req.method, this->_req.url, this->_body);
+									this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
 							} break;
 						}
 						// Тело в запросе не передано
@@ -221,7 +221,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на перехват входящих чанков установлена
 								else if(this->_callback.is("chunking"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const vector <char> &, const web_t *> ("chunking", this->_chunk.data, this);
+									this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
 								// Выполняем очистку чанка
 								this->_chunk.clear();
 							// Если символ отличается, значит ошибка
@@ -247,14 +247,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entity"))
 							// Выводим функцию обратного вызова
-							this->_callback.call <const u_int, const string &, const vector <char> &> ("entity", this->_res.code, this->_res.message, this->_body);
+							this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entity"))
 							// Выводим функцию обратного вызова
-							this->_callback.call <const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_req.method, this->_req.url, this->_body);
+							this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
 					} break;
 				}
 				// Тело в запросе не передано
@@ -304,14 +304,14 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_res.code, this->_res.message, this->_headers);
+								this->_callback.call <const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_res.code, this->_res.message, this->_headers);
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (hid_t::SERVER): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", this->_req.method, this->_req.url, this->_headers);
+								this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
 					}
 					// Получаем размер тела
@@ -392,7 +392,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 										if(this->_callback.is("response"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const u_int, const string &> ("response", this->_res.code, this->_res.message);
+											this->_callback.call <const uint64_t, const u_int, const string &> ("response", this->_id, this->_res.code, this->_res.message);
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -466,7 +466,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на вывод запроса клиента на выполненный запрос к серверу установлена
 										if(this->_callback.is("request"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const method_t, const uri_t::url_t &> ("request", this->_req.method, this->_req.url);
+											this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &> ("request", this->_id, this->_req.method, this->_req.url);
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -522,7 +522,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 								if(this->_callback.is("header"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const string &, const string &> ("header", std::move(key), std::move(val));
+									this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
 							}
 						} break;
 					}
@@ -603,6 +603,8 @@ vector <char> awh::Web::dump() const noexcept {
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
+		// Устанавливаем идентификатор HTTP модуля
+		result.insert(result.end(), (const char *) &this->_id, (const char *) &this->_id + sizeof(this->_id));
 		// Устанавливаем тип используемого HTTP модуля
 		result.insert(result.end(), (const char *) &this->_hid, (const char *) &this->_hid + sizeof(this->_hid));
 		// Устанавливаем стейт текущего запроса
@@ -691,6 +693,10 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
+		// Выполняем получение идентификатора HTTP модуля
+		::memcpy((void *) &this->_id, data.data() + offset, sizeof(this->_id));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_id);
 		// Выполняем получение типа используемого HTTP модуля
 		::memcpy((void *) &this->_hid, data.data() + offset, sizeof(this->_hid));
 		// Выполняем смещение в буфере
@@ -861,7 +867,7 @@ void awh::Web::reset() noexcept {
 	// Выполняем сброс стейта текущего запроса
 	this->_state = state_t::QUERY;
 	// Выполняем сброс массива сепараторов
-	memset(this->_pos, -1, sizeof(this->_pos));
+	::memset(this->_pos, -1, sizeof(this->_pos));
 }
 /**
  * request Метод получения объекта запроса на сервер
@@ -1021,6 +1027,22 @@ void awh::Web::headers(const unordered_multimap <string, string> & headers) noex
 	this->_headers = headers;
 }
 /**
+ * id Метод получения идентификатора объекта
+ * @return идентификатор объекта
+ */
+uint64_t awh::Web::id() const noexcept {
+	// Выводим идентификатор объекта
+	return this->_id;
+}
+/**
+ * id Метод установки идентификатора объекта
+ * @param id идентификатор объекта
+ */
+void awh::Web::id(const uint64_t id) noexcept {
+	// Выполняем установку идентификатора объекта
+	this->_id = id;
+}
+/**
  * hid Метод вывода идентификатора модуля
  * @return тип используемого HTTP-модуля
  */
@@ -1048,63 +1070,63 @@ void awh::Web::state(const state_t state) noexcept {
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const u_int, const string &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const u_int, const string &)> ("response", callback);
+	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("response", callback);
 }
 /** 
  * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const method_t, const uri_t::url_t &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const method_t, const uri_t::url_t &)> ("request", callback);
+	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", callback);
 }
 /** 
  * on Метод установки функции вывода полученного заголовка с сервера
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const string &, const string &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const string &, const string &)> ("header", callback);
+	this->_callback.set <void (const uint64_t, const string &, const string &)> ("header", callback);
 }
 /**
  * on Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const vector <char> &, const Web *)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const vector <char> &, const Web *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const vector <char> &, const web_t *)> ("chunking", callback);
+	this->_callback.set <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", callback);
 }
 /** 
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const u_int, const string &, const vector <char> &)> ("entity", callback);
+	this->_callback.set <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
 }
 /** 
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", callback);
+	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", callback);
 }
 /** 
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
+	this->_callback.set <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
 }
 /** 
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::Web::on(function <void (const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", callback);
+	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", callback);
 }

@@ -65,7 +65,7 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
  * connect Метод создания подключения к удаленному серверу
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::connect(const size_t sid) noexcept {
+void awh::client::Core::connect(const uint16_t sid) noexcept {
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && (sid > 0)){
 		// Выполняем поиск идентификатора схемы сети
@@ -196,7 +196,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если функция обратного вызова активации шифрованного TLS канала установлена
 							if((shm->callback.is("tls")))
 								// Выполняем активацию шифрованного TLS канала
-								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
+								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
 							// Выполняем активацию контекста подключения
 							this->engine.wrapClient(adj->ectx, &adj->addr, host);
 						// Если хост сервера не получен
@@ -220,7 +220,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
+								shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("disconnect", 0, sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -248,7 +248,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
+								shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("disconnect", 0, sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -429,7 +429,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
-						shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
+						shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("disconnect", 0, sid, this);
 				}
 			}
 		}
@@ -439,7 +439,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
  * reconnect Метод восстановления подключения
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::reconnect(const size_t sid) noexcept {
+void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto it = this->schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -510,7 +510,7 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
  * @param sid  идентификатор схемы сети
  * @param mode режим работы клиента
  */
-void awh::client::Core::createTimeout(const size_t sid, const scheme_t::mode_t mode) noexcept {
+void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto it = this->schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -550,7 +550,7 @@ void awh::client::Core::createTimeout(const size_t sid, const scheme_t::mode_t m
  * sendTimeout Метод отправки принудительного таймаута
  * @param aid идентификатор адъютанта
  */
-void awh::client::Core::sendTimeout(const size_t aid) noexcept {
+void awh::client::Core::sendTimeout(const uint64_t aid) noexcept {
 	// Если блокировка адъютанта не установлена
 	if(this->_locking.count(aid) < 1){
 		// Если адъютант существует
@@ -603,7 +603,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
  * clearTimeout Метод удаления установленного таймаута
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::clearTimeout(const size_t sid) noexcept {
+void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timeouts.empty()){
 		// Выполняем поиск таймера
@@ -667,7 +667,7 @@ void awh::client::Core::close() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (it->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (it->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
@@ -678,7 +678,7 @@ void awh::client::Core::close() noexcept {
 			}
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, const size_t, awh::core_t *> ();
+		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 	}
 }
 /**
@@ -732,7 +732,7 @@ void awh::client::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -745,7 +745,7 @@ void awh::client::Core::remove() noexcept {
 			it = this->schemes.erase(it);
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, const size_t, awh::core_t *> ();
+		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 	}
 }
 /**
@@ -762,7 +762,7 @@ void awh::client::Core::mode(const mode_t flag) noexcept {
  * open Метод открытия подключения
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::open(const size_t sid) noexcept {
+void awh::client::Core::open(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
@@ -839,7 +839,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
  * remove Метод удаления схемы сети
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::remove(const size_t sid) noexcept {
+void awh::client::Core::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
@@ -875,7 +875,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -900,7 +900,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 				this->_mtx.timeout.unlock();
 			}
 			// Выполняем все функции обратного вызова
-			callback.bind <const size_t, const size_t, awh::core_t *> ();
+			callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 		}
 	}
 }
@@ -908,7 +908,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
  * close Метод закрытия подключения
  * @param aid идентификатор адъютанта
  */
-void awh::client::Core::close(const size_t aid) noexcept {
+void awh::client::Core::close(const uint64_t aid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если блокировка адъютанта не установлена
@@ -948,9 +948,9 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Если функция обратного вызова установлена
 			if(shm->callback.is("disconnect"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
+				callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
 			// Устанавливаем функцию реконнекта
-			if(shm->alive) callback.set <void (const size_t)> ("reconnect", std::bind(&core_t::reconnect, this, _1), shm->sid);
+			if(shm->alive) callback.set <void (const uint16_t)> ("reconnect", std::bind(&core_t::reconnect, this, _1), shm->sid);
 		}
 		// Удаляем блокировку адъютанта
 		this->_locking.erase(aid);
@@ -961,11 +961,11 @@ void awh::client::Core::close(const size_t aid) noexcept {
 				// Выводим сообщение об ошибке
 				this->log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 			// Выполняем функцию обратного вызова дисконнекта
-			callback.bind <const size_t, const size_t, awh::core_t *> ("disconnect");
+			callback.bind <const uint64_t, const uint16_t, awh::core_t *> ("disconnect");
 			// Если функция реконнекта установлена
 			if(callback.is("reconnect"))
 				// Выполняем автоматическое переподключение
-				callback.bind <const size_t> ("reconnect");
+				callback.bind <const uint16_t> ("reconnect");
 		}
 	}
 }
@@ -973,7 +973,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
  * switchProxy Метод переключения с прокси-сервера
  * @param aid идентификатор адъютанта
  */
-void awh::client::Core::switchProxy(const size_t aid) noexcept {
+void awh::client::Core::switchProxy(const uint64_t aid) noexcept {
 	// Определяем тип производимого подключения
 	switch(static_cast <uint8_t> (this->settings.sonet)){
 		// Если подключение производится по протоколу TCP
@@ -1014,7 +1014,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Если функция обратного вызова активации шифрованного TLS канала установлена
 				if((shm->callback.is("tls")))
 					// Выполняем активацию шифрованного TLS канала
-					this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
+					this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
 				// Выполняем получение контекста сертификата
 				this->engine.wrapClient(adj->ectx, adj->ectx, host);
 				// Если подключение не обёрнуто
@@ -1052,7 +1052,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
  * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
-void awh::client::Core::timeout(const size_t aid) noexcept {
+void awh::client::Core::timeout(const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1116,7 +1116,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
  * connected Метод вызова при удачном подключении к серверу
  * @param aid идентификатор адъютанта
  */
-void awh::client::Core::connected(const size_t aid) noexcept {
+void awh::client::Core::connected(const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1186,11 +1186,11 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 				// Если функция обратного вызова для прокси-сервера установлена
 				if(shm->callback.is("connectProxy"))
 					// Выполняем функцию обратного вызова
-					shm->callback.call <const size_t, const size_t, awh::core_t *> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
+					shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
 			// Если функция обратного вызова установлена
 			} else if(shm->callback.is("connect"))
 				// Выполняем функцию обратного вызова
-				shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
+				shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
 			// Выходим из функции
 			return;
 		}
@@ -1203,7 +1203,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::client::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
+void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1265,11 +1265,11 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 												// Если функция обратного вызова для вывода записи существует
 												if(shm->callback.is("readProxy"))
 													// Выводим функцию обратного вызова
-													shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+													shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("readProxy", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 											// Если прокси-сервер не используется
 											} else if(shm->callback.is("read"))
 												// Выводим функцию обратного вызова
-												shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 											// Увеличиваем смещение в буфере
 											offset += actual;
 										}
@@ -1280,11 +1280,11 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 											// Если функция обратного вызова для вывода записи существует
 											if(shm->callback.is("readProxy"))
 												// Выводим функцию обратного вызова
-												shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("readProxy", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 										// Если прокси-сервер не используется
 										} else if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
-											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 									}
 								// Если данные не получены
 								} else {
@@ -1397,7 +1397,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Если функция обратного вызова на запись данных установлена
 							if(shm->callback.is("write"))
 								// Выводим функцию обратного вызова
-								shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("write", (!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+								shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", (!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						// Если данных недостаточно для записи в сокет
 						} else {
 							// Останавливаем запись данных
@@ -1405,7 +1405,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Если функция обратного вызова на запись данных установлена
 							if(shm->callback.is("write"))
 								// Выводим функцию обратного вызова
-								shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+								shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						}
 						// Если адъютант ещё существует и подключён
 						if((this->adjutants.count(aid) > 0) && adj->bev.locked.write &&
@@ -1441,7 +1441,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::client::Core::resolving(const size_t sid, const string & ip, const int family) noexcept {
+void awh::client::Core::resolving(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
@@ -1491,7 +1491,7 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
 			// Если функция обратного вызова установлена
 			if(shm->callback.is("disconnect"))
 				// Выполняем функцию обратного вызова
-				shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
+				shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("disconnect", 0, sid, this);
 		}
 	}
 }
@@ -1501,7 +1501,7 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::client::Core::bandWidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::client::Core::bandWidth(const uint64_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен

@@ -202,7 +202,7 @@ namespace awh {
 					friend class server::Core;
 				private:
 					// Идентификатор адъютанта
-					size_t aid;
+					uint64_t aid;
 				private:
 					// Адрес интернет-подключения клиента
 					string ip;
@@ -279,7 +279,7 @@ namespace awh {
 			} adj_t;
 		public:
 			// Идентификатор родительской схемы
-			size_t sid;
+			uint16_t sid;
 		public:
 			// Флаг ожидания входящих сообщений
 			bool wait;
@@ -299,7 +299,7 @@ namespace awh {
 			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых адъютантов
-			map <size_t, unique_ptr <adj_t>> adjutants;
+			map <uint64_t, unique_ptr <adj_t>> adjutants;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk;
@@ -325,26 +325,26 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 * @return    активный сокет адъютанта
 			 */
-			SOCKET getSocket(const size_t aid) const noexcept;
+			SOCKET getSocket(const uint64_t aid) const noexcept;
 		public:
 			/**
 			 * getPort Метод получения порта подключения адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return   порт подключения адъютанта
 			 */
-			u_int getPort(const size_t aid) const noexcept;
+			u_int getPort(const uint64_t aid) const noexcept;
 			/**
 			 * getIp Метод получения IP адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес интернет подключения адъютанта
 			 */
-			const string & getIp(const size_t aid) const noexcept;
+			const string & getIp(const uint64_t aid) const noexcept;
 			/**
 			 * getMac Метод получения MAC адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес устройства адъютанта
 			 */
-			const string & getMac(const size_t aid) const noexcept;
+			const string & getMac(const uint64_t aid) const noexcept;
 		public:
 			/**
 			 * Scheme Конструктор

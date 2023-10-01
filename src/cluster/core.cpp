@@ -47,7 +47,7 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
  * @param pid   идентификатор процесса
  * @param event идентификатор события
  */
-void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
+void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("events")){
 		// Определяем производится ли инициализация кластера
@@ -69,7 +69,7 @@ void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluste
  * @param buffer буфер бинарных данных
  * @param size   размер буфера бинарных данных
  */
-void awh::cluster::Core::message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
+void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("message")){
 		// Определяем производится ли инициализация кластера
@@ -287,7 +287,7 @@ void awh::cluster::Core::clusterAsync(const bool mode) noexcept {
  * clusterSize Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
-void awh::cluster::Core::clusterSize(const size_t size) noexcept {
+void awh::cluster::Core::clusterSize(const uint16_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */

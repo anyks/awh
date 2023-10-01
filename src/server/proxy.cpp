@@ -17,10 +17,13 @@
 
 /**
  * chunking Метод обработки получения чанков
+ * @param aid   идентификатор адъютанта
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::server::Proxy::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::server::Proxy::chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) aid;
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
@@ -171,9 +174,9 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 				// Устанавливаем функцию обработки вызова для получения чанков
 				adj->cli.on(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else adj->cli.on(std::bind(&proxy_t::chunking, this, _1, _2));
+			else adj->cli.on(std::bind(&proxy_t::chunking, this, _1, _2, _3));
 			// Устанавливаем функцию обработки вызова для получения чанков
-			adj->srv.on(std::bind(&proxy_t::chunking, this, _1, _2));
+			adj->srv.on(std::bind(&proxy_t::chunking, this, _1, _2, _3));
 			// Устанавливаем метод компрессии поддерживаемый клиентом
 			adj->cli.compress(this->_scheme.compress);
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -522,7 +525,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 									// Запоминаем метод подключения
 									adj->method = request.method;
 									// Формируем адрес подключения
-									adj->scheme.url = this->_scheme.uri.parse(this->_fmk->format("http://%s", uri.c_str()));
+									adj->scheme.url = this->_uri.parse(this->_fmk->format("http://%s", uri.c_str()));
 									// Выполняем запрос на сервер
 									this->_core.client.open(adj->scheme.sid);
 									// Выходим из функции
@@ -823,20 +826,20 @@ void awh::server::Proxy::on(function <bool (const string &, const string &)> cal
 	this->_callback.checkAuth = callback;
 }
 /**
- * on Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.chunking = callback;
-}
-/**
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <bool (const string &, const string &, const u_int, Proxy *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.accept = callback;
+}
+/**
+ * on Метод установки функции обратного вызова для получения чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::Proxy::on(function <void (const uint64_t, const vector <char> &, const http_t *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.chunking = callback;
 }
 /**
  * reject Метод отправки сообщения об ошибке
@@ -1309,7 +1312,7 @@ void awh::server::Proxy::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _scheme(fmk, log),
+ _port(SERVER_PORT), _host(""), _usock(""), _uri(fmk), _core(fmk, log), _scheme(fmk, log),
  _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME), _realm(""), _opaque(""),
  _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128), _authHash(auth_t::hash_t::MD5),
  _authType(auth_t::type_t::NONE), _crypt(false), _alive(false), _noConnect(false),

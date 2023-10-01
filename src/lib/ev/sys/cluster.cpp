@@ -24,10 +24,10 @@
 	 * @param data данные передаваемые процессом
 	 */
 	void awh::Cluster::Worker::callback(const data_t & data) noexcept {
-		// Если функция обратного вызова установлена, выводим её
-		if(this->cluster->_messageFn != nullptr)
-			// Выводим функцию обратного вызова
-			this->cluster->_messageFn(this->wid, data.pid, data.buffer.data(), data.buffer.size());
+		// Если функция обратного вызова установлена
+		if(this->cluster->_callback.is("message"))
+			// Выполняем функцию обратного вызова
+			this->cluster->_callback.call <const uint16_t, const pid_t, const char *, const size_t> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
 	}
 	/**
 	 * message Функция обратного вызова получении сообщений
@@ -280,10 +280,10 @@
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					this->_log->print("Child process stopped, pid = %s, status = %u", log_t::flag_t::CRITICAL, jack->pid, status);
-					// Если был завершён активный процесс и функция обратного вызова установлена
-					if(this->cluster->_processFn != nullptr)
-						// Выводим функцию обратного вызова
-						this->cluster->_processFn(jt->first, pid, event_t::STOP);
+					// Если функция обратного вызова установлена
+					if(this->cluster->_callback.is("process"))
+						// Выполняем функцию обратного вызова
+						this->cluster->_callback.call <const uint16_t, const pid_t, const event_t> ("process", jt->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto it = this->cluster->_workers.find(jt->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
@@ -350,7 +350,7 @@ awh::Cluster::Worker::~Worker() noexcept {
  * @param index индекс инициализированного процесса
  * @param stop  флаг остановки итерации создания дочерних процессов
  */
-void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop) noexcept {
+void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool stop) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -481,10 +481,10 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 								jack->mess.set(jack->cfds[0], ev::READ);
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
-								// Если функция обратного вызова установлена, выводим её
-								if(this->_processFn != nullptr)
-									// Выводим функцию обратного вызова
-									this->_processFn(it->first, pid, event_t::START);
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("process"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const uint16_t, const pid_t, const event_t> ("process", it->first, pid, event_t::START);
 							}
 							// Выполняем активацию базы событий
 							ev_loop_fork(this->_base);
@@ -532,11 +532,11 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 					}
 				}
 			// Если все процессы удачно созданы
-			} else if((it->second->working = !stop)) {
-				// Если функция обратного вызова установлена, выводим её
-				if(this->_processFn != nullptr)
-					// Выводим функцию обратного вызова
-					this->_processFn(it->first, this->_pid, event_t::START);
+			} else if((it->second->working = !stop)) {				
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("process"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const uint16_t, const pid_t, const event_t> ("process", it->first, this->_pid, event_t::START);
 			}
 		}
 	#endif
@@ -546,7 +546,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
  * @param wid идентификатор воркера
  * @return    результат работы проверки
  */
-bool awh::Cluster::working(const size_t wid) const noexcept {
+bool awh::Cluster::working(const uint16_t wid) const noexcept {
 	// Выполняем поиск воркера
 	auto it = this->_workers.find(wid);
 	// Если воркер найден
@@ -562,7 +562,7 @@ bool awh::Cluster::working(const size_t wid) const noexcept {
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size) noexcept {
+void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -621,7 +621,7 @@ void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -677,7 +677,7 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t size) noexcept {
+void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -747,12 +747,12 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем очистку списка работников
 		this->_jacks.clear();
 		// Выполняем освобождение выделенной памяти
-		map <size_t, vector <unique_ptr <jack_t>>> ().swap(this->_jacks);
+		map <uint16_t, vector <unique_ptr <jack_t>>> ().swap(this->_jacks);
 	}
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
 	// Выполняем освобождение выделенной памяти
-	map <size_t, unique_ptr <worker_t>> ().swap(this->_workers);
+	map <uint16_t, unique_ptr <worker_t>> ().swap(this->_workers);
 }
 /**
  * close Метод закрытия всех подключений
@@ -786,7 +786,7 @@ void awh::Cluster::close() noexcept {
  * close Метод закрытия всех подключений
  * @param wid идентификатор воркера
  */
-void awh::Cluster::close(const size_t wid) noexcept {
+void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Выполняем поиск работников
 	auto jt = this->_jacks.find(wid);
 	// Если работник найден
@@ -814,7 +814,7 @@ void awh::Cluster::close(const size_t wid) noexcept {
  * stop Метод остановки кластера
  * @param wid идентификатор воркера
  */
-void awh::Cluster::stop(const size_t wid) noexcept {
+void awh::Cluster::stop(const uint16_t wid) noexcept {
 	// Выполняем поиск работников
 	auto jt = this->_jacks.find(wid);
 	// Если работник найден
@@ -878,7 +878,7 @@ void awh::Cluster::stop(const size_t wid) noexcept {
  * start Метод запуска кластера
  * @param wid идентификатор воркера
  */
-void awh::Cluster::start(const size_t wid) noexcept {
+void awh::Cluster::start(const uint16_t wid) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если вокер найден
@@ -891,7 +891,7 @@ void awh::Cluster::start(const size_t wid) noexcept {
  * @param wid  идентификатор воркера
  * @param mode флаг перезапуска процессов
  */
-void awh::Cluster::restart(const size_t wid, const bool mode) noexcept {
+void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если вокер найден
@@ -924,7 +924,7 @@ void awh::Cluster::trackCrash(const bool mode) noexcept {
  * @param wid  идентификатор воркера
  * @param mode флаг асинхронного режима работы
  */
-void awh::Cluster::async(const size_t wid, const bool mode) noexcept {
+void awh::Cluster::async(const uint16_t wid, const bool mode) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если вокер найден
@@ -937,7 +937,7 @@ void awh::Cluster::async(const size_t wid, const bool mode) noexcept {
  * @param wid идентификатор воркера
  * @return    максимальное количество процессов
  */
-uint16_t awh::Cluster::count(const size_t wid) const noexcept {
+uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если вокер найден
@@ -952,7 +952,7 @@ uint16_t awh::Cluster::count(const size_t wid) const noexcept {
  * @param wid   идентификатор воркера
  * @param count максимальное количество процессов
  */
-void awh::Cluster::count(const size_t wid, const uint16_t count) noexcept {
+void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если вокер найден
@@ -970,7 +970,7 @@ void awh::Cluster::count(const size_t wid, const uint16_t count) noexcept {
  * @param wid   идентификатор воркера
  * @param count максимальное количество процессов
  */
-void awh::Cluster::init(const size_t wid, const uint16_t count) noexcept {
+void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(wid);
 	// Если воркер не найден
@@ -989,15 +989,15 @@ void awh::Cluster::init(const size_t wid, const uint16_t count) noexcept {
  * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
  * @param callback функция обратного вызова
  */
-void awh::Cluster::on(function <void (const size_t, const pid_t, const event_t)> callback) noexcept {
+void awh::Cluster::on(function <void (const uint16_t, const pid_t, const event_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_processFn = callback;
+	this->_callback.set <void (const uint16_t, const pid_t, const event_t)> ("process", callback);
 }
 /**
  * on Метод установки функции обратного вызова при получении сообщения
  * @param callback функция обратного вызова
  */
-void awh::Cluster::on(function <void (const size_t, const pid_t, const char *, const size_t)> callback) noexcept {
+void awh::Cluster::on(function <void (const uint16_t, const pid_t, const char *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_messageFn = callback;
+	this->_callback.set <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", callback);
 }

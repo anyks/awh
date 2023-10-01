@@ -97,16 +97,16 @@ namespace awh {
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-			public:
-				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера

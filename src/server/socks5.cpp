@@ -143,7 +143,7 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			// Если сервер слушает порт
 			} else {
 				// Определяем тип хоста сервера
-				switch(static_cast <uint8_t> (this->_scheme.net.host(this->_host))){
+				switch(static_cast <uint8_t> (this->_net.host(this->_host))){
 					// Если хост является адресом IPv4
 					case static_cast <uint8_t> (net_t::type_t::IPV4): {
 						// Устанавливаем хост сервера

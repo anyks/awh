@@ -86,14 +86,14 @@ namespace awh {
 					function <bool (const string &, const string &)> checkAuth;
 					// Функция обратного вызова, при запуске или остановки подключения к серверу
 					function <void (const size_t, const mode_t, Proxy *)> active;
-					// Функция обратного вызова, при получении HTTP чанков от адъютанта
-					function <void (const vector <char> &, const awh::http_t *)> chunking;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <bool (const size_t, const event_t, http_t *, Proxy *)> message;
 					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, Proxy *)> accept;
 					// Функция получения событий запуска и остановки сетевого ядра
 					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
+					// Функция обратного вызова, при получении HTTP чанков от адъютанта
+					function <void (const uint64_t, const vector <char> &, const awh::http_t *)> chunking;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <bool (const size_t, const event_t, const char *, const size_t, Proxy *)> binary;
 					/**
@@ -111,6 +111,8 @@ namespace awh {
 				// unix-сокет сервера
 				string _usock;
 			private:
+				// Объект работы с URI ссылками
+				uri_t _uri;
 				// Объект биндинга TCP/IP
 				core_t _core;
 				// Объявляем функции обратного вызова
@@ -166,10 +168,11 @@ namespace awh {
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
+				 * @param aid   идентификатор адъютанта
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
+				void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
@@ -318,15 +321,15 @@ namespace awh {
 				 */
 				void on(function <bool (const string &, const string &)> callback) noexcept;
 				/**
-				 * on Метод установки функции обратного вызова для получения чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int, Proxy *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для получения чанков
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const http_t *)> callback) noexcept;
 			public:
 				/**
 				 * reject Метод отправки сообщения об ошибке

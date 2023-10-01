@@ -21,7 +21,7 @@
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -89,7 +89,7 @@ void awh::client::WebSocket1::connectCallback(const size_t aid, const size_t sid
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect())
 		// Выходим из функции
@@ -126,7 +126,7 @@ void awh::client::WebSocket1::disconnectCallback(const size_t aid, const size_t 
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если подключение закрыто
@@ -244,7 +244,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Если необходимо выполнить закрыть подключение
@@ -262,7 +262,7 @@ void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t si
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::WebSocket1::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем текущий штамп времени
@@ -330,10 +330,13 @@ bool awh::client::WebSocket1::redirect() noexcept {
 }
 /**
  * response Метод получения ответа сервера
+ * @param aid     идентификатор адъютанта
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::client::WebSocket1::response(const u_int code, const string & message) noexcept {
+void awh::client::WebSocket1::response(const uint64_t aid, const u_int code, const string & message) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 	if(this->_callback.is("response"))
 		// Выводим функцию обратного вызова
@@ -341,10 +344,13 @@ void awh::client::WebSocket1::response(const u_int code, const string & message)
 }
 /**
  * header Метод получения заголовка
+ * @param aid   идентификатор адъютанта
  * @param key   ключ заголовка
  * @param value значение заголовка
  */
-void awh::client::WebSocket1::header(const string & key, const string & value) noexcept {
+void awh::client::WebSocket1::header(const uint64_t aid, const string & key, const string & value) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на полученного заголовка с сервера установлена
 	if(this->_callback.is("header"))
 		// Выводим функцию обратного вызова
@@ -352,11 +358,14 @@ void awh::client::WebSocket1::header(const string & key, const string & value) n
 }
 /**
  * headers Метод получения заголовков
+ * @param aid     идентификатор адъютанта
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::WebSocket1::headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::WebSocket1::headers(const uint64_t aid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(this->_callback.is("headers"))
 		// Выводим функцию обратного вызова
@@ -420,7 +429,7 @@ void awh::client::WebSocket1::pong(const string & message) noexcept {
  * @param core объект сетевого ядра
  * @return     результат препарирования
  */
-awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept {
+awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept {
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Если рукопожатие не выполнено
@@ -1093,24 +1102,24 @@ void awh::client::WebSocket1::on(function <void (const vector <char> &, const bo
 	this->_callback.set <void (const vector <char> &, const bool)> ("message", callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket1::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Если функция обратного вызова передана
-	if(callback != nullptr)
-		// Устанавливаем функцию обратного вызова для HTTP/1.1
-		this->_http.on(callback);
-	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	else this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2));
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket1::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket1::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Если функция обратного вызова передана
+	if(callback != nullptr)
+		// Устанавливаем функцию обратного вызова для HTTP/1.1
+		this->_http.on(callback);
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	else this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибки
@@ -1144,7 +1153,7 @@ void awh::client::WebSocket1::on(function <void (const int32_t, const u_int, con
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const u_int, const string &)>) std::bind(&ws1_t::response, this, _1, _2));
+	this->_http.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&ws1_t::response, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции вывода полученного заголовка с сервера
@@ -1154,7 +1163,7 @@ void awh::client::WebSocket1::on(function <void (const int32_t, const string &, 
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const string &, const string &)>) std::bind(&ws1_t::header, this, _1, _2));
+	this->_http.on((function <void (const uint64_t, const string &, const string &)>) std::bind(&ws1_t::header, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции вывода полученного тела данных с сервера
@@ -1172,7 +1181,7 @@ void awh::client::WebSocket1::on(function <void (const int32_t, const u_int, con
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&ws1_t::headers, this, _1, _2, _3));
+	this->_http.on((function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&ws1_t::headers, this, _1, _2, _3, _4));
 }
 /**
  * sub Метод получения выбранного сабпротокола
@@ -1272,10 +1281,10 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
-		// Добавляем схемы сети в сетевое ядро
-		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 		// Активируем персистентный запуск для работы пингов
 		const_cast <client::core_t *> (this->_core)->persistEnable(true);
+		// Добавляем схемы сети в сетевое ядро
+		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 		// Активируем асинхронный режим работы
 		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		// Устанавливаем функцию активации ядра клиента
@@ -1420,11 +1429,11 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  web_t(fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2));
+	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 }
 /**
  * WebSocket1 Конструктор
@@ -1436,11 +1445,11 @@ awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * f
  web_t(core, fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2));
+	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Активируем асинхронный режим работы

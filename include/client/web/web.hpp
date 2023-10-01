@@ -134,7 +134,7 @@ namespace awh {
 				};
 			protected:
 				// Идентификатор подключения
-				size_t _aid;
+				uint64_t _aid;
 			protected:
 				// Объект работы с URI ссылками
 				uri_t _uri;
@@ -180,7 +180,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
@@ -194,14 +194,14 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -210,7 +210,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
@@ -218,7 +218,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -227,7 +227,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * enableTLSCallback Метод активации зашифрованного канала TLS
@@ -237,14 +237,15 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат активации зашифрованного канала TLS
 				 */
-				bool enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				bool enableTLSCallback(const uri_t::url_t & url, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
+				 * @param aid   идентификатор адъютанта
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				virtual void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
+				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -258,7 +259,7 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				virtual status_t prepare(const int32_t id, const size_t aid, client::core_t * core) noexcept = 0;
+				virtual status_t prepare(const int32_t id, const uint64_t aid, client::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB клиента
@@ -274,15 +275,15 @@ namespace awh {
 				virtual void on(function <void (const mode_t)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				virtual void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
@@ -627,7 +628,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * persistCallback Функция персистентного вызова
@@ -635,7 +636,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept = 0;
+				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
@@ -643,7 +644,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -652,14 +653,14 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * implementation Метод выполнения активации сессии HTTP/2
 				 * @param aid  идентификатор адъютанта
 				 * @param core объект сетевого ядра
 				 */
-				void implementation(const size_t aid, client::core_t * core) noexcept;
+				void implementation(const uint64_t aid, client::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга сервера

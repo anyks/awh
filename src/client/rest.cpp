@@ -433,18 +433,18 @@ void awh::client::Rest::on(function <void (const awh::core_t::status_t, awh::cor
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
 void awh::client::Rest::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::Rest::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }

@@ -360,6 +360,8 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/websocket.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/web/web.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"

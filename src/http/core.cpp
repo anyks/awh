@@ -17,14 +17,15 @@
 
 /**
  * chunkingCallback Функция вывода полученных чанков полезной нагрузки
+ * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
  * @param web    объект HTTP парсера
  */
-void awh::Http::chunkingCallback(const vector <char> & buffer, const web_t * web) noexcept {
+void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept {
 	// Если функция обратного вызова на вывод полученного чанка установлена
 	if(this->_callback.is("chunking"))
 		// Выводим функцию обратного вызова
-		this->_callback.call <const vector <char> &, const http_t *> ("chunking", buffer, this);
+		this->_callback.call <const uint64_t, const vector <char> &, const http_t *> ("chunking", id, buffer, this);
 }
 /**
  * commit Метод применения полученных результатов
@@ -3067,7 +3068,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const u_int, const string &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3075,7 +3076,7 @@ void awh::Http::on(function <void (const u_int, const string &)> callback) noexc
  * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const web_t::method_t, const uri_t::url_t &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3083,7 +3084,7 @@ void awh::Http::on(function <void (const web_t::method_t, const uri_t::url_t &)>
  * on Метод установки функции вывода полученного заголовка с сервера
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const string &, const string &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3091,17 +3092,17 @@ void awh::Http::on(function <void (const string &, const string &)> callback) no
  * on Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const vector <char> &, const http_t *)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const vector <char> &, const http_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
+	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const vector <char> &, const http_t *)> ("chunking", callback);
+	this->_callback.set <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", callback);
 }
 /** 
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3109,7 +3110,7 @@ void awh::Http::on(function <void (const u_int, const string &, const vector <ch
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3117,7 +3118,7 @@ void awh::Http::on(function <void (const web_t::method_t, const uri_t::url_t &, 
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
 }
@@ -3125,9 +3126,25 @@ void awh::Http::on(function <void (const u_int, const string &, const unordered_
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::Http::on(function <void (const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функции обратного вызова
 	this->_web.on(callback);
+}
+/**
+ * id Метод получения идентификатора объекта
+ * @return идентификатор объекта
+ */
+uint64_t awh::Http::id() const noexcept {
+	// Выводим идентификатор объекта
+	return this->_web.id();
+}
+/**
+ * id Метод установки идентификатора объекта
+ * @param id идентификатор объекта
+ */
+void awh::Http::id(const uint64_t id) noexcept {
+	// Выполняем установку идентификатора объекта
+	this->_web.id(id);
 }
 /**
  * identity Метод извлечения идентичности протокола модуля
@@ -3214,6 +3231,8 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log), _dhash(log),
  _crypt(false), _chunking(false), _chunk(BUFFER_CHUNK), _compress(compress_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
+	// Выполняем установку идентификатора объекта
+	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
+	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2, _3));
 }

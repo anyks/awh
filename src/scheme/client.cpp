@@ -56,9 +56,9 @@ bool awh::client::Scheme::isProxy() const noexcept {
  * getAid Метод получения идентификатора адъютанта
  * @return идентификатор адъютанта
  */
-size_t awh::client::Scheme::getAid() const noexcept {
+uint64_t awh::client::Scheme::getAid() const noexcept {
 	// Результат работы функции
-	size_t result = 0;
+	uint64_t result = 0;
 	// Если список адъютантов получен
 	if(!this->adjutants.empty()){
 		// Получаем первого адъютанта из списка

@@ -167,7 +167,7 @@ namespace awh {
 				 * getAid Метод получения идентификатора адъютанта
 				 * @return идентификатор адъютанта
 				 */
-				size_t getAid() const noexcept;
+				uint64_t getAid() const noexcept;
 			public:
 				/**
 				 * Scheme Конструктор

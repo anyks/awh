@@ -203,7 +203,9 @@ const string awh::WCore::key() const noexcept {
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
 		uniform_int_distribution <u_short> dist(0, 255);
 		// Формируем бинарный ключ из случайных значений
-		for(size_t c = 0; c < 16; c++) nonce += static_cast <char> (dist(rd));
+		for(size_t c = 0; c < 16; c++)
+			// Выполняем формирование ключа
+			nonce += static_cast <char> (dist(rd));
 		// Выполняем создание ключа
 		result = base64_t().encode(nonce);
 	// Выполняем прехват ошибки

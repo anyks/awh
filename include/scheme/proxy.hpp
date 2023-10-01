@@ -106,16 +106,11 @@ namespace awh {
 					~Coffer() noexcept {}
 				} coffer_t;
 			public:
-				// Создаем объект для работы с сетью
-				net_t net;
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
-			public:
 				// Список пар клиентов
-				map <size_t, size_t> pairs;
+				map <uint64_t, uint64_t> pairs;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, unique_ptr <coffer_t>> _coffers;
+				map <uint64_t, unique_ptr <coffer_t>> _coffers;
 			public:
 				// Флаги работы с сжатыми данными
 				awh::http_t::compress_t compress;
@@ -134,18 +129,18 @@ namespace awh {
 				 * set Метод создания параметров адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void set(const size_t aid) noexcept;
+				void set(const uint64_t aid) noexcept;
 				/**
 				 * rm Метод удаления параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void rm(const size_t aid) noexcept;
+				void rm(const uint64_t aid) noexcept;
 				/**
 				 * get Метод получения параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
-				const coffer_t * get(const size_t aid) const noexcept;
+				const coffer_t * get(const uint64_t aid) const noexcept;
 			public:
 				/**
 				 * SchemeProxy Конструктор
@@ -153,9 +148,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				SchemeProxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), uri(fmk),
-				 compress(awh::http_t::compress_t::NONE),
-				 _fmk(fmk), _log(log) {}
+				 scheme_t(fmk, log), compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeProxy Деструктор
 				 */

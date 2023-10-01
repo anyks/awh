@@ -316,9 +316,9 @@ namespace awh {
 			map <u_short, unique_ptr <timer_t>> _timers;
 		protected:
 			// Список активных схем сети
-			map <size_t, const scheme_t *> schemes;
+			map <uint16_t, const scheme_t *> schemes;
 			// Список подключённых клиентов
-			map <size_t, const scheme_t::adj_t *> adjutants;
+			map <uint64_t, const scheme_t::adj_t *> adjutants;
 		protected:
 			// Флаг разрешения работы
 			bool mode;
@@ -368,7 +368,7 @@ namespace awh {
 			 * clean Метод буфера событий
 			 * @param aid идентификатор адъютанта
 			 */
-			void clean(const size_t aid) const noexcept;
+			void clean(const uint64_t aid) const noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -417,7 +417,7 @@ namespace awh {
 			 * @param scheme схема рабочей сети
 			 * @return       идентификатор схемы сети
 			 */
-			size_t add(const scheme_t * scheme) noexcept;
+			uint16_t add(const scheme_t * scheme) noexcept;
 		public:
 			/**
 			 * close Метод отключения всех адъютантов
@@ -432,29 +432,29 @@ namespace awh {
 			 * close Метод закрытия подключения адъютанта
 			 * @param aid идентификатор адъютанта
 			 */
-			virtual void close(const size_t aid) noexcept;
+			virtual void close(const uint64_t aid) noexcept;
 			/**
 			 * remove Метод удаления схемы сети
 			 * @param sid идентификатор схемы сети
 			 */
-			virtual void remove(const size_t sid) noexcept;
+			virtual void remove(const uint16_t sid) noexcept;
 		private:
 			/**
 			 * timeout Метод вызова при срабатывании таймаута
 			 * @param aid идентификатор адъютанта
 			 */
-			virtual void timeout(const size_t aid) noexcept;
+			virtual void timeout(const uint64_t aid) noexcept;
 			/**
 			 * connected Метод вызова при удачном подключении к серверу
 			 * @param aid идентификатор адъютанта
 			 */
-			virtual void connected(const size_t aid) noexcept;
+			virtual void connected(const uint64_t aid) noexcept;
 			/**
 			 * transfer Метед передачи данных между клиентом и сервером
 			 * @param method метод режима работы
 			 * @param aid    идентификатор адъютанта
 			 */
-			virtual void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+			virtual void transfer(const engine_t::method_t method, const uint64_t aid) noexcept;
 		public:
 			/**
 			 * bandWidth Метод установки пропускной способности сети
@@ -462,7 +462,7 @@ namespace awh {
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			virtual void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+			virtual void bandWidth(const uint64_t aid, const string & read, const string & write) noexcept;
 		public:
 			/**
 			 * rebase Метод пересоздания базы событий
@@ -474,20 +474,20 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 * @return    результат работы функции
 			 */
-			engine_t::method_t method(const size_t aid) const noexcept;
+			engine_t::method_t method(const uint64_t aid) const noexcept;
 		public:
 			/**
 			 * enabled Метод активации метода события сокета
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта
 			 */
-			void enabled(const engine_t::method_t method, const size_t aid) noexcept;
+			void enabled(const engine_t::method_t method, const uint64_t aid) noexcept;
 			/**
 			 * disabled Метод деактивации метода события сокета
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта
 			 */
-			void disabled(const engine_t::method_t method, const size_t aid) noexcept;
+			void disabled(const engine_t::method_t method, const uint64_t aid) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных в сокет
@@ -495,7 +495,7 @@ namespace awh {
 			 * @param size   размер записываемых данных
 			 * @param aid    идентификатор адъютанта
 			 */
-			void write(const char * buffer, const size_t size, const size_t aid) noexcept;
+			void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
 		public:
 			/**
 			 * lockMethod Метод блокировки метода режима работы
@@ -503,14 +503,14 @@ namespace awh {
 			 * @param mode   флаг блокировки метода
 			 * @param aid    идентификатор адъютанта
 			 */
-			void lockMethod(const engine_t::method_t method, const bool mode, const size_t aid) noexcept;
+			void lockMethod(const engine_t::method_t method, const bool mode, const uint64_t aid) noexcept;
 			/**
 			 * dataTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
 			 * @param aid     идентификатор адъютанта
 			 */
-			void dataTimeout(const engine_t::method_t method, const time_t seconds, const size_t aid) noexcept;
+			void dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t aid) noexcept;
 			/**
 			 * marker Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
@@ -518,7 +518,7 @@ namespace awh {
 			 * @param min    максимальный размер детектируемых байт
 			 * @param aid    идентификатор адъютанта
 			 */
-			void marker(const engine_t::method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
+			void marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t aid) noexcept;
 		public:
 			/**
 			 * clearTimers Метод очистки всех таймеров
@@ -578,7 +578,7 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
-			engine_t::proto_t proto(const size_t aid) const noexcept;
+			engine_t::proto_t proto(const uint64_t aid) const noexcept;
 			/**
 			 * proto Метод установки поддерживаемого протокола подключения
 			 * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)

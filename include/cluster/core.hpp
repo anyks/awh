@@ -59,7 +59,7 @@ namespace awh {
 				};
 			private:
 				// Идентификатор активного дочернего прцоесса
-				size_t _pid;
+				pid_t _pid;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -84,7 +84,7 @@ namespace awh {
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
-				void cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept;
+				void cluster(const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept;
 			private:
 				/**
 				 * message Метод получения сообщения
@@ -93,7 +93,7 @@ namespace awh {
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера бинарных данных
 				 */
-				void message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
+				void message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
 				 * isMaster Метод проверки является ли процесс дочерним
@@ -172,7 +172,7 @@ namespace awh {
 				 * clusterSize Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const size_t size = 0) noexcept;
+				void clusterSize(const uint16_t size = 0) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов

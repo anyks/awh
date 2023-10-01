@@ -27,7 +27,7 @@ void awh::Scheme::clear() noexcept {
  * @param aid идентификатор адъютанта
  * @return    активный сокет адъютанта
  */
-SOCKET awh::Scheme::getSocket(const size_t aid) const noexcept {
+SOCKET awh::Scheme::getSocket(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	SOCKET result = -1;
 	// Если идентификатор адъютанта передан
@@ -45,7 +45,7 @@ SOCKET awh::Scheme::getSocket(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return   порт подключения адъютанта
  */
-u_int awh::Scheme::getPort(const size_t aid) const noexcept {
+u_int awh::Scheme::getPort(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	u_int result = 0;
 	// Если идентификатор адъютанта передан
@@ -63,7 +63,7 @@ u_int awh::Scheme::getPort(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес интернет подключения адъютанта
  */
-const string & awh::Scheme::getIp(const size_t aid) const noexcept {
+const string & awh::Scheme::getIp(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан
@@ -81,7 +81,7 @@ const string & awh::Scheme::getIp(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес устройства адъютанта
  */
-const string & awh::Scheme::getMac(const size_t aid) const noexcept {
+const string & awh::Scheme::getMac(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан

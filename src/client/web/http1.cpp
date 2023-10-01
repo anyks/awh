@@ -21,7 +21,7 @@
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -42,7 +42,7 @@ void awh::client::Http1::connectCallback(const size_t aid, const size_t sid, awh
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect())
 		// Выходим из функции
@@ -79,7 +79,7 @@ void awh::client::Http1::disconnectCallback(const size_t aid, const size_t sid, 
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Http1::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -254,10 +254,13 @@ bool awh::client::Http1::redirect() noexcept {
 }
 /**
  * response Метод получения ответа сервера
+ * @param aid     идентификатор адъютанта
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::client::Http1::response(const u_int code, const string & message) noexcept {
+void awh::client::Http1::response(const uint64_t aid, const u_int code, const string & message) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 	if(!this->_requests.empty() && this->_callback.is("response"))
 		// Выводим функцию обратного вызова
@@ -265,10 +268,13 @@ void awh::client::Http1::response(const u_int code, const string & message) noex
 }
 /**
  * header Метод получения заголовка
+ * @param aid   идентификатор адъютанта
  * @param key   ключ заголовка
  * @param value значение заголовка
  */
-void awh::client::Http1::header(const string & key, const string & value) noexcept {
+void awh::client::Http1::header(const uint64_t aid, const string & key, const string & value) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на полученного заголовка с сервера установлена
 	if(!this->_requests.empty() && this->_callback.is("header"))
 		// Выводим функцию обратного вызова
@@ -276,24 +282,30 @@ void awh::client::Http1::header(const string & key, const string & value) noexce
 }
 /**
  * headers Метод получения заголовков
+ * @param aid     идентификатор адъютанта
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::Http1::headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Http1::headers(const uint64_t aid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем неиспользуемую переменную
+	(void) aid;
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(!this->_requests.empty() && this->_callback.is("headers"))
 		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_requests.begin()->first, code, message, this->_http.headers());
+		this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_requests.begin()->first, code, message, headers);
 }
 /**
  * chunking Метод обработки получения чанков
+ * @param aid   идентификатор адъютанта
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Http1::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::client::Http1::chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!this->_requests.empty() && !chunk.empty()){
+		// Выполняем неиспользуемую переменную
+		(void) aid;
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
@@ -320,7 +332,7 @@ void awh::client::Http1::flush() noexcept {
  * @param core объект сетевого ядра
  * @return     результат препарирования
  */
-awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept {
+awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept {
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Получаем параметры запроса
@@ -591,24 +603,24 @@ void awh::client::Http1::on(function <void (const mode_t)> callback) noexcept {
 	web_t::on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::Http1::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Если функция обратного вызова передана
-	if(callback != nullptr)
-		// Устанавливаем функцию обратного вызова для HTTP/1.1
-		this->_http.on(callback);
-	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	else this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::client::Http1::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Если функция обратного вызова передана
+	if(callback != nullptr)
+		// Устанавливаем функцию обратного вызова для HTTP/1.1
+		this->_http.on(callback);
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	else this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибки
@@ -642,7 +654,7 @@ void awh::client::Http1::on(function <void (const int32_t, const u_int, const st
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const u_int, const string &)>) std::bind(&http1_t::response, this, _1, _2));
+	this->_http.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&http1_t::response, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции вывода полученного заголовка с сервера
@@ -652,7 +664,7 @@ void awh::client::Http1::on(function <void (const int32_t, const string &, const
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const string &, const string &)>) std::bind(&http1_t::header, this, _1, _2));
+	this->_http.on((function <void (const uint64_t, const string &, const string &)>) std::bind(&http1_t::header, this, _1, _2, _3));
 }
 /**
  * on Метод установки функции вывода полученного тела данных с сервера
@@ -670,7 +682,7 @@ void awh::client::Http1::on(function <void (const int32_t, const u_int, const st
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для HTTP/1.1
-	this->_http.on((function <void (const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&http1_t::headers, this, _1, _2, _3));
+	this->_http.on((function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 }
 /**
  * chunk Метод установки размера чанка
@@ -785,7 +797,7 @@ void awh::client::Http1::crypto(const string & pass, const string & salt, const 
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _mode(false), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
+	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
 }
 /**
  * Http1 Конструктор
@@ -796,5 +808,5 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _mode(false), _http(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2));
+	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
 }

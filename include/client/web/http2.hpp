@@ -85,14 +85,14 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -101,7 +101,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -110,7 +110,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * persistCallback Функция персистентного вызова
@@ -118,7 +118,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
@@ -166,7 +166,7 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат выполнения редиректа
 				 */
-				bool redirect(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				bool redirect(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -187,7 +187,7 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				status_t prepare(const int32_t sid, const size_t aid, client::core_t * core) noexcept;
+				status_t prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept;
 			private:
 				/**
 				 * stream Метод вывода статус потока
@@ -239,15 +239,15 @@ namespace awh {
 				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки

@@ -392,12 +392,14 @@ void awh::server::WEB::actionConnect(const size_t aid) noexcept {
 			adj->http.chunk(this->_chunkSize);
 			// Устанавливаем данные сервиса
 			adj->http.serv(this->_sid, this->_name, this->_ver);
+			/*
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.chunking != nullptr)
 				// Устанавливаем функцию обработки вызова для получения чанков
 				adj->http.on(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
 			else adj->http.on(std::bind(&web_t::chunking, this, _1, _2));
+			*/
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			adj->http.compress(this->_scheme.compress);
 			// Устанавливаем параметры шифрования
@@ -738,8 +740,10 @@ void awh::server::WEB::alive(const size_t time) noexcept {
 void awh::server::WEB::alive(const size_t aid, const bool mode) noexcept {
 	// Получаем параметры подключения адъютанта
 	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
-	if(adj != nullptr) adj->alive = mode;
+	// Если параметры подключения адъютанта получены
+	if(adj != nullptr)
+		// Устанавливаем флаг пдолгоживущего подключения
+		adj->alive = mode;
 }
 /**
  * stop Метод остановки сервера
@@ -754,10 +758,12 @@ void awh::server::WEB::stop() noexcept {
  * start Метод запуска сервера
  */
 void awh::server::WEB::start() noexcept {
-	// Если биндинг не запущен, выполняем запуск биндинга
+	// Если биндинг не запущен
 	if(!this->_core->working())
 		// Выполняем запуск биндинга
 		const_cast <server::core_t *> (this->_core)->start();
+	// Если биндинг уже запущен, выполняем запрос на сервер
+	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
 }
 /**
  * close Метод закрытия подключения адъютанта

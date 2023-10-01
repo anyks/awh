@@ -33,6 +33,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/child.hpp>
@@ -76,7 +77,7 @@ namespace awh {
 					} data_t;
 				public:
 					mutex mtx;         // Мютекс для блокировки потока
-					size_t wid;        // Идентификатор воркера
+					uint16_t wid;      // Идентификатор воркера
 					bool async;        // Флаг асинхронного режима работы
 					bool working;      // Флаг запуска работы
 					bool restart;      // Флаг автоматического перезапуска
@@ -204,17 +205,15 @@ namespace awh {
 			// Флаг отслеживания падения дочерних процессов
 			bool _trackCrash;
 		private:
+			// Объект функций обратного вызова
+			fn_t _callback;
+		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
-			map <size_t, unique_ptr <worker_t>> _workers;
+			map <uint16_t, unique_ptr <worker_t>> _workers;
 			// Список дочерних работников
-			map <size_t, vector <unique_ptr <jack_t>>> _jacks;
-		private:
-			// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-			function <void (const size_t, const pid_t, const event_t)> _processFn;
-			// Функция обратного вызова при получении сообщения
-			function <void (const size_t, const pid_t, const char *, const size_t)> _messageFn;
+			map <uint16_t, vector <unique_ptr <jack_t>>> _jacks;
 		private:
 			// Объект работы с базой событий
 			struct ev_loop * _base;
@@ -230,14 +229,14 @@ namespace awh {
 			 * @param index индекс инициализированного процесса
 			 * @param stop  флаг остановки итерации создания дочерних процессов
 			 */
-			void fork(const size_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
+			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
 		public:
 			/**
 			 * working Метод проверки на запуск работы кластера
 			 * @param wid идентификатор воркера
 			 * @return    результат работы проверки
 			 */
-			bool working(const size_t wid) const noexcept;
+			bool working(const uint16_t wid) const noexcept;
 		public:
 			/**
 			 * send Метод отправки сообщения родительскому процессу
@@ -245,7 +244,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void send(const size_t wid, const char * buffer, const size_t size) noexcept;
+			void send(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 			/**
 			 * send Метод отправки сообщения дочернему процессу
 			 * @param wid    идентификатор воркера
@@ -253,7 +252,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void send(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+			void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * broadcast Метод отправки сообщения всем дочерним процессам
@@ -261,7 +260,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void broadcast(const size_t wid, const char * buffer, const size_t size) noexcept;
+			void broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех выделенных ресурсов
@@ -276,25 +275,25 @@ namespace awh {
 			 * close Метод закрытия всех подключений
 			 * @param wid идентификатор воркера
 			 */
-			void close(const size_t wid) noexcept;
+			void close(const uint16_t wid) noexcept;
 		public:
 			/**
 			 * stop Метод остановки кластера
 			 * @param wid идентификатор воркера
 			 */
-			void stop(const size_t wid) noexcept;
+			void stop(const uint16_t wid) noexcept;
 			/**
 			 * start Метод запуска кластера
 			 * @param wid идентификатор воркера
 			 */
-			void start(const size_t wid) noexcept;
+			void start(const uint16_t wid) noexcept;
 		public:
 			/**
 			 * restart Метод установки флага перезапуска процессов
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг перезапуска процессов
 			 */
-			void restart(const size_t wid, const bool mode) noexcept;
+			void restart(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * base Метод установки базы событий
@@ -313,38 +312,38 @@ namespace awh {
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг асинхронного режима работы
 			 */
-			void async(const size_t wid, const bool mode) noexcept;
+			void async(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * count Метод получения максимального количества процессов
 			 * @param wid идентификатор воркера
 			 * @return    максимальное количество процессов
 			 */
-			uint16_t count(const size_t wid) const noexcept;
+			uint16_t count(const uint16_t wid) const noexcept;
 			/**
 			 * count Метод установки максимального количества процессов
 			 * @param wid   идентификатор воркера
 			 * @param count максимальное количество процессов
 			 */
-			void count(const size_t wid, const uint16_t count) noexcept;
+			void count(const uint16_t wid, const uint16_t count) noexcept;
 		public:
 			/**
 			 * init Метод инициализации воркера
 			 * @param wid   идентификатор воркера
 			 * @param count максимальное количество процессов
 			 */
-			void init(const size_t wid, const uint16_t count = 1) noexcept;
+			void init(const uint16_t wid, const uint16_t count = 1) noexcept;
 		public:
 			/**
 			 * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const size_t, const pid_t, const event_t)> callback) noexcept;
+			void on(function <void (const uint16_t, const pid_t, const event_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при получении сообщения
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const size_t, const pid_t, const char *, const size_t)> callback) noexcept;
+			void on(function <void (const uint16_t, const pid_t, const char *, const size_t)> callback) noexcept;
 		public:
 			/**
 			 * Cluster Конструктор
@@ -352,8 +351,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _processFn(nullptr),
-			 _messageFn(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callback(log), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -361,8 +359,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _processFn(nullptr),
-			 _messageFn(nullptr), _base(base), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callback(log), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 

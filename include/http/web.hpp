@@ -239,6 +239,9 @@ namespace awh {
 					Chunk() noexcept : size(0), state(cstate_t::SIZE) {}
 			} chunk_t;
 		private:
+			// Идентификатор объекта
+			uint64_t _id;
+		private:
 			// Объект запроса
 			req_t _req;
 			// Объект ответа
@@ -409,6 +412,17 @@ namespace awh {
 			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
+			 * id Метод получения идентификатора объекта
+			 * @return идентификатор объекта
+			 */
+			uint64_t id() const noexcept;
+			/**
+			 * id Метод установки идентификатора объекта
+			 * @param id идентификатор объекта
+			 */
+			void id(const uint64_t id) noexcept;
+		public:
+			/**
 			 * hid Метод вывода идентификатора модуля
 			 * @return тип используемого HTTP-модуля
 			 */
@@ -429,45 +443,45 @@ namespace awh {
 			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const u_int, const string &)> callback) noexcept;
+			void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
 			/** 
 			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const method_t, const uri_t::url_t &)> callback) noexcept;
+			void on(function <void (const uint64_t, const method_t, const uri_t::url_t &)> callback) noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода полученного заголовка с сервера
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const string &, const string &)> callback) noexcept;
+			void on(function <void (const uint64_t, const string &, const string &)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const vector <char> &, const Web *)> callback) noexcept;
+			void on(function <void (const uint64_t, const vector <char> &, const Web *)> callback) noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
+			void on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
+			void on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода полученных заголовков с сервера
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+			void on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			/** 
 			 * on Метод установки функции вывода полученных заголовков с сервера
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+			void on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 		public:
 			/**
 			 * Web Конструктор
