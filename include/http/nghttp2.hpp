@@ -209,7 +209,7 @@ namespace awh {
 			/**
 			 * ~NgHttp2 Деструктор
 			 */
-			~NgHttp2() noexcept {}
+			~NgHttp2() noexcept;
 	} nghttp2_t;
 };
 

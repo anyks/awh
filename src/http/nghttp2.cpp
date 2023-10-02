@@ -433,3 +433,10 @@ void awh::NgHttp2::on(function <void (const log_t::flag_t, const http::error_t, 
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
+/**
+ * ~NgHttp2 Деструктор
+ */
+awh::NgHttp2::~NgHttp2() noexcept {
+	// Выполняем удаление созданную ранее сессию
+	this->free();
+}

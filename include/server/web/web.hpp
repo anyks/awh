@@ -527,66 +527,69 @@ namespace awh {
 					HEADER_TABLE_SIZE = 0x05  // Максимальный размер таблицы заголовков
 				};
 			protected:
-				// Объект работы с фреймами NgHttp2
-				nghttp2_t _nghttp2;
-			protected:
-				// Флаг выполнения подключения к серверу
-				bool _sessionInitialized;
-			protected:
 				// Список доступных источников
 				vector <string> _origins;
 			private:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
 			protected:
+				// Список активных сессий HTTP/2
+				map <uint64_t, unique_ptr <nghttp2_t>> _sessions;
+			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
+				 * @param aid    идентификатор адъютанта
 				 * @param buffer буфер бинарных данных
-				 * @param size  размер буфера данных для отправки
+				 * @param size   размер буфера данных для отправки
 				 */
-				void sendSignal(const uint8_t * buffer, const size_t size) noexcept;
+				void sendSignal(const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
 				 * @param sid   идентификатор потока
+				 * @param aid   идентификатор адъютанта
 				 * @param type  тип полученного фрейма
 				 * @param flags флаг полученного фрейма
 				 * @return      статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
+				 * @param aid    идентификатор адъютанта
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int chunkSignal(const int32_t sid, const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
 				 * @param sid идентификатор потока
+				 * @param aid идентификатор адъютанта
 				 * @return    статус полученных данных
 				 */
-				virtual int beginSignal(const int32_t sid) noexcept = 0;
+				virtual int beginSignal(const int32_t sid, const uint64_t aid) noexcept = 0;
 			protected:
 				/**
 				 * streamClosedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
+				 * @param aid   идентификатор адъютанта
 				 * @param error флаг ошибки HTTP/2 если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const uint32_t error) noexcept = 0;
+				virtual int closedSignal(const int32_t sid, const uint64_t aid, const uint32_t error) noexcept = 0;
 			protected:
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор потока
+				 * @param aid идентификатор адъютанта
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
+				virtual int headerSignal(const int32_t sid, const uint64_t aid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
@@ -609,34 +612,23 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * implementation Метод выполнения активации сессии HTTP/2
-				 * @param aid  идентификатор адъютанта
-				 * @param core объект сетевого ядра
-				 */
-				void implementation(const uint64_t aid, server::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга клиента
-				 * @return результат работы пинга
+				 * @param aid идентификатор адъютанта
+				 * @return    результат работы пинга
 				 */
-				bool ping() noexcept;
+				bool ping(const uint64_t aid) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param id      идентификатор потока HTTP/2
+				 * @param aid     идентификатор адъютанта
 				 * @param message сообщение передаваемое на сервер
 				 * @param size    размер сообщения в байтах
 				 * @param end     флаг последнего сообщения после которого поток закрывается
 				 */
-				void send(const int32_t id, const char * message, const size_t size, const bool end) noexcept;
-			public:
-				/**
-				 * mode Метод установки флагов настроек модуля
-				 * @param flags список флагов настроек модуля для установки
-				 */
-				virtual void mode(const set <flag_t> & flags) noexcept;
+				void send(const int32_t id, const uint64_t aid, const char * message, const size_t size, const bool end) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешенных источников
@@ -645,9 +637,10 @@ namespace awh {
 				void setOrigin(const vector <string> & origins) noexcept;
 				/**
 				 * sendOrigin Метод отправки списка разрешенных источников для
+				 * @param aid     идентификатор адъютанта
 				 * @param origins список разрешённых источников
 				 */
-				void sendOrigin(const vector <string> & origins) noexcept;
+				void sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

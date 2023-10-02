@@ -545,7 +545,7 @@ namespace awh {
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
 				 * @param buffer буфер бинарных данных
-				 * @param size  размер буфера данных для отправки
+				 * @param size   размер буфера данных для отправки
 				 */
 				void sendSignal(const uint8_t * buffer, const size_t size) noexcept;
 			protected:
