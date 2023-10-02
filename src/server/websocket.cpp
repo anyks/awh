@@ -643,7 +643,7 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 			// Разрешаем перехватывать контекст для сервера
 			adj->ws.takeover(awh::web_t::hid_t::SERVER, this->_takeOverSrv);
 			// Устанавливаем данные сервиса
-			adj->ws.serv(this->_sid, this->_name, this->_ver);
+			adj->ws.ident(this->_sid, this->_name, this->_ver);
 			// Устанавливаем поддерживаемые сабпротоколы
 			if(!this->_subs.empty()) adj->ws.subs(this->_subs);
 			// Устанавливаем метод компрессии поддерживаемый сервером

@@ -765,23 +765,23 @@ vector <char> awh::Http::dump() const noexcept {
 		// Устанавливаем размер одного чанка
 		result.insert(result.end(), (const char *) &this->_chunk, (const char *) &this->_chunk + sizeof(this->_chunk));
 		// Получаем размер идентификатора сервиса
-		length = this->_server.id.size();
+		length = this->_ident.id.size();
 		// Устанавливаем размер идентификатора сервиса
 		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 		// Устанавливаем данные идентификатора сервиса
-		result.insert(result.end(), this->_server.id.begin(), this->_server.id.end());
+		result.insert(result.end(), this->_ident.id.begin(), this->_ident.id.end());
 		// Получаем размер версии модуля приложения
-		length = this->_server.version.size();
+		length = this->_ident.version.size();
 		// Устанавливаем размер версии модуля приложения
 		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 		// Устанавливаем данные версии модуля приложения
-		result.insert(result.end(), this->_server.version.begin(), this->_server.version.end());
+		result.insert(result.end(), this->_ident.version.begin(), this->_ident.version.end());
 		// Получаем размер названия сервиса
-		length = this->_server.name.size();
+		length = this->_ident.name.size();
 		// Устанавливаем размер названия сервиса
 		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 		// Устанавливаем данные названия сервиса
-		result.insert(result.end(), this->_server.name.begin(), this->_server.name.end());
+		result.insert(result.end(), this->_ident.name.begin(), this->_ident.name.end());
 		// Получаем размер User-Agent для HTTP запроса
 		length = this->_userAgent.size();
 		// Устанавливаем размер User-Agent для HTTP запроса
@@ -851,9 +851,9 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных идентификатора сервиса
-		this->_server.id.resize(length, 0);
+		this->_ident.id.resize(length, 0);
 		// Выполняем получение данных идентификатора сервиса
-		memcpy((void *) this->_server.id.data(), data.data() + offset, length);
+		memcpy((void *) this->_ident.id.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера версии модуля приложения
@@ -861,9 +861,9 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных версии модуля приложения
-		this->_server.version.resize(length, 0);
+		this->_ident.version.resize(length, 0);
 		// Выполняем получение данных версии модуля приложения
-		memcpy((void *) this->_server.version.data(), data.data() + offset, length);
+		memcpy((void *) this->_ident.version.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера названия сервиса
@@ -871,9 +871,9 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных названия сервиса
-		this->_server.name.resize(length, 0);
+		this->_ident.name.resize(length, 0);
 		// Выполняем получение данных названия сервиса
-		memcpy((void *) this->_server.name.data(), data.data() + offset, length);
+		memcpy((void *) this->_ident.name.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера User-Agent для HTTP запроса
@@ -2224,7 +2224,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 						}
 						// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
-						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_server.name.c_str(), os, this->_server.id.c_str(), this->_server.version.c_str());
+						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 					}
 					// Добавляем заголовок в запрос
 					request.append(this->_fmk->format("User-Agent: %s\r\n", this->_userAgent.c_str()));
@@ -2438,11 +2438,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Если заголовок не запрещён
 				if(!this->isBlack("Server"))
 					// Добавляем название сервера в ответ
-					response.append(this->_fmk->format("Server: %s\r\n", this->_server.name.c_str()));
+					response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
 				// Если заголовок не запрещён
 				if(!this->isBlack("X-Powered-By"))
 					// Добавляем название рабочей системы в ответ
-					response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_server.id.c_str(), this->_server.version.c_str()));
+					response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_ident.id.c_str(), this->_ident.version.c_str()));
 				// Если заголовок авторизации не передан
 				if(((res.code == 401) && !available[7]) || ((res.code == 407) && !available[8])){
 					// Получаем параметры авторизации
@@ -2767,7 +2767,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 						}
 						// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
-						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_server.name.c_str(), os, this->_server.id.c_str(), this->_server.version.c_str());
+						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 					}
 					// Добавляем заголовок в запрос
 					result.push_back(make_pair("user-agent", this->_userAgent));
@@ -2974,11 +2974,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				// Если заголовок не запрещён
 				if(!this->isBlack("server"))
 					// Добавляем название сервера в ответ
-					result.push_back(make_pair("server", this->_server.name));
+					result.push_back(make_pair("server", this->_ident.name));
 				// Если заголовок не запрещён
 				if(!this->isBlack("x-powered-by"))
 					// Добавляем название рабочей системы в ответ
-					result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_server.id.c_str(), this->_server.version.c_str())));
+					result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
 				// Если заголовок авторизации не передан
 				if(((res.code == 401) && !available[7]) || ((res.code == 407) && !available[8])){
 					// Получаем параметры авторизации
@@ -3183,18 +3183,24 @@ void awh::Http::userAgent(const string & userAgent) noexcept {
 		this->_userAgent = userAgent;
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::Http::serv(const string & id, const string & name, const string & ver) noexcept {
-	// Если идентификатор сервиса передан, устанавливаем
-	if(!id.empty()) this->_server.id = id;
-	// Если название сервиса передано, устанавливаем
-	if(!name.empty()) this->_server.name = name;
+void awh::Http::ident(const string & id, const string & name, const string & ver) noexcept {
+	// Если идентификатор сервиса передан
+	if(!id.empty())
+		// Устанавливаем идентификатор сервиса
+		this->_ident.id = id;
+	// Если название сервиса передано
+	if(!name.empty())
+		// Устанавливаем название сервиса
+		this->_ident.name = name;
 	// Если версия сервиса передана
-	if(!ver.empty()) this->_server.version = ver;
+	if(!ver.empty())
+		// Устанавливаем версию сервиса
+		this->_ident.version = ver;
 }
 /**
  * crypto Метод установки параметров шифрования

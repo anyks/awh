@@ -173,6 +173,10 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
 					// Выполняем очистку функций обратного вызова
 					this->_resultCallback.clear();
+					// Если функция обратного вызова на получение удачного ответа установлена
+					if(this->_callback.is("goodResponse"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t> ("goodResponse", sid);
 					// Если подключение выполнено и список запросов не пустой
 					if((this->_aid > 0) && !this->_requests.empty())
 						// Выполняем запрос на удалённый сервер
@@ -354,6 +358,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 	switch(static_cast <uint8_t> (status)){
 		// Если нужно попытаться ещё раз
 		case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if((response.code == 401) && this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 			// Если попытки повторить переадресацию ещё не закончились
 			if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 				// Выполняем поиск указанного запроса
@@ -417,7 +425,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			// Выполняем сброс количества попыток
 			this->_attempt = 0;
 			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-			if(this->_callback.is("entity"))
+			if(!this->_http.body().empty() && this->_callback.is("entity"))
 				// Устанавливаем полученную функцию обратного вызова
 				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 			// Если объект ещё не удалён
@@ -445,10 +453,14 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 			// Устанавливаем флаг принудительной остановки
 			this->_stopped = true;
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, this->_http.message(response.code).c_str());
 			// Если возникла ошибка выполнения запроса
 			if((response.code >= 400) && (response.code < 500)){
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(this->_callback.is("entity"))
+				if(!this->_http.body().empty() && this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 				// Если объект ещё не удалён
@@ -468,7 +480,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-	if(this->_callback.is("entity"))
+	if(!this->_http.body().empty() && this->_callback.is("entity"))
 		// Устанавливаем полученную функцию обратного вызова
 		this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 	// Завершаем работу
@@ -633,6 +645,14 @@ void awh::client::Http1::on(function <void (const log_t::flag_t, const http::err
 	web_t::on(callback);
 }
 /**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -740,18 +760,18 @@ void awh::client::Http1::userAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации клиента
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Http1::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Http1::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Если данные сервиса переданы
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
-		web_t::serv(id, name, ver);
+		web_t::ident(id, name, ver);
 		// Устанавливаем данные сервиса
-		this->_http.serv(id, name, ver);
+		this->_http.ident(id, name, ver);
 	}
 }
 /**

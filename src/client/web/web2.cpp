@@ -765,22 +765,22 @@ void awh::client::Web2::user(const string & login, const string & password) noex
 		this->_password = password;
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации клиента
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Web2::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Web2::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Если данные сервиса переданы
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
-		web_t::serv(id, name, ver);
+		web_t::ident(id, name, ver);
 		// Запоминаем идентификатор сервиса
-		this->_serv.id = id;
+		this->_ident.id = id;
 		// Запоминаем версию сервиса
-		this->_serv.ver = ver;
+		this->_ident.ver = ver;
 		// Запоминаем название сервиса
-		this->_serv.name = name;
+		this->_ident.name = name;
 	}
 }
 /**

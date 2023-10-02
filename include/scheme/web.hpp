@@ -48,6 +48,7 @@ namespace awh {
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
+					bool mode;                        // Флаг открытия подключения
 					bool crypt;                       // Флаг шифрования сообщений
 					bool alive;                       // Флаг долгоживущего подключения
 					bool close;                       // Флаг требования закрыть адъютанта
@@ -63,8 +64,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
-					 crypt(false), alive(false), close(false),
-					 stopped(false), requests(0), checkPoint(0),
+					 mode(false), crypt(false), alive(false),
+					 close(false), stopped(false), requests(0), checkPoint(0),
 					 http(fmk, log), compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор

@@ -920,6 +920,11 @@ void awh::Engine::Context::error(const int status) const noexcept {
 		const int error = SSL_get_error(this->_ssl, status);
 		// Определяем тип ошибки
 		switch(error){
+			// Если сертификат неизвестный
+			case SSL_ERROR_SSL:
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+			break;
 			// Если был возвращён ноль
 			case SSL_ERROR_ZERO_RETURN: {
 				// Если удалённая сторона произвела закрытие подключения

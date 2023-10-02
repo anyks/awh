@@ -985,9 +985,13 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 		// Если количество процессов не передано
 		if(count == 0)
 			// Устанавливаем максимальное количество ядер доступных в системе
-			it->second->count = std::thread::hardware_concurrency();
+			it->second->count = (std::thread::hardware_concurrency() / 2);
 		// Устанавливаем максимальное количество процессов
 		else it->second->count = count;
+		// Если количество процессов не установлено
+		if(it->second->count == 0)
+			// Устанавливаем один рабочий процесс
+			it->second->count = 1;
 	}
 }
 /**

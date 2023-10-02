@@ -113,6 +113,14 @@ void awh::client::WebSocket::on(function <void (const int32_t, const vector <cha
 	this->_ws.on(callback);
 }
 /**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -298,14 +306,14 @@ void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
 	this->_ws.userAgent(userAgent);
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации клиента
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::WebSocket::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::WebSocket::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Выполняем установку данных сервиса
-	this->_ws.serv(id, name, ver);
+	this->_ws.ident(id, name, ver);
 }
 /**
  * proxy Метод установки прокси-сервера

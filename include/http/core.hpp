@@ -88,9 +88,9 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Server Структура идентификации сервера
+			 * Ident Структура идентификации сервиса
 			 */
-			typedef struct Server {
+			typedef struct Ident {
 				// Идентификатор сервиса
 				string id;
 				// Название сервиса
@@ -98,10 +98,10 @@ namespace awh {
 				// Версия модуля приложения
 				string version;
 				/**
-				 * Server Конструктор
+				 * Ident Конструктор
 				 */
-				Server() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
-			} server_t;
+				Ident() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
+			} ident_t;
 			/**
 			 * Crypto Структура крипто-данных
 			 */
@@ -223,8 +223,8 @@ namespace awh {
 			// Размер одного чанка
 			size_t _chunk;
 		private:
-			// Идентификатор сервера
-			server_t _server;
+			// Идентификация сервиса
+			ident_t _ident;
 		private:
 			// Метод компрессии отправляемых данных
 			compress_t _compress;
@@ -617,12 +617,12 @@ namespace awh {
 			void userAgent(const string & userAgent) noexcept;
 		public:
 			/**
-			 * serv Метод установки данных сервиса
+			 * ident Метод установки идентификации сервера
 			 * @param id   идентификатор сервиса
 			 * @param name название сервиса
 			 * @param ver  версия сервиса
 			 */
-			void serv(const string & id, const string & name, const string & ver) noexcept;
+			void ident(const string & id, const string & name, const string & ver) noexcept;
 			/**
 			 * crypto Метод установки параметров шифрования
 			 * @param pass   пароль шифрования передаваемых данных

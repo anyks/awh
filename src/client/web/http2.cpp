@@ -269,6 +269,10 @@ int awh::client::Http2::frameSignal(const int32_t sid, const uint8_t type, const
 								if(it->second->callback.is("entity"))
 									// Выполняем функцию обратного вызова дисконнекта
 									it->second->callback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+								// Если функция обратного вызова на получение удачного ответа установлена
+								if(this->_callback.is("goodResponse"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t> ("goodResponse", sid);
 								// Выполняем удаление выполненного воркера
 								this->_workers.erase(sid);
 							}
@@ -931,6 +935,10 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if((response.code == 401) && this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
 				// Если попытки повторить переадресацию ещё не закончились
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 					// Выполняем поиск параметров запроса
@@ -982,7 +990,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Выполняем сброс количества попыток
 				this->_attempt = 0;
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(this->_callback.is("entity"))
+				if(!it->second->http.body().empty() && this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 				// Устанавливаем размер стопбайт
@@ -1003,10 +1011,14 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 			case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, this->_http.message(response.code).c_str());
 				// Если возникла ошибка выполнения запроса
 				if((response.code >= 400) && (response.code < 500)){
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(this->_callback.is("entity"))
+					if(!it->second->http.body().empty() && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 					// Выполняем удаление параметров запроса
@@ -1017,7 +1029,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 			} break;
 		}
 		// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-		if(this->_callback.is("entity"))
+		if(!it->second->http.body().empty() && this->_callback.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
 			it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 		// Завершаем работу
@@ -1390,9 +1402,9 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 						// Устанавливаем логин и пароль пользователя
 						ret.first->second->http.user(this->_login, this->_password);
 					// Если параметры сервиса установлены
-					if(!this->_serv.id.empty() && !this->_serv.name.empty() && !this->_serv.ver.empty())
+					if(!this->_ident.id.empty() || !this->_ident.name.empty() || !this->_ident.ver.empty())
 						// Устанавливаем данные сервиса
-						ret.first->second->http.serv(this->_serv.id, this->_serv.name, this->_serv.ver);
+						ret.first->second->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 					// Если пароль для шифрования передан
 					if(!this->_crypto.pass.empty())
 						// Устанавливаем параметры шифрования для HTTP-клиента
@@ -1503,6 +1515,18 @@ void awh::client::Http2::on(function <void (const uint64_t, const vector <char> 
  * @param callback функция обратного вызова
  */
 void awh::client::Http2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on(callback);
+}
+/**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
@@ -1760,22 +1784,22 @@ void awh::client::Http2::userAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации клиента
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Http2::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Http2::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Если данные сервиса переданы
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
-		web2_t::serv(id, name, ver);
+		web2_t::ident(id, name, ver);
 		// Устанавливаем данные сервиса для WebSocket-клиента
-		this->_ws2.serv(id, name, ver);
+		this->_ws2.ident(id, name, ver);
 		// Устанавливаем данные сервиса для HTTP-парсера
-		this->_http.serv(id, name, ver);
+		this->_http.ident(id, name, ver);
 		// Устанавливаем данные сервиса для HTTP-клиента
-		this->_http1.serv(id, name, ver);
+		this->_http1.ident(id, name, ver);
 	}
 }
 /**

@@ -215,6 +215,14 @@ void awh::server::Web::on(function <void (const log_t::flag_t, const http::error
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::server::Web::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const uint64_t)> ("goodRequest", callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -355,18 +363,18 @@ void awh::server::Web::maxRequests(const size_t max) noexcept {
 	this->_maxRequests = max;
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::server::Web::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::server::Web::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификатор сервера
-	this->_serv.id = id;
+	this->_ident.id = id;
 	// Устанавливаем версию сервера
-	this->_serv.ver = ver;
+	this->_ident.ver = ver;
 	// Устанавливаем название сервера
-	this->_serv.name = name;
+	this->_ident.name = name;
 }
 /**
  * authType Метод установки типа авторизации

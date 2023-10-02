@@ -431,6 +431,14 @@ void awh::client::Web::on(function <void (const log_t::flag_t, const http::error
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t)> ("goodResponse", callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -680,14 +688,14 @@ void awh::client::Web::userAgent(const string & userAgent) noexcept {
 		this->_scheme.proxy.http.userAgent(userAgent);
 }
 /**
- * serv Метод установки данных сервиса
+ * ident Метод установки идентификации клиента
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Web::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Web::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса для прокси-сервера
-	this->_scheme.proxy.http.serv(id, name, ver);
+	this->_scheme.proxy.http.ident(id, name, ver);
 }
 /**
  * authTypeProxy Метод установки типа авторизации прокси-сервера

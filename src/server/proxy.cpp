@@ -167,8 +167,8 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 			adj->cli.chunk(this->_chunkSize);
 			adj->srv.chunk(this->_chunkSize);
 			// Устанавливаем данные сервиса
-			adj->cli.serv(this->_sid, this->_name, this->_ver);
-			adj->srv.serv(this->_sid, this->_name, this->_ver);
+			adj->cli.ident(this->_sid, this->_name, this->_ver);
+			adj->srv.ident(this->_sid, this->_name, this->_ver);
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.chunking != nullptr)
 				// Устанавливаем функцию обработки вызова для получения чанков

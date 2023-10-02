@@ -1,5 +1,5 @@
 /**
- * @file: rest.hpp
+ * @file: awh.hpp
  * @date: 2023-09-19
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_REST_CLIENT__
-#define __AWH_REST_CLIENT__
+#ifndef __AWH_CLIENT__
+#define __AWH_CLIENT__
 
 /**
  * Стандартная библиотека
@@ -37,9 +37,9 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * Rest Класс работы с REST-клиентом
+		 * AWH Класс работы с WEB-клиентом
 		 */
-		typedef class Rest {
+		typedef class AWH {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
@@ -251,6 +251,11 @@ namespace awh {
 				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
@@ -374,12 +379,12 @@ namespace awh {
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * serv Метод установки данных сервиса
+				 * ident Метод установки идентификации клиента
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void serv(const string & id, const string & name, const string & ver) noexcept;
+				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера
@@ -424,18 +429,18 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * Rest Конструктор
+				 * AWH Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _uri(fmk), _http(core, fmk, log), _fmk(fmk), _log(log) {}
+				AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _uri(fmk), _http(core, fmk, log), _fmk(fmk), _log(log) {}
 				/**
-				 * ~Rest Деструктор
+				 * ~AWH Деструктор
 				 */
-				~Rest() noexcept {}
-		} rest_t;
+				~AWH() noexcept {}
+		} awh_t;
 	};
 };
 
-#endif // __AWH_REST_CLIENT__
+#endif // __AWH_CLIENT__

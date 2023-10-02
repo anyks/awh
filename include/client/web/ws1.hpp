@@ -296,6 +296,11 @@ namespace awh {
 				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
@@ -392,12 +397,12 @@ namespace awh {
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * serv Метод установки данных сервиса
+				 * ident Метод установки идентификации клиента
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void serv(const string & id, const string & name, const string & ver) noexcept;
+				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности

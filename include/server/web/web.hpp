@@ -80,17 +80,17 @@ namespace awh {
 				};
 			protected:
 				/**
-				 * Serv Структура идентификации сервиса
+				 * Ident Структура идентификации сервиса
 				 */
-				typedef struct Serv {
+				typedef struct Ident {
 					string id;   // Идентификатор сервиса
 					string ver;  // Версия сервиса
 					string name; // Название сервиса
 					/**
-					 * Serv Конструктор
+					 * Ident Конструктор
 					 */
-					Serv() noexcept : id{""}, ver{""}, name{""} {}
-				} serv_t;
+					Ident() noexcept : id{""}, ver{""}, name{""} {}
+				} ident_t;
 				/**
 				 * Crypto Структура параметров шифрования
 				 */
@@ -130,7 +130,7 @@ namespace awh {
 				// Объект работы с URI ссылками
 				uri_t _uri;
 				// Объект идентификации сервиса
-				serv_t _serv;
+				ident_t _ident;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект параметров шифрования
@@ -157,7 +157,7 @@ namespace awh {
 				size_t _maxRequests;
 			protected:
 				// Список мусорных адъютантов
-				map <time_t, uint64_t> _garbage;
+				map <uint64_t, time_t> _garbage;
 			protected:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -301,6 +301,11 @@ namespace awh {
 				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
@@ -355,12 +360,12 @@ namespace awh {
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void alive(const bool mode) noexcept;
+				virtual void alive(const bool mode) noexcept;
 				/**
 				 * alive Метод установки времени жизни подключения
 				 * @param time время жизни подключения
 				 */
-				void alive(const time_t time) noexcept;
+				virtual void alive(const time_t time) noexcept;
 				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param aid  идентификатор адъютанта
@@ -454,12 +459,12 @@ namespace awh {
 				virtual void keepAlive(const int cnt, const int idle, const int intvl) noexcept = 0;
 			public:
 				/**
-				 * serv Метод установки данных сервиса
+				 * ident Метод установки идентификации сервера
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void serv(const string & id, const string & name, const string & ver) noexcept;
+				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации

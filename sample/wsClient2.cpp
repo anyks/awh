@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <client/rest.hpp>
+#include <client/awh.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -27,7 +27,7 @@ class WebClient {
 		const log_t * _log;
 	private:
 		// Объект веб-клиента
-		client::rest_t * _rest;
+		client::awh_t * _awh;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -177,7 +177,7 @@ class WebClient {
 					// Получаем параметры запроса в виде строки
 					const string query = data.dump();
 					// Отправляем сообщение на сервер
-					this->_rest->send(query.data(), query.size());
+					this->_awh->send(query.data(), query.size());
 				} break;
 				// Если клиент отключился от сервера
 				case static_cast <uint8_t> (client::web_t::mode_t::CLOSE):
@@ -207,11 +207,11 @@ class WebClient {
 					// Создаём объект JSON
 					json data = json::parse(buffer.begin(), buffer.end());
 					// Выводим полученный результат
-					cout << " +++++++++++++ " << data.dump(4) << " == " << this->_rest->sub() << endl;
+					cout << " +++++++++++++ " << data.dump(4) << " == " << this->_awh->sub() << endl;
 				// Обрабатываем ошибку
 				} catch(const exception & e) {}
 			// Сообщаем количество полученных байт
-			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << this->_rest->sub() << endl;
+			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << this->_awh->sub() << endl;
 		}
 		/**
 		 * message Метод получения статуса результата запроса
@@ -245,7 +245,7 @@ class WebClient {
 				// Устанавливаем параметры запроса
 				req.url = uri.parse("/stream");
 				// Выполняем первый запрос на сервер
-				this->_rest->send(client::web_t::agent_t::WEBSOCKET, req);
+				this->_awh->send(client::web_t::agent_t::WEBSOCKET, req);
 			}
 		}
 		/**
@@ -275,7 +275,7 @@ class WebClient {
 			}
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
-			this->_rest->stop();
+			this->_awh->stop();
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
@@ -293,11 +293,11 @@ class WebClient {
 	public:
 		/**
 		 * WebClient Конструктор
-		 * @param fmk  объект фреймворка
-		 * @param log  объект логирования
-		 * @param rest объект REST-клиента
+		 * @param fmk объект фреймворка
+		 * @param log объект логирования
+		 * @param awh объект WEB-клиента
 		 */
-		WebClient(const fmk_t * fmk, const log_t * log, client::rest_t * rest) : _fmk(fmk), _log(log), _rest(rest) {}
+		WebClient(const fmk_t * fmk, const log_t * log, client::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh) {}
 };
 
 /**
@@ -316,9 +316,9 @@ int main(int argc, char * argv[]){
 	// Создаём биндинг
 	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
-	client::rest_t rest(&core, &fmk, &log);
+	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	WebClient executor(&fmk, &log, &rest);
+	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
 	// core.proto(awh::engine_t::proto_t::HTTP2);
 	core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -332,7 +332,7 @@ int main(int argc, char * argv[]){
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
-	rest.mode({
+	awh.mode({
 		// client::web_t::flag_t::NOT_STOP,
 		client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
@@ -348,59 +348,59 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	// rest.user("user", "password");
+	// awh.user("user", "password");
 	// Устанавливаем длительное подключение
-	// rest.keepAlive(2, 3, 1);
+	// awh.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение
-	// rest.keepAlive(100, 30, 10);
+	// awh.keepAlive(100, 30, 10);
 	// Отключаем таймер ожидания входящих данных
-	// rest.waitTimeDetect(0, 0, CONNECT_TIMEOUT);
+	// awh.waitTimeDetect(0, 0, CONNECT_TIMEOUT);
 	// Устанавливаем данные прокси-сервера
-	// rest.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
-	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-	// rest.proxy("socks5://127.0.0.1:2222");
-	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
-	// rest.proxy("http://test1:password@127.0.0.1:2222");
-	// rest.proxy("http://127.0.0.1:2222");
-	// rest.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
-	// rest.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
+	// awh.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// awh.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// awh.proxy("socks5://127.0.0.1:2222");
+	// awh.proxy("socks5://test1:test@127.0.0.1:2222");
+	// awh.proxy("http://test1:password@127.0.0.1:2222");
+	// awh.proxy("http://127.0.0.1:2222");
+	// awh.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
+	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	
 	
-	rest.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
-	// rest.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
+	awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	
-	// rest.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
-	// rest.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
+	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
+	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 	
 	// Устанавливаем тип компрессии
-	// rest.compress(http_t::compress_t::ALL_COMPRESS);
+	// awh.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	rest.authTypeProxy();
-	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authTypeProxy();
+	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	// rest.authType();
-	// rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType();
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	// Устанавливаем метод активации подключения
-	rest.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
+	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
-	rest.on((function <void (const u_int, const string &)>) std::bind(&WebClient::error, &executor, _1, _2));
+	awh.on((function <void (const u_int, const string &)>) std::bind(&WebClient::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
-	rest.on((function <void (const vector <char> &, const bool)>) std::bind(&WebClient::messageWebSocket, &executor, _1, _2));
+	awh.on((function <void (const vector <char> &, const bool)>) std::bind(&WebClient::messageWebSocket, &executor, _1, _2));
 	// Подписываемся на событие коннекта/дисконнекта
-	rest.on((function <void (const int32_t, const client::web_t::mode_t)>) std::bind(&WebClient::events, &executor, _1, _2));
+	awh.on((function <void (const int32_t, const client::web_t::mode_t)>) std::bind(&WebClient::events, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
-	rest.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&WebClient::status, &executor, _1, _2));
+	awh.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&WebClient::status, &executor, _1, _2));
 	// Устанавливаем метод получения сообщения сервера
-	rest.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
 	// Устанавливаем метод получения тела ответа
-	rest.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения заголовков
-	rest.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
 	// Выполняем инициализацию подключения
-	rest.init("wss://stream.binance.com:9443");
+	awh.init("wss://stream.binance.com:9443");
 	// Выполняем запуск работы
-	rest.start();
+	awh.start();
 
 	// Выводим результат
 	return 0;

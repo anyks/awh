@@ -292,6 +292,11 @@ namespace awh {
 				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
@@ -409,12 +414,12 @@ namespace awh {
 				 */
 				virtual void userAgent(const string & userAgent) noexcept;
 				/**
-				 * serv Метод установки данных сервиса
+				 * ident Метод установки идентификации клиента
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				virtual void serv(const string & id, const string & name, const string & ver) noexcept;
+				virtual void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации
@@ -484,17 +489,17 @@ namespace awh {
 				};
 			protected:
 				/**
-				 * Serv Структура идентификации сервиса
+				 * Ident Структура идентификации сервиса
 				 */
-				typedef struct Serv {
+				typedef struct Ident {
 					string id;   // Идентификатор сервиса
 					string ver;  // Версия сервиса
 					string name; // Название сервиса
 					/**
-					 * Serv Конструктор
+					 * Ident Конструктор
 					 */
-					Serv() noexcept : id{""}, ver{""}, name{""} {}
-				} serv_t;
+					Ident() noexcept : id{""}, ver{""}, name{""} {}
+				} ident_t;
 				/**
 				 * Crypto Структура параметров шифрования
 				 */
@@ -509,7 +514,7 @@ namespace awh {
 				} crypto_t;
 			protected:
 				// Объект идентификации сервиса
-				serv_t _serv;
+				ident_t _ident;
 				// Объект параметров шифрования
 				crypto_t _crypto;
 				// Объект работы с фреймами NgHttp2
@@ -706,12 +711,12 @@ namespace awh {
 				 */
 				void user(const string & login, const string & password) noexcept;
 				/**
-				 * serv Метод установки данных сервиса
+				 * ident Метод установки идентификации клиента
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void serv(const string & id, const string & name, const string & ver) noexcept;
+				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации

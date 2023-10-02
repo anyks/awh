@@ -1,6 +1,6 @@
 /**
- * @file: http1.hpp
- * @date: 2023-10-01
+ * @file: awh.hpp
+ * @date: 2023-10-02
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,14 +12,13 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_WEB_HTTP1_SERVER__
-#define __AWH_WEB_HTTP1_SERVER__
+#ifndef __AWH_SERVER__
+#define __AWH_SERVER__
 
 /**
  * Наши модули
  */
-#include <scheme/web.hpp>
-#include <server/web/web.hpp>
+#include <server/web/http1.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -33,93 +32,17 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * Http2 Прототип класса HTTP/2 сервера
+		 * AWH Класс работы с WEB-сервером
 		 */
-		class Http2;
-		/**
-		 * Http1 Класс HTTP-сервера
-		 */
-		typedef class Http1 : public web_t {
+		typedef class AWH {
 			private:
-				/**
-				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
-				 */
-				friend class Http2;
+				// Объект работы с протоколом HTTP/1.1
+				server::http1_t _http;
 			private:
-				// Объект рабочего
-				web_scheme_t _scheme;
-			private:
-				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * disconnectCallback Метод обратного вызова при отключении клиента
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с клиента
-				 * @param buffer бинарный буфер содержащий сообщение
-				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
-				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
-				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * writeCallback Функция обратного вызова при записи сообщение адъютанту
-				 * @param buffer бинарный буфер содержащий сообщение
-				 * @param size   размер записанных в сокет байт
-				 * @param aid    идентификатор адъютанта
-				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
-				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * request Метод получения запроса клиента
-				 * @param aid    идентификатор адъютанта
-				 * @param method метод запроса клиента
-				 * @param url    адрес запроса клиента
-				 */
-				void request(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url) noexcept;
-			private:
-				/**
-				 * header Метод получения заголовка
-				 * @param aid   идентификатор адъютанта
-				 * @param key   ключ заголовка
-				 * @param value значение заголовка
-				 */
-				void header(const uint64_t aid, const string & key, const string & value) noexcept;
-				/**
-				 * headers Метод получения заголовков
-				 * @param aid     идентификатор адъютанта
-				 * @param method  метод запроса клиента
-				 * @param url     адрес запроса клиента
-				 * @param headers заголовки ответа сервера
-				 */
-				void headers(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
-			private:
-				/**
-				 * garbage Метод удаления мусорных адъютантов
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
-				 */
-				void garbage(const u_short tid, awh::core_t * core) noexcept;
+				// Создаём объект фреймворка
+				const fmk_t * _fmk;
+				// Создаём объект работы с логами
+				const log_t * _log;
 			public:
 				/**
 				 * init Метод инициализации WEB-сервера
@@ -149,7 +72,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const uint64_t, const mode_t)> callback) noexcept;
+				void on(function <void (const uint64_t, const web_t::mode_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова для извлечения пароля
@@ -194,7 +117,7 @@ namespace awh {
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
@@ -283,7 +206,29 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const set <web_t::flag_t> & flags) noexcept;
+			public:
+				/**
+				 * realm Метод установки название сервера
+				 * @param realm название сервера
+				 */
+				void realm(const string & realm) noexcept;
+				/**
+				 * opaque Метод установки временного ключа сессии сервера
+				 * @param opaque временный ключ сессии сервера
+				 */
+				void opaque(const string & opaque) noexcept;
+			public:
+				/**
+				 * chunk Метод установки размера чанка
+				 * @param size размер чанка для установки
+				 */
+				void chunk(const size_t size) noexcept;
+				/**
+				 * maxRequests Метод установки максимального количества запросов
+				 * @param max максимальное количество запросов
+				 */
+				void maxRequests(const size_t max) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -303,12 +248,6 @@ namespace awh {
 				void alive(const uint64_t aid, const bool mode) noexcept;
 			public:
 				/**
-				 * core Метод установки сетевого ядра
-				 * @param core объект сетевого ядра
-				 */
-				void core(const server::core_t * core) noexcept;
-			public:
-				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
@@ -322,24 +261,41 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * Http1 Конструктор
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
+				 * ident Метод установки идентификации сервера
+				 * @param id   идентификатор сервиса
+				 * @param name название сервиса
+				 * @param ver  версия сервиса
 				 */
-				Http1(const fmk_t * fmk, const log_t * log) noexcept;
+				void ident(const string & id, const string & name, const string & ver) noexcept;
+			public:
 				/**
-				 * Http1 Конструктор
+				 * authType Метод установки типа авторизации
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest авторизации
+				 */
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+			public:
+				/**
+				 * crypto Метод установки параметров шифрования
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
+				 */
+				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+			public:
+				/**
+				 * AWH Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				AWH(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _http(core, fmk, log), _fmk(fmk), _log(log) {}
 				/**
-				 * ~Http1 Деструктор
+				 * ~AWH Деструктор
 				 */
-				virtual ~Http1() noexcept {}
-		} http1_t;
+				~AWH() noexcept {}
+		} awh_t;
 	};
 };
 
-#endif // __AWH_WEB_HTTP1_SERVER__
+#endif // __AWH_SERVER__
