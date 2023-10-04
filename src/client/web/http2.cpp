@@ -252,19 +252,10 @@ int awh::client::Http2::frameSignal(const int32_t sid, const uint8_t type, const
 								// Выполняем препарирование полученных данных
 								switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
 									// Если необходимо выполнить пропуск обработки данных
-									case static_cast <uint8_t> (status_t::SKIP): {
-										// Если функция обратного вызова активности потока установлена
-										if(this->_callback.is("stream"))
-											// Выводим функцию обратного вызова
-											this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
+									case static_cast <uint8_t> (status_t::SKIP):
 										// Завершаем работу
 										return 0;
-									}
 								}
-								// Если функция обратного вызова активности потока установлена
-								if(this->_callback.is("stream"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 								// Если функция обратного вызова установлена, выводим сообщение
 								if(it->second->callback.is("entity"))
 									// Выполняем функцию обратного вызова дисконнекта
@@ -572,14 +563,18 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 		this->_workers.erase(it);
 		// Выполняем удаление параметра запроса
 		this->_requests.erase(sid);
+		// Если функция обратного вызова активности потока установлена
+		if(this->_callback.is("stream"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 		// Если разрешено выполнить остановку
 		if(stop){
 			// Если флаг инициализации сессии HTTP2 установлен
 			if(this->_sessionInitialized){
 				// Выполняем снятие флага инициализации сессии HTTP2
 				this->_sessionInitialized = !this->_sessionInitialized;
-				// Выполняем закрытие подключения
-				if(this->_nghttp2.close()){
+				// Если закрытие подключения не выполнено
+				if(!this->_nghttp2.close()){
 					// Выполняем отключение от сервера
 					const_cast <client::core_t *> (this->_core)->close(this->_aid);
 					// Выводим сообщение об ошибке
@@ -588,7 +583,10 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 				} else const_cast <client::core_t *> (this->_core)->close(this->_aid);
 			}
 		}
-	}
+	// Если функция обратного вызова активности потока установлена
+	} else if(this->_callback.is("stream"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 	// Выводим результат
 	return 0;
 }
@@ -1737,9 +1735,17 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_threads <= 0)
+		if(this->_threads <= 0){
+			// Если многопоточность активированна
+			if(this->_ws2._thr.is() || this->_ws2._ws1._thr.is()){
+				// Выполняем завершение всех активных потоков
+				this->_ws2._thr.wait();
+				// Выполняем завершение всех активных потоков
+				this->_ws2._ws1._thr.wait();
+			}
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
+		}
 		// Если протокол подключения желательно установить HTTP/2
 		if(this->_core->proto() == engine_t::proto_t::HTTP2){
 			// Деактивируем персистентный запуск для работы пингов
@@ -1903,4 +1909,17 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 		// Активируем асинхронный режим работы
 		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 	}
+}
+/**
+ * ~Http2 Деструктор
+ */
+awh::client::Http2::~Http2() noexcept {
+	// Если многопоточность активированна
+	if(this->_ws2._thr.is())
+		// Выполняем завершение всех активных потоков
+		this->_ws2._thr.wait();
+	// Если многопоточность активированна
+	if(this->_ws2._ws1._thr.is())
+		// Выполняем завершение всех активных потоков
+		this->_ws2._ws1._thr.wait();
 }

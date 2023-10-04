@@ -411,23 +411,23 @@ namespace awh {
 				 * realm Метод установки название сервера
 				 * @param realm название сервера
 				 */
-				void realm(const string & realm) noexcept;
+				virtual void realm(const string & realm) noexcept;
 				/**
 				 * opaque Метод установки временного ключа сессии сервера
 				 * @param opaque временный ключ сессии сервера
 				 */
-				void opaque(const string & opaque) noexcept;
+				virtual void opaque(const string & opaque) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				virtual void chunk(const size_t size) noexcept;
 				/**
 				 * maxRequests Метод установки максимального количества запросов
 				 * @param max максимальное количество запросов
 				 */
-				void maxRequests(const size_t max) noexcept;
+				virtual void maxRequests(const size_t max) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений
@@ -458,14 +458,14 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
+				virtual void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
-				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				virtual void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * crypto Метод установки параметров шифрования
@@ -473,7 +473,7 @@ namespace awh {
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Web Конструктор
@@ -567,7 +567,7 @@ namespace awh {
 				virtual int beginSignal(const int32_t sid, const uint64_t aid) noexcept = 0;
 			protected:
 				/**
-				 * streamClosedSignal Метод завершения работы потока
+				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param aid   идентификатор адъютанта
 				 * @param error флаг ошибки HTTP/2 если присутствует
@@ -615,10 +615,10 @@ namespace awh {
 				bool ping(const uint64_t aid) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения на сервер
+				 * send Метод отправки сообщения клиенту
 				 * @param id      идентификатор потока HTTP/2
 				 * @param aid     идентификатор адъютанта
-				 * @param message сообщение передаваемое на сервер
+				 * @param message сообщение передаваемое клиенту
 				 * @param size    размер сообщения в байтах
 				 * @param end     флаг последнего сообщения после которого поток закрывается
 				 */
@@ -630,7 +630,7 @@ namespace awh {
 				 */
 				void setOrigin(const vector <string> & origins) noexcept;
 				/**
-				 * sendOrigin Метод отправки списка разрешенных источников для
+				 * sendOrigin Метод отправки списка разрешенных источников
 				 * @param aid     идентификатор адъютанта
 				 * @param origins список разрешённых источников
 				 */

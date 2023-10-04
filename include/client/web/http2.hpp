@@ -414,7 +414,7 @@ namespace awh {
 				/**
 				 * ~Http2 Деструктор
 				 */
-				~Http2() noexcept {}
+				~Http2() noexcept;
 		} http2_t;
 	};
 };

@@ -22,7 +22,7 @@
  * @param size   размер буфера данных для отправки
  */
 void awh::server::Web2::sendSignal(const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept {
-	// Выполняем отправку заголовков запроса на сервер
+	// Выполняем отправку заголовков запроса клиенту
 	const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, aid);
 }
 /**
@@ -94,7 +94,7 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 			auto ret = this->_sessions.emplace(aid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова начала открытии потока
 			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, aid));
-			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
+			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, aid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, aid, _2));
@@ -175,10 +175,10 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 	return false;
 }
 /**
- * send Метод отправки сообщения на сервер
+ * send Метод отправки сообщения клиенту
  * @param id      идентификатор потока HTTP/2
  * @param aid     идентификатор адъютанта
- * @param message сообщение передаваемое на сервер
+ * @param message сообщение передаваемое клиенту
  * @param size    размер сообщения в байтах
  * @param end     флаг последнего сообщения после которого поток закрывается
  */
@@ -319,7 +319,7 @@ void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
 	this->_origins = origins;
 }
 /**
- * sendOrigin Метод отправки списка разрешенных источников для
+ * sendOrigin Метод отправки списка разрешенных источников
  * @param aid     идентификатор адъютанта
  * @param origins список разрешённых источников
  */
@@ -328,7 +328,7 @@ void awh::server::Web2::sendOrigin(const uint64_t aid, const vector <string> & o
 	auto it = this->_sessions.find(aid);
 	// Если активная сессия найдена
 	if(it != this->_sessions.end()){
-		// Список источников для установки на сервере
+		// Список источников для установки на клиенте
 		vector <nghttp2_origin_entry> ov;
 		// Если список источников передан
 		if(!origins.empty()){

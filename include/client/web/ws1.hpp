@@ -35,6 +35,10 @@ namespace awh {
 	 */
 	namespace client {
 		/**
+		 * Http2 Прототип класса HTTP/2 клиента
+		 */
+		class Http2;
+		/**
 		 * WebSocket2 Прототип класса WebSocket/2 клиента
 		 */
 		class WebSocket2;
@@ -43,6 +47,10 @@ namespace awh {
 		 */
 		typedef class WebSocket1 : public web_t {
 			private:
+				/**
+				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента
+				 */
+				friend class Http2;
 				/**
 				 * WebSocket2 Устанавливаем дружбу с классом WebSocket/2 клиента
 				 */

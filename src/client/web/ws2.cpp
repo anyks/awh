@@ -108,7 +108,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 					// Выводим функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(this->_sid));
 				// Выполняем закрытие подключения
-				dynamic_cast <client::core_t *> (core)->close(this->_sid);
+				dynamic_cast <client::core_t *> (core)->close(this->_aid);
 				// Выходим из функции
 				return;
 			}{
@@ -123,7 +123,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 						// Выводим функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 					// Выполняем закрытие подключения
-					dynamic_cast <client::core_t *> (core)->close(this->_sid);
+					dynamic_cast <client::core_t *> (core)->close(this->_aid);
 					// Выходим из функции
 					return;
 				}
@@ -281,6 +281,13 @@ void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t si
 			if(!this->_close && this->_stopped){
 				// Устанавливаем флаг закрытия подключения
 				this->_close = !this->_close;
+				// Если флаг инициализации сессии HTTP2 установлен
+				if(this->_sessionInitialized){
+					// Выполняем закрытие подключения
+					this->_nghttp2.close();
+					// Выполняем снятие флага инициализации сессии HTTP2
+					this->_sessionInitialized = !this->_sessionInitialized;
+				}
 				// Принудительно выполняем отключение лкиента
 				dynamic_cast <client::core_t *> (core)->close(aid);
 			}
@@ -377,10 +384,6 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 									const_cast <client::core_t *> (this->_core)->close(this->_aid);
 								} break;
 							}
-							// Если функция обратного вызова активности потока установлена
-							if(this->_callback.is("stream"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(this->_resultCallback.is("entity"))
 								// Выполняем функцию обратного вызова дисконнекта
@@ -408,13 +411,6 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 							}
 							// Устанавливаем метку завершения работы
 							End:
-							// Если поток был закрыт
-							if(flags & NGHTTP2_FLAG_END_STREAM){
-								// Если функция обратного вызова активности потока установлена
-								if(this->_callback.is("stream"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
-							}
 							// Выходим из функции
 							return 0;
 						}
@@ -718,14 +714,18 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_HTTP_1_1_REQUIRED, this->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
+	// Если функция обратного вызова активности потока установлена
+	if(this->_callback.is("stream"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 	// Если разрешено выполнить остановку
 	if(stop){
 		// Если флаг инициализации сессии HTTP2 установлен
 		if(this->_sessionInitialized){
 			// Выполняем снятие флага инициализации сессии HTTP2
 			this->_sessionInitialized = !this->_sessionInitialized;
-			// Выполняем закрытие подключения
-			if(this->_nghttp2.close()){
+			// Если закрытие подключения не выполнено
+			if(!this->_nghttp2.close()){
 				// Выполняем отключение от сервера
 				const_cast <client::core_t *> (this->_core)->close(this->_aid);
 				// Выводим сообщение об ошибке
@@ -1130,7 +1130,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
-							this->_mess = ws::mess_t(1002, "masked frame from server");
+							this->_mess = ws::mess_t(1002, "Masked frame from server");
 							// Выводим сообщение
 							this->error(this->_mess);
 							// Выполняем реконнект
@@ -1140,7 +1140,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
 							// Создаём сообщение
-							this->_mess = ws::mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
 							this->error(this->_mess);
 							// Выполняем реконнект
@@ -1282,7 +1282,7 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
-				this->_mess = ws::mess_t(1007, "received data decompression error");
+				this->_mess = ws::mess_t(1007, "Received data decompression error");
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Иначе выводим сообщение так - как оно пришло
@@ -1326,10 +1326,6 @@ void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
 			if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
 				// Запрещаем получение данных
 				this->_allow.receive = false;
-				// Получаем объект биндинга ядра TCP/IP
-				client::core_t * core = const_cast <client::core_t *> (this->_core);
-				// Выполняем остановку получения данных
-				core->disabled(engine_t::method_t::READ, this->_aid);
 				// Если код ошибки относится к WebSocket
 				if(mess.code >= 1000){
 					// Получаем буфер сообщения
@@ -1352,7 +1348,7 @@ void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
 					}
 				}
 				// Завершаем работу
-				core->close(this->_aid);
+				const_cast <client::core_t *> (this->_core)->close(this->_aid);
 			}
 		}
 	}
@@ -1804,15 +1800,17 @@ void awh::client::WebSocket2::core(const client::core_t * core) noexcept {
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->on(std::bind(&ws2_t::eventsCallback, this, _1, _2));
 		// Если многопоточность активированна
-		if(this->_thr.is())
+		if(this->_thr.is() || this->_ws1._thr.is())
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_thr.is()){
+		if(this->_thr.is() || this->_ws1._thr.is()){
 			// Выполняем завершение всех активных потоков
 			this->_thr.wait();
+			// Выполняем завершение всех активных потоков
+			this->_ws1._thr.wait();
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}

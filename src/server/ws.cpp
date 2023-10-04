@@ -39,12 +39,12 @@ void awh::server::WebSocket::init(const u_int port, const string & host, const h
  * @param aid  идентификатор адъютанта
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::WebSocket::sendError(const uint64_t aid, const ws::mess_t & mess) const noexcept {
+void awh::server::WebSocket::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообщения об ошибке
 	this->_ws.sendError(aid, mess);
 }
 /**
- * send Метод отправки сообщения на сервер
+ * send Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
  * @param message буфер сообщения в бинарном виде
  * @param size    размер сообщения в байтах
@@ -405,6 +405,31 @@ void awh::server::WebSocket::waitTimeDetect(const time_t read, const time_t writ
 void awh::server::WebSocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Выполняем установку детекции сообщений по количеству байт
 	this->_ws.bytesDetect(read, write);
+}
+/**
+ * setOrigin Метод установки списка разрешенных источников
+ * @param origins список разрешённых источников
+ */
+void awh::server::WebSocket::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка разрешенных источников
+	this->_ws.setOrigin(origins);
+}
+/**
+ * sendOrigin Метод отправки списка разрешенных источников
+ * @param aid     идентификатор адъютанта
+ * @param origins список разрешённых источников
+ */
+void awh::server::WebSocket::sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept {
+	// Выполняем отправку списка разрешенных источников
+	this->_ws.sendOrigin(aid, origins);
+}
+/**
+ * settings Модуль установки настроек протокола HTTP/2
+ * @param settings список настроек протокола HTTP/2
+ */
+void awh::server::WebSocket::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+	// Выполняем установку настроек протокола HTTP/2
+	this->_ws.settings(settings);
 }
 /**
  * ident Метод установки идентификации сервера

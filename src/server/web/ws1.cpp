@@ -31,7 +31,7 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если данные необходимо зашифровать
-			if(this->_crypt){
+			if(this->_crypto.mode){
 				// Устанавливаем соль шифрования
 				adj->hash.salt(this->_crypto.salt);
 				// Устанавливаем пароль шифрования
@@ -39,6 +39,8 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 				// Устанавливаем размер шифрования
 				adj->hash.cipher(this->_crypto.cipher);
 			}
+			// Выполняем установку идентификатора объекта
+			adj->http.id(aid);
 			// Устанавливаем флаг перехвата контекста компрессии
 			adj->server.takeover = this->_server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
@@ -191,7 +193,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									if(!adj->http.checkVer()){
 										// Выполняем сброс состояния HTTP парсера
 										adj->http.clear();
-										// Получаем бинарные данные REST запроса
+										// Получаем бинарные данные REST ответа
 										buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
 										// Завершаем работу
 										break;
@@ -200,7 +202,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									if(!adj->http.checkKey()){
 										// Выполняем сброс состояния HTTP парсера
 										adj->http.clear();
-										// Получаем бинарные данные REST запроса
+										// Получаем бинарные данные REST ответа
 										buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
 										// Завершаем работу
 										break;
@@ -231,7 +233,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									if(!this->_headers.empty())
 										// Выполняем установку HTTP-заголовков
 										adj->http.headers(this->_headers);
-									// Получаем бинарные данные REST запроса
+									// Получаем бинарные данные REST-ответа клиенту
 									buffer = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (101)));
 									// Если бинарные данные ответа получены
 									if(!buffer.empty()){
@@ -262,15 +264,15 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 										if(!adj->http.body().empty() && this->_callback.is("entity"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());
+											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", adj->sid, aid, request.method, request.url, adj->http.body());
 										// Если функция обратного вызова активности потока установлена
 										if(this->_callback.is("stream"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::OPEN);
+											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
 										// Если функция обратного вызова на получение удачного запроса установлена
 										if(this->_callback.is("goodRequest"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t> ("goodRequest", 1, aid);
+											this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
 										// Завершаем работу
 										return;
 									// Выполняем реджект
@@ -308,7 +310,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							} break;
 						}
-						// Если бинарные данные запроса получены, отправляем на сервер
+						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){
 							// Тело полезной нагрузки
 							vector <char> payload;
@@ -325,11 +327,11 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							adj->http.compress(compress);
 							// Выполняем извлечение параметров запроса
 							const auto & request = adj->http.request();
-							// Получаем параметры запроса
+							// Получаем параметры ответа
 							const auto response = adj->http.response();
 							// Выполняем отправку заголовков сообщения
 							dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
-							// Получаем данные тела запроса
+							// Получаем данные тела ответа
 							while(!(payload = adj->http.payload()).empty()){
 								/**
 								 * Если включён режим отладки
@@ -350,11 +352,11 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!adj->http.body().empty() && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());
+								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", adj->sid, aid, request.method, request.url, adj->http.body());
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::CLOSE);
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выводим функцию обратного вызова
@@ -414,7 +416,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Если ответом является PONG
 								case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
 									// Если идентификатор адъютанта совпадает
-									if(memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
+									if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
 										// Обновляем контрольную точку
 										adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								} break;
@@ -429,7 +431,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Если сообщение не замаскированно
 									if(!head.mask){
 										// Создаём сообщение
-										adj->mess = ws::mess_t(1002, "not masked frame from client");
+										adj->mess = ws::mess_t(1002, "Not masked frame from client");
 										// Выполняем отключение адъютанта
 										goto Stop;
 									// Если список фрагментированных сообщений существует
@@ -437,7 +439,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										// Очищаем список фрагментированных сообщений
 										adj->buffer.fragmes.clear();
 										// Создаём сообщение
-										adj->mess = ws::mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+										adj->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 										// Выполняем отключение адъютанта
 										goto Stop;
 									// Если сообщение является не последнем
@@ -470,7 +472,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callback.is("stream"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::CLOSE);
 									// Выходим из функции
 									return;
 								} break;
@@ -508,7 +510,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 				// Если функция обратного вызова активности потока установлена
 				if(this->_callback.is("stream"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+					this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::CLOSE);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
@@ -608,7 +610,7 @@ void awh::server::WebSocket1::error(const uint64_t aid, const ws::mess_t & messa
  * @param buffer данные в чистом виде полученные с сервера
  * @param text   данные передаются в текстовом виде
  */
-void awh::server::WebSocket1::extraction(const uint64_t aid, const vector <char> & buffer, const bool text) const noexcept {
+void awh::server::WebSocket1::extraction(const uint64_t aid, const vector <char> & buffer, const bool text) noexcept {
 	// Если буфер данных передан
 	if((aid > 0) && !buffer.empty() && this->_callback.is("message")){
 		// Получаем параметры подключения адъютанта
@@ -662,9 +664,9 @@ void awh::server::WebSocket1::extraction(const uint64_t aid, const vector <char>
 				// Выводим сообщение об ошибке
 				} else {
 					// Создаём сообщение
-					ws::mess_t mess(1007, "received data decompression error");
+					adj->mess = ws::mess_t(1007, "Received data decompression error");
 					// Получаем буфер сообщения
-					data = adj->frame.methods.message(mess);
+					data = adj->frame.methods.message(adj->mess);
 					// Если данные сообщения получены
 					if((adj->stopped = !data.empty())){
 						// Выполняем запрет на получение входящих данных
@@ -762,6 +764,9 @@ void awh::server::WebSocket1::garbage(const u_short tid, awh::core_t * core) noe
 					adj->buffer.payload.clear();
 					// Выполняем очистку оставшихся фрагментов
 					adj->buffer.fragmes.clear();
+
+					cout << " ^^^^^^^^^^^^^^^^^^ HTTP/1.1 " << it->first << endl;
+
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);
@@ -802,7 +807,7 @@ void awh::server::WebSocket1::init(const u_int port, const string & host, const 
  * @param aid  идентификатор адъютанта
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::WebSocket1::sendError(const uint64_t aid, const ws::mess_t & mess) const noexcept {
+void awh::server::WebSocket1::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Если код ошибки относится к WebSocket
@@ -845,7 +850,7 @@ void awh::server::WebSocket1::sendError(const uint64_t aid, const ws::mess_t & m
 	}
 }
 /**
- * send Метод отправки сообщения на сервер
+ * send Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
  * @param message буфер сообщения в бинарном виде
  * @param size    размер сообщения в байтах
@@ -1148,7 +1153,7 @@ void awh::server::WebSocket1::start() noexcept {
 	if(!this->_core->working())
 		// Выполняем запуск биндинга
 		const_cast <server::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запрос на сервер
+	// Если биндинг уже запущен, выполняем запуск
 	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
 }
 /**
@@ -1187,7 +1192,7 @@ void awh::server::WebSocket1::subs(const vector <string> & subs) noexcept {
 		this->_subs = subs;
 }
 /**
- * sub Метод получения выбранного сабпротокола
+ * sub Метод получения согласованного сабпротокола
  * @param aid идентификатор адъютанта
  * @return    выбранный сабпротокол
  */
@@ -1422,7 +1427,7 @@ void awh::server::WebSocket1::bytesDetect(const scheme_t::mark_t read, const sch
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _crypt(false), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws1_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -1444,7 +1449,7 @@ awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _crypt(false), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

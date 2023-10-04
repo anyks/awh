@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_WEB_WS1_SERVER__
-#define __AWH_WEB_WS1_SERVER__
+#ifndef __AWH_WEB_WS2_SERVER__
+#define __AWH_WEB_WS2_SERVER__
 
 /**
  * Наши модули
@@ -22,6 +22,7 @@
 #include <ws/server.hpp>
 #include <scheme/wsock.hpp>
 #include <sys/threadpool.hpp>
+#include <server/web/ws1.hpp>
 #include <server/web/web.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -40,31 +41,27 @@ namespace awh {
 		 */
 		class Http2;
 		/**
-		 * WebSocket2 Прототип класса WebSocket/2 сервера
+		 * WebSocket2 Класс WebSocket-сервера
 		 */
-		class WebSocket2;
-		/**
-		 * WebSocket1 Класс WebSocket-сервера
-		 */
-		typedef class WebSocket1 : public web_t {
+		typedef class WebSocket2 : public web2_t {
 			private:
 				/**
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
 				 */
 				friend class Http2;
-				/**
-				 * WebSocket2 Устанавливаем дружбу с классом WebSocket/2 сервера
-				 */
-				friend class WebSocket2;
 			private:
 				// Флаг запрета вывода информационных сообщений
 				bool _noinfo;
 			private:
+				// Количество активных ядер
+				size_t _threads;
 				// Минимальный размер сегмента
 				size_t _frameSize;
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
+				// Объект работы с WebSocket-клиентом HTTP/1.1
+				ws1_t _ws1;
 			private:
 				// Объект рабочего
 				ws_scheme_t _scheme;
@@ -122,6 +119,50 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
+				 * @param sid   идентификатор потока
+				 * @param aid   идентификатор адъютанта
+				 * @param type  тип полученного фрейма
+				 * @param flags флаг полученного фрейма
+				 * @return      статус полученных данных
+				 */
+				int frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept;
+				/**
+				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
+				 * @param sid    идентификатор потока
+				 * @param aid    идентификатор адъютанта
+				 * @param buffer буфер данных который содержит полученный чанк
+				 * @param size   размер полученного буфера данных чанка
+				 * @return       статус полученных данных
+				 */
+				int chunkSignal(const int32_t sid, const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid идентификатор потока
+				 * @param aid идентификатор адъютанта
+				 * @return    статус полученных данных
+				 */
+				int beginSignal(const int32_t sid, const uint64_t aid) noexcept;
+				/**
+				 * closedSignal Метод завершения работы потока
+				 * @param sid   идентификатор потока
+				 * @param aid   идентификатор адъютанта
+				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @return      статус полученных данных
+				 */
+				int closedSignal(const int32_t sid, const uint64_t aid, const uint32_t error) noexcept;
+				/**
+				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid идентификатор потока
+				 * @param aid идентификатор адъютанта
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
+				 */
+				int headerSignal(const int32_t sid, const uint64_t aid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы адъютанта
@@ -417,24 +458,69 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * WebSocket1 Конструктор
+				 * realm Метод установки название сервера
+				 * @param realm название сервера
+				 */
+				void realm(const string & realm) noexcept;
+				/**
+				 * opaque Метод установки временного ключа сессии сервера
+				 * @param opaque временный ключ сессии сервера
+				 */
+				void opaque(const string & opaque) noexcept;
+			public:
+				/**
+				 * chunk Метод установки размера чанка
+				 * @param size размер чанка для установки
+				 */
+				void chunk(const size_t size) noexcept;
+				/**
+				 * maxRequests Метод установки максимального количества запросов
+				 * @param max максимальное количество запросов
+				 */
+				void maxRequests(const size_t max) noexcept;
+			public:
+				/**
+				 * ident Метод установки идентификации сервера
+				 * @param id   идентификатор сервиса
+				 * @param name название сервиса
+				 * @param ver  версия сервиса
+				 */
+				void ident(const string & id, const string & name, const string & ver) noexcept;
+			public:
+				/**
+				 * authType Метод установки типа авторизации
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest авторизации
+				 */
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+			public:
+				/**
+				 * crypto Метод установки параметров шифрования
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
+				 */
+				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+			public:
+				/**
+				 * WebSocket2 Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WebSocket1(const fmk_t * fmk, const log_t * log) noexcept;
+				WebSocket2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * WebSocket1 Конструктор
+				 * WebSocket2 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				WebSocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket1 Деструктор
+				 * ~WebSocket2 Деструктор
 				 */
-				~WebSocket1() noexcept;
-		} ws1_t;
+				~WebSocket2() noexcept;
+		} ws2_t;
 	};
 };
 
-#endif // __AWH_WEB_WS1_SERVER__
+#endif // __AWH_WEB_WS2_SERVER__

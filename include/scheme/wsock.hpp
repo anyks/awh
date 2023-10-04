@@ -99,6 +99,7 @@ namespace awh {
 					bool shake;                  // Флаг выполненного рукопожатия
 					bool deflate;                // Флаг переданных сжатых данных
 					bool stopped;                // Флаг принудительной остановки
+					int32_t sid;                 // Идентификатор потока
 					time_t point;                // Контрольная точка ответа на пинг
 					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
 					allow_t allow;               // Объект разрешения обмена данными
@@ -109,6 +110,7 @@ namespace awh {
 					partner_t server;            // Объект партнёра сервера
 					server::ws_t http;           // Создаём объект для работы с HTTP
 					recursive_mutex mtx;         // Мютекс для блокировки потока
+					engine_t::proto_t proto;     // Активный прототип интернета
 					http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * Coffer Конструктор
@@ -117,8 +119,9 @@ namespace awh {
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
 					 crypt(false), close(false), shake(false),
-					 deflate(false), stopped(false), point(0),
+					 deflate(false), stopped(false), sid(1), point(0),
 					 hash(log), frame(fmk, log), http(fmk, log),
+					 proto(engine_t::proto_t::HTTP1_1),
 					 compress(http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор

@@ -218,7 +218,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								while(!(payload = adj->http.payload()).empty()){
 									// Устанавливаем флаг закрытия подключения
 									adj->stopped = adj->http.body().empty();
-									// Отправляем тело на сервер
+									// Отправляем тело клиенту
 									dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
 								}
 							// Выполняем отключение адъютанта
@@ -455,7 +455,7 @@ void awh::server::Http1::send(const uint64_t aid, const u_int code, const string
 				if(adj->http.body().empty())
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					adj->stopped = (!this->_service.alive && !adj->alive);
-				// Отправляем тело на сервер
+				// Отправляем тело клиенту
 				const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), aid);
 			}
 		}
@@ -615,7 +615,7 @@ void awh::server::Http1::start() noexcept {
 	if(!this->_core->working())
 		// Выполняем запуск биндинга
 		const_cast <server::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запрос на сервер
+	// Если биндинг уже запущен, выполняем запуск
 	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
 }
 /**

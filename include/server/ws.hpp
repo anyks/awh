@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <server/web/ws1.hpp>
+#include <server/web/ws2.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -36,8 +36,8 @@ namespace awh {
 		 */
 		typedef class WebSocket {
 			private:
-				// Объект работы с протоколом WebSocket/1.1
-				server::ws1_t _ws;
+				// Объект работы с протоколом WebSocket/2
+				server::ws2_t _ws;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -63,9 +63,9 @@ namespace awh {
 				 * @param aid  идентификатор адъютанта
 				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void sendError(const uint64_t aid, const ws::mess_t & mess) const noexcept;
+				void sendError(const uint64_t aid, const ws::mess_t & mess) noexcept;
 				/**
-				 * send Метод отправки сообщения на сервер
+				 * send Метод отправки сообщения клиенту
 				 * @param aid     идентификатор адъютанта
 				 * @param message буфер сообщения в бинарном виде
 				 * @param size    размер сообщения в байтах
@@ -316,6 +316,24 @@ namespace awh {
 				 * @param write количество байт для детекции по записи
 				 */
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
+			public:
+				/**
+				 * setOrigin Метод установки списка разрешенных источников
+				 * @param origins список разрешённых источников
+				 */
+				void setOrigin(const vector <string> & origins) noexcept;
+				/**
+				 * sendOrigin Метод отправки списка разрешенных источников
+				 * @param aid     идентификатор адъютанта
+				 * @param origins список разрешённых источников
+				 */
+				void sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * settings Модуль установки настроек протокола HTTP/2
+				 * @param settings список настроек протокола HTTP/2
+				 */
+				void settings(const map <web2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера

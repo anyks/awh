@@ -662,7 +662,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
-							this->_mess = ws::mess_t(1002, "masked frame from server");
+							this->_mess = ws::mess_t(1002, "Masked frame from server");
 							// Выводим сообщение
 							this->error(this->_mess);
 							// Если функция обратного вызова активности потока установлена
@@ -676,7 +676,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
 							// Создаём сообщение
-							this->_mess = ws::mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
 							this->error(this->_mess);
 							// Если функция обратного вызова активности потока установлена
@@ -832,7 +832,7 @@ void awh::client::WebSocket1::extraction(const vector <char> & buffer, const boo
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
-				this->_mess = ws::mess_t(1007, "received data decompression error");
+				this->_mess = ws::mess_t(1007, "Received data decompression error");
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Иначе выводим сообщение так - как оно пришло

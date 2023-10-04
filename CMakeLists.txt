@@ -363,6 +363,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/server/web/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/ws1.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/web/ws2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
