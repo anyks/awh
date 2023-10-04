@@ -210,9 +210,9 @@ void awh::server::Web::on(function <bool (const string &, const string &, const 
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::server::Web::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+void awh::server::Web::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
+	this->_callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
  * on Метод установки функция обратного вызова при полном получении запроса клиента
@@ -411,7 +411,7 @@ void awh::server::Web::crypto(const string & pass, const string & salt, const ha
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _unbind(false), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 }
@@ -423,7 +423,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _unbind(false), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 	// Активируем персистентный запуск для работы пингов

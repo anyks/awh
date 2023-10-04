@@ -392,7 +392,7 @@ namespace awh {
 			 */
 			virtual void on(function <void (const status_t, Core *)> callback) noexcept;
 			/**
-			 * on установки функции обратного вызова на событие получения ошибки
+			 * on Метод установки функции обратного вызова на событие получения ошибки
 			 * @param callback функция обратного вызова
 			 */
 			virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;

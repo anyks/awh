@@ -1427,9 +1427,9 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
  * send Метод отправки сообщения на сервер
  * @param message буфер сообщения в бинарном виде
  * @param size    размер сообщения в байтах
- * @param utf8    данные передаются в текстовом виде
+ * @param text    данные передаются в текстовом виде
  */
-void awh::client::Http2::send(const char * message, const size_t size, const bool utf8) noexcept {
+void awh::client::Http2::send(const char * message, const size_t size, const bool text) noexcept {
 	// Если список воркеров активен
 	if(!this->_workers.empty()){
 		// Выполняем перебор всего списка воркеров
@@ -1437,7 +1437,7 @@ void awh::client::Http2::send(const char * message, const size_t size, const boo
 			// Если найден воркер WebSocket-клиента
 			if(worker.second->agent == agent_t::WEBSOCKET){
 				// Выполняем отправку сообщения на WebSocket-сервер
-				this->_ws2.send(message, size, utf8);
+				this->_ws2.send(message, size, text);
 				// Выходим из цикла
 				break;
 			}
@@ -1476,7 +1476,7 @@ void awh::client::Http2::on(function <void (const mode_t)> callback) noexcept {
  */
 void awh::client::Http2::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const u_int, const string &)> ("wsError", callback);
+	this->_callback.set <void (const u_int, const string &)> ("wserror", callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(callback);
 }

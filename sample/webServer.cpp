@@ -65,7 +65,7 @@ class WebServer {
 		 */
 		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -74,7 +74,7 @@ class WebServer {
 		 * @param aid  идентификатор адъютанта (клиента)
 		 * @param mode режим события подключения
 		 */
-		void active(const size_t aid, const server::web_t::mode_t mode){
+		void active(const uint64_t aid, const server::web_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}

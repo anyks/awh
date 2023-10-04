@@ -634,7 +634,7 @@ void awh::Core::on(function <void (const status_t, Core *)> callback) noexcept {
 	this->_callback.set <void (const status_t, core_t *)> ("status", callback);
 }
 /**
- * on установки функции обратного вызова на событие получения ошибки
+ * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
 void awh::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {

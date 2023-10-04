@@ -48,15 +48,6 @@ namespace awh {
 		 * Core Класс клиентского ядра биндинга TCP/IP
 		 */
 		typedef class Core : public awh::core_t {
-			public:
-				/**
-				 * Тип воркера
-				 */
-				enum class worker_t : uint8_t {
-					NONE     = 0x00, // Воркер не установлено
-					MASTER   = 0x02, // Воркер является мастером
-					CHILDREN = 0x01  // Воркер является ребёнком
-				};
 			private:
 				// Идентификатор активного дочернего прцоесса
 				pid_t _pid;
@@ -155,12 +146,12 @@ namespace awh {
 				 * on Метод установки функции обратного вызова при получении события
 				 * @param callback функция обратного вызова для установки
 				 */
-				void on(function <void (const worker_t, const pid_t, const cluster_t::event_t, Core *)> callback) noexcept;
+				void on(function <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, Core *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при получении сообщения
 				 * @param callback функция обратного вызова для установки
 				 */
-				void on(function <void (const worker_t, const pid_t, const char *, const size_t, Core *)> callback) noexcept;
+				void on(function <void (const cluster_t::family_t, const pid_t, const char *, const size_t, Core *)> callback) noexcept;
 			public:
 				/**
 				 * clusterAsync Метод установки флага асинхронного режима работы

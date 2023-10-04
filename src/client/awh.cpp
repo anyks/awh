@@ -44,11 +44,11 @@ int32_t awh::client::AWH::send(const web_t::agent_t agent, const web_t::request_
  * send Метод отправки сообщения на сервер WebSocket
  * @param message буфер сообщения в бинарном виде
  * @param size    размер сообщения в байтах
- * @param utf8    данные передаются в текстовом виде
+ * @param text    данные передаются в текстовом виде
  */
-void awh::client::AWH::send(const char * message, const size_t size, const bool utf8) noexcept {
+void awh::client::AWH::send(const char * message, const size_t size, const bool text) noexcept {
 	// Выполняем отправку сообщения на WebSocket-сервер
-	this->_http.send(message, size, utf8);
+	this->_http.send(message, size, text);
 }
 /**
  * pause Метод установки на паузу клиента WebSocket

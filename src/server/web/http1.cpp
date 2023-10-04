@@ -230,7 +230,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 							// Выходим из функции
 							return;
 						}
@@ -513,7 +513,7 @@ void awh::server::Http1::on(function <bool (const string &, const string &, cons
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::server::Http1::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+void awh::server::Http1::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

@@ -1,6 +1,6 @@
 /**
- * @file: http1.hpp
- * @date: 2023-10-01
+ * @file: ws1.hpp
+ * @date: 2023-10-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,13 +12,16 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_WEB_HTTP1_SERVER__
-#define __AWH_WEB_HTTP1_SERVER__
+#ifndef __AWH_WEB_WS1_SERVER__
+#define __AWH_WEB_WS1_SERVER__
 
 /**
  * Наши модули
  */
-#include <scheme/web.hpp>
+#include <ws/frame.hpp>
+#include <ws/server.hpp>
+#include <scheme/wsock.hpp>
+#include <sys/threadpool.hpp>
 #include <server/web/web.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -33,21 +36,45 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * Http2 Прототип класса HTTP/2 сервера
+		 * WebSocket2 Прототип класса WebSocket/2 сервера
 		 */
-		class Http2;
+		class WebSocket2;
 		/**
-		 * Http1 Класс HTTP-сервера
+		 * WebSocket1 Класс WebSocket-сервера
 		 */
-		typedef class Http1 : public web_t {
+		typedef class WebSocket1 : public web_t {
 			private:
 				/**
-				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
+				 * WebSocket2 Устанавливаем дружбу с классом WebSocket/2 сервера
 				 */
-				friend class Http2;
+				friend class WebSocket2;
+			private:
+				// Флаг шифрования сообщений
+				bool _crypt;
+				// Флаг запрета вывода информационных сообщений
+				bool _noinfo;
+			private:
+				// Минимальный размер сегмента
+				size_t _frameSize;
+			private:
+				// Объект тредпула для работы с потоками
+				thr_t _thr;
 			private:
 				// Объект рабочего
-				web_scheme_t _scheme;
+				ws_scheme_t _scheme;
+			private:
+				// Объект партнёра клиента
+				ws_scheme_t::partner_t _client;
+				// Объект партнёра сервера
+				ws_scheme_t::partner_t _server;
+			private:
+				// Поддерживаемые сабпротоколы
+				vector <string> _subs;
+				// Список поддверживаемых расширений
+				vector <vector <string>> _extensions;
+			private:
+				// Полученные HTTP заголовки
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
@@ -91,28 +118,33 @@ namespace awh {
 				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * request Метод получения запроса клиента
-				 * @param aid    идентификатор адъютанта
-				 * @param method метод запроса клиента
-				 * @param url    адрес запроса клиента
+				 * error Метод вывода сообщений об ошибках работы адъютанта
+				 * @param aid     идентификатор адъютанта
+				 * @param message сообщение с описанием ошибки
 				 */
-				void request(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url) noexcept;
+				void error(const uint64_t aid, const ws::mess_t & message) const noexcept;
+				/**
+				 * extraction Метод извлечения полученных данных
+				 * @param aid    идентификатор адъютанта
+				 * @param buffer данные в чистом виде полученные с сервера
+				 * @param text   данные передаются в текстовом виде
+				 */
+				void extraction(const uint64_t aid, const vector <char> & buffer, const bool text) const noexcept;
 			private:
 				/**
-				 * header Метод получения заголовка
-				 * @param aid   идентификатор адъютанта
-				 * @param key   ключ заголовка
-				 * @param value значение заголовка
+				 * pong Метод ответа на проверку о доступности сервера
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 * @param      message сообщение для отправки
 				 */
-				void header(const uint64_t aid, const string & key, const string & value) noexcept;
+				void pong(const uint64_t aid, awh::core_t * core, const string & message = "") noexcept;
 				/**
-				 * headers Метод получения заголовков
-				 * @param aid     идентификатор адъютанта
-				 * @param method  метод запроса клиента
-				 * @param url     адрес запроса клиента
-				 * @param headers заголовки ответа сервера
+				 * ping Метод проверки доступности сервера
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 * @param      message сообщение для отправки
 				 */
-				void headers(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
+				void ping(const uint64_t aid, awh::core_t * core, const string & message = "") noexcept;
 			private:
 				/**
 				 * garbage Метод удаления мусорных адъютантов
@@ -122,28 +154,33 @@ namespace awh {
 				void garbage(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации WebSocket-сервера
 				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации WebSocket-сервера
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения адъютанту
-				 * @param aid     идентификатор адъютанта
-				 * @param code    код сообщения для адъютанта
-				 * @param mess    отправляемое сообщение об ошибке
-				 * @param entity  данные полезной нагрузки (тело сообщения)
-				 * @param headers HTTP заголовки сообщения
+				 * sendError Метод отправки сообщения об ошибке
+				 * @param aid  идентификатор адъютанта
+				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+				void sendError(const uint64_t aid, const ws::mess_t & mess) const noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param aid     идентификатор адъютанта
+				 * @param message буфер сообщения в бинарном виде
+				 * @param size    размер сообщения в байтах
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -178,6 +215,17 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибок
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения сообщений
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
@@ -257,10 +305,51 @@ namespace awh {
 				void close(const uint64_t aid) noexcept;
 			public:
 				/**
+				 * sub Метод установки сабпротокола поддерживаемого сервером
+				 * @param sub подпротокол для установки
+				 */
+				void sub(const string & sub) noexcept;
+				/**
+				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
+				 * @param subs подпротоколы для установки
+				 */
+				void subs(const vector <string> & subs) noexcept;
+				/**
+				 * sub Метод получения выбранного сабпротокола
+				 * @param aid идентификатор адъютанта
+				 * @return    выбранный сабпротокол
+				 */
+				const string & sub(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * extensions Метод установки списка расширений
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
+				/**
+				 * extensions Метод извлечения списка расширений
+				 * @param aid идентификатор адъютанта
+				 * @return    список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+			public:
+				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+				/**
+				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов
@@ -295,18 +384,18 @@ namespace awh {
 				 * @param time время жизни подключения
 				 */
 				void alive(const time_t time) noexcept;
-				/**
-				 * alive Метод установки долгоживущего подключения
-				 * @param aid  идентификатор адъютанта
-				 * @param mode флаг долгоживущего подключения
-				 */
-				void alive(const uint64_t aid, const bool mode) noexcept;
 			public:
 				/**
 				 * core Метод установки сетевого ядра
 				 * @param core объект сетевого ядра
 				 */
 				void core(const server::core_t * core) noexcept;
+			public:
+				/**
+				 * setHeaders Метод установки списка заголовков
+				 * @param headers список заголовков для установки
+				 */
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -322,24 +411,24 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * Http1 Конструктор
+				 * WebSocket1 Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Http1(const fmk_t * fmk, const log_t * log) noexcept;
+				WebSocket1(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Http1 Конструктор
+				 * WebSocket1 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Http1 Деструктор
+				 * ~WebSocket1 Деструктор
 				 */
-				~Http1() noexcept {}
-		} http1_t;
+				~WebSocket1() noexcept;
+		} ws1_t;
 	};
 };
 
-#endif // __AWH_WEB_HTTP1_SERVER__
+#endif // __AWH_WEB_WS1_SERVER__

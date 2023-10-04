@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/websocket.hpp>
+#include <server/ws.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -22,8 +22,13 @@ using namespace awh::server;
  */
 class Executor {
 	private:
-		// Объект логирования
-		log_t * _log;
+		// Создаём объект фреймворка
+		const fmk_t * _fmk;
+		// Создаём объект работы с логами
+		const log_t * _log;
+	private:
+		// Объект WebSocket-сервера
+		server::websocket_t * _ws;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
@@ -54,33 +59,44 @@ class Executor {
 		 * @param ip   адрес интернет подключения
 		 * @param mac  аппаратный адрес подключения
 		 * @param port порт подключения
-		 * @param ws   объект WebSocket сервера
 		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, websocket_t * ws){
+		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
 		/**
-		 * active Метод идентификации активности на WebSocket сервере
+		 * active Метод событий сервера
+		 * @param sid  идентификатор потока
 		 * @param aid  идентификатор адъютанта (клиента)
-		 * @param mode режим события подключения
-		 * @param ws   объект WebSocket сервера
+		 * @param mode флаг события
 		 */
-		void active(const size_t aid, const websocket_t::mode_t mode, websocket_t * ws){
-			// Выводим информацию в лог
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == websocket_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const int32_t sid, const uint64_t aid, const server::web_t::mode_t mode){
+			// Блокируем неиспользуемую переменную
+			(void) sid;
+			// Определяем флаг события сервера
+			switch(static_cast <uint8_t> (mode)){
+				// Если клиент подключился к серверу
+				case static_cast <uint8_t> (server::web_t::mode_t::OPEN): {
+					// Выводим информацию в лог
+					this->_log->print("CONNECT", log_t::flag_t::INFO);
+				} break;
+				// Если клиент отключился от сервера
+				case static_cast <uint8_t> (server::web_t::mode_t::CLOSE):
+					// Выводим информацию в лог
+					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
+				break;
+			}
 		}
 		/**
 		 * error Метод вывода ошибок WebSocket сервера
 		 * @param aid  идентификатор адъютанта (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
-		 * @param ws   объект WebSocket сервера
 		 */
-		void error(const size_t aid, const u_int code, const string & mess, websocket_t * ws){
+		void error(const uint64_t aid, const u_int code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -88,24 +104,25 @@ class Executor {
 		 * message Метод получения сообщений
 		 * @param aid    идентификатор адъютанта (клиента)
 		 * @param buffer бинарный буфер сообщения
-		 * @param utf8   тип буфера сообщения
-		 * @param ws     объект WebSocket сервера
+		 * @param text   тип буфера сообщения
 		 */
-		void message(const size_t aid, const vector <char> & buffer, const bool utf8, websocket_t * ws){
+		void message(const uint64_t aid, const vector <char> & buffer, const bool text){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выводим информацию в лог
-				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub(aid).c_str());
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), this->_ws->sub(aid).c_str());
 				// Отправляем сообщение обратно
-				ws->send(aid, buffer.data(), buffer.size(), utf8);
+				this->_ws->send(aid, buffer.data(), buffer.size(), text);
 			}
 		}
 	public:
 		/**
 		 * Executor Конструктор
+		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 * @param ws  объект WebSocket-сервера
 		 */
-		Executor(log_t * log) : _log(log) {}
+		Executor(const fmk_t * fmk, const log_t * log, server::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
 };
 
 /**
@@ -119,30 +136,31 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект исполнителя
-	Executor executor(&log);
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
 	websocket_t ws(&core, &fmk, &log);
+	// Создаём объект исполнителя
+	Executor executor(&fmk, &log, &ws);
 	// Устанавливаем название сервиса
 	log.name("WebSocket Server");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
+	 * 1. Устанавливаем валидацию SSL сертификата
+	 * 2. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 3. Устанавливаем флаг перехвата контекста компрессии
 	 */
-	/*
-	ws.setMode(
-		(uint8_t) websocket_t::flag_t::WAIT_MESS |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_CLIENT |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_SERVER
-	);
-	*/
+	ws.mode({
+		// server::web_t::flag_t::NOT_STOP,
+		// server::web_t::flag_t::NOT_INFO,
+		// server::web_t::flag_t::WAIT_MESS,
+		server::web_t::flag_t::VERIFY_SSL,
+		server::web_t::flag_t::TAKEOVER_CLIENT,
+		server::web_t::flag_t::TAKEOVER_SERVER
+	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
-	// Устанавливаем адрес сертификата
-	// core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -164,12 +182,12 @@ int main(int argc, char * argv[]){
 	// Устанавливаем временный ключ сессии
 	// ws.opaque("keySession");
 	// Устанавливаем тип авторизации
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// ws.authType(awh::auth_t::type_t::BASIC);
+	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
-	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
-	// ws.init(2222, "", http_t::compress_t::DEFLATE);
-	// ws.init("anyks", http_t::compress_t::DEFLATE);
+	ws.init(2222, "127.0.0.1", awh::http_t::compress_t::DEFLATE);
+	// ws.init(2222, "", awh::http_t::compress_t::DEFLATE);
+	// ws.init("anyks", awh::http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	/*
@@ -185,17 +203,17 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	ws.subs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
-	// ws.on((function <string (const string &)>) bind(&Executor::password, &executor, _1));
+	// ws.on((function <string (const string &)>) std::bind(&Executor::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
-	// ws.on((function <bool (const string &, const string &)>) bind(&Executor::auth, &executor, _1, _2));
-	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	ws.on((function <void (const size_t, const websocket_t::mode_t, websocket_t *)>) bind(&Executor::active, &executor, _1, _2, _3));
+	// ws.on((function <bool (const string &, const string &)>) std::bind(&Executor::auth, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.on((function <void (const size_t, const u_int, const string &, websocket_t *)>) bind(&Executor::error, &executor, _1, _2, _3, _4));
+	ws.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	ws.on((function <bool (const string &, const string &, const u_int, websocket_t *)>) bind(&Executor::accept, &executor, _1, _2, _3, _4));
+	ws.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Executor::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.on((function <void (const size_t, const vector <char> &, const bool, websocket_t *)>) bind(&Executor::message, &executor, _1, _2, _3, _4));
+	ws.on((function <void (const uint64_t, const vector <char> &, const bool)>) bind(&Executor::message, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+	ws.on((function <void (const int32_t, const uint64_t, const server::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2, _3));
 	// Выполняем запуск WebSocket сервер
 	ws.start();
 	// Выводим результат

@@ -46,33 +46,12 @@ namespace awh {
 		typedef struct SchemeWebSocket : public scheme_t {
 			public:
 				/**
-				 * Основные экшены
-				 */
-				enum class action_t : uint8_t {
-					NONE       = 0x01, // Отсутствие события
-					READ       = 0x02, // Событие чтения с сервера
-					CONNECT    = 0x03, // Событие подключения к серверу
-					DISCONNECT = 0x04  // Событие отключения от сервера
-				};
-			public:
-				/**
 				 * Buffer Структура буфера данных
 				 */
 				typedef struct Buffer {
 					vector <char> payload; // Бинарный буфер полезной нагрузки
 					vector <char> fragmes; // Данные фрагметрированного сообщения
 				} buffer_t;
-				/**
-				 * Locker Структура локера
-				 */
-				typedef struct Locker {
-					bool mode;           // Флаг блокировки
-					recursive_mutex mtx; // Мютекс для блокировки потока
-					/**
-					 * Locker Конструктор
-					 */
-					Locker() noexcept : mode(false) {}
-				} locker_t;
 				/**
 				 * Allow Структура флагов разрешения обменом данных
 				 */
@@ -83,41 +62,64 @@ namespace awh {
 					 * Allow Конструктор
 					 */
 					Allow() noexcept : send(true), receive(true) {}
-				} allow_t;
+				} __attribute__((packed)) allow_t;
+				/**
+				 * Partner Структура партнёра
+				 */
+				typedef struct Partner {
+					short wbit;    // Размер скользящего окна
+					bool takeover; // Флаг скользящего контекста сжатия
+					/**
+					 * Partner Конструктор
+					 */
+					Partner() noexcept : wbit(0), takeover(false) {}
+				} __attribute__((packed)) partner_t;
+				/**
+				 * Frame Объект фрейма WebSocket
+				 */
+				typedef struct Frame {
+					size_t size;                  // Минимальный размер сегмента
+					ws::frame_t methods;          // Методы работы с фреймом WebSocket
+					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
+					/**
+					 * Frame Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Frame(const fmk_t * fmk, const log_t * log) noexcept :
+					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+				} frame_t;
 			public:
 				/**
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
-					bool crypt;                   // Флаг шифрования сообщений
-					bool close;                   // Флаг требования закрыть адъютанта
-					bool stopped;                 // Флаг принудительной остановки
-					bool compressed;              // Флаг переданных сжатых данных
-					short wbitClient;             // Размер скользящего окна клиента
-					short wbitServer;             // Размер скользящего окна сервера
-					action_t action;              // Экшен активного события
-					time_t checkPoint;            // Контрольная точка ответа на пинг
-					hash_t hash;                  // Создаём объект для компрессии-декомпрессии данных
-					allow_t allow;                // Объект разрешения обмена данными
-					locker_t locker;              // Объект блокировщика
-					buffer_t buffer;              // Объект буфера данных
-					server::ws_t ws;              // Создаём объект для работы с HTTP
-					recursive_mutex mtx;          // Мютекс для блокировки потока
-					http_t::compress_t compress;  // Метод компрессии данных
-					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
+					bool crypt;                  // Флаг шифрования сообщений
+					bool close;                  // Флаг требования закрыть адъютанта
+					bool shake;                  // Флаг выполненного рукопожатия
+					bool deflate;                // Флаг переданных сжатых данных
+					bool stopped;                // Флаг принудительной остановки
+					time_t point;                // Контрольная точка ответа на пинг
+					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
+					allow_t allow;               // Объект разрешения обмена данными
+					frame_t frame;               // Объект для работы с фреймом WebSocket
+					ws::mess_t mess;             // Объект отправляемого сообщения
+					buffer_t buffer;             // Объект буфера данных
+					partner_t client;            // Объект партнёра клиента
+					partner_t server;            // Объект партнёра сервера
+					server::ws_t http;           // Создаём объект для работы с HTTP
+					recursive_mutex mtx;         // Мютекс для блокировки потока
+					http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
-					 crypt(false), close(false),
-					 stopped(false), compressed(false),
-					 wbitClient(-1), wbitServer(-1),
-					 action(action_t::NONE), checkPoint(0),
-					 hash(log), ws(fmk, log),
-					 compress(http_t::compress_t::NONE),
-					 opcode(ws::frame_t::opcode_t::TEXT) {}
+					 crypt(false), close(false), shake(false),
+					 deflate(false), stopped(false), point(0),
+					 hash(log), frame(fmk, log), http(fmk, log),
+					 compress(http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор
 					 */
@@ -168,7 +170,7 @@ namespace awh {
 				 * ~SchemeWebSocket Деструктор
 				 */
 				~SchemeWebSocket() noexcept {}
-		} websocket_scheme_t;
+		} ws_scheme_t;
 	};
 };
 

@@ -19,7 +19,7 @@
  * Наши модули
  */
 #include <core/server.hpp>
-#include <scheme/websocket.hpp>
+#include <scheme/wsock.hpp>
 #include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -99,7 +99,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
-				websocket_scheme_t _scheme;
+				ws_scheme_t _scheme;
 			private:
 				// Идентификатор сервера
 				string _sid;

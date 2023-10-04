@@ -21,9 +21,6 @@
 void awh::server::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
 	this->_crypt = false;
-	// Выполняем включение перехвата контекста
-	this->_server.takeover = true;
-	this->_client.takeover = true;
 	// Выполняем проверку авторизации
 	this->_stath = this->checkAuth();
 	// Если ключ соответствует

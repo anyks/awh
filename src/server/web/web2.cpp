@@ -107,7 +107,7 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
-				ret.first->second->on(this->_callback.get <void (const log_t::flag_t, const http::error_t, const string &)> ("error"));
+				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), aid, _1, _2, _3));
 			// Если инициализация модуля NgHttp2 не выполнена
 			if(!ret.first->second->init(std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
@@ -153,7 +153,7 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PING, nghttp2_strerror(rv));
+				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_PING, nghttp2_strerror(rv));
 			// Выходим из функции
 			return false;
 		}
@@ -164,7 +164,7 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 			// Выходим из функции
 			return false;
 		}
@@ -211,7 +211,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
+					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(aid);
 				// Выходим из функции
@@ -232,7 +232,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
 					// Выполняем закрытие подключения
 					const_cast <server::core_t *> (this->_core)->close(aid);
 					// Выходим из функции
@@ -253,7 +253,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
 					// Выполняем закрытие подключения
 					const_cast <server::core_t *> (this->_core)->close(aid);
 					// Выходим из функции
@@ -291,7 +291,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
 					// Выходим из функции
 					return;
 				}
@@ -302,7 +302,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 					// Выходим из функции
 					return;
 				}

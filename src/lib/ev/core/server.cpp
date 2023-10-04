@@ -190,12 +190,14 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 	if(it != this->schemes.end()){
 		// Получаем объект подключения
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		// Определяем члена семейства кластера
+		const cluster_t::family_t family = (this->pid == getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
 			case static_cast <uint8_t> (cluster_t::event_t::START): {
 				// Если процесс является дочерним
-				if(this->pid != getpid()){
+				if(family == cluster_t::family_t::CHILDREN){
 					// Запоминаем текущий идентификатор процесса
 					this->_pid = pid;
 					// Определяем тип сокета
@@ -227,6 +229,10 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 					shm->io.stop();
 			} break;
 		}
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("cluster"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *> ("cluster", family, sid, pid, event, dynamic_cast <awh::core_t *> (this));
 	}
 }
 /**
@@ -1442,6 +1448,40 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 			}
 		}
 	}
+}
+/**
+ * on Метод установки функции обратного вызова при краше приложения
+ * @param callback функция обратного вызова для установки
+ */
+void awh::server::Core::on(function <void (const int)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	awh::core_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при запуске/остановки работы модуля
+ * @param callback функция обратного вызова для установки
+ */
+void awh::server::Core::on(function <void (const status_t, awh::core_t *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	awh::core_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::server::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	awh::core_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие запуска и остановки процессов кластера
+ * @param callback функция обратного вызова
+ */
+void awh::server::Core::on(function <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, Core *)> ("cluster", callback);
 }
 /**
  * Core Конструктор

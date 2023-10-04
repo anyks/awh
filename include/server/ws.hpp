@@ -1,6 +1,6 @@
 /**
- * @file: awh.hpp
- * @date: 2023-10-02
+ * @file: ws.hpp
+ * @date: 2023-10-04
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,13 +12,13 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_SERVER__
-#define __AWH_SERVER__
+#ifndef __AWH_WEBSOCKET_SERVER__
+#define __AWH_WEBSOCKET_SERVER__
 
 /**
  * Наши модули
  */
-#include <server/web/http1.hpp>
+#include <server/web/ws1.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -32,12 +32,12 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * AWH Класс работы с WEB-сервером
+		 * WebSocket Класс работы с WebSocket-сервером
 		 */
-		typedef class AWH {
+		typedef class WebSocket {
 			private:
-				// Объект работы с протоколом HTTP/1.1
-				server::http1_t _http;
+				// Объект работы с протоколом WebSocket/1.1
+				server::ws1_t _ws;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -45,28 +45,33 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации WebSocket-сервера
 				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации WebSocket-сервера
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
-				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения адъютанту
-				 * @param aid     идентификатор адъютанта
-				 * @param code    код сообщения для адъютанта
-				 * @param mess    отправляемое сообщение об ошибке
-				 * @param entity  данные полезной нагрузки (тело сообщения)
-				 * @param headers HTTP заголовки сообщения
+				 * sendError Метод отправки сообщения об ошибке
+				 * @param aid  идентификатор адъютанта
+				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+				void sendError(const uint64_t aid, const ws::mess_t & mess) const noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param aid     идентификатор адъютанта
+				 * @param message буфер сообщения в бинарном виде
+				 * @param size    размер сообщения в байтах
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -101,6 +106,17 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибок
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения сообщений
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
@@ -180,10 +196,51 @@ namespace awh {
 				void close(const uint64_t aid) noexcept;
 			public:
 				/**
+				 * sub Метод установки сабпротокола поддерживаемого сервером
+				 * @param sub подпротокол для установки
+				 */
+				void sub(const string & sub) noexcept;
+				/**
+				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
+				 * @param subs подпротоколы для установки
+				 */
+				void subs(const vector <string> & subs) noexcept;
+				/**
+				 * sub Метод получения выбранного сабпротокола
+				 * @param aid идентификатор адъютанта
+				 * @return    выбранный сабпротокол
+				 */
+				const string & sub(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * extensions Метод установки списка расширений
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
+				/**
+				 * extensions Метод извлечения списка расширений
+				 * @param aid идентификатор адъютанта
+				 * @return    список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+			public:
+				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+				/**
+				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов
@@ -240,12 +297,12 @@ namespace awh {
 				 * @param time время жизни подключения
 				 */
 				void alive(const time_t time) noexcept;
+			public:
 				/**
-				 * alive Метод установки долгоживущего подключения
-				 * @param aid  идентификатор адъютанта
-				 * @param mode флаг долгоживущего подключения
+				 * setHeaders Метод установки списка заголовков
+				 * @param headers список заголовков для установки
 				 */
-				void alive(const uint64_t aid, const bool mode) noexcept;
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -284,18 +341,18 @@ namespace awh {
 				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * AWH Конструктор
+				 * WebSocket Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				AWH(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _http(core, fmk, log), _fmk(fmk), _log(log) {}
+				WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _ws(core, fmk, log), _fmk(fmk), _log(log) {}
 				/**
-				 * ~AWH Деструктор
+				 * ~WebSocket Деструктор
 				 */
-				~AWH() noexcept {}
-		} awh_t;
+				~WebSocket() noexcept {}
+		} websocket_t;
 	};
 };
 
-#endif // __AWH_SERVER__
+#endif // __AWH_WEBSOCKET_SERVER__

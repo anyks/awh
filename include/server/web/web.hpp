@@ -298,7 +298,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
+				virtual void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова при полном получении запроса клиента
@@ -366,12 +366,6 @@ namespace awh {
 				 * @param time время жизни подключения
 				 */
 				virtual void alive(const time_t time) noexcept;
-				/**
-				 * alive Метод установки долгоживущего подключения
-				 * @param aid  идентификатор адъютанта
-				 * @param mode флаг долгоживущего подключения
-				 */
-				virtual void alive(const uint64_t aid, const bool mode) noexcept = 0;
 			public:
 				/**
 				 * core Метод установки сетевого ядра

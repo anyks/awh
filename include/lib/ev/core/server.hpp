@@ -202,6 +202,27 @@ namespace awh {
 				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова при краше приложения
+				 * @param callback функция обратного вызова для установки
+				 */
+				void on(function <void (const int)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
+				 * @param callback функция обратного вызова для установки
+				 */
+				void on(function <void (const status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибки
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие запуска и остановки процессов кластера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> callback) noexcept;
+			public:
+				/**
 				 * Core Конструктор
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами

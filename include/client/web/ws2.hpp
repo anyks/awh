@@ -261,9 +261,9 @@ namespace awh {
 				/**
 				 * extraction Метод извлечения полученных данных
 				 * @param buffer данные в чистом виде полученные с сервера
-				 * @param utf8   данные передаются в текстовом виде
+				 * @param text   данные передаются в текстовом виде
 				 */
-				void extraction(const vector <char> & buffer, const bool utf8) noexcept;
+				void extraction(const vector <char> & buffer, const bool text) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -274,9 +274,9 @@ namespace awh {
 				 * send Метод отправки сообщения на сервер
 				 * @param message буфер сообщения в бинарном виде
 				 * @param size    размер сообщения в байтах
-				 * @param utf8    данные передаются в текстовом виде
+				 * @param text    данные передаются в текстовом виде
 				 */
-				void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
+				void send(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента

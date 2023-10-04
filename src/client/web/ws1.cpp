@@ -143,7 +143,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT}, event_t::READ)){
 			// Если рукопожатие не выполнено
-			if(!(this->_shake = reinterpret_cast <http_t *> (&this->_http)->isHandshake())){
+			if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).isHandshake())){
 				// Добавляем полученные данные в буфер
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
@@ -156,9 +156,9 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 					#if defined(DEBUG_MODE)
 						{
 							// Получаем объект работы с HTTP-запросами
-							http_t * http = reinterpret_cast <http_t *> (&this->_http);
+							const http_t & http = reinterpret_cast <http_t &> (this->_http);
 							// Получаем данные ответа
-							const auto & response = http->process(http_t::process_t::RESPONSE, true);
+							const auto & response = http.process(http_t::process_t::RESPONSE, true);
 							// Если параметры ответа получены
 							if(!response.empty()){
 								// Выводим заголовок ответа
@@ -166,9 +166,9 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выводим параметры ответа
 								cout << string(response.begin(), response.end()) << endl;
 								// Если тело ответа существует
-								if(!http->body().empty())
+								if(!http.body().empty())
 									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<body %u>", http->body().size()) << endl << endl;
+									cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
 								// Иначе устанавливаем перенос строки
 								else cout << endl;
 							}
@@ -770,10 +770,10 @@ void awh::client::WebSocket1::error(const ws::mess_t & message) const noexcept {
 				this->_log->print("%s - %s [%u]", log_t::flag_t::WARNING, message.type.c_str(), message.text.c_str(), message.code);
 			// Иначе выводим сообщение в упрощёном виде
 			else this->_log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
-			// Если функция обратного вызова при подключении/отключении установлена
-			if(this->_callback.is("wsError"))
-				// Если функция обратного вызова установлена, выводим полученное сообщение
-				this->_callback.call <const u_int, const string &> ("wsError", message.code, message.text);
+			// Если функция обратного вызова при получении ошибки WebSocket установлена
+			if(this->_callback.is("wserror"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const u_int, const string &> ("wserror", message.code, message.text);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
@@ -784,9 +784,9 @@ void awh::client::WebSocket1::error(const ws::mess_t & message) const noexcept {
 /**
  * extraction Метод извлечения полученных данных
  * @param buffer данные в чистом виде полученные с сервера
- * @param utf8   данные передаются в текстовом виде
+ * @param text   данные передаются в текстовом виде
  */
-void awh::client::WebSocket1::extraction(const vector <char> & buffer, const bool utf8) noexcept {
+void awh::client::WebSocket1::extraction(const vector <char> & buffer, const bool text) noexcept {
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->_freeze && this->_callback.is("message")){
 		// Если данные пришли в сжатом виде
@@ -824,11 +824,11 @@ void awh::client::WebSocket1::extraction(const vector <char> & buffer, const boo
 					// Если данные сообщения получилось удачно расшифровать
 					if(!res.empty())
 						// Выводим данные полученного сообщения
-						this->_callback.call <const vector <char> &, const bool> ("message", res, utf8);
+						this->_callback.call <const vector <char> &, const bool> ("message", res, text);
 					// Иначе выводим сообщение так - как оно пришло
-					else this->_callback.call <const vector <char> &, const bool> ("message", data, utf8);
+					else this->_callback.call <const vector <char> &, const bool> ("message", data, text);
 				// Отправляем полученный результат
-				} else this->_callback.call <const vector <char> &, const bool> ("message", data, utf8);
+				} else this->_callback.call <const vector <char> &, const bool> ("message", data, text);
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -836,7 +836,7 @@ void awh::client::WebSocket1::extraction(const vector <char> & buffer, const boo
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Иначе выводим сообщение так - как оно пришло
-				this->_callback.call <const vector <char> &, const bool> ("message", buffer, utf8);
+				this->_callback.call <const vector <char> &, const bool> ("message", buffer, text);
 				// Выполняем отправку сообщения об ошибке
 				this->sendError(this->_mess);
 			}
@@ -849,11 +849,11 @@ void awh::client::WebSocket1::extraction(const vector <char> & buffer, const boo
 				// Если данные сообщения получилось удачно распаковать
 				if(!res.empty())
 					// Выводим данные полученного сообщения
-					this->_callback.call <const vector <char> &, const bool> ("message", res, utf8);
+					this->_callback.call <const vector <char> &, const bool> ("message", res, text);
 				// Иначе выводим сообщение так - как оно пришло
-				else this->_callback.call <const vector <char> &, const bool> ("message", buffer, utf8);
+				else this->_callback.call <const vector <char> &, const bool> ("message", buffer, text);
 			// Отправляем полученный результат
-			} else this->_callback.call <const vector <char> &, const bool> ("message", buffer, utf8);
+			} else this->_callback.call <const vector <char> &, const bool> ("message", buffer, text);
 		}
 	}
 }
@@ -904,9 +904,9 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
  * send Метод отправки сообщения на сервер
  * @param message буфер сообщения в бинарном виде
  * @param size    размер сообщения в байтах
- * @param utf8    данные передаются в текстовом виде
+ * @param text    данные передаются в текстовом виде
  */
-void awh::client::WebSocket1::send(const char * message, const size_t size, const bool utf8) noexcept {
+void awh::client::WebSocket1::send(const char * message, const size_t size, const bool text) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -924,7 +924,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 					// Если отправляемое сообщение является текстом
-					if(utf8)
+					if(text)
 						// Выводим параметры ответа
 						cout << string(message, size) << endl << endl;
 					// Выводим сообщение о выводе чанка полезной нагрузки
@@ -949,7 +949,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 				// Указываем, что сообщение передаётся в сжатом виде
 				head.rsv[0] = ((size >= 1024) && (this->_compress != http_t::compress_t::NONE));
 				// Устанавливаем опкод сообщения
-				head.optcode = (utf8 ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
+				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Если необходимо сжимать сообщение перед отправкой
 				if(head.rsv[0]){
 					// Компрессионные данные
@@ -1101,7 +1101,7 @@ void awh::client::WebSocket1::on(function <void (const mode_t)> callback) noexce
  */
 void awh::client::WebSocket1::on(function <void (const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const u_int, const string &)> ("wsError", callback);
+	this->_callback.set <void (const u_int, const string &)> ("wserror", callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений

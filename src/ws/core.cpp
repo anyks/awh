@@ -49,18 +49,31 @@ void awh::WCore::init(const process_t flag) noexcept {
 			if(!this->_client.takeover)
 				// Добавляем флаг запрещения использования контекста компрессии для клиента
 				extensions.push_back({"client_no_context_takeover"});
-			// Если размер скользящего окна клиента установлен как максимальный
-			if(this->_client.wbit == static_cast <short> (GZIP_MAX_WBITS))
-				// Добавляем максимальный размер скользящего окна
-				extensions.push_back({"client_max_window_bits"});
-			// Выполняем установку указанного размера скользящего окна
-			else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
-			// Если размер скользящего окна сервера установлен как максимальный
-			if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
-				// Добавляем максимальный размер скользящего окна
-				extensions.push_back({"server_max_window_bits"});
-			// Выполняем установку указанного размера скользящего окна сервера
-			else extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+			// Определяем флаг выполняемого процесса
+			switch(static_cast <uint8_t> (flag)){
+				// Если нужно сформировать данные запроса
+				case static_cast <uint8_t> (process_t::REQUEST): {
+					// Если размер скользящего окна клиента установлен как максимальный
+					if(this->_client.wbit == static_cast <short> (GZIP_MAX_WBITS))
+						// Добавляем максимальный размер скользящего окна
+						extensions.push_back({"client_max_window_bits"});
+					// Выполняем установку указанного размера скользящего окна
+					else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
+					// Если размер скользящего окна сервера установлен как максимальный
+					if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
+						// Добавляем максимальный размер скользящего окна
+						extensions.push_back({"server_max_window_bits"});
+					// Выполняем установку указанного размера скользящего окна сервера
+					else extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+				} break;
+				// Если нужно сформировать данные ответа
+				case static_cast <uint8_t> (process_t::RESPONSE): {
+					// Выполняем установку указанного размера скользящего окна
+					extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
+					// Выполняем установку указанного размера скользящего окна сервера
+					extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+				} break;
+			}
 		} break;
 	}
 	// Если данные должны быть зашифрованны
