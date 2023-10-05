@@ -1589,6 +1589,9 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
  * @return        результат переключения протокола
  */
 bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept {
+	
+	cout << " @@@@@@@@@1 " << string((const char *) in, inSize) << " == " << inSize << " || " << string(key, keySize) << endl;
+	
 	// Выполняем перебор всех данных в входящем буфере
 	for(u_int i = 0; (i + keySize) <= inSize; i += (u_int) (in[i] + 1)){
 		// Если данные ключа скопированны удачно
@@ -1598,7 +1601,7 @@ bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_
 			// Выполняем установку полученных данных в исходящий буфер
 			(* out) = (u_char *) &in[i + 1];
 
-			cout << " @@@@@@@@@ " << string((char *) &in[i + 1], (size_t) in[i]);
+			cout << " @@@@@@@@@2 " << string((char *) &in[i + 1], (size_t) in[i]);
 
 			// Выходим из функции
 			return true;
@@ -1980,6 +1983,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
 
+			/*
 			// Выполняем установку буфера данных
 			(* out) = (u_char *) "h2";
 			// Выполняем установку размер буфера данных протокола
@@ -1987,8 +1991,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
+			*/
 			
-			/*
+			
 			// Название протокола HTTP/2
 			const char * http2 = "\x2h2";
 			// Название протокола HTTP/1.1
@@ -2009,7 +2014,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
-			*/
+			
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2035,7 +2040,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
 			
-
+			/*
 			// Выполняем установку буфера данных
 			(* out) = (u_char *) "h2";
 			// Выполняем установку размер буфера данных протокола
@@ -2043,8 +2048,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
+			*/
 			
-			/*
+			
 			// Название протокола HTTP/2
 			const char * http2 = "\x2h2";
 			// Название протокола HTTP/1.1
@@ -2070,7 +2076,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			}
 
 			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
-			*/
+			
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
