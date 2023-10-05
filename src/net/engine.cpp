@@ -1604,7 +1604,7 @@ bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_
 			// Выполняем установку полученных данных в исходящий буфер
 			(* out) = (u_char *) &in[i + 1];
 
-			cout << " @@@@@@@@@3 " << string((char *) &in[i + 1], (size_t) in[i]);
+			cout << " @@@@@@@@@3 " << string((char *) &in[i + 1], (size_t) in[i]) << endl;
 
 			// Выходим из функции
 			return true;
