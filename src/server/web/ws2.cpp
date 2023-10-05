@@ -539,36 +539,46 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										cout << string(response.begin(), response.end()) << endl;
 								}
 							#endif
+
+							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$0 " << (u_short) adj->http.getAuth() << endl;
+
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (adj->http.getAuth())){
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+									
+									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$1 " << endl;
+									
 									// Если рукопожатие выполнено
 									if((adj->shake = adj->http.isHandshake())){
+										
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$2 " << endl;
+										
 										// Получаем метод компрессии HTML данных
 										compress = adj->http.compression();
 										// Проверяем версию протокола
 										if(!adj->http.checkVer()){
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.clear();
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.reset();
 											// Получаем бинарные данные REST запроса
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
+											
+											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$3 " << endl;
+											
 											// Завершаем работу
 											break;
 										}
 										// Проверяем ключ адъютанта
 										if(!adj->http.checkKey()){
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.clear();
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.reset();
 											// Получаем бинарные данные REST запроса
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Wrong client key");
+											
+											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$4 " << endl;
+											
 											// Завершаем работу
 											break;
 										}
+
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$5 " << endl;
+
 										// Выполняем сброс состояния HTTP-парсера
 										adj->http.clear();
 										// Получаем флаг шифрованных данных
@@ -595,6 +605,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										if(!this->_headers.empty())
 											// Выполняем установку HTTP-заголовков
 											adj->http.headers(this->_headers);
+										
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$6 " << endl;
+										
 										// Получаем заголовки ответа удалённому клиенту
 										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
 										
@@ -681,33 +694,37 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 										// Выполняем реджект
 										} else {
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.clear();
-											// Выполняем сброс состояния HTTP парсера
-											adj->http.reset();
+											
+											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$7 " << endl;
+
 											// Формируем ответ, что страница не доступна
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 										}
 									// Сообщаем, что рукопожатие не выполнено
 									} else {
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.clear();
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.reset();
+										
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$8 " << endl;
+
 										// Формируем ответ, что страница не доступна
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
 									}
 								} break;
 								// Если запрос неудачный
-								case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-									// Выполняем сброс состояния HTTP парсера
-									adj->http.clear();
-									// Выполняем сброс состояния HTTP парсера
-									adj->http.reset();
+								case static_cast <uint8_t> (http_t::stath_t::FAULT):
+									
+									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$9 " << endl;
+
 									// Формируем ответ на запрос об авторизации
 									response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
-								} break;
+								break;
 							}
+
+							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$10 " << endl;
+
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.reset();
 							// Устанавливаем метод компрессии данных ответа
 							adj->http.compress(compress);
 							// Получаем заголовки ответа удалённому клиенту
