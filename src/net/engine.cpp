@@ -3202,9 +3202,13 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
+
+
+			// ++++++++++++++++++++++++++
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
+			/*
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
 				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
@@ -3213,9 +3217,11 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Выходим
 					return;
 				}
+			*/
 			/**
 			 * Если версия OpenSSL ниже версии 3.0.0
 			 */
+			/*
 			#else 
 				{
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
@@ -3233,6 +3239,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
+			*/
 
 			/* // ++++++++++++++++++++++++++
 			// Если протоколом является HTTP, выполняем переключение на него
