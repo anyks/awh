@@ -1975,10 +1975,9 @@ static size_t next_proto_list_len;
 
 			cout << " ^^^^^^^^^^^^^2 " << endl;
 
-			next_proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-			memcpy(&next_proto_list[1], NGHTTP2_PROTO_VERSION_ID,
-					NGHTTP2_PROTO_VERSION_ID_LEN);
-			next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
+			next_proto_list[0] = 2;
+			memcpy(&next_proto_list[1], "h2", 2);
+			next_proto_list_len = 1 + 2;
 			
 			*data = next_proto_list;
 			*len = (unsigned int)next_proto_list_len;
