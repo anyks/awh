@@ -552,19 +552,25 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Получаем объект параметров запроса
 		web_t::req_t request = this->_web.request();
 		// Выполняем установку пути запроса
-		request.url = this->_uri.parse(val);
+		this->_uri.create(request.url, this->_uri.parse(val));
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
 	// Если ключ заголовка соответствует схеме протокола
 	} else if(this->_fmk->compare(key, ":scheme")) {
 		/* Просто пропускаем, потому, что схему мы не используем */
 	// Если ключ соответствует доменному имени
-	} else if(this->_fmk->compare(key, ":authority"))
+	} else if(this->_fmk->compare(key, ":authority")) {
 		// Устанавливаем хост
 		this->header("Host", val);
-	// Если ключ соответствует статусу ответа
-	else if(this->_fmk->compare(key, ":status")) {
 		// Получаем объект параметров запроса
+		web_t::req_t request = this->_web.request();
+		// Выполняем установку хоста запроса
+		this->_uri.create(request.url, this->_uri.parse(val));
+		// Выполняем сохранение параметров запроса
+		this->_web.request(std::move(request));
+	// Если ключ соответствует статусу ответа
+	} else if(this->_fmk->compare(key, ":status")) {
+		// Получаем объект параметров ответа
 		web_t::res_t response = this->_web.response();
 		// Устанавливаем версию протокола
 		response.version = 2.0f;
@@ -572,7 +578,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		response.code = static_cast <u_int> (::stoi(val));
 		// Выполняем формирование текста ответа
 		response.message = this->message(response.code);
-		// Выполняем сохранение параметров запроса
+		// Выполняем сохранение параметров ответа
 		this->_web.response(std::move(response));
 	// Если ключ соответствует обычным заголовкам
 	} else this->header(key, val);
@@ -1248,7 +1254,7 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 /**
  * reject Метод создания отрицательного ответа
  * @param req объект параметров REST-ответа
- * @return    буфер данных запроса в бинарном виде
+ * @return    буфер данных ответа в бинарном виде
  */
 vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 	// Если текст сообщения не установлен
@@ -1291,7 +1297,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			// Добавляем заголовок тела сообщения
 			this->_web.header("Content-Length", ::to_string(body.size()));
 		}
-		// Устанавливаем парарметр запроса
+		// Устанавливаем парарметр ответа
 		this->_web.response(res);
 		// Выводим результат
 		return this->process(process_t::RESPONSE, res);
@@ -1302,7 +1308,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 /**
  * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
  * @param req объект параметров REST-ответа
- * @return    буфер данных запроса в бинарном виде
+ * @return    буфер данных ответа в бинарном виде
  */
 vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) const noexcept {
 	// Если текст сообщения не установлен
@@ -1345,7 +1351,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 			// Добавляем заголовок тела сообщения
 			this->_web.header("Content-Length", ::to_string(body.size()));
 		}
-		// Устанавливаем парарметр запроса
+		// Устанавливаем парарметр ответа
 		this->_web.response(res);
 		// Выводим результат
 		return this->process2(process_t::RESPONSE, res);

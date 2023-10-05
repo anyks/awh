@@ -311,9 +311,6 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
  * @return      статус полученных данных
  */
 int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept {
-	
-	cout << " ±±±±±±±±±±±±±±±±± " << sid << " == " << aid << endl;
-	
 	// Получаем параметры подключения адъютанта
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
@@ -521,8 +518,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 						if(this->_callback.is("headers"))
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
+						
+						cout << " !!!!!!!!!!!!!!!!!!!!1 " << request.url << endl;
+						
 						// Если рукопожатие не выполнено
 						if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
+							
+							cout << " !!!!!!!!!!!!!!!!!!!!2 " << endl;
+							
 							// Метод компрессии данных
 							http_t::compress_t compress = http_t::compress_t::NONE;
 							// Ответ клиенту по умолчанию успешный
@@ -554,6 +557,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										if(!adj->http.checkVer()){
 											// Выполняем сброс состояния HTTP парсера
 											adj->http.clear();
+											// Выполняем сброс состояния HTTP парсера
+											adj->http.reset();
 											// Получаем бинарные данные REST запроса
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
 											// Завершаем работу
@@ -563,6 +568,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										if(!adj->http.checkKey()){
 											// Выполняем сброс состояния HTTP парсера
 											adj->http.clear();
+											// Выполняем сброс состояния HTTP парсера
+											adj->http.reset();
 											// Получаем бинарные данные REST запроса
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Wrong client key");
 											// Завершаем работу

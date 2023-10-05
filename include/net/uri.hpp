@@ -201,6 +201,12 @@ namespace awh {
 			string origin(const url_t & url) const noexcept;
 		public:
 			/**
+			 * create Метод создания полного адреса
+			 * @param dest адрес места назначения
+			 * @param src  исходный адрес для объединения
+			 */
+			void create(url_t & dest, const url_t & src) const noexcept;
+			/**
 			 * combine Метод комбинации двух адресов
 			 * @param dest адрес места назначения
 			 * @param src  исходный адрес для объединения

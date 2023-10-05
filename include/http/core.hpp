@@ -499,13 +499,13 @@ namespace awh {
 			/**
 			 * reject Метод создания отрицательного ответа
 			 * @param req объект параметров REST-ответа
-			 * @return    буфер данных запроса в бинарном виде
+			 * @return    буфер данных ответа в бинарном виде
 			 */
 			vector <char> reject(const web_t::res_t & res) const noexcept;
 			/**
 			 * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
 			 * @param req объект параметров REST-ответа
-			 * @return    буфер данных запроса в бинарном виде
+			 * @return    буфер данных ответа в бинарном виде
 			 */
 			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:

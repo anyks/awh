@@ -488,6 +488,59 @@ string awh::URI::origin(const url_t & url) const noexcept {
 	return result;
 }
 /**
+ * create Метод создания полного адреса
+ * @param dest адрес места назначения
+ * @param src  исходный адрес для объединения
+ */
+void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
+	// Если доменное доменное имя или IP-адрес установлены
+	if(!src.domain.empty() || !src.ip.empty()){
+		// Если IP-адрес не установлен
+		if(dest.ip.empty())
+			// Выполняем устновку IP-адреса
+			dest.ip = src.ip;
+		// Если хост не установлен
+		if(dest.host.empty())
+			// Выполняем установку хоста
+			dest.host = src.host;
+		// Если порт передан
+		if((dest.port == 0) || (src.port != 0))
+			// Выполняем установку порта
+			dest.port = src.port;
+		// Если доменное имя не установлено
+		if(dest.domain.empty())
+			// Выполняем установку доменного имени
+			dest.domain = src.domain;
+		// Если схема протокола не установлена
+		if(dest.schema.empty() || !src.schema.empty())
+			// Выполняем установку схемы протокола
+			dest.schema = src.schema;
+		// Если IP-адрес установлен
+		if(!src.ip.empty())
+			// Выполняем установку семейство протоколов
+			dest.family = src.family;
+	}
+	// Если якорь установлен
+	if(dest.anchor.empty() && !src.anchor.empty())
+		// Выполняем установку якоря
+		dest.anchor = src.anchor;
+	// Если логин пользователя указан
+	if(!src.user.empty()){
+		// Выполняем установку логина пользователя
+		dest.user = src.user;
+		// Выполняем установку пароля пользователя
+		dest.pass = src.pass;
+	}
+	// Если путь запроса указан
+	if(dest.path.empty() && !src.path.empty())
+		// Выполняем установку пути запроса
+		dest.path.assign(src.path.begin(), src.path.end());
+	// Если параметры запроса указаны
+	if(dest.params.empty() && !src.params.empty())
+		// Выполняем установку параметров запроса
+		dest.params.assign(src.params.begin(), src.params.end());
+}
+/**
  * combine Метод комбинации двух адресов
  * @param dest адрес места назначения
  * @param src  исходный адрес для объединения
