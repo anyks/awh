@@ -327,7 +327,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 					// Если рукопожатие выполнено
 					if(adj->shake && adj->allow.receive){
 						
-						cout << " !!!!!!!!!!!!!!!!!!!!!!!!!2 " << endl;
+						cout << " !!!!!!!!!!!!!!!!!!!!!!!!!2 " << (u_short) flags << " == " << NGHTTP2_FLAG_NONE << " == " << NGHTTP2_FLAG_END_STREAM << " || " << adj->buffer.payload.size() << endl;
 						
 						// Если мы получили неустановленный флаг или флаг завершения потока
 						if((flags & NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
