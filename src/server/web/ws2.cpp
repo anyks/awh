@@ -532,10 +532,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 							 */
 							#if defined(DEBUG_MODE)
 								{
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (adj->http);
 									// Получаем данные ответа
-									const auto & response = http.process(http_t::process_t::REQUEST, true);
+									const auto & response = adj->http.process(http_t::process_t::REQUEST, true);
 									// Если параметры ответа получены
 									if(!response.empty())
 										// Выводим параметры ответа
