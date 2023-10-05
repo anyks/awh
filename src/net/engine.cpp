@@ -3233,6 +3233,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
+
+			/* // ++++++++++++++++++++++++++
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
@@ -3245,6 +3247,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					this->httpUpgrade(target);
 				break;
 			}
+			*/
+
 			// Выполняем установку идентификатора сессии
 			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 				// Очищаем созданный контекст
@@ -3273,6 +3277,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			/*
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
+			
+			// ++++++++++++++++++++++++++
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
