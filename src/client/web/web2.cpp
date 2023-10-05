@@ -537,9 +537,6 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
 		// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
 		if(this->_sessionInitialized && this->_core->working() && (message != nullptr) && (size > 0)){
-			
-			cout << " ^^^^^^^^^^^^^^^^^^1 " << size << endl;
-			
 			// Список файловых дескрипторов
 			int fds[2];
 			/**
@@ -627,7 +624,7 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 			// Создаём объект передачи данных тела полезной нагрузки
 			nghttp2_data_provider data;
 			// Зануляем передаваемый контекст
-			// data.source.ptr = nullptr;
+			data.source.ptr = nullptr;
 			// Устанавливаем файловый дескриптор
 			data.source.fd = fds[0];
 			// Устанавливаем функцию обратного вызова
@@ -635,11 +632,6 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 			{
 				// Результат фиксации сессии
 				int rv = -1;
-				
-				cout << " ^^^^^^^^^^^^^^^^^^2 " << end << " == " << size << " === " << id << " === " << fds[0] << endl;
-
-				
-				
 				// Выполняем формирование данных фрейма для отправки
 				if((rv = nghttp2_submit_data(this->_nghttp2.session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
 					// Выводим сообщение об полученной ошибке
@@ -651,9 +643,6 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 					// Выходим из функции
 					return;
 				}
-
-				cout << " ^^^^^^^^^^^^^^^^^^3 " << rv << " == " << size << endl;
-
 				// Фиксируем отправленный результат
 				if((rv = nghttp2_session_send(this->_nghttp2.session)) != 0){
 					// Выводим сообщение об полученной ошибке
@@ -665,8 +654,6 @@ void awh::client::Web2::send(const int32_t id, const char * message, const size_
 					// Выходим из функции
 					return;
 				}
-
-				cout << " ^^^^^^^^^^^^^^^^^^4 " << rv << " == " << size << endl;
 			}
 		}
 	}

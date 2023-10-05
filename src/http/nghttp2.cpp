@@ -92,6 +92,10 @@ int awh::NgHttp2::frame2(nghttp2_session * session, const nghttp2_frame * frame,
 
 	cout << " $$$$$$$$$$$$$$$$$@@@@@@@@@@@ " << frame->hd.stream_id << " == " << (u_short) frame->hd.type << " == " << (u_short) frame->hd.flags << endl;
 
+	if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM){
+		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL2 " << frame->hd.stream_id << endl;
+	}
+
 	// Выводим результат
 	return 0;
 }
@@ -302,9 +306,6 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
 	(void) session;
 	// Результат работы функции
 	ssize_t result = -1;
-
-	cout << " #############!!!!0 " << result << endl;
-
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -318,9 +319,6 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
 		// Выполняем чтение данных из сокета в буфер данных
 		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
 	#endif
-	
-	cout << " #############!!!!1 " << result << endl;
-	
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
@@ -343,9 +341,6 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 	}
-
-	cout << " #############!!!!2 " << result << endl;
-
 	// Выводим количество прочитанных байт
 	return result;
 }

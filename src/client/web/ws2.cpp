@@ -97,8 +97,8 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 					NGHTTP2_NV_FLAG_NONE
 				});
 			}
-			// Выполняем запрос на удалённый сервер
-			this->_sid = nghttp2_submit_request(this->_nghttp2.session, nullptr, nva.data(), nva.size(), nullptr, this);
+			// Выполняем запрос на удалённый сервер			
+			this->_sid = nghttp2_submit_headers(this->_nghttp2.session, NGHTTP2_FLAG_NONE, -1, nullptr, nva.data(), nva.size(), this);
 			// Если запрос не получилось отправить
 			if(this->_sid < 0){
 				// Выводим в лог сообщение
@@ -336,7 +336,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 	else {
 		
 		if(flags & NGHTTP2_FLAG_END_STREAM){
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL " << endl;
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL " << sid << endl;
 		}
 		
 		// Если сессия клиента совпадает с сессией полученных даных
@@ -1024,8 +1024,6 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					if(!this->_http.body().empty() && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
-					
-					/*
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Выводим функцию обратного вызова
@@ -1034,8 +1032,6 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					if(this->_callback.is("goodResponse"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t> ("goodResponse", sid);
-					*/
-
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
