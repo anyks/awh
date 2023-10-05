@@ -191,9 +191,9 @@ int main(int argc, char * argv[]){
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
-	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.sonet(awh::scheme_t::sonet_t::TCP);
+	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
@@ -219,13 +219,11 @@ int main(int argc, char * argv[]){
 	// awh.init("anyks", awh::http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(100, 30, 10);
-	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	*/
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// awh.crypto("PASS");
