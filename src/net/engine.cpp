@@ -3270,6 +3270,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
+			/*
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
@@ -3278,6 +3279,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			*/
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Если цепочка сертификатов не установлена
