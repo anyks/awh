@@ -597,6 +597,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											adj->http.headers(this->_headers);
 										// Получаем заголовки ответа удалённому клиенту
 										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
+										
+										cout << " $$$$$$$$$$$$$$$$$$$$1 " << headers.empty() << endl;
+										
 										// Если бинарные данные ответа получены
 										if(!headers.empty()){
 											// Выполняем поиск адъютанта в списке активных сессий
@@ -625,7 +628,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												// Выполняем перебор всех заголовков HTTP/2 ответа
 												for(auto & header : headers){
 													
-													cout << " ------------------- " << header.first << " == " << header.second << endl;
+													cout << " -------------------1 " << header.first << " == " << header.second << endl;
 													
 													// Выполняем добавление метода ответа
 													nva.push_back({
@@ -722,8 +725,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										{
 											// Выводим заголовок ответа
 											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											// Получаем объект работы с HTTP-запросами
+											const http_t & http = reinterpret_cast <http_t &> (adj->http);
 											// Получаем бинарные данные REST-ответа
-											const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
 												// Выводим параметры ответа
@@ -734,6 +739,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									vector <nghttp2_nv> nva;
 									// Выполняем перебор всех заголовков HTTP/2 ответа
 									for(auto & header : headers){
+										
+										cout << " -------------------2 " << header.first << " == " << header.second << endl;
+										
 										// Выполняем добавление метода ответа
 										nva.push_back({
 											(uint8_t *) header.first.c_str(),
