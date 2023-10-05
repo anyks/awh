@@ -163,8 +163,8 @@ namespace awh {
 			void extensions(const vector <vector <string>> & extensions) noexcept;
 		public:
 			/**
-			 * isHandshake Метод получения флага рукопожатия
-			 * @return флаг получения рукопожатия
+			 * isHandshake Метод выполнения проверки рукопожатия
+			 * @return результат выполнения проверки рукопожатия
 			 */
 			bool isHandshake() noexcept;
 			/**

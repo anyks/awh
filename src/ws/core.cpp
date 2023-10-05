@@ -700,14 +700,16 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
 	else this->_extensions.clear();
 }
 /**
- * isHandshake Метод получения флага рукопожатия
- * @return флаг получения рукопожатия
+ * isHandshake Метод выполнения проверки рукопожатия
+ * @return результат выполнения проверки рукопожатия
  */
 bool awh::WCore::isHandshake() noexcept {
 	// Результат работы функции
 	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
 	if(!result){
+		// Выполняем извлечение параметров запроса
+		const auto & request = this->request();
 		// Выполняем проверку на удачное завершение запроса
 		result = (this->_stath == stath_t::GOOD);
 		// Если результат удачный
@@ -717,26 +719,31 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если подключение не выполнено
 		else return result;
 		// Если результат удачный
-		if(result)
-			// Проверяем произошло ли переключение протокола
-			result = this->checkUpgrade();
+		if(result){
+			// Если версия протокола ниже 2.0
+			if(request.version < 2.0f)
+				// Проверяем произошло ли переключение протокола
+				result = this->checkUpgrade();
 		// Если версия протокола не соответствует
-		else {
+		} else {
 			// Выводим сообщение об ошибке
 			this->_log->print("Protocol version not supported", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return result;
 		}
-		// Если результат удачный
-		if(result)
-			// Проверяем ключ клиента
-			result = this->checkKey();
-		// Если протокол не был переключён
-		else {
-			// Выводим сообщение об ошибке
-			this->_log->print("Protocol not upgraded", log_t::flag_t::CRITICAL);
-			// Выходим из функции
-			return result;
+		// Если версия протокола ниже 2.0
+		if(request.version < 2.0f){
+			// Если результат удачный
+			if(result)
+				// Проверяем ключ клиента
+				result = this->checkKey();
+			// Если протокол не был переключён
+			else {
+				// Выводим сообщение об ошибке
+				this->_log->print("Protocol not upgraded", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return result;
+			}
 		}
 		// Если рукопожатие выполнено
 		if(result)
