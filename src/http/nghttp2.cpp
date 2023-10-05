@@ -105,24 +105,51 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
 	switch(frame->hd.type){
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS:{
-			// Если сессия клиента совпадает с сессией полученных даных
-			if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+			// Получаем объект родительского объекта
+			nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+			// Определяем идентификатор сервиса
+			switch(static_cast <uint8_t> (self->_mode)){
+				// Если сервис идентифицирован как клиент
+				case static_cast <uint8_t> (mode_t::CLIENT): {
+					// Если мы получили ответ сервера
+					if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим информацию об ошибке
+							cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+						#endif
+						// Если функция обратного вызова установлена
+						if(self->_callback.is("begin"))
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
+					}
+				} break;
+				// Если сервис идентифицирован как сервер
+				case static_cast <uint8_t> (mode_t::SERVER): {
+					// Если мы получили запрос клиента
+					if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
+
+						cout << " *************************** BEGIN " << endl;
 				
-				cout << " *************************** BEGIN " << endl;
-				
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим информацию об ошибке
-					cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
-				#endif
-				// Если функция обратного вызова установлена
-				if(self->_callback.is("begin"))
-					// Выводим функцию обратного вызова
-					return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим информацию об ошибке
+							cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+						#endif
+						// Если функция обратного вызова установлена
+						if(self->_callback.is("begin"))
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
+					}
+				} break;
 			}
 		} break;
 	}
@@ -210,17 +237,33 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 	switch(frame->hd.type){
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS:{
-			// Если сессия клиента совпадает с сессией полученных даных
-			if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
-				// Получаем объект родительского объекта
-				nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
-				
-				cout << " *************************** HEADER " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
-				
-				// Если функция обратного вызова установлена
-				if(self->_callback.is("header"))
-					// Выводим функцию обратного вызова
-					return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+			// Получаем объект родительского объекта
+			nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+			// Определяем идентификатор сервиса
+			switch(static_cast <uint8_t> (self->_mode)){
+				// Если сервис идентифицирован как клиент
+				case static_cast <uint8_t> (mode_t::CLIENT): {
+					// Если мы получили ответ сервера
+					if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+						// Если функция обратного вызова установлена
+						if(self->_callback.is("header"))
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+					}
+				} break;
+				// Если сервис идентифицирован как сервер
+				case static_cast <uint8_t> (mode_t::SERVER): {
+					// Если мы получили запрос клиента
+					if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
+
+						cout << " *************************** HEADER " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
+
+						// Если функция обратного вызова установлена
+						if(self->_callback.is("header"))
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+					}
+				} break;
 			}
 		} break;
 	}
@@ -337,15 +380,15 @@ bool awh::NgHttp2::close() noexcept {
 }
 /**
  * init Метод инициализации
- * @param service  идентификатор сервиса
+ * @param mode     идентификатор сервиса
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::NgHttp2::init(const mode_t service, const vector <nghttp2_settings_entry> & settings) noexcept {
+bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы
-	if(!settings.empty() && (service != mode_t::NONE)){
+	if(!settings.empty() && (mode != mode_t::NONE)){
 		// Выполняем очистку предыдущей сессии
 		this->free();
 		/**
@@ -355,6 +398,8 @@ bool awh::NgHttp2::init(const mode_t service, const vector <nghttp2_settings_ent
 			// Выполняем установку функции для вывода отладочной информации
 			nghttp2_set_debug_vprintf_callback(&nghttp2_t::debug);
 		#endif
+		// Выполняем установку идентификатора сессии
+		this->_mode = mode;
 		// Создаём объект функций обратного вызова
 		nghttp2_session_callbacks * callbacks;
 		// Выполняем инициализацию сессию функций обратного вызова
@@ -372,7 +417,7 @@ bool awh::NgHttp2::init(const mode_t service, const vector <nghttp2_settings_ent
 		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &nghttp2_t::chunk);
 		// Определяем идентификатор сервиса
-		switch(static_cast <uint8_t> (service)){
+		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT):
 				// Выполняем создание клиента HTTP/2

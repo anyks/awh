@@ -64,6 +64,9 @@ namespace awh {
 				SERVER = 0x02  // Сервис идентифицирован как сервер
 			};
 		private:
+			// Флаг идентификации сервиса
+			mode_t _mode;
+		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
 		public:
@@ -167,11 +170,11 @@ namespace awh {
 		public:
 			/**
 			 * init Метод инициализации
-			 * @param service  идентификатор сервиса
+			 * @param mode     идентификатор сервиса
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const mode_t service, const vector <nghttp2_settings_entry> & settings) noexcept;
+			bool init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова начала открытии потока
@@ -215,7 +218,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			NgHttp2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _callback(log), session(nullptr), _fmk(fmk), _log(log) {}
+			 _mode(mode_t::NONE), _callback(log), session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~NgHttp2 Деструктор
 			 */
