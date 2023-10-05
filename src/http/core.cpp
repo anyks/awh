@@ -555,6 +555,13 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		this->_uri.create(request.url, this->_uri.parse(val));
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
+	// Если ключ заголовка соответствует протоколу подключения
+	} else if(this->_fmk->compare(key, ":protocol")) {
+		// Если протокол соответствует WebSocket-у
+		if(this->_fmk->compare(val, "websocket"))
+			// Выполняем установку идентичность протоколу WebSocket
+			this->_identity = identity_t::WS;
+		/* Просто пропускаем, потому, что протокол мы не используем */
 	// Если ключ заголовка соответствует схеме протокола
 	} else if(this->_fmk->compare(key, ":scheme")) {
 		/* Просто пропускаем, потому, что схему мы не используем */
