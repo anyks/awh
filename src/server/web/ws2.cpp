@@ -28,10 +28,16 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 		this->_scheme.set(aid);
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectCallback(aid, sid, core);
+		
+		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
+		
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(aid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
+			
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
+			
 			// Получаем параметры подключения адъютанта
 			ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены
@@ -103,6 +109,8 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 						} break;
 					}
 				}
+
+				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
@@ -313,9 +321,6 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept {
 	// Получаем параметры подключения адъютанта
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	
-	cout << " ±±±±±±±±±±±±±±±±±1 " << sid << " == " << aid << endl;
-	
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Если идентификатор сессии клиента совпадает
@@ -512,14 +517,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 				} break;
 				// Если мы получили входящие данные заголовков ответа
 				case NGHTTP2_HEADERS: {
-					
-					cout << " ±±±±±±±±±±±±±±±±±3 " << sid << " == " << aid << endl;
-					
 					// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 					if(flags & NGHTTP2_FLAG_END_HEADERS){
-						
-						cout << " ±±±±±±±±±±±±±±±±±4 " << sid << " == " << aid << endl;
-						
 						// Выполняем извлечение параметров запроса
 						const auto & request = adj->http.request();
 						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
