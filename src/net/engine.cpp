@@ -3242,6 +3242,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
+
+			cout << " $$$$$$$$$$$$$$$$$$$$$1 " << endl;
+
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
@@ -3250,6 +3253,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP2):
 				// Если протокол соответствует HTTP/3
 				case static_cast <uint8_t> (proto_t::HTTP3):
+
+					cout << " $$$$$$$$$$$$$$$$$$$$$2 " << endl;
+
 					// Выполняем переключение протокола подключения
 					this->httpUpgrade(target);
 				break;
