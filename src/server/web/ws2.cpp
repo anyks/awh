@@ -1882,6 +1882,18 @@ void awh::server::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 	}
 }
 /**
+ * settings Модуль установки настроек протокола HTTP/2
+ * @param settings список настроек протокола HTTP/2
+ */
+void awh::server::WebSocket2::settings(const map <settings_t, uint32_t> & settings) noexcept {
+	// Выполняем установку основных настроек протокола HTTP/2
+	web2_t::settings(settings);
+	// Если метод CONNECT не установлен, разрешаем его по умолчанию
+	if(this->_settings.count(settings_t::CONNECT) == 0)
+		// Выполняем установку разрешения использования метода CONNECT
+		this->_settings.emplace(settings_t::CONNECT, 1);
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */

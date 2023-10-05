@@ -367,13 +367,6 @@ void awh::server::Web2::settings(const map <settings_t, uint32_t> & settings) no
 	if(!settings.empty())
 		// Выполняем установку списка настроек
 		this->_settings = settings;
-
-	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// Если метод CONNECT не установлен, разрешаем его по умолчанию
-	if(this->_settings.count(settings_t::CONNECT) == 0)
-		// Выполняем установку разрешения использования метода CONNECT
-		this->_settings.emplace(settings_t::CONNECT, 1);
-	
 	// Если максимальное количество потоков не установлено
 	if(this->_settings.count(settings_t::STREAMS) == 0)
 		// Выполняем установку максимального количества потоков

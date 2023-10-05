@@ -692,7 +692,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
+				virtual void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
