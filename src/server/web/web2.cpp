@@ -179,15 +179,15 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 }
 /**
  * send Метод отправки сообщения клиенту
- * @param id      идентификатор потока HTTP/2
- * @param aid     идентификатор адъютанта
- * @param message сообщение передаваемое клиенту
- * @param size    размер сообщения в байтах
- * @param end     флаг последнего сообщения после которого поток закрывается
+ * @param id     идентификатор потока HTTP/2
+ * @param aid    идентификатор адъютанта
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param end    флаг последнего сообщения после которого поток закрывается
  */
-void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * message, const size_t size, const bool end) noexcept {
+void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
-	if(this->_core->working() && (message != nullptr) && (size > 0)){
+	if(this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем поиск адъютанта в списке активных сессий
 		auto it = this->_sessions.find(aid);
 		// Если активная сессия найдена
@@ -225,7 +225,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Если данные небыли записаны в сокет
-				if(static_cast <int> (_write(fds[1], message, size)) != static_cast <int> (size)){
+				if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
 					// Выполняем закрытие сокета для чтения
 					_close(fds[0]);
 					// Выполняем закрытие сокета для записи
@@ -246,7 +246,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 			 */
 			#else
 				// Если данные небыли записаны в сокет
-				if(static_cast <int> (::write(fds[1], message, size)) != static_cast <int> (size)){
+				if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 					// Выполняем закрытие сокета для чтения
 					::close(fds[0]);
 					// Выполняем закрытие сокета для записи
@@ -312,6 +312,72 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 			}
 		}
 	}
+}
+/**
+ * send Метод отправки заголовков на сервер
+ * @param id      идентификатор потока HTTP/2
+ * @param aid     идентификатор адъютанта
+ * @param headers заголовки отправляемые на сервер
+ * @param end     размер сообщения в байтах
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::Web2::send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
+	if(this->_core->working() && !headers.empty()){
+		// Выполняем поиск адъютанта в списке активных сессий
+		auto it = this->_sessions.find(aid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end()){
+			// Список заголовков для запроса
+			vector <nghttp2_nv> nva;
+			// Выполняем перебор всех заголовков HTTP/2 запроса
+			for(auto & header : headers){
+				// Выполняем добавление метода запроса
+				nva.push_back({
+					(uint8_t *) header.first.c_str(),
+					(uint8_t *) header.second.c_str(),
+					header.first.size(),
+					header.second.size(),
+					NGHTTP2_NV_FLAG_NONE
+				});
+			}
+			// Выполняем запрос на удалённый сервер			
+			result = nghttp2_submit_headers(it->second->session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, nullptr, nva.data(), nva.size(), nullptr);
+			// Если запрос не получилось отправить
+			if(result < 0){
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(result));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(result));
+				// Выполняем закрытие подключения
+				const_cast <server::core_t *> (this->_core)->close(aid);
+				// Выходим из функции
+				return result;
+			}{
+				// Результат фиксации сессии
+				int rv = -1;
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(it->second->session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+					// Выполняем закрытие подключения
+					const_cast <server::core_t *> (this->_core)->close(aid);
+					// Выходим из функции
+					return result;
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * setOrigin Метод установки списка разрешенных источников

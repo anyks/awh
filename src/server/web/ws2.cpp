@@ -547,82 +547,39 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
 										// Если бинарные данные ответа получены
 										if(!headers.empty()){
-											// Выполняем поиск адъютанта в списке активных сессий
-											auto it = this->_sessions.find(aid);
-											// Если активная сессия найдена
-											if(it != this->_sessions.end()){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													{
-														// Выводим заголовок ответа
-														cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-														// Получаем объект работы с HTTP-запросами
-														const http_t & http = reinterpret_cast <http_t &> (adj->http);
-														// Получаем бинарные данные REST-ответа
-														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-														// Если бинарные данные ответа получены
-														if(!buffer.empty())
-															// Выводим параметры ответа
-															cout << string(buffer.begin(), buffer.end()) << endl << endl;
-													}
-												#endif
-												// Список заголовков для ответа
-												vector <nghttp2_nv> nva;
-												// Выполняем перебор всех заголовков HTTP/2 ответа
-												for(auto & header : headers){
-													// Выполняем добавление метода ответа
-													nva.push_back({
-														(uint8_t *) header.first.c_str(),
-														(uint8_t *) header.second.c_str(),
-														header.first.size(),
-														header.second.size(),
-														NGHTTP2_NV_FLAG_NONE
-													});
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												{
+													// Выводим заголовок ответа
+													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+													// Получаем объект работы с HTTP-запросами
+													const http_t & http = reinterpret_cast <http_t &> (adj->http);
+													// Получаем бинарные данные REST-ответа
+													const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+													// Если бинарные данные ответа получены
+													if(!buffer.empty())
+														// Выводим параметры ответа
+														cout << string(buffer.begin(), buffer.end()) << endl << endl;
 												}
-												// Выполняем ответ подключившемуся клиенту
-												int32_t sid = nghttp2_submit_headers(it->second->session, NGHTTP2_FLAG_NONE, adj->sid, nullptr, nva.data(), nva.size(), nullptr);
-												// Если запрос не получилось отправить
-												if(sid < 0){
-													// Выводим в лог сообщение
-													this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(sid));
-													// Если функция обратного вызова на на вывод ошибок установлена
-													if(this->_callback.is("error"))
-														// Выводим функцию обратного вызова
-														this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(sid));
-													// Выполняем закрытие подключения
-													const_cast <server::core_t *> (this->_core)->close(aid);
-													// Выходим из функции
-													return NGHTTP2_ERR_CALLBACK_FAILURE;
-												}{
-													// Результат фиксации сессии
-													int rv = -1;
-													// Фиксируем отправленный результат
-													if((rv = nghttp2_session_send(it->second->session)) != 0){
-														// Выводим сообщение об полученной ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-														// Если функция обратного вызова на на вывод ошибок установлена
-														if(this->_callback.is("error"))
-															// Выводим функцию обратного вызова
-															this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-														// Выполняем закрытие подключения
-														const_cast <server::core_t *> (this->_core)->close(aid);
-														// Выходим из функции
-														return NGHTTP2_ERR_CALLBACK_FAILURE;
-													}
-												}
-												// Если функция обратного вызова активности потока установлена
-												if(this->_callback.is("stream"))
-													// Выполняем функцию обратного вызова
-													this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
-												// Если функция обратного вызова на получение удачного запроса установлена
-												if(this->_callback.is("goodRequest"))
-													// Выполняем функцию обратного вызова
-													this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
-												// Завершаем работу
-												return 0;
-											}
+											#endif
+											// Выполняем ответ подключившемуся клиенту
+											int32_t sid = web2_t::send(adj->sid, aid, headers, false);
+											// Если запрос не получилось отправить
+											if(sid < 0)
+												// Выходим из функции
+												return NGHTTP2_ERR_CALLBACK_FAILURE;
+											// Если функция обратного вызова активности потока установлена
+											if(this->_callback.is("stream"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
+											// Если функция обратного вызова на получение удачного запроса установлена
+											if(this->_callback.is("goodRequest"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
+											// Завершаем работу
+											return 0;
 										// Формируем ответ, что произошла внутренняя ошибка сервера
 										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 									// Формируем ответ, что страница не доступна

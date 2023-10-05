@@ -51,6 +51,28 @@ void awh::client::AWH::send(const char * message, const size_t size, const bool 
 	this->_http.send(message, size, text);
 }
 /**
+ * send Метод отправки сообщения на сервер
+ * @param id     идентификатор потока HTTP/2
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param end    флаг последнего сообщения после которого поток закрывается
+ */
+void awh::client::AWH::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+	// Выполняем отправку данных на удалённый сервер HTTP/2
+	this->_http.send(id, buffer, size, end);
+}
+/**
+ * send Метод отправки заголовков на сервер
+ * @param id      идентификатор потока HTTP/2
+ * @param headers заголовки отправляемые на сервер
+ * @param end     размер сообщения в байтах
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::client::AWH::send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
+	// Выполняем отправку заголовков на удалённый сервер HTTP/2
+	return this->_http.send(id, headers, end);
+}
+/**
  * pause Метод установки на паузу клиента WebSocket
  */
 void awh::client::AWH::pause() noexcept {

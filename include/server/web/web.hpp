@@ -617,13 +617,22 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщения клиенту
+				 * @param id     идентификатор потока HTTP/2
+				 * @param aid    идентификатор адъютанта
+				 * @param buffer буфер бинарных данных передаваемых на сервер
+				 * @param size   размер сообщения в байтах
+				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 */
+				virtual void send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept;
+				/**
+				 * send Метод отправки заголовков на сервер
 				 * @param id      идентификатор потока HTTP/2
 				 * @param aid     идентификатор адъютанта
-				 * @param message сообщение передаваемое клиенту
-				 * @param size    размер сообщения в байтах
-				 * @param end     флаг последнего сообщения после которого поток закрывается
+				 * @param headers заголовки отправляемые на сервер
+				 * @param end     размер сообщения в байтах
+				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				void send(const int32_t id, const uint64_t aid, const char * message, const size_t size, const bool end) noexcept;
+				virtual int32_t send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешенных источников

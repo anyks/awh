@@ -1443,6 +1443,28 @@ void awh::client::Http2::send(const char * message, const size_t size, const boo
 	}
 }
 /**
+ * send Метод отправки сообщения на сервер
+ * @param id     идентификатор потока HTTP/2
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param end    флаг последнего сообщения после которого поток закрывается
+ */
+void awh::client::Http2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+	// Выполняем отправку данных на удалённый сервер
+	web2_t::send(id, buffer, size, end);
+}
+/**
+ * send Метод отправки заголовков на сервер
+ * @param id      идентификатор потока HTTP/2
+ * @param headers заголовки отправляемые на сервер
+ * @param end     размер сообщения в байтах
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::client::Http2::send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
+	// Выполняем отправку заголовков на сервер
+	return web2_t::send(id, headers, end);
+}
+/**
  * pause Метод установки на паузу клиента
  */
 void awh::client::Http2::pause() noexcept {

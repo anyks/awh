@@ -675,12 +675,20 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер
-				 * @param id      идентификатор потока HTTP/2
-				 * @param message сообщение передаваемое на сервер
-				 * @param size    размер сообщения в байтах
-				 * @param end     флаг последнего сообщения после которого поток закрывается
+				 * @param id     идентификатор потока HTTP/2
+				 * @param buffer буфер бинарных данных передаваемых на сервер
+				 * @param size   размер сообщения в байтах
+				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 */
-				void send(const int32_t id, const char * message, const size_t size, const bool end) noexcept;
+				virtual void send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept;
+				/**
+				 * send Метод отправки заголовков на сервер
+				 * @param id      идентификатор потока HTTP/2
+				 * @param headers заголовки отправляемые на сервер
+				 * @param end     размер сообщения в байтах
+				 * @return        флаг последнего сообщения после которого поток закрывается
+				 */
+				virtual int32_t send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

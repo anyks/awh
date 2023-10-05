@@ -56,8 +56,6 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 		web2_t::connectCallback(aid, sid, core);
 		// Если флаг инициализации сессии HTTP2 установлен
 		if(this->_sessionInitialized){
-			// Список заголовков для запроса
-			vector <nghttp2_nv> nva;
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Создаём объек запроса
@@ -86,48 +84,12 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 			#endif
 			// Выполняем запрос на получение заголовков
 			const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
-			// Выполняем перебор всех заголовков HTTP/2 запроса
-			for(auto & header : headers){
-				// Выполняем добавление метода запроса
-				nva.push_back({
-					(uint8_t *) header.first.c_str(),
-					(uint8_t *) header.second.c_str(),
-					header.first.size(),
-					header.second.size(),
-					NGHTTP2_NV_FLAG_NONE
-				});
-			}
-			// Выполняем запрос на удалённый сервер			
-			this->_sid = nghttp2_submit_headers(this->_nghttp2.session, NGHTTP2_FLAG_NONE, -1, nullptr, nva.data(), nva.size(), this);
+			// Выполняем запрос на удалённый сервер	
+			this->_sid = web2_t::send(-1, headers, false);
 			// Если запрос не получилось отправить
-			if(this->_sid < 0){
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_sid));
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(this->_sid));
-				// Выполняем закрытие подключения
-				dynamic_cast <client::core_t *> (core)->close(this->_aid);
+			if(this->_sid < 0)
 				// Выходим из функции
 				return;
-			}{
-				// Результат фиксации сессии
-				int rv = -1;
-				// Фиксируем отправленный результат
-				if((rv = nghttp2_session_send(this->_nghttp2.session)) != 0){
-					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-					// Выполняем закрытие подключения
-					dynamic_cast <client::core_t *> (core)->close(this->_aid);
-					// Выходим из функции
-					return;
-				}
-			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
 			// Устанавливаем идентификатор потока
