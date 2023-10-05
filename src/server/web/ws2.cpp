@@ -532,7 +532,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									// Получаем объект работы с HTTP-запросами
 									const http_t & http = reinterpret_cast <http_t &> (adj->http);
 									// Получаем данные ответа
-									const auto & response = http.process(http_t::process_t::RESPONSE, true);
+									const auto & response = http.process(http_t::process_t::REQUEST, true);
 									// Если параметры ответа получены
 									if(!response.empty())
 										// Выводим параметры ответа
@@ -697,7 +697,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											
 											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$7 " << endl;
 
-											// Формируем ответ, что страница не доступна
+											// Формируем ответ, что произошла внутренняя ошибка сервера
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 										}
 									// Сообщаем, что рукопожатие не выполнено
@@ -717,6 +717,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									// Формируем ответ на запрос об авторизации
 									response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
 								break;
+								// Если результат определить не получилось
+								default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 							}
 
 							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$10 " << endl;
