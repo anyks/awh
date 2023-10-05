@@ -1981,9 +1981,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			(void) ssl;
 
 			// Выполняем установку буфера данных
-			(* out) = "h2";
+			(* out) = (u_char *) "h2";
 			// Выполняем установку размер буфера данных протокола
-			(* outSize) = 2;
+			(* outSize) = (u_char) 2;
 
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
@@ -2037,9 +2037,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			
 
 			// Выполняем установку буфера данных
-			(* out) = "h2";
+			(* out) = (u_char *) "h2";
 			// Выполняем установку размер буфера данных протокола
-			(* outSize) = 2;
+			(* outSize) = (u_char) 2;
 
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
