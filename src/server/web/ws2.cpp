@@ -518,14 +518,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 						if(this->_callback.is("headers"))
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
-						
-						cout << " !!!!!!!!!!!!!!!!!!!!1 " << request.url << endl;
-						
 						// Если рукопожатие не выполнено
 						if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
-							
-							cout << " !!!!!!!!!!!!!!!!!!!!2 " << endl;
-							
 							// Метод компрессии данных
 							http_t::compress_t compress = http_t::compress_t::NONE;
 							// Ответ клиенту по умолчанию успешный
@@ -575,9 +569,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Завершаем работу
 											break;
 										}
-
-										cout << " !!!!!!!!!!!!!!!!!!!!2 " << endl;
-
 										// Выполняем сброс состояния HTTP-парсера
 										adj->http.clear();
 										// Получаем флаг шифрованных данных
@@ -619,8 +610,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													{
 														// Выводим заголовок ответа
 														cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+														// Получаем объект работы с HTTP-запросами
+														const http_t & http = reinterpret_cast <http_t &> (adj->http);
 														// Получаем бинарные данные REST-ответа
-														const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
 															// Выводим параметры ответа
@@ -631,6 +624,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												vector <nghttp2_nv> nva;
 												// Выполняем перебор всех заголовков HTTP/2 ответа
 												for(auto & header : headers){
+													
+													cout << " ------------------- " << header.first << " == " << header.second << endl;
+													
 													// Выполняем добавление метода ответа
 													nva.push_back({
 														(uint8_t *) header.first.c_str(),

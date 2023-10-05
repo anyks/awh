@@ -853,9 +853,6 @@ void awh::Web::clear() noexcept {
 	this->_chunk.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->_headers.clear();
-	
-	cout << " ^^^^^^^^^^^^^^^ CLEAR1 " << this->_headers.size() << endl;
-	
 	// Выполняем сброс параметров запроса
 	this->_req = req_t();
 	// Выполняем сброс параметров ответа
