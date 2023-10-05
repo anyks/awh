@@ -50,9 +50,6 @@ namespace awh {
 				 */
 				friend class Http2;
 			private:
-				// Флаг запрета вывода информационных сообщений
-				bool _noinfo;
-			private:
 				// Количество активных ядер
 				size_t _threads;
 				// Минимальный размер сегмента

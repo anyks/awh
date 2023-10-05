@@ -40,11 +40,9 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 				// Выполняем очистку списка активных сессий
 				this->_sessions.clear();
 		}
-		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callback.is("events"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
 	}
+	// Выполняем переадресацию выполняемого события в родительский модуль
+	web_t::eventsCallback(status, core);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу

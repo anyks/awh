@@ -285,8 +285,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -296,7 +296,8 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
-	// core.verifySSL(false);
+	core.verifySSL(false);
+	// Устанавливаем SSL сертификаты сервера
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
 	// ws.user("user", "password");
@@ -327,8 +328,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream");
-	// ws.init("ws://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
+	// ws.init("wss://stream.binance.com:9443/stream");
+	ws.init("wss://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
 	// ws.init("wss://mimi.anyks.net:2222", awh::http_t::compress_t::DEFLATE);
 	// ws.init("wss://92.63.110.56:2222", awh::http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
@@ -343,7 +344,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем поддерживаемые расширения
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов
-	log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
+	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.on((function <void (const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера

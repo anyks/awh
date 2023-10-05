@@ -248,10 +248,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										#endif
 										// Выполняем отправку данных адъютанту
 										dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
-										// Если разрешено в лог выводим информационные сообщения
-										if(!this->_noinfo)
-											// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
-											this->_log->print("Successful client authorization on this WebSocket-server IP=%s, MAC=%s", log_t::flag_t::INFO, this->ip(aid).c_str(), this->mac(aid).c_str());
 										// Есла данных передано больше чем обработано
 										if(adj->buffer.payload.size() > bytes)
 											// Удаляем количество обработанных байт
@@ -764,9 +760,6 @@ void awh::server::WebSocket1::garbage(const u_short tid, awh::core_t * core) noe
 					adj->buffer.payload.clear();
 					// Выполняем очистку оставшихся фрагментов
 					adj->buffer.fragmes.clear();
-
-					cout << " ^^^^^^^^^^^^^^^^^^ HTTP/1.1 " << it->first << endl;
-
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);
@@ -1312,8 +1305,6 @@ void awh::server::WebSocket1::keepAlive(const int cnt, const int idle, const int
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::WebSocket1::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
@@ -1427,7 +1418,7 @@ void awh::server::WebSocket1::bytesDetect(const scheme_t::mark_t read, const sch
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _frameSize(0), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws1_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -1449,7 +1440,7 @@ awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _noinfo(false), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _frameSize(0), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

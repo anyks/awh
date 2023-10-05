@@ -161,18 +161,21 @@ int main(int argc, char * argv[]){
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Устанавливаем активный протокол подключения
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
-	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.sonet(awh::scheme_t::sonet_t::TCP);
+	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-	// Отключаем валидацию сертификата
-	// core.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
+	// Отключаем валидацию сертификата
+	core.verifySSL(false);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	// ws.clusterAutoRestart(true);
 	// Выполняем активацию многопоточности
@@ -197,7 +200,7 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы

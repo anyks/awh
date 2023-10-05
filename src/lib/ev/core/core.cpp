@@ -410,9 +410,9 @@ void awh::Core::launching() noexcept {
 		// Если нужно запустить функцию в основном потоке
 		if(!this->activeOnTrhead)
 			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("status", status_t::START, this);
+			this->_callback.call <const status_t, core_t *> ("status", this->status, this);
 		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), status_t::START, this).detach();
+		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), this->status, this).detach();
 	}
 	// Если разрешено выводить информацию в лог
 	if(!this->noinfo)
@@ -451,9 +451,9 @@ void awh::Core::closedown() noexcept {
 		// Если нужно запустить функцию в основном потоке
 		if(!this->activeOnTrhead)
 			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("status", status_t::STOP, this);
+			this->_callback.call <const status_t, core_t *> ("status", this->status, this);
 		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), status_t::STOP, this).detach();
+		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), this->status, this).detach();
 	}
 	// Если разрешено выводить информацию в лог
 	if(!this->noinfo)

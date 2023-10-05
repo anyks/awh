@@ -460,7 +460,7 @@ else()
     add_executable(${SERVER_APP_NAME} sample/server.cpp)
     add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp)
     add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp)
-    add_executable(${WS_CLIENT_APP_NAME} sample/wsClient2.cpp)
+    add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
 

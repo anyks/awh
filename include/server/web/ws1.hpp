@@ -57,9 +57,6 @@ namespace awh {
 				 */
 				friend class WebSocket2;
 			private:
-				// Флаг запрета вывода информационных сообщений
-				bool _noinfo;
-			private:
 				// Минимальный размер сегмента
 				size_t _frameSize;
 			private:

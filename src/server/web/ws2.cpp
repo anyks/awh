@@ -656,11 +656,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 														return NGHTTP2_ERR_CALLBACK_FAILURE;
 													}
 												}
-												// Если разрешено в лог выводим информационные сообщения
-												if(!this->_noinfo)
-													// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
-													this->_log->print("Successful client authorization on this WebSocket-server IP=%s, MAC=%s", log_t::flag_t::INFO, this->ip(aid).c_str(), this->mac(aid).c_str());
-													// Если функция обратного вызова активности потока установлена
+												// Если функция обратного вызова активности потока установлена
 												if(this->_callback.is("stream"))
 													// Выполняем функцию обратного вызова
 													this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
@@ -1247,9 +1243,6 @@ void awh::server::WebSocket2::garbage(const u_short tid, awh::core_t * core) noe
 					adj->buffer.payload.clear();
 					// Выполняем очистку оставшихся фрагментов
 					adj->buffer.fragmes.clear();
-
-					cout << " ^^^^^^^^^^^^^^^^^^ HTTP/2 " << it->first << endl;
-
 					// Если переключение протокола на HTTP/2 не выполнено
 					if(adj->proto != engine_t::proto_t::HTTP2)
 						// Выполняем очистку мусора у WebSocket-сервера
@@ -1867,8 +1860,6 @@ void awh::server::WebSocket2::keepAlive(const int cnt, const int idle, const int
 void awh::server::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для WebSocket-сервера
 	this->_ws1.mode(flags);
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
@@ -2063,7 +2054,7 @@ void awh::server::WebSocket2::crypto(const string & pass, const string & salt, c
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _noinfo(false), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws2_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -2085,7 +2076,7 @@ awh::server::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket2::WebSocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _noinfo(false), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::WebSocket2::WebSocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
