@@ -2062,6 +2062,8 @@ static size_t next_proto_list_len;
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			
 			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
+
+			return SSL_TLSEXT_ERR_OK;
 			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto((u_char **) out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
