@@ -1590,10 +1590,13 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
  */
 bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept {
 	
-	cout << " @@@@@@@@@1 " << string((const char *) in, inSize) << " == " << inSize << " || " << string(key, keySize) << endl;
+	cout << " @@@@@@@@@1 " << string((const char *) in, inSize) << " == " << inSize << " || " << string(key, keySize) << " == " << keySize << endl;
 	
 	// Выполняем перебор всех данных в входящем буфере
 	for(u_int i = 0; (i + keySize) <= inSize; i += (u_int) (in[i] + 1)){
+		
+		cout << " @@@@@@@@@2 " << string((const char *) &in[i], keySize) << " == " << string(key, keySize) << endl;
+		
 		// Если данные ключа скопированны удачно
 		if(::memcmp(&in[i], key, keySize) == 0){
 			// Выполняем установку размеров исходящего буфера
@@ -1601,7 +1604,7 @@ bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_
 			// Выполняем установку полученных данных в исходящий буфер
 			(* out) = (u_char *) &in[i + 1];
 
-			cout << " @@@@@@@@@2 " << string((char *) &in[i + 1], (size_t) in[i]);
+			cout << " @@@@@@@@@3 " << string((char *) &in[i + 1], (size_t) in[i]);
 
 			// Выходим из функции
 			return true;
