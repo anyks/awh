@@ -553,6 +553,9 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		web_t::req_t request = this->_web.request();
 		// Выполняем установку пути запроса
 		this->_uri.create(request.url, this->_uri.parse(val));
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^^1 " << val << " === " << request.url << endl;
+		
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
 	// Если ключ заголовка соответствует схеме протокола
@@ -566,6 +569,9 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		web_t::req_t request = this->_web.request();
 		// Выполняем установку хоста запроса
 		this->_uri.create(request.url, this->_uri.parse(val));
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^^2 " << val << " === " << request.url << endl;
+		
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
 	// Если ключ соответствует статусу ответа

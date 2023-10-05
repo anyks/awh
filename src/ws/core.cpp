@@ -844,10 +844,13 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				const_cast <ws_core_t *> (this)->rmHeader("Connection");
 				// Удаляем заголовок хеша ключа
 				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Accept");
-				// Добавляем заголовок подключения
-				const_cast <ws_core_t *> (this)->header("Connection", "Upgrade");
-				// Добавляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
+				// Если ответ сервера положительный
+				if(res.version >= 2.0f ? res.code == 200 : res.code == 101){
+					// Добавляем заголовок подключения
+					const_cast <ws_core_t *> (this)->header("Connection", "Upgrade");
+					// Добавляем заголовок апгрейд
+					const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
+				}
 				// Если версия протокола ниже 2.0
 				if(res.version < 2.0f){
 					// Выполняем генерацию хеша ключа
