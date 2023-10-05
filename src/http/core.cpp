@@ -1021,13 +1021,10 @@ bool awh::Http::isAlive() const noexcept {
 	return result;
 }
 /**
- * isHandshake Метод проверки рукопожатия
+ * isHandshake Метод проверки рукопожатия (Метод не должен быть виртуальным, так-как он должен быть переопределён в других модулях)
  * @return проверка рукопожатия
  */
 bool awh::Http::isHandshake() noexcept {
-
-	cout << " ^^^^ isHandshake2 " << endl;
-
 	// Выполняем проверку на удачное рукопожатие
 	return (this->_state == state_t::HANDSHAKE);
 }

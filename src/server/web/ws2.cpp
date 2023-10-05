@@ -520,11 +520,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 						if(this->_callback.is("headers"))
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
-						
-						cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$-1 " << request.version << " ||| " << reinterpret_cast <http_t *> (&adj->http)->isHandshake() << endl;
-						
 						// Если рукопожатие не выполнено
-						if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
+						if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
 							// Метод компрессии данных
 							http_t::compress_t compress = http_t::compress_t::NONE;
 							// Ответ клиенту по умолчанию успешный
@@ -544,45 +541,24 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										cout << string(response.begin(), response.end()) << endl;
 								}
 							#endif
-
-							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$0 " << (u_short) adj->http.getAuth() << endl;
-
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (adj->http.getAuth())){
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (http_t::stath_t::GOOD): {
-									
-									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$1 " << endl;
-									
 									// Если рукопожатие выполнено
 									if((adj->shake = adj->http.isHandshake())){
-										
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$2 " << endl;
-										
 										// Получаем метод компрессии HTML данных
 										compress = adj->http.compression();
 										// Проверяем версию протокола
 										if(!adj->http.checkVer()){
 											// Получаем бинарные данные REST запроса
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
-											
-											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$3 " << endl;
-											
 											// Завершаем работу
 											break;
 										}
-										// Проверяем ключ адъютанта
-										if(!adj->http.checkKey()){
-											// Получаем бинарные данные REST запроса
-											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Wrong client key");
-											
-											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$4 " << endl;
-											
-											// Завершаем работу
-											break;
-										}
+										
 
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$5 " << endl;
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$1 " << endl;
 
 										// Выполняем сброс состояния HTTP-парсера
 										adj->http.clear();
@@ -611,7 +587,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Выполняем установку HTTP-заголовков
 											adj->http.headers(this->_headers);
 										
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$6 " << endl;
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$2 " << endl;
 										
 										// Получаем заголовки ответа удалённому клиенту
 										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
@@ -700,7 +676,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										// Выполняем реджект
 										} else {
 											
-											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$7 " << endl;
+											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$3 " << endl;
 
 											// Формируем ответ, что произошла внутренняя ошибка сервера
 											response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
@@ -708,7 +684,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									// Сообщаем, что рукопожатие не выполнено
 									} else {
 										
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$8 " << endl;
+										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$4 " << endl;
 
 										// Формируем ответ, что страница не доступна
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
@@ -717,7 +693,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								// Если запрос неудачный
 								case static_cast <uint8_t> (http_t::stath_t::FAULT):
 									
-									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$9 " << endl;
+									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$5 " << endl;
 
 									// Формируем ответ на запрос об авторизации
 									response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
@@ -726,7 +702,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 							}
 
-							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$10 " << endl;
+							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$6 " << endl;
 
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();

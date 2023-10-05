@@ -417,7 +417,7 @@ namespace awh {
 			bool isAlive() const noexcept;
 		public:
 			/**
-			 * isHandshake Метод проверки рукопожатия
+			 * isHandshake Метод проверки рукопожатия (Метод не должен быть виртуальным, так-как он должен быть переопределён в других модулях)
 			 * @return проверка рукопожатия
 			 */
 			bool isHandshake() noexcept;
