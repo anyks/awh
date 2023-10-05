@@ -1025,6 +1025,9 @@ bool awh::Http::isAlive() const noexcept {
  * @return проверка рукопожатия
  */
 bool awh::Http::isHandshake() noexcept {
+
+	cout << " ^^^^ isHandshake2 " << endl;
+
 	// Выполняем проверку на удачное рукопожатие
 	return (this->_state == state_t::HANDSHAKE);
 }

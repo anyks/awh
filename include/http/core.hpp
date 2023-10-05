@@ -420,7 +420,7 @@ namespace awh {
 			 * isHandshake Метод проверки рукопожатия
 			 * @return проверка рукопожатия
 			 */
-			virtual bool isHandshake() noexcept;
+			bool isHandshake() noexcept;
 		public:
 			/**
 			 * isBlack Метод проверки существования заголовка в чёрный списоке

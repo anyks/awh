@@ -704,6 +704,9 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
  * @return результат выполнения проверки рукопожатия
  */
 bool awh::WCore::isHandshake() noexcept {
+	
+	cout << " ^^^^ isHandshake1 " << endl;
+	
 	// Результат работы функции
 	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
