@@ -76,6 +76,9 @@ int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, 
 	(void) session;
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	
+	cout << " *************************** FRAME " << endl;
+	
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
@@ -101,6 +104,9 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
 		case NGHTTP2_HEADERS:{
 			// Если сессия клиента совпадает с сессией полученных даных
 			if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+				
+				cout << " *************************** BEGIN " << endl;
+				
 				/**
 				 * Если включён режим отладки
 				 */
@@ -163,6 +169,9 @@ int awh::NgHttp2::chunk(nghttp2_session * session, const uint8_t flags, const in
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
+	
+	cout << " *************************** CHUNK " << size << endl;
+	
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -196,6 +205,9 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 			if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
 				// Получаем объект родительского объекта
 				nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+				
+				cout << " *************************** HEADER " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
+				
 				// Если функция обратного вызова установлена
 				if(self->_callback.is("header"))
 					// Выводим функцию обратного вызова

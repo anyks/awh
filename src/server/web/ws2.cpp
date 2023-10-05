@@ -28,16 +28,10 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 		this->_scheme.set(aid);
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectCallback(aid, sid, core);
-		
-		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
-		
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(aid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
-			
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
-			
 			// Получаем параметры подключения адъютанта
 			ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены
@@ -109,8 +103,6 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 						} break;
 					}
 				}
-
-				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
@@ -190,6 +182,9 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t aid, const uint1
 void awh::server::WebSocket2::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		
+		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
+		
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -203,6 +198,9 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 			}
 			// Если протокол подключения является HTTP/2
 			if(core->proto(aid) == engine_t::proto_t::HTTP2){
+				
+				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
+
 				// Если получение данных не разрешено
 				if(!adj->allow.receive)
 					// Выходим из функции
@@ -213,6 +211,9 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				if(it != this->_sessions.end()){
 					// Выполняем извлечение полученного чанка данных из сокета
 					ssize_t bytes = nghttp2_session_mem_recv(it->second->session, (const uint8_t *) buffer, size);
+					
+					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << bytes << endl;
+					
 					// Если данные не прочитаны, выводим ошибку и выходим
 					if(bytes < 0){
 						// Выводим сообщение об полученной ошибке
