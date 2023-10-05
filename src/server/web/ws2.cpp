@@ -508,6 +508,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 				case NGHTTP2_HEADERS: {
 					// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 					if(flags & NGHTTP2_FLAG_END_HEADERS){
+						// Выполняем коммит полученного результата
+						adj->http.commit();
 						// Выполняем извлечение параметров запроса
 						const auto & request = adj->http.request();
 						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
@@ -524,9 +526,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 							http_t::compress_t compress = http_t::compress_t::NONE;
 							// Ответ клиенту по умолчанию успешный
 							awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
-							
-							cout << " -------------------------- " << request.url << endl;
-							
 							/**
 							 * Если включён режим отладки
 							 */
