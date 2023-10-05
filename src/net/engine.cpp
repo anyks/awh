@@ -1982,6 +1982,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			const char * http1 = "\x8http/1.1";
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
+			
+			cout << " ************************1 " << string((const char *) in, inSize) << endl;
+			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto(out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
 				// Выводим результат
@@ -2024,7 +2027,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << string((const char *) in, inSize) << endl;
 			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto((u_char **) out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
