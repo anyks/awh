@@ -313,6 +313,9 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept {
 	// Получаем параметры подключения адъютанта
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	
+	cout << " ±±±±±±±±±±±±±±±±±1 " << sid << " == " << aid << endl;
+	
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Если идентификатор сессии клиента совпадает
@@ -321,6 +324,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 			switch(type){
 				// Если мы получили входящие данные тела ответа
 				case NGHTTP2_DATA: {
+					
+					cout << " ±±±±±±±±±±±±±±±±±2 " << sid << " == " << aid << endl;
+					
 					// Если рукопожатие не выполнено
 					if(!adj->shake){
 						// Если мы получили флаг завершения потока
@@ -506,8 +512,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 				} break;
 				// Если мы получили входящие данные заголовков ответа
 				case NGHTTP2_HEADERS: {
+					
+					cout << " ±±±±±±±±±±±±±±±±±3 " << sid << " == " << aid << endl;
+					
 					// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 					if(flags & NGHTTP2_FLAG_END_HEADERS){
+						
+						cout << " ±±±±±±±±±±±±±±±±±4 " << sid << " == " << aid << endl;
+						
 						// Выполняем извлечение параметров запроса
 						const auto & request = adj->http.request();
 						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
