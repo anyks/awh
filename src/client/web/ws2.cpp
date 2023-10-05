@@ -420,6 +420,8 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 				case NGHTTP2_HEADERS: {
 					// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 					if(flags & NGHTTP2_FLAG_END_HEADERS){
+						// Выполняем коммит полученного результата
+						this->_http.commit();
 						/**
 						 * Если включён режим отладки
 						 */

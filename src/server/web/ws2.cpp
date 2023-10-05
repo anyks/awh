@@ -321,49 +321,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 			switch(type){
 				// Если мы получили входящие данные тела ответа
 				case NGHTTP2_DATA: {
-					// Если рукопожатие не выполнено
-					if(!adj->shake){
-						// Если мы получили флаг завершения потока
-						if(flags & NGHTTP2_FLAG_END_STREAM){
-							// Выполняем коммит полученного результата
-							adj->http.commit();
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								{
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (adj->http);
-									// Если тело ответа существует
-									if(!http.body().empty())
-										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
-									// Иначе устанавливаем перенос строки
-									else cout << endl;
-								}
-							#endif
-							// Получаем метод компрессии HTML данных
-							const http_t::compress_t compress = adj->http.compression();
-							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-							if(!adj->http.body().empty() && this->_callback.is("entity")){
-								// Выполняем извлечение параметров запроса
-								const auto & request = adj->http.request();
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", adj->sid, aid, request.method, request.url, adj->http.body());
-							}
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Выполняем очистку буфера данных
-							adj->buffer.payload.clear();
-							// Если функция обратного вызова на на вывод ошибок установлена
-							if(this->_callback.is("error"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "Invalid HTTP request made");
-						}
 					// Если рукопожатие выполнено
-					} else if(adj->allow.receive) {
+					if(adj->shake && adj->allow.receive){
 						// Если мы получили неустановленный флаг или флаг завершения потока
 						if((flags & NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
 							// Флаг удачного получения данных
@@ -556,10 +515,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Завершаем работу
 											break;
 										}
-										
-
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$1 " << endl;
-
 										// Выполняем сброс состояния HTTP-парсера
 										adj->http.clear();
 										// Получаем флаг шифрованных данных
@@ -586,14 +541,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										if(!this->_headers.empty())
 											// Выполняем установку HTTP-заголовков
 											adj->http.headers(this->_headers);
-										
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$2 " << endl;
-										
 										// Получаем заголовки ответа удалённому клиенту
 										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
-										
-										cout << " $$$$$$$$$$$$$$$$$$$$1 " << headers.empty() << endl;
-										
 										// Если бинарные данные ответа получены
 										if(!headers.empty()){
 											// Выполняем поиск адъютанта в списке активных сессий
@@ -621,9 +570,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												vector <nghttp2_nv> nva;
 												// Выполняем перебор всех заголовков HTTP/2 ответа
 												for(auto & header : headers){
-													
-													cout << " -------------------1 " << header.first << " == " << header.second << endl;
-													
 													// Выполняем добавление метода ответа
 													nva.push_back({
 														(uint8_t *) header.first.c_str(),
@@ -673,37 +619,19 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												// Завершаем работу
 												return 0;
 											}
-										// Выполняем реджект
-										} else {
-											
-											cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$3 " << endl;
-
-											// Формируем ответ, что произошла внутренняя ошибка сервера
-											response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
-										}
-									// Сообщаем, что рукопожатие не выполнено
-									} else {
-										
-										cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$4 " << endl;
-
-										// Формируем ответ, что страница не доступна
-										response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
-									}
+										// Формируем ответ, что произошла внутренняя ошибка сервера
+										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
+									// Формируем ответ, что страница не доступна
+									} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
 								} break;
 								// Если запрос неудачный
 								case static_cast <uint8_t> (http_t::stath_t::FAULT):
-									
-									cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$5 " << endl;
-
 									// Формируем ответ на запрос об авторизации
 									response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
 								break;
 								// Если результат определить не получилось
 								default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
 							}
-
-							cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$6 " << endl;
-
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -739,9 +667,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									vector <nghttp2_nv> nva;
 									// Выполняем перебор всех заголовков HTTP/2 ответа
 									for(auto & header : headers){
-										
-										cout << " -------------------2 " << header.first << " == " << header.second << endl;
-										
 										// Выполняем добавление метода ответа
 										nva.push_back({
 											(uint8_t *) header.first.c_str(),
