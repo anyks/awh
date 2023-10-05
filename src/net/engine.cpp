@@ -3176,12 +3176,16 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
+				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
+
+			// ++++++++++++++++++++++++++
 			// Устанавливаем опции запроса
+			// SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+
 			// Устанавливаем минимально-возможную версию TLS
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
@@ -3193,21 +3197,78 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
+					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
+
+				// ++++++++++++++++++++++++++
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
+				// SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
+
+
+			// ++++++++++++++++++++++++++
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 3.0.0
+			 */
+			/*
+			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
+				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+					// Выводим в лог сообщение
+					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+			*/
+			/**
+			 * Если версия OpenSSL ниже версии 3.0.0
+			 */
+			/*
+			#else 
+				{
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+					// Если кривые не получилось установить
+					if(ecdh == nullptr){
+						// Выводим в лог сообщение
+						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						// Выходим
+						return;
+					}
+					// Выполняем установку кривых P-256
+					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
+					// Выполняем очистку объекта кривой
+					EC_KEY_free(ecdh);
+				}
+			#endif
+			*/
+
+			/* // ++++++++++++++++++++++++++
+			// Если протоколом является HTTP, выполняем переключение на него
+			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует SPDY/1
+				case static_cast <uint8_t> (proto_t::SPDY1):
+				// Если протокол соответствует HTTP/2
+				case static_cast <uint8_t> (proto_t::HTTP2):
+				// Если протокол соответствует HTTP/3
+				case static_cast <uint8_t> (proto_t::HTTP3):
+					// Выполняем переключение протокола подключения
+					this->httpUpgrade(target);
+				break;
+			}
+			*/
+
 			// Выполняем установку идентификатора сессии
 			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
+				this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -3216,7 +3277,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("set ssl ecdh", log_t::flag_t::CRITICAL);
+				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3227,16 +3288,27 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
+			/*
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
+			
+			// ++++++++++++++++++++++++++
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			*/
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
+				
+				cout << " ^^^^^^^^^^^^^^^^^ " << this->_chain << endl;
+				
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3248,7 +3320,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3257,7 +3329,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
+					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -3267,14 +3339,12 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если доверенный сертификат недействителен
 			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
 				// Выводим в лог сообщение
-				this->_log->print("trusted certificate is invalid", log_t::flag_t::CRITICAL);
+				this->_log->print("Trusted certificate is invalid", log_t::flag_t::CRITICAL);
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
 				return;
 			}
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Если нужно произвести проверку
 			if(this->_verify){
 				// Устанавливаем глубину проверки
@@ -3290,7 +3360,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3303,7 +3373,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 					// Выходим
 					return;
 				}
