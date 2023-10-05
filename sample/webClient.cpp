@@ -181,7 +181,7 @@ int main(int argc, char * argv[]){
 	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	
 	
-	awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	// awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
@@ -190,7 +190,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип компрессии
 	// awh.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	awh.authTypeProxy();
+	// awh.authTypeProxy();
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType();
@@ -205,9 +205,10 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
+	uri_t::url_t url = uri.parse("https://anyks.net:2222");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");

@@ -162,8 +162,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -173,7 +173,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Активируем максимальное количество рабочих процессов
-	core.clusterSize();
+	// core.clusterSize();
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса

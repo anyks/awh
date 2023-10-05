@@ -296,7 +296,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
-	core.verifySSL(false);
+	// core.verifySSL(false);
 	// Устанавливаем SSL сертификаты сервера
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
