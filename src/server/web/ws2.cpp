@@ -193,6 +193,10 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				// Выходим из функции
 				return;
 			}
+
+			if(adj->shake)
+				cout << " &&&&&&&&&&&&&&&&&&&&& " << size << endl;
+
 			// Если протокол подключения является HTTP/2
 			if(core->proto(aid) == engine_t::proto_t::HTTP2){
 				// Если получение данных не разрешено
