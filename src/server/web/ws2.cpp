@@ -311,6 +311,9 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
  * @return      статус полученных данных
  */
 int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept {
+	
+	cout << " ±±±±±±±±±±±±±±±±± " << sid << " == " << aid << endl;
+	
 	// Получаем параметры подключения адъютанта
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
@@ -321,9 +324,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 			switch(type){
 				// Если мы получили входящие данные тела ответа
 				case NGHTTP2_DATA: {
-					
-					cout << " ±±±±±±±±±±±±±±±±±2 " << sid << " == " << aid << endl;
-					
 					// Если рукопожатие не выполнено
 					if(!adj->shake){
 						// Если мы получили флаг завершения потока
