@@ -162,8 +162,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
