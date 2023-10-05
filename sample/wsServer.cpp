@@ -175,7 +175,7 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
 	// Отключаем валидацию сертификата
-	core.verifySSL(false);
+	// core.verifySSL(false);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	// ws.clusterAutoRestart(true);
 	// Выполняем активацию многопоточности
@@ -188,19 +188,19 @@ int main(int argc, char * argv[]){
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
-	ws.init(2222, "127.0.0.1", awh::http_t::compress_t::DEFLATE);
-	// ws.init(2222, "", awh::http_t::compress_t::DEFLATE);
+	// ws.init(2222, "127.0.0.1", awh::http_t::compress_t::DEFLATE);
+	ws.init(2222, "", awh::http_t::compress_t::DEFLATE);
 	// ws.init("anyks", awh::http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
-	/*
+	
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	*/
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+
+	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
