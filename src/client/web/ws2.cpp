@@ -334,11 +334,6 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 		return this->frameProxySignal(sid, type, flags);
 	// Если мы работаем с сервером напрямую
 	else {
-		
-		if(flags & NGHTTP2_FLAG_END_STREAM){
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL " << sid << endl;
-		}
-		
 		// Если сессия клиента совпадает с сессией полученных даных
 		if(this->_sid == sid){
 			// Выполняем определение типа фрейма
@@ -399,7 +394,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 					// Если рукопожатие выполнено
 					} else if(this->_allow.receive) {
 						// Если мы получили неустановленный флаг или флаг завершения потока
-						if((flags & NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
+						if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
 							// Выполняем препарирование полученных данных
 							switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
 								// Если необходимо выполнить остановку обработки

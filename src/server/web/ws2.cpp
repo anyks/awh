@@ -321,19 +321,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 			switch(type){
 				// Если мы получили входящие данные тела ответа
 				case NGHTTP2_DATA: {
-					
-					cout << " !!!!!!!!!!!!!!!!!!!!!!!!!1 " << endl;
-					
 					// Если рукопожатие выполнено
 					if(adj->shake && adj->allow.receive){
-						
-						cout << " !!!!!!!!!!!!!!!!!!!!!!!!!2 " << (u_short) flags << " == " << NGHTTP2_FLAG_NONE << " == " << NGHTTP2_FLAG_END_STREAM << " || " << adj->buffer.payload.size() << endl;
-						
 						// Если мы получили неустановленный флаг или флаг завершения потока
-						if((flags & NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
-							
-							cout << " !!!!!!!!!!!!!!!!!!!!!!!!!3 " << endl;
-							
+						if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
 							// Флаг удачного получения данных
 							bool receive = false;
 							// Создаём буфер сообщения
