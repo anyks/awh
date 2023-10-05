@@ -477,7 +477,7 @@ void awh::client::Web2::implementation(const uint64_t aid, client::core_t * core
 				// Выполняем установку функции обратного вызова на событие получения ошибки
 				this->_nghttp2.on(this->_callback.get <void (const log_t::flag_t, const http::error_t, const string &)> ("error"));
 			// Выполняем инициализацию модуля NgHttp2
-			this->_sessionInitialized = this->_nghttp2.init(std::move(iv));
+			this->_sessionInitialized = this->_nghttp2.init(nghttp2_t::mode_t::CLIENT, std::move(iv));
 		}
 	}
 }

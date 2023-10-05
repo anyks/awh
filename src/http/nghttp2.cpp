@@ -322,14 +322,15 @@ bool awh::NgHttp2::close() noexcept {
 }
 /**
  * init Метод инициализации
+ * @param service  идентификатор сервиса
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::NgHttp2::init(const vector <nghttp2_settings_entry> & settings) noexcept {
+bool awh::NgHttp2::init(const mode_t service, const vector <nghttp2_settings_entry> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы
-	if(!settings.empty()){
+	if(!settings.empty() && (service != mode_t::NONE)){
 		// Выполняем очистку предыдущей сессии
 		this->free();
 		/**
@@ -355,8 +356,19 @@ bool awh::NgHttp2::init(const vector <nghttp2_settings_entry> & settings) noexce
 		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &nghttp2_t::begin);
 		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &nghttp2_t::chunk);
-		// Выполняем подключение котнекста сессии HTTP/2
-		nghttp2_session_client_new(&this->session, callbacks, this);
+		// Определяем идентификатор сервиса
+		switch(static_cast <uint8_t> (service)){
+			// Если сервис идентифицирован как клиент
+			case static_cast <uint8_t> (mode_t::CLIENT):
+				// Выполняем создание клиента HTTP/2
+				nghttp2_session_client_new(&this->session, callbacks, this);
+			break;
+			// Если сервис идентифицирован как сервер
+			case static_cast <uint8_t> (mode_t::SERVER):
+				// Выполняем создание сервера HTTP/2
+				nghttp2_session_server_new(&this->session, callbacks, this);
+			break;
+		}
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой

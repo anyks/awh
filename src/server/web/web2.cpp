@@ -107,7 +107,7 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 				// Выполняем установку функции обратного вызова на событие получения ошибки
 				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), aid, _1, _2, _3));
 			// Если инициализация модуля NgHttp2 не выполнена
-			if(!ret.first->second->init(std::move(iv)))
+			if(!ret.first->second->init(nghttp2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
 			// Если инициализация модуля NgHttp2 прошла успешно и список ресурсов с которым должен работать сервер установлен

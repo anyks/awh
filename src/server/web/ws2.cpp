@@ -205,9 +205,6 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				if(it != this->_sessions.end()){
 					// Выполняем извлечение полученного чанка данных из сокета
 					ssize_t bytes = nghttp2_session_mem_recv(it->second->session, (const uint8_t *) buffer, size);
-					
-					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << bytes << endl;
-					
 					// Если данные не прочитаны, выводим ошибку и выходим
 					if(bytes < 0){
 						// Выводим сообщение об полученной ошибке
@@ -230,8 +227,6 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 						// Выходим из функции
 						return;
 					}
-
-					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << bytes << endl;
 				}
 			// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
 			} else this->_ws1.readCallback(buffer, size, aid, sid, core);

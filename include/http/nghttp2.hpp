@@ -54,6 +54,15 @@ namespace awh {
 	 * NgHttp2 Класс работы с фреймами NgHttp2
 	 */
 	typedef class NgHttp2 {
+		public:
+			/**
+			 * Идентификации сервиса
+			 */
+			enum class mode_t : uint8_t {
+				NONE   = 0x00, // Сервис не идентифицирован
+				CLIENT = 0x01, // Сервис идентифицирован как клиент
+				SERVER = 0x02  // Сервис идентифицирован как сервер
+			};
 		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
@@ -158,10 +167,11 @@ namespace awh {
 		public:
 			/**
 			 * init Метод инициализации
+			 * @param service  идентификатор сервиса
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const vector <nghttp2_settings_entry> & settings) noexcept;
+			bool init(const mode_t service, const vector <nghttp2_settings_entry> & settings) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова начала открытии потока
