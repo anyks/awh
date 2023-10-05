@@ -2755,10 +2755,16 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 		} break;
 		// Если приложение является сервером
 		case static_cast <uint8_t> (type_t::SERVER): {
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^1 " << endl;
+			
 			/**
 			 * OpenSSL собран без следующих переговорщиков по протоколам
 			 */
 			#ifndef OPENSSL_NO_NEXTPROTONEG
+				
+				cout << " ^^^^^^^^^^^^^^^^^^^^2 " << endl;
+				
 				// Выполняем установку функцию обратного вызова при выборе следующего протокола
 				SSL_CTX_set_next_protos_advertised_cb(target._ctx, &engine_t::nextProto, &target);
 			#endif // !OPENSSL_NO_NEXTPROTONEG
@@ -2766,6 +2772,9 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 			 * Если версия OpenSSL соответствует или выше версии 1.0.2
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				
+				cout << " ^^^^^^^^^^^^^^^^^^^^3 " << endl;
+				
 				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
 				SSL_CTX_set_alpn_select_cb(target._ctx, &engine_t::selectNextProtoServer, &target);
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
