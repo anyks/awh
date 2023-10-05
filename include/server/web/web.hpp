@@ -524,7 +524,7 @@ namespace awh {
 			protected:
 				// Список доступных источников
 				vector <string> _origins;
-			private:
+			protected:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
 			protected:
