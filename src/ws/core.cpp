@@ -848,17 +848,20 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				const_cast <ws_core_t *> (this)->header("Connection", "Upgrade");
 				// Добавляем заголовок апгрейд
 				const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
-				// Выполняем генерацию хеша ключа
-				const string & sha1 = this->sha1();
-				// Если SHA1-ключ не сгенерирован
-				if(sha1.empty()){
-					// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
-					this->_log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
-					// Выходим из приложения
-					exit(EXIT_FAILURE);
+				// Если версия протокола ниже 2.0
+				if(res.version < 2.0f){
+					// Выполняем генерацию хеша ключа
+					const string & sha1 = this->sha1();
+					// Если SHA1-ключ не сгенерирован
+					if(sha1.empty()){
+						// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
+						this->_log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return vector <char> ();
+					}
+					// Добавляем заголовок хеша ключа
+					const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Accept", sha1.c_str());
 				}
-				// Добавляем заголовок хеша ключа
-				const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Accept", sha1.c_str());
 				// Устанавливаем параметры ответа
 				this->_web.response(res);
 			// Если данные переданы неверные
