@@ -2004,13 +2004,13 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			cout << " ************************1 " << string((const char *) in, inSize) << endl;
 			
 			// Если протокол переключить получилось на HTTP/2
-			if(context->selectProto(out, outSize, in, inSize, "h2", 2))
+			if(context->selectProto(out, outSize, in, inSize, "\x2h2", 2))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			// Если протокол переключить не получилось
 			else {
 				// Выполняем переключение протокола обратно на HTTP/1.1
-				context->selectProto(out, outSize, in, inSize, "http/1.1", 8);
+				context->selectProto(out, outSize, in, inSize, "\x8http/1.1", 8);
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
@@ -2061,7 +2061,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << string((const char *) in, inSize) << endl;
 			
 			// Если протокол переключить получилось на HTTP/2
-			if(context->selectProto((u_char **) out, outSize, in, inSize, "h2", 2))
+			if(context->selectProto((u_char **) out, outSize, in, inSize, "\x2h2", 2))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			// Если протокол переключить не получилось
@@ -2070,7 +2070,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
 				
 				// Выполняем переключение протокола обратно на HTTP/1.1
-				context->selectProto((u_char **) out, outSize, in, inSize, "http/1.1", 8);
+				context->selectProto((u_char **) out, outSize, in, inSize, "\x8http/1.1", 8);
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
