@@ -1947,6 +1947,10 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
 }
+
+static unsigned char next_proto_list[256];
+static size_t next_proto_list_len;
+
 /**
  * OpenSSL собран без следующих переговорщиков по протоколам
  */
@@ -1960,16 +1964,34 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @return     результат переключения протокола
 	 */
 	int awh::Engine::nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx) noexcept {
+		
+		cout << " ^^^^^^^^^^^^^1 " << endl;
+		
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
+			
+
+			cout << " ^^^^^^^^^^^^^2 " << endl;
+
+			next_proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+			memcpy(&next_proto_list[1], NGHTTP2_PROTO_VERSION_ID,
+					NGHTTP2_PROTO_VERSION_ID_LEN);
+			next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
+			
+			*data = next_proto_list;
+			*len = (unsigned int)next_proto_list_len;
+			return SSL_TLSEXT_ERR_OK;
+			
+			/*
 			// Выполняем установку размер буфера данных протокола
 			(* len) = static_cast <u_int> (3);
 			// Выполняем установку буфера данных
 			(* data) = reinterpret_cast <ctx_t *> (ctx)->_protoList;
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
+			*/
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2755,16 +2777,10 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 		} break;
 		// Если приложение является сервером
 		case static_cast <uint8_t> (type_t::SERVER): {
-			
-			cout << " ^^^^^^^^^^^^^^^^^^^^1 " << endl;
-			
 			/**
 			 * OpenSSL собран без следующих переговорщиков по протоколам
 			 */
 			#ifndef OPENSSL_NO_NEXTPROTONEG
-				
-				cout << " ^^^^^^^^^^^^^^^^^^^^2 " << endl;
-				
 				// Выполняем установку функцию обратного вызова при выборе следующего протокола
 				SSL_CTX_set_next_protos_advertised_cb(target._ctx, &engine_t::nextProto, &target);
 			#endif // !OPENSSL_NO_NEXTPROTONEG
@@ -2772,9 +2788,6 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 			 * Если версия OpenSSL соответствует или выше версии 1.0.2
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				
-				cout << " ^^^^^^^^^^^^^^^^^^^^3 " << endl;
-				
 				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
 				SSL_CTX_set_alpn_select_cb(target._ctx, &engine_t::selectNextProtoServer, &target);
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
@@ -3242,9 +3255,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
-
-			cout << " $$$$$$$$$$$$$$$$$$$$$1 " << endl;
-
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
@@ -3253,9 +3263,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP2):
 				// Если протокол соответствует HTTP/3
 				case static_cast <uint8_t> (proto_t::HTTP3):
-
-					cout << " $$$$$$$$$$$$$$$$$$$$$2 " << endl;
-
 					// Выполняем переключение протокола подключения
 					this->httpUpgrade(target);
 				break;
