@@ -182,9 +182,6 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t aid, const uint1
 void awh::server::WebSocket2::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		
-		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
-		
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -198,9 +195,6 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 			}
 			// Если протокол подключения является HTTP/2
 			if(core->proto(aid) == engine_t::proto_t::HTTP2){
-				
-				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
-
 				// Если получение данных не разрешено
 				if(!adj->allow.receive)
 					// Выходим из функции
@@ -212,7 +206,7 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 					// Выполняем извлечение полученного чанка данных из сокета
 					ssize_t bytes = nghttp2_session_mem_recv(it->second->session, (const uint8_t *) buffer, size);
 					
-					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << bytes << endl;
+					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << bytes << endl;
 					
 					// Если данные не прочитаны, выводим ошибку и выходим
 					if(bytes < 0){
@@ -236,6 +230,8 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 						// Выходим из функции
 						return;
 					}
+
+					cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << bytes << endl;
 				}
 			// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
 			} else this->_ws1.readCallback(buffer, size, aid, sid, core);
