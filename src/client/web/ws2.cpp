@@ -86,42 +86,8 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 			#endif
 			// Выполняем запрос на получение заголовков
 			const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
-			
-			/*
-			:method = CONNECT
-			:protocol = websocket
-			:scheme = https
-			:path = /chat
-			:authority = server.example.com
-			sec-websocket-protocol = chat, superchat
-			sec-websocket-extensions = permessage-deflate
-			sec-websocket-version = 13
-			origin = http://www.example.com
-			*/
-
-			nva.push_back({(uint8_t *) ":scheme", (uint8_t *) "https", 7, 5, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) ":path", (uint8_t *) "/chat", 5, 5, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) ":method", (uint8_t *) "CONNECT", 7, 7, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) ":authority", (uint8_t *) "anyks.net:2222", 10, 14, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) ":protocol", (uint8_t *) "websocket", 9, 9, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) "sec-websocket-protocol", (uint8_t *) "chat, superchat", 22, 15, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) "sec-websocket-extensions", (uint8_t *) "permessage-deflate", 24, 18, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) "sec-websocket-version", (uint8_t *) "13", 21, 2, NGHTTP2_NV_FLAG_NONE});
-			nva.push_back({(uint8_t *) "origin", (uint8_t *) "http://www.example.com", 6, 22, NGHTTP2_NV_FLAG_NONE});
-
-			/*
-			const nghttp2_nv connectproto_reqnv[] = {
-			MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
-			MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost"),
-			MAKE_NV(":protocol", "websocket")};
-			*/
-			
-			/*
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : headers){
-
-				cout << " ----------------- " << header.first << " === " << header.second << endl;
-
 				// Выполняем добавление метода запроса
 				nva.push_back({
 					(uint8_t *) header.first.c_str(),
@@ -131,7 +97,6 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 					NGHTTP2_NV_FLAG_NONE
 				});
 			}
-			*/
 			// Выполняем запрос на удалённый сервер
 			this->_sid = nghttp2_submit_request(this->_nghttp2.session, nullptr, nva.data(), nva.size(), nullptr, this);
 			// Если запрос не получилось отправить

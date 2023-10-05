@@ -76,9 +76,6 @@ int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, 
 	(void) session;
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
-	
-	cout << " *************************** FRAME " << frame->hd.stream_id << endl;
-	
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
@@ -96,9 +93,6 @@ int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, 
 int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
-
-	cout << " *************************** BEGIN1 " << frame->hd.stream_id << endl;
-
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
 	// Выполняем определение типа фрейма
@@ -132,9 +126,6 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
 				case static_cast <uint8_t> (mode_t::SERVER): {
 					// Если мы получили запрос клиента
 					if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
-
-						cout << " *************************** BEGIN " << endl;
-				
 						/**
 						 * Если включён режим отладки
 						 */
@@ -167,9 +158,6 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
 int awh::NgHttp2::close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
-	
-	cout << " *************************** CLOSE " << sid << endl;
-	
 	/**
 	 * Если включён режим отладки
 	 */
@@ -202,9 +190,6 @@ int awh::NgHttp2::chunk(nghttp2_session * session, const uint8_t flags, const in
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
-	
-	cout << " *************************** CHUNK " << sid << " == " << size << endl;
-	
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -230,9 +215,6 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
-	
-	cout << " *************************** HEADER1 " << frame->hd.stream_id << endl;
-	
 	// Выполняем определение типа фрейма
 	switch(frame->hd.type){
 		// Если мы получили входящие данные заголовков ответа
@@ -255,9 +237,6 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 				case static_cast <uint8_t> (mode_t::SERVER): {
 					// Если мы получили запрос клиента
 					if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
-
-						cout << " *************************** HEADER " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
-
 						// Если функция обратного вызова установлена
 						if(self->_callback.is("header"))
 							// Выводим функцию обратного вызова
@@ -283,9 +262,6 @@ ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, co
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
-	
-	cout << " *************************** SEND " << size << endl;
-	
 	// Получаем объект родительского объекта
 	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -307,9 +283,6 @@ ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, co
  * @return        количество отправленных байт
  */
 ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
-	
-	cout << " *************************** READ " << sid << " == " << size << endl;
-	
 	// Выполняем блокировку неиспользуемой переменных
 	(void) sid;
 	(void) ctx;

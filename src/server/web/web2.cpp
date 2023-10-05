@@ -368,6 +368,7 @@ void awh::server::Web2::settings(const map <settings_t, uint32_t> & settings) no
 		// Выполняем установку списка настроек
 		this->_settings = settings;
 
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	// Если метод CONNECT не установлен, разрешаем его по умолчанию
 	if(this->_settings.count(settings_t::CONNECT) == 0)
 		// Выполняем установку разрешения использования метода CONNECT
