@@ -521,7 +521,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
 						
-						cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$-1 " << request.version << endl;
+						cout << " $$$$$$$$$$$$$$$$$$$$$$$$$$$$-1 " << request.version << " ||| " << reinterpret_cast <http_t &> (adj->http).isHandshake() << endl;
 						
 						// Если рукопожатие не выполнено
 						if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
