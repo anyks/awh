@@ -1979,6 +1979,16 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
+
+			// Выполняем установку буфера данных
+			(* out) = "h2";
+			// Выполняем установку размер буфера данных протокола
+			(* outSize) = 2;
+
+			// Выводим результат
+			return SSL_TLSEXT_ERR_OK;
+			
+			/*
 			// Название протокола HTTP/2
 			const char * http2 = "\x2h2";
 			// Название протокола HTTP/1.1
@@ -1999,6 +2009,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
+			*/
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2023,6 +2034,17 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
+			
+
+			// Выполняем установку буфера данных
+			(* out) = "h2";
+			// Выполняем установку размер буфера данных протокола
+			(* outSize) = 2;
+
+			// Выводим результат
+			return SSL_TLSEXT_ERR_OK;
+			
+			/*
 			// Название протокола HTTP/2
 			const char * http2 = "\x2h2";
 			// Название протокола HTTP/1.1
@@ -2048,6 +2070,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			}
 
 			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
+			*/
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
