@@ -3180,12 +3180,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-
-			// ++++++++++++++++++++++++++
 			// Устанавливаем опции запроса
-			// SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			// Устанавливаем минимально-возможную версию TLS
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
@@ -3201,21 +3197,14 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Выходим
 					return;
 				}
-
-				// ++++++++++++++++++++++++++
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				// SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+				SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
-
-
-			// ++++++++++++++++++++++++++
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
-			/*
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
 				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
@@ -3224,11 +3213,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Выходим
 					return;
 				}
-			*/
 			/**
 			 * Если версия OpenSSL ниже версии 3.0.0
 			 */
-			/*
 			#else 
 				{
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
@@ -3246,9 +3233,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
-			*/
-
-			/* // ++++++++++++++++++++++++++
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
@@ -3261,8 +3245,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					this->httpUpgrade(target);
 				break;
 			}
-			*/
-
 			// Выполняем установку идентификатора сессии
 			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 				// Очищаем созданный контекст
@@ -3288,19 +3270,14 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			/*
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
-			
-			// ++++++++++++++++++++++++++
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-			*/
-
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Если цепочка сертификатов не установлена
@@ -3780,7 +3757,6 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	// Выполняем модификацию доверенного сертификата (CA-файла)
 	this->_ca = this->_fs.realPath(this->_ca);
 	// Выполняем установку алгоритмов шифрования
-	/*
 	this->ciphers({
 		"ECDHE+AESGCM",
 		"ECDHE+CHACHA20",
@@ -3828,52 +3804,6 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		"!EDH-RSA-DES-CBC3-SHA",
 		"!KRB5-DES-CBC3-SHA"
 	});
-	*/
-
-	this->ciphers({
-		"ECDHE-RSA-AES128-GCM-SHA256",
-		"ECDHE-ECDSA-AES128-GCM-SHA256",
-		"ECDHE-RSA-AES256-GCM-SHA384",
-		"ECDHE-ECDSA-AES256-GCM-SHA384",
-		"DHE-RSA-AES128-GCM-SHA256",
-		"DHE-DSS-AES128-GCM-SHA256",
-		"kEDH+AESGCM",
-		"ECDHE-RSA-AES128-SHA256",
-		"ECDHE-ECDSA-AES128-SHA256",
-		"ECDHE-RSA-AES128-SHA",
-		"ECDHE-ECDSA-AES128-SHA",
-		"ECDHE-RSA-AES256-SHA384",
-		"ECDHE-ECDSA-AES256-SHA384",
-		"ECDHE-RSA-AES256-SHA",
-		"ECDHE-ECDSA-AES256-SHA",
-		"DHE-RSA-AES128-SHA256",
-		"DHE-RSA-AES128-SHA",
-		"DHE-DSS-AES128-SHA256",
-		"DHE-RSA-AES256-SHA256",
-		"DHE-DSS-AES256-SHA",
-		"DHE-RSA-AES256-SHA",
-		"AES128-GCM-SHA256",
-		"AES256-GCM-SHA384",
-		"AES128-SHA256",
-		"AES256-SHA256",
-		"AES128-SHA",
-		"AES256-SHA",
-		"AES",
-		"CAMELLIA",
-		"DES-CBC3-SHA",
-		"!aNULL",
-		"!eNULL",
-		"!EXPORT",
-		"!DES",
-		"!RC4",
-		"!MD5",
-		"!PSK",
-		"!aECDH",
-		"!EDH-DSS-DES-CBC3-SHA",
-		"!EDH-RSA-DES-CBC3-SHA",
-		"!KRB5-DES-CBC3-SHA"
-	});
-
 	/**
 	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
