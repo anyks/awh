@@ -214,8 +214,8 @@ int main(int argc, char * argv[]){
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	// awh.init(2222, "127.0.0.1", awh::http_t::compress_t::ALL_COMPRESS);
-	// awh.init(2222, "", awh::http_t::compress_t::ALL_COMPRESS);
-	awh.init(2222, "127.0.0.1", awh::http_t::compress_t::ALL_COMPRESS);
+	awh.init(2222, "", awh::http_t::compress_t::ALL_COMPRESS);
+	// awh.init(2222, "127.0.0.1", awh::http_t::compress_t::ALL_COMPRESS);
 	// awh.init("anyks", awh::http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(100, 30, 10);
