@@ -1604,19 +1604,6 @@ bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_
 	// Выводим результат
 	return false;
 }
-/**
- * Context Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
- _tls(false), _verb(false), _type(type_t::NONE), _proto(proto_t::RAW), _protoList{0},
- _bio(nullptr), _ssl(nullptr), _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {
-	// Устанавливаем размер названия протокола
-	this->_protoList[0] = 2;
-	// Выполняем копирование в буфер название следующего протокола
-	::memcpy(&this->_protoList[1], "h2", 2);
-}
  /**
  * ~Context Деструктор
  */
@@ -1947,10 +1934,6 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
 }
-
-static unsigned char next_proto_list[256];
-static size_t next_proto_list_len;
-
 /**
  * OpenSSL собран без следующих переговорщиков по протоколам
  */
@@ -1964,36 +1947,16 @@ static size_t next_proto_list_len;
 	 * @return     результат переключения протокола
 	 */
 	int awh::Engine::nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx) noexcept {
-		
-		cout << " ^^^^^^^^^^^^^1 " << endl;
-		
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
-			
-
-			cout << " ^^^^^^^^^^^^^2 " << endl;
-
-			next_proto_list[0] = 2;
-			memcpy(&next_proto_list[1], "h2", 2);
-			next_proto_list_len = 1 + 2;
-			
-			* data = next_proto_list;
-			* len = (unsigned int) next_proto_list_len;
-
-
-
-			return SSL_TLSEXT_ERR_OK;
-			
-			/*
-			// Выполняем установку размер буфера данных протокола
-			(* len) = static_cast <u_int> (3);
 			// Выполняем установку буфера данных
-			(* data) = reinterpret_cast <ctx_t *> (ctx)->_protoList;
+			(* data) = reinterpret_cast <ctx_t *> (ctx)->protocols.data();
+			// Выполняем установку размер буфера данных протокола
+			(* len) = static_cast <u_int> (reinterpret_cast <ctx_t *> (ctx)->protocols.size());
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
-			*/
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2062,8 +2025,6 @@ static size_t next_proto_list_len;
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			
 			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
-
-			return SSL_TLSEXT_ERR_OK;
 			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto((u_char **) out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
@@ -2678,6 +2639,97 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
  * @param target контекст назначения
  */
 void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
+	// Если список поддерживаемых протоколов не установлен
+	if(target.protocols.empty()){
+		// Создаём идентификатор протокола HTTP/2
+		const string http2 = "h2";
+		// Создаём идентификатор протокола HTTP/3
+		const string http3 = "h3";
+		// Создаём идентификатор протокола SPDY/1
+		const string spdy1 = "spdy/1";
+		// Создаём идентификатор протокола HTTP/1
+		const string http1 = "http/1";
+		// Создаём идентификатор протокола HTTP/1.1
+		const string http1_1 = "http/1.1";
+		// Если протоколом является HTTP, выполняем переключение на него
+		switch(static_cast <uint8_t> (target._proto)){
+			// Если протокол соответствует SPDY/1
+			case static_cast <uint8_t> (proto_t::SPDY1): {
+				// Устанавливаем количество символов для протокола SPDY/1
+				target.protocols.push_back(static_cast <u_char> (spdy1.size()));
+				// Устанавливаем идентификатор протокола SPDY/1
+				target.protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+				// Устанавливаем количество символов для протокола HTTP/1
+				target.protocols.push_back(static_cast <u_char> (http1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1
+				target.protocols.insert(protocols.end(), http1.begin(), http1.end());
+				// Устанавливаем количество символов для протокола HTTP/1.1
+				target.protocols.push_back(static_cast <u_char> (http1_1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1.1
+				target.protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+			} break;
+			// Если протокол соответствует HTTP/1
+			case static_cast <uint8_t> (proto_t::HTTP1): {
+				// Устанавливаем количество символов для протокола HTTP/1
+				target.protocols.push_back(static_cast <u_char> (http1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1
+				target.protocols.insert(protocols.end(), http1.begin(), http1.end());
+			} break;
+			// Если протокол соответствует HTTP/2
+			case static_cast <uint8_t> (proto_t::HTTP2): {
+				// Устанавливаем количество символов для протокола HTTP/2
+				target.protocols.push_back(static_cast <u_char> (http2.size()));
+				// Устанавливаем идентификатор протокола HTTP/2
+				target.protocols.insert(protocols.end(), http2.begin(), http2.end());
+				// Устанавливаем количество символов для протокола SPDY/1
+				target.protocols.push_back(static_cast <u_char> (spdy1.size()));
+				// Устанавливаем идентификатор протокола SPDY/1
+				target.protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+				// Устанавливаем количество символов для протокола HTTP/1
+				target.protocols.push_back(static_cast <u_char> (http1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1
+				target.protocols.insert(protocols.end(), http1.begin(), http1.end());
+				// Устанавливаем количество символов для протокола HTTP/1.1
+				target.protocols.push_back(static_cast <u_char> (http1_1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1.1
+				target.protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+			} break;
+			// Если протокол соответствует HTTP/3
+			case static_cast <uint8_t> (proto_t::HTTP3): {
+				// Устанавливаем количество символов для протокола HTTP/2
+				target.protocols.push_back(static_cast <u_char> (http2.size()));
+				// Устанавливаем идентификатор протокола HTTP/2
+				target.protocols.insert(protocols.end(), http2.begin(), http2.end());
+				// Устанавливаем количество символов для протокола HTTP/3
+				target.protocols.push_back(static_cast <u_char> (http3.size()));
+				// Устанавливаем идентификатор протокола HTTP/3
+				target.protocols.insert(protocols.end(), http3.begin(), http3.end());
+				// Устанавливаем количество символов для протокола SPDY/1
+				target.protocols.push_back(static_cast <u_char> (spdy1.size()));
+				// Устанавливаем идентификатор протокола SPDY/1
+				target.protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+				// Устанавливаем количество символов для протокола HTTP/1
+				target.protocols.push_back(static_cast <u_char> (http1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1
+				target.protocols.insert(protocols.end(), http1.begin(), http1.end());
+				// Устанавливаем количество символов для протокола HTTP/1.1
+				target.protocols.push_back(static_cast <u_char> (http1_1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1.1
+				target.protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+			} break;
+			// Если протокол соответствует HTTP/1.1
+			case static_cast <uint8_t> (proto_t::HTTP1_1): {
+				// Устанавливаем количество символов для протокола HTTP/1
+				target.protocols.push_back(static_cast <u_char> (http1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1
+				target.protocols.insert(protocols.end(), http1.begin(), http1.end());
+				// Устанавливаем количество символов для протокола HTTP/1.1
+				target.protocols.push_back(static_cast <u_char> (http1_1.size()));
+				// Устанавливаем идентификатор протокола HTTP/1.1
+				target.protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+			} break;
+		}
+	}
 	// Определяем тип приложения
 	switch(static_cast <uint8_t> (target._type)){
 		// Если приложение является клиентом
@@ -2693,98 +2745,8 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 			 * Если версия OpenSSL соответствует или выше версии 1.0.2
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				// Создаём список поддерживаемых протоколов
-				vector <u_char> protocols;
-				// Создаём идентификатор протокола HTTP/2
-				const string http2 = "h2";
-				// Создаём идентификатор протокола HTTP/3
-				const string http3 = "h3";
-				// Создаём идентификатор протокола SPDY/1
-				const string spdy1 = "spdy/1";
-				// Создаём идентификатор протокола HTTP/1
-				const string http1 = "http/1";
-				// Создаём идентификатор протокола HTTP/1.1
-				const string http1_1 = "http/1.1";
-				// Если протоколом является HTTP, выполняем переключение на него
-				switch(static_cast <uint8_t> (target._proto)){
-					// Если протокол соответствует SPDY/1
-					case static_cast <uint8_t> (proto_t::SPDY1): {
-						// Устанавливаем количество символов для протокола SPDY/1
-						protocols.push_back(static_cast <u_char> (spdy1.size()));
-						// Устанавливаем идентификатор протокола SPDY/1
-						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						protocols.push_back(static_cast <u_char> (http1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1
-						protocols.insert(protocols.end(), http1.begin(), http1.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						protocols.push_back(static_cast <u_char> (http1_1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
-					} break;
-					// Если протокол соответствует HTTP/1
-					case static_cast <uint8_t> (proto_t::HTTP1): {
-						// Устанавливаем количество символов для протокола HTTP/1
-						protocols.push_back(static_cast <u_char> (http1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1
-						protocols.insert(protocols.end(), http1.begin(), http1.end());
-					} break;
-					// Если протокол соответствует HTTP/2
-					case static_cast <uint8_t> (proto_t::HTTP2): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						protocols.push_back(static_cast <u_char> (http2.size()));
-						// Устанавливаем идентификатор протокола HTTP/2
-						protocols.insert(protocols.end(), http2.begin(), http2.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						protocols.push_back(static_cast <u_char> (spdy1.size()));
-						// Устанавливаем идентификатор протокола SPDY/1
-						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						protocols.push_back(static_cast <u_char> (http1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1
-						protocols.insert(protocols.end(), http1.begin(), http1.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						protocols.push_back(static_cast <u_char> (http1_1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
-					} break;
-					// Если протокол соответствует HTTP/3
-					case static_cast <uint8_t> (proto_t::HTTP3): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						protocols.push_back(static_cast <u_char> (http2.size()));
-						// Устанавливаем идентификатор протокола HTTP/2
-						protocols.insert(protocols.end(), http2.begin(), http2.end());
-						// Устанавливаем количество символов для протокола HTTP/3
-						protocols.push_back(static_cast <u_char> (http3.size()));
-						// Устанавливаем идентификатор протокола HTTP/3
-						protocols.insert(protocols.end(), http3.begin(), http3.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						protocols.push_back(static_cast <u_char> (spdy1.size()));
-						// Устанавливаем идентификатор протокола SPDY/1
-						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						protocols.push_back(static_cast <u_char> (http1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1
-						protocols.insert(protocols.end(), http1.begin(), http1.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						protocols.push_back(static_cast <u_char> (http1_1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
-					} break;
-					// Если протокол соответствует HTTP/1.1
-					case static_cast <uint8_t> (proto_t::HTTP1_1): {
-						// Устанавливаем количество символов для протокола HTTP/1
-						protocols.push_back(static_cast <u_char> (http1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1
-						protocols.insert(protocols.end(), http1.begin(), http1.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						protocols.push_back(static_cast <u_char> (http1_1.size()));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
-					} break;
-				}
 				// Выполняем установку доступных протоколов передачи данных
-				SSL_CTX_set_alpn_protos(target._ctx, protocols.data(), static_cast <u_int> (protocols.size()));
+				SSL_CTX_set_alpn_protos(target._ctx, target.protocols.data(), static_cast <u_int> (target.protocols.size()));
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 		} break;
 		// Если приложение является сервером

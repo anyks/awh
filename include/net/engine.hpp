@@ -343,14 +343,14 @@ namespace awh {
 					// Протокол подключения
 					proto_t _proto;
 				private:
-					// Буфер данных следующего протокола
-					u_char _protoList[256];
-				private:
 					BIO * _bio;         // Объект BIO
 					SSL * _ssl;         // Объект SSL
 					SSL_CTX * _ctx;     // Контекст SSL
 					addr_t * _addr;     // Объект подключения
 					verify_t * _verify; // Параметры валидации домена
+				public:
+					// Список поддерживаемых протоколов
+					vector <u_char> protocols;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -455,7 +455,10 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Context(const fmk_t * fmk, const log_t * log) noexcept;
+					Context(const fmk_t * fmk, const log_t * log) noexcept :
+					 _tls(false), _verb(false), _type(type_t::NONE),
+					 _proto(proto_t::RAW), _bio(nullptr), _ssl(nullptr),
+					 _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Context Деструктор
 					 */
