@@ -193,10 +193,6 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				// Выходим из функции
 				return;
 			}
-
-			if(adj->shake)
-				cout << " &&&&&&&&&&&&&&&&&&&&& " << size << endl;
-
 			// Если протокол подключения является HTTP/2
 			if(core->proto(aid) == engine_t::proto_t::HTTP2){
 				// Если получение данных не разрешено
@@ -587,7 +583,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													});
 												}
 												// Выполняем ответ подключившемуся клиенту
-												int rv = nghttp2_submit_response(it->second->session, adj->sid, nva.data(), nva.size(), nullptr);
+												int rv = nghttp2_submit_headers(it->second->session, NGHTTP2_FLAG_NONE, adj->sid, nullptr, nva.data(), nva.size(), nullptr);
 												// Если запрос не получилось отправить
 												if(rv < 0){
 													// Выводим в лог сообщение

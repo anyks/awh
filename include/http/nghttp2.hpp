@@ -92,6 +92,9 @@ namespace awh {
 			 * @return        статус полученных данных
 			 */
 			static int frame(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+
+			static int frame2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+
 			/**
 			 * begin Функция начала получения фрейма заголовков HTTP/2
 			 * @param session объект сессии HTTP/2

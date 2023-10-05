@@ -334,6 +334,11 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const uint8_t type, 
 		return this->frameProxySignal(sid, type, flags);
 	// Если мы работаем с сервером напрямую
 	else {
+		
+		if(flags & NGHTTP2_FLAG_END_STREAM){
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL " << endl;
+		}
+		
 		// Если сессия клиента совпадает с сессией полученных даных
 		if(this->_sid == sid){
 			// Выполняем определение типа фрейма
@@ -1019,6 +1024,8 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					if(!this->_http.body().empty() && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
+					
+					/*
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Выводим функцию обратного вызова
@@ -1027,6 +1034,8 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					if(this->_callback.is("goodResponse"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t> ("goodResponse", sid);
+					*/
+
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
