@@ -172,8 +172,10 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 				result = http_t::stath_t::RETRY;
 			}
 		} break;
-		// Сообщаем, что авторизация прошла успешно
-		case 101: result = http_t::stath_t::GOOD; break;
+		// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/1.1
+		case 101: result = (response.version < 2.0f ? http_t::stath_t::GOOD : result); break;
+		// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/2
+		case 200: result = (response.version >= 2.0f ? http_t::stath_t::GOOD : result); break;
 	}
 	// Выводим результат
 	return result;

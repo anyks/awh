@@ -396,7 +396,7 @@ void awh::client::WebSocket1::ping(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake() && (this->_aid > 0)){
+		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.ping(message, true);
 			// Если бинарный буфер получен
@@ -414,7 +414,7 @@ void awh::client::WebSocket1::pong(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake() && (this->_aid > 0)){
+		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.pong(message, true);
 			// Если бинарный буфер получен
@@ -502,7 +502,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 				// Если рукопожатие выполнено
-				if((this->_shake = this->_http.isHandshake())){
+				if((this->_shake = this->_http.isHandshake(http_t::process_t::RESPONSE))){
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
@@ -916,7 +916,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
-			if((message != nullptr) && (size > 0) && this->_http.isHandshake() && (this->_aid > 0)){
+			if((message != nullptr) && (size > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
 				/**
 				 * Если включён режим отладки
 				 */

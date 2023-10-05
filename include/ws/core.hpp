@@ -163,15 +163,16 @@ namespace awh {
 			void extensions(const vector <vector <string>> & extensions) noexcept;
 		public:
 			/**
-			 * isHandshake Метод выполнения проверки рукопожатия
-			 * @return результат выполнения проверки рукопожатия
-			 */
-			bool isHandshake() noexcept;
-			/**
 			 * checkUpgrade Метод получения флага переключения протокола
 			 * @return флага переключения протокола
 			 */
 			bool checkUpgrade() const noexcept;
+			/**
+			 * isHandshake Метод выполнения проверки рукопожатия
+			 * @param flag флаг выполняемого процесса
+			 * @return     результат выполнения проверки рукопожатия
+			 */
+			bool isHandshake(const process_t flag) noexcept;
 		public:
 			/**
 			 * wbit Метод получения размер скользящего окна

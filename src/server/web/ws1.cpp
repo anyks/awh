@@ -186,7 +186,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Если запрос выполнен удачно
 							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 								// Если рукопожатие выполнено
-								if(adj->http.isHandshake()){
+								if(adj->http.isHandshake(http_t::process_t::REQUEST)){
 									// Получаем метод компрессии HTML данных
 									compress = adj->http.compression();
 									// Проверяем версию протокола
@@ -859,7 +859,7 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 			// Выполняем блокировку отправки сообщения
 			adj->allow.send = !adj->allow.send;
 			// Если рукопожатие выполнено
-			if(adj->http.isHandshake()){
+			if(adj->http.isHandshake(http_t::process_t::REQUEST)){
 				/**
 				 * Если включён режим отладки
 				 */

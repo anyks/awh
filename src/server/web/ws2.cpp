@@ -321,6 +321,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 			switch(type){
 				// Если мы получили входящие данные тела ответа
 				case NGHTTP2_DATA: {
+					
+					cout << " !!!!!!!!!!!!!!!!!!!!!!!!! " << endl;
+					
 					// Если рукопожатие выполнено
 					if(adj->shake && adj->allow.receive){
 						// Если мы получили неустановленный флаг или флаг завершения потока
@@ -505,7 +508,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 									// Если рукопожатие выполнено
-									if((adj->shake = adj->http.isHandshake())){
+									if((adj->shake = adj->http.isHandshake(http_t::process_t::REQUEST))){
 										// Получаем метод компрессии HTML данных
 										compress = adj->http.compression();
 										// Проверяем версию протокола
@@ -1298,7 +1301,7 @@ void awh::server::WebSocket2::send(const uint64_t aid, const char * message, con
 			// Если переключение протокола на HTTP/2 выполнено
 			else {
 				// Если рукопожатие выполнено
-				if(adj->http.isHandshake()){
+				if(adj->http.isHandshake(http_t::process_t::REQUEST)){
 					/**
 					 * Если включён режим отладки
 					 */

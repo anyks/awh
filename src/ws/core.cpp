@@ -700,16 +700,51 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
 	else this->_extensions.clear();
 }
 /**
- * isHandshake Метод выполнения проверки рукопожатия
- * @return результат выполнения проверки рукопожатия
+ * checkUpgrade Метод получения флага переключения протокола
+ * @return флага переключения протокола
  */
-bool awh::WCore::isHandshake() noexcept {
+bool awh::WCore::checkUpgrade() const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Получаем значение заголовка Upgrade
+	const string & upgrade = this->_web.header("upgrade");
+	// Получаем значение заголовка Connection
+	const string & connection = this->_web.header("connection");
+	// Если заголовки расширений найдены
+	if(!upgrade.empty() && !connection.empty()){
+		// Переводим значение заголовка Connection в нижний регистр
+		this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
+		// Если заголовки соответствуют
+		result = (this->_fmk->compare(upgrade, "websocket") && this->_fmk->exists("upgrade", connection));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * isHandshake Метод выполнения проверки рукопожатия
+ * @param flag флаг выполняемого процесса
+ * @return     результат выполнения проверки рукопожатия
+ */
+bool awh::WCore::isHandshake(const process_t flag) noexcept {
 	// Результат работы функции
 	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
 	if(!result){
-		// Выполняем извлечение параметров запроса
-		const auto & request = this->request();
+		// Версия протокола
+		float version = 1.1f;
+		// Определяем флаг выполняемого процесса
+		switch(static_cast <uint8_t> (flag)){
+			// Если нужно сформировать данные запроса
+			case static_cast <uint8_t> (process_t::REQUEST):
+				// Выполняем извлечение версии из параметров запроса
+				version = this->request().version;
+			break;
+			// Если нужно сформировать данные ответа
+			case static_cast <uint8_t> (process_t::RESPONSE):
+				// Выполняем извлечение версии из параметров ответа
+				version = this->response().version;
+			break;
+		}
 		// Выполняем проверку на удачное завершение запроса
 		result = (this->_stath == stath_t::GOOD);
 		// Если результат удачный
@@ -721,7 +756,7 @@ bool awh::WCore::isHandshake() noexcept {
 		// Если результат удачный
 		if(result){
 			// Если версия протокола ниже 2.0
-			if(request.version < 2.0f)
+			if(version < 2.0f)
 				// Проверяем произошло ли переключение протокола
 				result = this->checkUpgrade();
 		// Если версия протокола не соответствует
@@ -732,7 +767,7 @@ bool awh::WCore::isHandshake() noexcept {
 			return result;
 		}
 		// Если версия протокола ниже 2.0
-		if(request.version < 2.0f){
+		if(version < 2.0f){
 			// Если результат удачный
 			if(result)
 				// Проверяем ключ клиента
@@ -751,27 +786,6 @@ bool awh::WCore::isHandshake() noexcept {
 			this->_state = state_t::HANDSHAKE;
 		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
 		else this->_log->print("Client and server keys are inconsistent", log_t::flag_t::CRITICAL);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * checkUpgrade Метод получения флага переключения протокола
- * @return флага переключения протокола
- */
-bool awh::WCore::checkUpgrade() const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Получаем значение заголовка Upgrade
-	const string & upgrade = this->_web.header("upgrade");
-	// Получаем значение заголовка Connection
-	const string & connection = this->_web.header("connection");
-	// Если заголовки расширений найдены
-	if(!upgrade.empty() && !connection.empty()){
-		// Переводим значение заголовка Connection в нижний регистр
-		this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
-		// Если заголовки соответствуют
-		result = (this->_fmk->compare(upgrade, "websocket") && this->_fmk->exists("upgrade", connection));
 	}
 	// Выводим результат
 	return result;
