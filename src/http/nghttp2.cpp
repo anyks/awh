@@ -83,23 +83,6 @@ int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, 
 	// Выводим результат
 	return 0;
 }
-
-int awh::NgHttp2::frame2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
-	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
-
-	cout << " $$$$$$$$$$$$$$$$$@@@@@@@@@@@ " << frame->hd.stream_id << " == " << (u_short) frame->hd.type << " == " << (u_short) frame->hd.flags << endl;
-
-	if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM){
-		cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±± SIGNAL2 " << frame->hd.stream_id << endl;
-	}
-
-	// Выводим результат
-	return 0;
-}
-
 /**
  * begin Функция начала получения фрейма заголовков HTTP/2
  * @param session объект сессии HTTP/2
@@ -395,7 +378,7 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 		// Выполняем инициализацию сессию функций обратного вызова
 		nghttp2_session_callbacks_new(&callbacks);
 
-		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &nghttp2_t::frame2);
+		// nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &nghttp2_t::frame2);
 
 		// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
 		nghttp2_session_callbacks_set_send_callback(callbacks, &nghttp2_t::send);
