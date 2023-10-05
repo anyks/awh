@@ -1979,8 +1979,11 @@ static size_t next_proto_list_len;
 			memcpy(&next_proto_list[1], "h2", 2);
 			next_proto_list_len = 1 + 2;
 			
-			*data = next_proto_list;
-			*len = (unsigned int)next_proto_list_len;
+			* data = next_proto_list;
+			* len = (unsigned int) next_proto_list_len;
+
+
+
 			return SSL_TLSEXT_ERR_OK;
 			
 			/*
@@ -2057,17 +2060,25 @@ static size_t next_proto_list_len;
 			const char * http1 = "\x8http/1.1";
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
+			
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << endl;
+			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto((u_char **) out, outSize, in, inSize, http2, (sizeof(http2) - 1)))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			// Если протокол переключить не получилось
 			else {
+				
+				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
+				
 				// Выполняем переключение протокола обратно на HTTP/1.1
 				context->selectProto((u_char **) out, outSize, in, inSize, http1, (sizeof(http1) - 1));
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
+
+			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
