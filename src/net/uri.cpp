@@ -679,16 +679,25 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
 					if(!match[i].empty()){
-						// Если мы получили URL адрес
-						if((i == 5) && this->_regexp.test(match[i], this->_email)){
-							// Устанавливаем порт по умолчанию
-							result.emplace(flag_t::PORT, "25");
-							// Устанавливаем схему протокола
-							result.emplace(flag_t::SCHEMA, "mailto");
-							// Устанавливаем тип хоста
-							result.emplace(flag_t::HOST, match[i]);
-							// Выходим из цикла
-							break;
+						// Если мы обрабатываем путь запроса
+						if(i == 5){
+							// Если данные являются портом
+							if(this->_fmk->is(match[i], fmk_t::check_t::NUMBER)){
+								// Устанавливаем данные порта
+								result.emplace(flag_t::PORT, match[i]);
+								// Выходим из цикла
+								break;
+							// Если мы получили URL адрес
+							} else if(this->_regexp.test(match[i], this->_email)) {
+								// Устанавливаем порт по умолчанию
+								result.emplace(flag_t::PORT, "25");
+								// Устанавливаем схему протокола
+								result.emplace(flag_t::SCHEMA, "mailto");
+								// Устанавливаем тип хоста
+								result.emplace(flag_t::HOST, match[i]);
+								// Выходим из цикла
+								break;
+							}
 						}
 						// Определяем тип записи
 						switch(i){

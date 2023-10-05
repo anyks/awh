@@ -575,6 +575,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Завершаем работу
 											break;
 										}
+
+										cout << " !!!!!!!!!!!!!!!!!!!!2 " << endl;
+
 										// Выполняем сброс состояния HTTP-парсера
 										adj->http.clear();
 										// Получаем флаг шифрованных данных

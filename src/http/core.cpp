@@ -269,6 +269,8 @@ void awh::Http::clear() noexcept {
 	this->_web.clear();
 	// Выполняем сброс чёрного списка HTTP заголовков
 	this->_black.clear();
+
+	cout << " ^^^^^^^^^^^^^^^ CLEAR2 " << endl;
 }
 /**
  * reset Метод сброса параметров запроса
