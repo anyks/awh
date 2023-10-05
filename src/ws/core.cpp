@@ -751,6 +751,8 @@ bool awh::WCore::isHandshake() noexcept {
 			this->_state = state_t::HANDSHAKE;
 		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
 		else this->_log->print("Client and server keys are inconsistent", log_t::flag_t::CRITICAL);
+
+		cout << " @@@@@@@@@@@@@@@ " << result << endl;
 	}
 	// Выводим результат
 	return result;
