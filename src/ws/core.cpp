@@ -835,7 +835,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
 			// Если параметры запроса получены
-			if(res.version >= 2.0f ? res.code == 200 : res.code == 101){
+			if(res.version >= 2.0f ? res.code != 101 : res.code != 200){
 				// Удаляем статус ответа
 				const_cast <ws_core_t *> (this)->rmHeader(":status");
 				// Удаляем заголовок апгрейд
@@ -918,7 +918,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
 			// Если параметры запроса получены
-			if(res.code == 200){
+			if(res.code != 101){
 				// Удаляем заголовок апгрейд
 				const_cast <ws_core_t *> (this)->rmHeader("Upgrade");
 				// Удаляем статус ответа

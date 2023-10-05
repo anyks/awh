@@ -524,6 +524,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 							http_t::compress_t compress = http_t::compress_t::NONE;
 							// Ответ клиенту по умолчанию успешный
 							awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
+							
+							cout << " -------------------------- " << request.url << endl;
+							
 							/**
 							 * Если включён режим отладки
 							 */
