@@ -47,6 +47,8 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				}
 				// Выполняем установку идентификатора объекта
 				adj->http.id(aid);
+				// Выполняем установку протокола подключения
+				adj->proto = engine_t::proto_t::HTTP2;
 				// Устанавливаем флаг перехвата контекста компрессии
 				adj->server.takeover = this->_server.takeover;
 				// Устанавливаем флаг перехвата контекста декомпрессии
