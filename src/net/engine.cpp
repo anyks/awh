@@ -1589,23 +1589,14 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
  * @return        результат переключения протокола
  */
 bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept {
-	
-	cout << " @@@@@@@@@1 " << string((const char *) in, inSize) << " == " << inSize << " || " << string(key, keySize) << " == " << keySize << endl;
-	
 	// Выполняем перебор всех данных в входящем буфере
 	for(u_int i = 0; (i + keySize) <= inSize; i += (u_int) (in[i] + 1)){
-		
-		cout << " @@@@@@@@@2 " << string((const char *) &in[i], keySize) << " == " << string(key, keySize) << endl;
-		
 		// Если данные ключа скопированны удачно
 		if(::memcmp(&in[i], key, keySize) == 0){
 			// Выполняем установку размеров исходящего буфера
 			(* outSize) = in[i];
 			// Выполняем установку полученных данных в исходящий буфер
 			(* out) = (u_char *) &in[i + 1];
-
-			cout << " @@@@@@@@@3 " << string((char *) &in[i + 1], (size_t) in[i]) << endl;
-
 			// Выходим из функции
 			return true;
 		}
@@ -1985,27 +1976,8 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
-
-			/*
-			// Выполняем установку буфера данных
-			(* out) = (u_char *) "h2";
-			// Выполняем установку размер буфера данных протокола
-			(* outSize) = (u_char) 2;
-
-			// Выводим результат
-			return SSL_TLSEXT_ERR_OK;
-			*/
-			
-			
-			// Название протокола HTTP/2
-			const char * http2 = "\x2h2";
-			// Название протокола HTTP/1.1
-			const char * http1 = "\x8http/1.1";
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
-			
-			cout << " ************************1 " << string((const char *) in, inSize) << endl;
-			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto(out, outSize, in, inSize, "\x2h2", 2))
 				// Выводим результат
@@ -2042,44 +2014,19 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
-			
-			/*
-			// Выполняем установку буфера данных
-			(* out) = (u_char *) "h2";
-			// Выполняем установку размер буфера данных протокола
-			(* outSize) = (u_char) 2;
-
-			// Выводим результат
-			return SSL_TLSEXT_ERR_OK;
-			*/
-			
-			
-			// Название протокола HTTP/2
-			const char * http2 = "\x2h2";
-			// Название протокола HTTP/1.1
-			const char * http1 = "\x8http/1.1";
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
-			
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±1 " << string((const char *) in, inSize) << endl;
-			
 			// Если протокол переключить получилось на HTTP/2
 			if(context->selectProto((u_char **) out, outSize, in, inSize, "\x2h2", 2))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			// Если протокол переключить не получилось
 			else {
-				
-				cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±2 " << endl;
-				
 				// Выполняем переключение протокола обратно на HTTP/1.1
 				context->selectProto((u_char **) out, outSize, in, inSize, "\x8http/1.1", 8);
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
-
-			cout << " ±±±±±±±±±±±±±±±±±±±±±±±±±±3 " << endl;
-			
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
