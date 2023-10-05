@@ -553,9 +553,6 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		web_t::req_t request = this->_web.request();
 		// Выполняем установку пути запроса
 		this->_uri.create(request.url, this->_uri.parse(val));
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^^1 " << val << " === " << request.url << endl;
-		
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
 	// Если ключ заголовка соответствует схеме протокола
@@ -563,15 +560,47 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		/* Просто пропускаем, потому, что схему мы не используем */
 	// Если ключ соответствует доменному имени
 	} else if(this->_fmk->compare(key, ":authority")) {
+		// Создаём объект работы с IP-адресами
+		net_t net;
 		// Устанавливаем хост
 		this->header("Host", val);
 		// Получаем объект параметров запроса
 		web_t::req_t request = this->_web.request();
-		// Выполняем установку хоста запроса
-		this->_uri.create(request.url, this->_uri.parse(val));
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^^2 " << val << " === " << request.url << endl;
-		
+		// Получаем хост запрашиваемого сервера
+		request.url.host = val;
+		// Выполняем установку схемы запроса
+		request.url.schema = "http";
+		// Выполняем поиск разделителя
+		const size_t pos = val.rfind(':');
+		// Если разделитель найден
+		if(pos != string::npos){
+			// Выполняем получение хоста сервера
+			request.url.host = val.substr(0, pos);
+			// Выполняем установку порта сервера
+			request.url.port = static_cast <u_int> (::stoi(val.substr(pos + 1)));
+		}
+		// Определяем тип домена
+		switch(static_cast <uint8_t> (net.host(request.url.host))){
+			// Если - это IP-адрес сети IPv4
+			case static_cast <uint8_t> (net_t::type_t::IPV4): {
+				// Выполняем установку семейства IP-адресов
+				request.url.family = AF_INET;
+				// Выполняем установку IPv4 адреса
+				request.url.ip = request.url.host;
+			} break;
+			// Если - это IP-адрес сети IPv6
+			case static_cast <uint8_t> (net_t::type_t::IPV6): {
+				// Выполняем установку семейства IP-адресов
+				request.url.family = AF_INET6;
+				// Выполняем установку IPv6 адреса
+				request.url.ip = request.url.host;
+			} break;
+			// Если - это доменное имя
+			case static_cast <uint8_t> (net_t::type_t::DOMN):
+				// Выполняем установку IPv6 адреса
+				request.url.domain = this->_fmk->transform(request.url.host, fmk_t::transform_t::LOWER);
+			break;
+		}
 		// Выполняем сохранение параметров запроса
 		this->_web.request(std::move(request));
 	// Если ключ соответствует статусу ответа
