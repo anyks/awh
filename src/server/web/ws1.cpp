@@ -367,7 +367,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
 								#endif
 								// Устанавливаем флаг закрытия подключения
-								adj->stopped = (http.isAlive() && http.body().empty());
+								adj->stopped = (!http.isAlive() && http.body().empty());
 								// Выполняем отправку чанков
 								dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
 							}
