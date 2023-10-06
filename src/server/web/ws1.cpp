@@ -297,10 +297,19 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								} else buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
 							} break;
 							// Если запрос неудачный
-							case static_cast <uint8_t> (http_t::stath_t::FAULT):
+							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+								// Получаем параметры авторизации
+								string auth = adj->http.header("authorization");
+								// Если заголовок авторизации получен
+								if(!auth.empty()){
+									// Выполняем добавление заголовка авторизации
+									http.header(std::move(auth));
+									// Выполняем коммит полученного результата
+									http.commit();
+								}
 								// Формируем запрос авторизации
 								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
-							break;
+							} break;
 							// Если результат определить не получилось
 							default: buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
 						}
