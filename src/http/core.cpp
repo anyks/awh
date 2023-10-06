@@ -2045,6 +2045,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	
+	cout << " *****************1 " << endl;
+	
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -2392,7 +2395,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Выполняем установку сообщения
 				const_cast <web_t::res_t &> (res).message = this->message(res.code);
 			
-			cout << " *****************1 " << endl;
+			cout << " *****************2 " << endl;
 			
 			// Если сообщение получено
 			if(!res.message.empty()){
@@ -2565,7 +2568,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Формируем результат ответа
 				result.assign(response.begin(), response.end());
 
-				cout << " *****************2 " << string(result.begin(), result.end()) << endl;
+				cout << " *****************3 " << string(result.begin(), result.end()) << endl;
 			}
 		} break;
 	}
