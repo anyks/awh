@@ -933,56 +933,15 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					// Получаем новый адрес запроса
 					const uri_t::url_t & url = this->_http.getUrl();
 					// Если URL-адрес запроса получен
-					if(!url.empty()){
-						
-						// Выполняем сброс параметров запроса
-						this->flush();
-						// Увеличиваем количество попыток
-						this->_attempt++;
+					if(!url.empty())
 						// Устанавливаем новый адрес запроса
 						this->_uri.combine(this->_scheme.url, url);
-						// Если подключение не постоянное, то завершаем работу
-						dynamic_cast <client::core_t *> (core)->close(aid);
-						
-						/*
-						// Если соединение является постоянным
-						if(this->_http.isAlive()){
-							// Выполняем сброс параметров запроса
-							this->flush();
-							// Увеличиваем количество попыток
-							this->_attempt++;
-							// Устанавливаем новый адрес запроса
-							this->_uri.combine(this->_scheme.url, url);
-							// Выполняем попытку повторить запрос
-							this->connectCallback(aid, sid, core);
-						// Если подключение не постоянное, то завершаем работу
-						} else dynamic_cast <client::core_t *> (core)->close(aid);
-						*/
-
-					// Если URL-адрес запроса не получен
-					} else {
-						
-						// Выполняем сброс параметров запроса
-						this->flush();
-						// Увеличиваем количество попыток
-						this->_attempt++;
-						// Если подключение не постоянное, то завершаем работу
-						dynamic_cast <client::core_t *> (core)->close(aid);
-						
-						/*
-						// Если соединение является постоянным
-						if(this->_http.isAlive()){
-							// Выполняем сброс параметров запроса
-							this->flush();
-							// Увеличиваем количество попыток
-							this->_attempt++;
-							// Выполняем попытку повторить запрос
-							this->connectCallback(aid, sid, core);
-						// Если подключение не постоянное, то завершаем работу
-						} else dynamic_cast <client::core_t *> (core)->close(aid);
-						*/
-
-					}
+					// Выполняем сброс параметров запроса
+					this->flush();
+					// Увеличиваем количество попыток
+					this->_attempt++;
+					// Если подключение не постоянное, то завершаем работу
+					dynamic_cast <client::core_t *> (core)->close(aid);
 					// Завершаем работу
 					return status_t::SKIP;
 				}

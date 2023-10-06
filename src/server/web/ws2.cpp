@@ -716,45 +716,44 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													cout << string(buffer.begin(), buffer.end()) << endl << endl;
 											}
 										#endif
-										
-										/*
-										// Если нужно запросить авторизацию
-										if(response.code == 401){
-											// Выполняем ответ подключившемуся клиенту
-											int32_t sid = web2_t::send(adj->sid, aid, headers, false);
-											// Если запрос не получилось отправить
-											if(sid < 0){
-												// Если мы получили флаг завершения потока
-												if(flags & NGHTTP2_FLAG_END_STREAM){
-													// Если установлена функция отлова завершения запроса
-													if(this->_callback.is("end"))
-														// Выводим функцию обратного вызова
-														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
-												}
-												// Выходим из функции
-												return NGHTTP2_ERR_CALLBACK_FAILURE;
+										// Список заголовков для ответа
+										vector <nghttp2_nv> nva;
+										// Выполняем перебор всех заголовков HTTP/2 ответа
+										for(auto & header : headers){
+											// Выполняем добавление метода ответа
+											nva.push_back({
+												(uint8_t *) header.first.c_str(),
+												(uint8_t *) header.second.c_str(),
+												header.first.size(),
+												header.second.size(),
+												NGHTTP2_NV_FLAG_NONE
+											});
+										}
+										// Выполняем ответ подключившемуся клиенту
+										int rv = nghttp2_submit_response(it->second->session, adj->sid, nva.data(), nva.size(), nullptr);
+										// Если запрос не получилось отправить
+										if(rv < 0){
+											// Выводим в лог сообщение
+											this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callback.is("error"))
+												// Выводим функцию обратного вызова
+												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+											// Выполняем закрытие подключения
+											const_cast <server::core_t *> (this->_core)->close(aid);
+											// Если мы получили флаг завершения потока
+											if(flags & NGHTTP2_FLAG_END_STREAM){
+												// Если установлена функция отлова завершения запроса
+												if(this->_callback.is("end"))
+													// Выводим функцию обратного вызова
+													this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
 											}
-										// Если нужно просто отправить ответ клиенту
-										} else {
-										*/
-											// Список заголовков для ответа
-											vector <nghttp2_nv> nva;
-											// Выполняем перебор всех заголовков HTTP/2 ответа
-											for(auto & header : headers){
-												// Выполняем добавление метода ответа
-												nva.push_back({
-													(uint8_t *) header.first.c_str(),
-													(uint8_t *) header.second.c_str(),
-													header.first.size(),
-													header.second.size(),
-													NGHTTP2_NV_FLAG_NONE
-												});
-											}
-											// Выполняем ответ подключившемуся клиенту
-											int rv = nghttp2_submit_response(it->second->session, adj->sid, nva.data(), nva.size(), nullptr);
-											// Если запрос не получилось отправить
-											if(rv < 0){
-												// Выводим в лог сообщение
+											// Выходим из функции
+											return NGHTTP2_ERR_CALLBACK_FAILURE;
+										}{
+											// Фиксируем отправленный результат
+											if((rv = nghttp2_session_send(it->second->session)) != 0){
+												// Выводим сообщение об полученной ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 												// Если функция обратного вызова на на вывод ошибок установлена
 												if(this->_callback.is("error"))
@@ -771,29 +770,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												}
 												// Выходим из функции
 												return NGHTTP2_ERR_CALLBACK_FAILURE;
-											}{
-												// Фиксируем отправленный результат
-												if((rv = nghttp2_session_send(it->second->session)) != 0){
-													// Выводим сообщение об полученной ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-													// Если функция обратного вызова на на вывод ошибок установлена
-													if(this->_callback.is("error"))
-														// Выводим функцию обратного вызова
-														this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-													// Выполняем закрытие подключения
-													const_cast <server::core_t *> (this->_core)->close(aid);
-													// Если мы получили флаг завершения потока
-													if(flags & NGHTTP2_FLAG_END_STREAM){
-														// Если установлена функция отлова завершения запроса
-														if(this->_callback.is("end"))
-															// Выводим функцию обратного вызова
-															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
-													}
-													// Выходим из функции
-													return NGHTTP2_ERR_CALLBACK_FAILURE;
-												}
 											}
-										// }
+										}
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
 											// Если установлена функция отлова завершения запроса
