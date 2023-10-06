@@ -305,383 +305,6 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 	}
 }
 /**
- * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
- * @param sid   идентификатор потока
- * @param aid   идентификатор адъютанта
- * @param type  тип полученного фрейма
- * @param flags флаг полученного фрейма
- * @return      статус полученных данных
- */
-int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept {
-	// Получаем параметры подключения адъютанта
-	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены
-	if(adj != nullptr){
-		// Если идентификатор сессии клиента совпадает
-		if(adj->sid == sid){
-			// Выполняем определение типа фрейма
-			switch(type){
-				// Если мы получили входящие данные тела ответа
-				case NGHTTP2_DATA: {
-					// Если рукопожатие выполнено
-					if(adj->shake && adj->allow.receive){
-						// Если мы получили неустановленный флаг или флаг завершения потока
-						if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
-							// Флаг удачного получения данных
-							bool receive = false;
-							// Создаём буфер сообщения
-							vector <char> buffer;
-							// Создаём объект шапки фрейма
-							ws::frame_t::head_t head;
-							// Выполняем обработку полученных данных
-							while(!adj->close && adj->allow.receive){
-								// Выполняем чтение фрейма WebSocket
-								const auto & data = adj->frame.methods.get(head, adj->buffer.payload.data(), adj->buffer.payload.size());
-								// Если буфер данных получен
-								if(!data.empty()){
-									// Проверяем состояние флагов RSV2 и RSV3
-									if(head.rsv[1] || head.rsv[2]){
-										// Создаём сообщение
-										adj->mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
-										// Выполняем отключение адъютанта
-										goto Stop;
-									}
-									// Если флаг компресси включён а данные пришли не сжатые
-									if(head.rsv[0] && ((adj->compress == http_t::compress_t::NONE) ||
-									  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
-									  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
-										// Создаём сообщение
-										adj->mess = ws::mess_t(1002, "RSV1 must be clear");
-										// Выполняем отключение адъютанта
-										goto Stop;
-									}
-									// Если опкоды требуют финального фрейма
-									if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
-										// Создаём сообщение
-										adj->mess = ws::mess_t(1002, "FIN must be set");
-										// Выполняем отключение адъютанта
-										goto Stop;
-									}
-									// Определяем тип ответа
-									switch(static_cast <uint8_t> (head.optcode)){
-										// Если ответом является PING
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
-											// Отправляем ответ адъютанту
-											this->pong(aid, const_cast <server::core_t *> (this->_core), string(data.begin(), data.end()));
-										break;
-										// Если ответом является PONG
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
-											// Если идентификатор адъютанта совпадает
-											if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
-												// Обновляем контрольную точку
-												adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-										} break;
-										// Если ответом является TEXT
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
-										// Если ответом является BINARY
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::BINARY): {
-											// Запоминаем полученный опкод
-											adj->frame.opcode = head.optcode;
-											// Запоминаем, что данные пришли сжатыми
-											adj->deflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
-											// Если сообщение не замаскированно
-											if(!head.mask){
-												// Создаём сообщение
-												adj->mess = ws::mess_t(1002, "Not masked frame from client");
-												// Выполняем отключение адъютанта
-												goto Stop;
-											// Если список фрагментированных сообщений существует
-											} else if(!adj->buffer.fragmes.empty()) {
-												// Очищаем список фрагментированных сообщений
-												adj->buffer.fragmes.clear();
-												// Создаём сообщение
-												adj->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
-												// Выполняем отключение адъютанта
-												goto Stop;
-											// Если сообщение является не последнем
-											} else if(!head.fin)
-												// Заполняем фрагментированное сообщение
-												adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
-											// Если сообщение является последним
-											else buffer = std::forward <const vector <char>> (data);
-										} break;
-										// Если ответом является CONTINUATION
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
-											// Заполняем фрагментированное сообщение
-											adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
-											// Если сообщение является последним
-											if(head.fin){
-												// Выполняем копирование всех собранных сегментов
-												buffer = std::forward <const vector <char>> (adj->buffer.fragmes);
-												// Очищаем список фрагментированных сообщений
-												adj->buffer.fragmes.clear();
-											}
-										} break;
-										// Если ответом является CLOSE
-										case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
-											// Создаём сообщение
-											adj->mess = adj->frame.methods.message(data);
-											// Выводим сообщение об ошибке
-											this->error(aid, adj->mess);
-											// Завершаем работу
-											const_cast <server::core_t *> (this->_core)->close(aid);
-											// Выходим из функции
-											return NGHTTP2_ERR_CALLBACK_FAILURE;
-										} break;
-									}
-								}
-								// Если парсер обработал какое-то количество байт
-								if((receive = ((head.frame > 0) && !adj->buffer.payload.empty()))){
-									// Если размер буфера больше количества удаляемых байт
-									if((receive = (adj->buffer.payload.size() >= head.frame)))
-										// Удаляем количество обработанных байт
-										adj->buffer.payload.assign(adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end());
-										// vector <decltype(adj->buffer.payload)::value_type> (adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end()).swap(adj->buffer.payload);
-								}
-								// Если сообщения получены
-								if(!buffer.empty()){
-									// Если тредпул активирован
-									if(this->_thr.is())
-										// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-										this->_thr.push(std::bind(&ws2_t::extraction, this, aid, buffer, (adj->frame.opcode == ws::frame_t::opcode_t::TEXT)));
-									// Если тредпул не активирован, выполняем извлечение полученных сообщений
-									else this->extraction(aid, buffer, (adj->frame.opcode == ws::frame_t::opcode_t::TEXT));
-									// Очищаем буфер полученного сообщения
-									buffer.clear();
-								}
-								// Если данные мы все получили, выходим
-								if(!receive || adj->buffer.payload.empty()) break;
-							}
-							// Выходим из функции
-							return 0;
-						}
-						// Устанавливаем метку остановки адъютанта
-						Stop:
-						// Отправляем серверу сообщение
-						this->sendError(aid, adj->mess);
-						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
-							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", adj->mess.code, adj->mess.text.c_str()));
-					}
-				} break;
-				// Если мы получили входящие данные заголовков ответа
-				case NGHTTP2_HEADERS: {
-					// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-					if(flags & NGHTTP2_FLAG_END_HEADERS){
-						// Выполняем коммит полученного результата
-						adj->http.commit();
-						// Выполняем извлечение параметров запроса
-						const auto & request = adj->http.request();
-						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-						if(this->_callback.is("request"))
-							// Выводим функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", adj->sid, aid, request.method, request.url);
-						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-						if(this->_callback.is("headers"))
-							// Выводим функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
-						// Если рукопожатие не выполнено
-						if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
-							// Метод компрессии данных
-							http_t::compress_t compress = http_t::compress_t::NONE;
-							// Ответ клиенту по умолчанию успешный
-							awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								{
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (adj->http);
-									// Получаем данные ответа
-									const auto & response = http.process(http_t::process_t::REQUEST, true);
-									// Если параметры ответа получены
-									if(!response.empty())
-										// Выводим параметры ответа
-										cout << string(response.begin(), response.end()) << endl;
-								}
-							#endif
-							// Выполняем проверку авторизации
-							switch(static_cast <uint8_t> (adj->http.getAuth())){
-								// Если запрос выполнен удачно
-								case static_cast <uint8_t> (http_t::stath_t::GOOD): {
-									// Если рукопожатие выполнено
-									if((adj->shake = adj->http.isHandshake(http_t::process_t::REQUEST))){
-										// Получаем метод компрессии HTML данных
-										compress = adj->http.compression();
-										// Проверяем версию протокола
-										if(!adj->http.checkVer()){
-											// Получаем бинарные данные REST запроса
-											response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
-											// Завершаем работу
-											break;
-										}
-										// Выполняем сброс состояния HTTP-парсера
-										adj->http.clear();
-										// Получаем флаг шифрованных данных
-										adj->crypt = adj->http.isCrypt();
-										// Если клиент согласился на шифрование данных
-										if(adj->crypt)
-											// Устанавливаем параметры шифрования
-											adj->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
-										// Получаем поддерживаемый метод компрессии
-										adj->compress = adj->http.compress();
-										// Получаем размер скользящего окна сервера
-										adj->server.wbit = adj->http.wbit(awh::web_t::hid_t::SERVER);
-										// Получаем размер скользящего окна клиента
-										adj->client.wbit = adj->http.wbit(awh::web_t::hid_t::CLIENT);
-										// Если разрешено выполнять перехват контекста компрессии для сервера
-										if(adj->http.takeover(awh::web_t::hid_t::SERVER))
-											// Разрешаем перехватывать контекст компрессии для клиента
-											adj->hash.takeoverCompress(true);
-										// Если разрешено выполнять перехват контекста компрессии для клиента
-										if(adj->http.takeover(awh::web_t::hid_t::CLIENT))
-											// Разрешаем перехватывать контекст компрессии для сервера
-											adj->hash.takeoverDecompress(true);
-										// Если заголовки для передаче клиенту установлены
-										if(!this->_headers.empty())
-											// Выполняем установку HTTP-заголовков
-											adj->http.headers(this->_headers);
-										// Получаем заголовки ответа удалённому клиенту
-										const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
-										// Если бинарные данные ответа получены
-										if(!headers.empty()){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if defined(DEBUG_MODE)
-												{
-													// Выводим заголовок ответа
-													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-													// Получаем объект работы с HTTP-запросами
-													const http_t & http = reinterpret_cast <http_t &> (adj->http);
-													// Получаем бинарные данные REST-ответа
-													const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-													// Если бинарные данные ответа получены
-													if(!buffer.empty())
-														// Выводим параметры ответа
-														cout << string(buffer.begin(), buffer.end()) << endl << endl;
-												}
-											#endif
-											// Выполняем ответ подключившемуся клиенту
-											int32_t sid = web2_t::send(adj->sid, aid, headers, false);
-											// Если запрос не получилось отправить
-											if(sid < 0)
-												// Выходим из функции
-												return NGHTTP2_ERR_CALLBACK_FAILURE;
-											// Если функция обратного вызова активности потока установлена
-											if(this->_callback.is("stream"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
-											// Если функция обратного вызова на получение удачного запроса установлена
-											if(this->_callback.is("goodRequest"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
-											// Завершаем работу
-											return 0;
-										// Формируем ответ, что произошла внутренняя ошибка сервера
-										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
-									// Формируем ответ, что страница не доступна
-									} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
-								} break;
-								// Если запрос неудачный
-								case static_cast <uint8_t> (http_t::stath_t::FAULT):
-									// Формируем ответ на запрос об авторизации
-									response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
-								break;
-								// Если результат определить не получилось
-								default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
-							}
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Устанавливаем метод компрессии данных ответа
-							adj->http.compress(compress);
-							// Получаем заголовки ответа удалённому клиенту
-							const auto & headers = adj->http.reject2(response);
-							// Если бинарные данные ответа получены
-							if(!headers.empty()){
-								// Выполняем поиск адъютанта в списке активных сессий
-								auto it = this->_sessions.find(aid);
-								// Если активная сессия найдена
-								if(it != this->_sessions.end()){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										{
-											// Выводим заголовок ответа
-											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-											// Получаем объект работы с HTTP-запросами
-											const http_t & http = reinterpret_cast <http_t &> (adj->http);
-											// Получаем бинарные данные REST-ответа
-											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-											// Если бинарные данные ответа получены
-											if(!buffer.empty())
-												// Выводим параметры ответа
-												cout << string(buffer.begin(), buffer.end()) << endl << endl;
-										}
-									#endif
-									// Список заголовков для ответа
-									vector <nghttp2_nv> nva;
-									// Выполняем перебор всех заголовков HTTP/2 ответа
-									for(auto & header : headers){
-										// Выполняем добавление метода ответа
-										nva.push_back({
-											(uint8_t *) header.first.c_str(),
-											(uint8_t *) header.second.c_str(),
-											header.first.size(),
-											header.second.size(),
-											NGHTTP2_NV_FLAG_NONE
-										});
-									}
-									// Выполняем ответ подключившемуся клиенту
-									int rv = nghttp2_submit_response(it->second->session, adj->sid, nva.data(), nva.size(), nullptr);
-									// Если запрос не получилось отправить
-									if(rv < 0){
-										// Выводим в лог сообщение
-										this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-										// Если функция обратного вызова на на вывод ошибок установлена
-										if(this->_callback.is("error"))
-											// Выводим функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-										// Выполняем закрытие подключения
-										const_cast <server::core_t *> (this->_core)->close(aid);
-										// Выходим из функции
-										return NGHTTP2_ERR_CALLBACK_FAILURE;
-									}{
-										// Фиксируем отправленный результат
-										if((rv = nghttp2_session_send(it->second->session)) != 0){
-											// Выводим сообщение об полученной ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-											// Если функция обратного вызова на на вывод ошибок установлена
-											if(this->_callback.is("error"))
-												// Выводим функцию обратного вызова
-												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-											// Выполняем закрытие подключения
-											const_cast <server::core_t *> (this->_core)->close(aid);
-											// Выходим из функции
-											return NGHTTP2_ERR_CALLBACK_FAILURE;
-										}
-									}
-									// Завершаем работу
-									return 0;
-								}
-							}
-						}
-						// Завершаем работу
-						const_cast <server::core_t *> (this->_core)->close(aid);
-					}
-				} break;
-			}
-		}
-	}
-	// Выводим результат
-	return 0;
-}
-/**
  * chunkSignal Метод обратного вызова при получении чанка HTTP/2
  * @param sid    идентификатор потока
  * @param aid    идентификатор адъютанта
@@ -723,6 +346,397 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t aid, 
 					this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", sid, aid, vector <char> (buffer, buffer + size));
 			}
 		}
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
+ * @param sid    идентификатор потока
+ * @param aid    идентификатор адъютанта
+ * @param direct направление передачи фрейма
+ * @param type   тип полученного фрейма
+ * @param flags  флаг полученного фрейма
+ * @return       статус полученных данных
+ */
+int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+	// Определяем направление передачи фрейма
+	switch(static_cast <uint8_t> (direct)){
+		// Если производится передача фрейма на сервер
+		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
+			// Если мы получили флаг завершения потока
+			if(flags & NGHTTP2_FLAG_END_STREAM){
+
+			}
+		} break;
+		// Если производится получения фрейма с сервера
+		case static_cast <uint8_t> (nghttp2_t::direct_t::RECV): {
+			// Получаем параметры подключения адъютанта
+			ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Если идентификатор сессии клиента совпадает
+				if(adj->sid == sid){
+					// Выполняем определение типа фрейма
+					switch(type){
+						// Если мы получили входящие данные тела ответа
+						case NGHTTP2_DATA: {
+							// Если рукопожатие выполнено
+							if(adj->shake && adj->allow.receive){
+								// Если мы получили неустановленный флаг или флаг завершения потока
+								if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
+									// Флаг удачного получения данных
+									bool receive = false;
+									// Создаём буфер сообщения
+									vector <char> buffer;
+									// Создаём объект шапки фрейма
+									ws::frame_t::head_t head;
+									// Выполняем обработку полученных данных
+									while(!adj->close && adj->allow.receive){
+										// Выполняем чтение фрейма WebSocket
+										const auto & data = adj->frame.methods.get(head, adj->buffer.payload.data(), adj->buffer.payload.size());
+										// Если буфер данных получен
+										if(!data.empty()){
+											// Проверяем состояние флагов RSV2 и RSV3
+											if(head.rsv[1] || head.rsv[2]){
+												// Создаём сообщение
+												adj->mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
+												// Выполняем отключение адъютанта
+												goto Stop;
+											}
+											// Если флаг компресси включён а данные пришли не сжатые
+											if(head.rsv[0] && ((adj->compress == http_t::compress_t::NONE) ||
+											  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
+											  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
+												// Создаём сообщение
+												adj->mess = ws::mess_t(1002, "RSV1 must be clear");
+												// Выполняем отключение адъютанта
+												goto Stop;
+											}
+											// Если опкоды требуют финального фрейма
+											if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
+												// Создаём сообщение
+												adj->mess = ws::mess_t(1002, "FIN must be set");
+												// Выполняем отключение адъютанта
+												goto Stop;
+											}
+											// Определяем тип ответа
+											switch(static_cast <uint8_t> (head.optcode)){
+												// Если ответом является PING
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
+													// Отправляем ответ адъютанту
+													this->pong(aid, const_cast <server::core_t *> (this->_core), string(data.begin(), data.end()));
+												break;
+												// Если ответом является PONG
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
+													// Если идентификатор адъютанта совпадает
+													if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
+														// Обновляем контрольную точку
+														adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+												} break;
+												// Если ответом является TEXT
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
+												// Если ответом является BINARY
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::BINARY): {
+													// Запоминаем полученный опкод
+													adj->frame.opcode = head.optcode;
+													// Запоминаем, что данные пришли сжатыми
+													adj->deflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
+													// Если сообщение не замаскированно
+													if(!head.mask){
+														// Создаём сообщение
+														adj->mess = ws::mess_t(1002, "Not masked frame from client");
+														// Выполняем отключение адъютанта
+														goto Stop;
+													// Если список фрагментированных сообщений существует
+													} else if(!adj->buffer.fragmes.empty()) {
+														// Очищаем список фрагментированных сообщений
+														adj->buffer.fragmes.clear();
+														// Создаём сообщение
+														adj->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
+														// Выполняем отключение адъютанта
+														goto Stop;
+													// Если сообщение является не последнем
+													} else if(!head.fin)
+														// Заполняем фрагментированное сообщение
+														adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
+													// Если сообщение является последним
+													else buffer = std::forward <const vector <char>> (data);
+												} break;
+												// Если ответом является CONTINUATION
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
+													// Заполняем фрагментированное сообщение
+													adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
+													// Если сообщение является последним
+													if(head.fin){
+														// Выполняем копирование всех собранных сегментов
+														buffer = std::forward <const vector <char>> (adj->buffer.fragmes);
+														// Очищаем список фрагментированных сообщений
+														adj->buffer.fragmes.clear();
+													}
+												} break;
+												// Если ответом является CLOSE
+												case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
+													// Создаём сообщение
+													adj->mess = adj->frame.methods.message(data);
+													// Выводим сообщение об ошибке
+													this->error(aid, adj->mess);
+													// Завершаем работу
+													const_cast <server::core_t *> (this->_core)->close(aid);
+													// Выходим из функции
+													return NGHTTP2_ERR_CALLBACK_FAILURE;
+												} break;
+											}
+										}
+										// Если парсер обработал какое-то количество байт
+										if((receive = ((head.frame > 0) && !adj->buffer.payload.empty()))){
+											// Если размер буфера больше количества удаляемых байт
+											if((receive = (adj->buffer.payload.size() >= head.frame)))
+												// Удаляем количество обработанных байт
+												adj->buffer.payload.assign(adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end());
+												// vector <decltype(adj->buffer.payload)::value_type> (adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end()).swap(adj->buffer.payload);
+										}
+										// Если сообщения получены
+										if(!buffer.empty()){
+											// Если тредпул активирован
+											if(this->_thr.is())
+												// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+												this->_thr.push(std::bind(&ws2_t::extraction, this, aid, buffer, (adj->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+											// Если тредпул не активирован, выполняем извлечение полученных сообщений
+											else this->extraction(aid, buffer, (adj->frame.opcode == ws::frame_t::opcode_t::TEXT));
+											// Очищаем буфер полученного сообщения
+											buffer.clear();
+										}
+										// Если данные мы все получили, выходим
+										if(!receive || adj->buffer.payload.empty()) break;
+									}
+									// Выходим из функции
+									return 0;
+								}
+								// Устанавливаем метку остановки адъютанта
+								Stop:
+								// Отправляем серверу сообщение
+								this->sendError(aid, adj->mess);
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", adj->mess.code, adj->mess.text.c_str()));
+							}
+						} break;
+						// Если мы получили входящие данные заголовков ответа
+						case NGHTTP2_HEADERS: {
+							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
+							if(flags & NGHTTP2_FLAG_END_HEADERS){
+								// Выполняем коммит полученного результата
+								adj->http.commit();
+								// Выполняем извлечение параметров запроса
+								const auto & request = adj->http.request();
+								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+								if(this->_callback.is("request"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", adj->sid, aid, request.method, request.url);
+								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+								if(this->_callback.is("headers"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
+								// Если рукопожатие не выполнено
+								if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
+									// Метод компрессии данных
+									http_t::compress_t compress = http_t::compress_t::NONE;
+									// Ответ клиенту по умолчанию успешный
+									awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										{
+											// Получаем объект работы с HTTP-запросами
+											const http_t & http = reinterpret_cast <http_t &> (adj->http);
+											// Получаем данные ответа
+											const auto & response = http.process(http_t::process_t::REQUEST, true);
+											// Если параметры ответа получены
+											if(!response.empty())
+												// Выводим параметры ответа
+												cout << string(response.begin(), response.end()) << endl;
+										}
+									#endif
+									// Выполняем проверку авторизации
+									switch(static_cast <uint8_t> (adj->http.getAuth())){
+										// Если запрос выполнен удачно
+										case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+											// Если рукопожатие выполнено
+											if((adj->shake = adj->http.isHandshake(http_t::process_t::REQUEST))){
+												// Получаем метод компрессии HTML данных
+												compress = adj->http.compression();
+												// Проверяем версию протокола
+												if(!adj->http.checkVer()){
+													// Получаем бинарные данные REST запроса
+													response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
+													// Завершаем работу
+													break;
+												}
+												// Выполняем сброс состояния HTTP-парсера
+												adj->http.clear();
+												// Получаем флаг шифрованных данных
+												adj->crypt = adj->http.isCrypt();
+												// Если клиент согласился на шифрование данных
+												if(adj->crypt)
+													// Устанавливаем параметры шифрования
+													adj->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+												// Получаем поддерживаемый метод компрессии
+												adj->compress = adj->http.compress();
+												// Получаем размер скользящего окна сервера
+												adj->server.wbit = adj->http.wbit(awh::web_t::hid_t::SERVER);
+												// Получаем размер скользящего окна клиента
+												adj->client.wbit = adj->http.wbit(awh::web_t::hid_t::CLIENT);
+												// Если разрешено выполнять перехват контекста компрессии для сервера
+												if(adj->http.takeover(awh::web_t::hid_t::SERVER))
+													// Разрешаем перехватывать контекст компрессии для клиента
+													adj->hash.takeoverCompress(true);
+												// Если разрешено выполнять перехват контекста компрессии для клиента
+												if(adj->http.takeover(awh::web_t::hid_t::CLIENT))
+													// Разрешаем перехватывать контекст компрессии для сервера
+													adj->hash.takeoverDecompress(true);
+												// Если заголовки для передаче клиенту установлены
+												if(!this->_headers.empty())
+													// Выполняем установку HTTP-заголовков
+													adj->http.headers(this->_headers);
+												// Получаем заголовки ответа удалённому клиенту
+												const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
+												// Если бинарные данные ответа получены
+												if(!headers.empty()){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														{
+															// Выводим заголовок ответа
+															cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+															// Получаем объект работы с HTTP-запросами
+															const http_t & http = reinterpret_cast <http_t &> (adj->http);
+															// Получаем бинарные данные REST-ответа
+															const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+															// Если бинарные данные ответа получены
+															if(!buffer.empty())
+																// Выводим параметры ответа
+																cout << string(buffer.begin(), buffer.end()) << endl << endl;
+														}
+													#endif
+													// Выполняем ответ подключившемуся клиенту
+													int32_t sid = web2_t::send(adj->sid, aid, headers, false);
+													// Если запрос не получилось отправить
+													if(sid < 0)
+														// Выходим из функции
+														return NGHTTP2_ERR_CALLBACK_FAILURE;
+													// Если функция обратного вызова активности потока установлена
+													if(this->_callback.is("stream"))
+														// Выполняем функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
+													// Если функция обратного вызова на получение удачного запроса установлена
+													if(this->_callback.is("goodRequest"))
+														// Выполняем функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
+													// Завершаем работу
+													return 0;
+												// Формируем ответ, что произошла внутренняя ошибка сервера
+												} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
+											// Формируем ответ, что страница не доступна
+											} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403));
+										} break;
+										// Если запрос неудачный
+										case static_cast <uint8_t> (http_t::stath_t::FAULT):
+											// Формируем ответ на запрос об авторизации
+											response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
+										break;
+										// Если результат определить не получилось
+										default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
+									}
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.clear();
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.reset();
+									// Устанавливаем метод компрессии данных ответа
+									adj->http.compress(compress);
+									// Получаем заголовки ответа удалённому клиенту
+									const auto & headers = adj->http.reject2(response);
+									// Если бинарные данные ответа получены
+									if(!headers.empty()){
+										// Выполняем поиск адъютанта в списке активных сессий
+										auto it = this->_sessions.find(aid);
+										// Если активная сессия найдена
+										if(it != this->_sessions.end()){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												{
+													// Выводим заголовок ответа
+													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+													// Получаем объект работы с HTTP-запросами
+													const http_t & http = reinterpret_cast <http_t &> (adj->http);
+													// Получаем бинарные данные REST-ответа
+													const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+													// Если бинарные данные ответа получены
+													if(!buffer.empty())
+														// Выводим параметры ответа
+														cout << string(buffer.begin(), buffer.end()) << endl << endl;
+												}
+											#endif
+											// Список заголовков для ответа
+											vector <nghttp2_nv> nva;
+											// Выполняем перебор всех заголовков HTTP/2 ответа
+											for(auto & header : headers){
+												// Выполняем добавление метода ответа
+												nva.push_back({
+													(uint8_t *) header.first.c_str(),
+													(uint8_t *) header.second.c_str(),
+													header.first.size(),
+													header.second.size(),
+													NGHTTP2_NV_FLAG_NONE
+												});
+											}
+											// Выполняем ответ подключившемуся клиенту
+											int rv = nghttp2_submit_response(it->second->session, adj->sid, nva.data(), nva.size(), nullptr);
+											// Если запрос не получилось отправить
+											if(rv < 0){
+												// Выводим в лог сообщение
+												this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+												// Если функция обратного вызова на на вывод ошибок установлена
+												if(this->_callback.is("error"))
+													// Выводим функцию обратного вызова
+													this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+												// Выполняем закрытие подключения
+												const_cast <server::core_t *> (this->_core)->close(aid);
+												// Выходим из функции
+												return NGHTTP2_ERR_CALLBACK_FAILURE;
+											}{
+												// Фиксируем отправленный результат
+												if((rv = nghttp2_session_send(it->second->session)) != 0){
+													// Выводим сообщение об полученной ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+													// Если функция обратного вызова на на вывод ошибок установлена
+													if(this->_callback.is("error"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+													// Выполняем закрытие подключения
+													const_cast <server::core_t *> (this->_core)->close(aid);
+													// Выходим из функции
+													return NGHTTP2_ERR_CALLBACK_FAILURE;
+												}
+											}
+											// Завершаем работу
+											return 0;
+										}
+									}
+								}
+								// Завершаем работу
+								const_cast <server::core_t *> (this->_core)->close(aid);
+							}
+						} break;
+					}
+				}
+			}
+		} break;
 	}
 	// Выводим результат
 	return 0;

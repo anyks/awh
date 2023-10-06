@@ -551,20 +551,22 @@ namespace awh {
 			protected:
 				/**
 				 * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param type  тип полученного фрейма
-				 * @param flags флаг полученного фрейма
-				 * @return      статус полученных данных
+				 * @param sid    идентификатор потока
+				 * @param direct направление передачи фрейма
+				 * @param type   тип полученного фрейма
+				 * @param flags  флаг полученного фрейма
+				 * @return       статус полученных данных
 				 */
-				int frameProxySignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept;
+				int frameProxySignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param type  тип полученного фрейма
-				 * @param flags флаг полученного фрейма
-				 * @return      статус полученных данных
+				 * @param sid    идентификатор потока
+				 * @param direct направление передачи фрейма
+				 * @param type   тип полученного фрейма
+				 * @param flags  флаг полученного фрейма
+				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2

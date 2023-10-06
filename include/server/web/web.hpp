@@ -540,16 +540,6 @@ namespace awh {
 				void sendSignal(const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
-				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param aid   идентификатор адъютанта
-				 * @param type  тип полученного фрейма
-				 * @param flags флаг полученного фрейма
-				 * @return      статус полученных данных
-				 */
-				virtual int frameSignal(const int32_t sid, const uint64_t aid, const uint8_t type, const uint8_t flags) noexcept = 0;
-			protected:
-				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param aid    идентификатор адъютанта
@@ -585,6 +575,17 @@ namespace awh {
 				 * @return    статус полученных данных
 				 */
 				virtual int headerSignal(const int32_t sid, const uint64_t aid, const string & key, const string & val) noexcept = 0;
+			protected:
+				/**
+				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
+				 * @param sid    идентификатор потока
+				 * @param aid    идентификатор адъютанта
+				 * @param direct направление передачи фрейма
+				 * @param type   тип полученного фрейма
+				 * @param flags  флаг полученного фрейма
+				 * @return       статус полученных данных
+				 */
+				virtual int frameSignal(const int32_t sid, const uint64_t aid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера

@@ -181,14 +181,6 @@ namespace awh {
 				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param type  тип полученного фрейма
-				 * @param flags флаг полученного фрейма
-				 * @return      статус полученных данных
-				 */
-				int frameSignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept;
-				/**
 				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
@@ -196,6 +188,15 @@ namespace awh {
 				 * @return       статус полученных данных
 				 */
 				int chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
+				/**
+				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+				 * @param sid    идентификатор потока
+				 * @param direct направление передачи фрейма
+				 * @param type   тип полученного фрейма
+				 * @param flags  флаг полученного фрейма
+				 * @return       статус полученных данных
+				 */
+				int frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера

@@ -63,6 +63,14 @@ namespace awh {
 				CLIENT = 0x01, // Сервис идентифицирован как клиент
 				SERVER = 0x02  // Сервис идентифицирован как сервер
 			};
+			/**
+			 * Направления передачи фреймов
+			 */
+			enum class direct_t : uint8_t {
+				NONE = 0x00, // Направление не установлено
+				SEND = 0x01, // Направление отправки
+				RECV = 0x02  // Направление получения
+			};
 		private:
 			// Флаг идентификации сервиса
 			mode_t _mode;
@@ -85,14 +93,6 @@ namespace awh {
 			 */
 			static void debug(const char * format, va_list args) noexcept;
 			/**
-			 * frame Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-			 * @param session объект сессии HTTP/2
-			 * @param frame   объект фрейма заголовков HTTP/2
-			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
-			 */
-			static int frame(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
-			/**
 			 * begin Функция начала получения фрейма заголовков HTTP/2
 			 * @param session объект сессии HTTP/2
 			 * @param frame   объект фрейма заголовков HTTP/2
@@ -101,7 +101,23 @@ namespace awh {
 			 */
 			static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
-			 * close Функция закрытия подключения с сервером HTTP/2
+			 * frameRecv Функция обратного вызова при получении фрейма
+			 * @param session объект сессии HTTP/2
+			 * @param frame   объект фрейма заголовков HTTP/2
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        статус полученных данных
+			 */
+			static int frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			/**
+			 * frameSend Функция обратного вызова при отправки фрейма
+			 * @param session объект сессии HTTP/2
+			 * @param frame   объект фрейма заголовков HTTP/2
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        статус полученных данных
+			 */
+			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			/**
+			 * close Функция закрытия подключения
 			 * @param session объект сессии HTTP/2
 			 * @param sid     идентификатор потока
 			 * @param error   флаг ошибки HTTP/2 если присутствует
@@ -110,7 +126,7 @@ namespace awh {
 			 */
 			static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
 			/**
-			 * chunk Функция обратного вызова при получении чанка с сервера HTTP/2
+			 * chunk Функция обратного вызова при получении чанка
 			 * @param session объект сессии HTTP/2
 			 * @param flags   флаги события для сессии HTTP/2
 			 * @param sid     идентификатор потока
@@ -135,7 +151,7 @@ namespace awh {
 			static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
-			 * send Функция обратного вызова при подготовки данных для отправки на сервер
+			 * send Функция обратного вызова при подготовки данных для отправки
 			 * @param session объект сессии HTTP/2
 			 * @param buffer  буфер данных которые следует отправить
 			 * @param size    размер буфера данных для отправки
@@ -146,7 +162,7 @@ namespace awh {
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
 		public:
 			/**
-			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
+			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
 			 * @param session объект сессии HTTP/2
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
@@ -192,11 +208,6 @@ namespace awh {
 			 */
 			void on(function <void (const uint8_t *, const size_t)> callback) noexcept;
 			/**
-			 * on Метод установки функции обратного вызова при получении фрейма
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const uint8_t, const uint8_t)> callback) noexcept;
-			/**
 			 * on Метод установки функции обратного вызова при получении чанка с сервера
 			 * @param callback функция обратного вызова
 			 */
@@ -211,6 +222,11 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при обмене фреймами
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept;
 		public:
 			/**
 			 * NgHttp2 Конструктор

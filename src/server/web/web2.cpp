@@ -101,12 +101,12 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, aid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, aid, _2));
-			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, aid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, aid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, aid, _2, _3));
+			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
+			ret.first->second->on((function <int (const int32_t, const nghttp2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, aid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки

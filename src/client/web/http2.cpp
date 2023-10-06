@@ -207,121 +207,6 @@ void awh::client::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 	}
 }
 /**
- * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
- * @param sid   идентификатор потока
- * @param type  тип полученного фрейма
- * @param flags флаг полученного фрейма
- * @return      статус полученных данных
- */
-int awh::client::Http2::frameSignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept {
-	// Если подключение производится через, прокси-сервер
-	if(this->_scheme.isProxy())
-		// Выполняем обработку полученных данных фрейма для прокси-сервера
-		return this->frameProxySignal(sid, type, flags);
-	// Если мы работаем с сервером напрямую
-	else {
-		// Выполняем поиск идентификатора воркера
-		auto it = this->_workers.find(sid);
-		// Если необходимый нам воркер найден
-		if(it != this->_workers.end()){
-			// Выполняем определение типа фрейма
-			switch(type){
-				// Если мы получили входящие данные тела ответа
-				case NGHTTP2_DATA: {
-					// Определяем протокол клиента
-					switch(static_cast <uint8_t> (it->second->agent)){
-						// Если агент является клиентом HTTP
-						case static_cast <uint8_t> (agent_t::HTTP): {
-							// Если мы получили флаг завершения потока
-							if(flags & NGHTTP2_FLAG_END_STREAM){
-								// Выполняем коммит полученного результата
-								it->second->http.commit();
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									{
-										// Если тело ответа существует
-										if(!it->second->http.body().empty())
-											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", it->second->http.body().size()) << endl << endl;
-										// Иначе устанавливаем перенос строки
-										else cout << endl;
-									}
-								#endif
-								// Выполняем препарирование полученных данных
-								switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
-									// Если необходимо выполнить пропуск обработки данных
-									case static_cast <uint8_t> (status_t::SKIP):
-										// Завершаем работу
-										return 0;
-								}
-								// Если функция обратного вызова установлена, выводим сообщение
-								if(it->second->callback.is("entity"))
-									// Выполняем функцию обратного вызова дисконнекта
-									it->second->callback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
-								// Если функция обратного вызова на получение удачного ответа установлена
-								if(this->_callback.is("goodResponse"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t> ("goodResponse", sid);
-								// Выполняем удаление выполненного воркера
-								this->_workers.erase(sid);
-							}
-						} break;
-						// Если агент является клиентом WebSocket
-						case static_cast <uint8_t> (agent_t::WEBSOCKET):
-							// Выполняем передачу на WebSocket-клиент
-							this->_ws2.frameSignal(sid, type, flags);
-						break;
-					}
-				} break;
-				// Если мы получили входящие данные заголовков ответа
-				case NGHTTP2_HEADERS: {
-					// Определяем протокол клиента
-					switch(static_cast <uint8_t> (it->second->agent)){
-						// Если агент является клиентом HTTP
-						case static_cast <uint8_t> (agent_t::HTTP): {
-							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-							if(flags & NGHTTP2_FLAG_END_HEADERS){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									{
-										// Получаем данные ответа
-										const auto & response = it->second->http.process(http_t::process_t::RESPONSE, true);
-										// Если параметры ответа получены
-										if(!response.empty())
-											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl;
-									}
-								#endif
-								// Получаем параметры запроса
-								const auto & response = it->second->http.response();
-								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-								if(this->_callback.is("response"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const u_int, const string &> ("response", sid, response.code, response.message);
-								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-								if(this->_callback.is("headers"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
-							}
-						} break;
-						// Если агент является клиентом WebSocket
-						case static_cast <uint8_t> (agent_t::WEBSOCKET):
-							// Выполняем передачу на WebSocket-клиент
-							this->_ws2.frameSignal(sid, type, flags);
-						break;
-					}
-				} break;
-			}
-		}
-	}
-	// Выводим результат
-	return 0;
-}
-/**
  * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
  * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
@@ -364,6 +249,135 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 				}
 			}
 		}
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+ * @param sid    идентификатор потока
+ * @param direct направление передачи фрейма
+ * @param type   тип полученного фрейма
+ * @param flags  флаг полученного фрейма
+ * @return       статус полученных данных
+ */
+int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+	// Определяем направление передачи фрейма
+	switch(static_cast <uint8_t> (direct)){
+		// Если производится передача фрейма на сервер
+		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
+			// Если мы получили флаг завершения потока
+			if(flags & NGHTTP2_FLAG_END_STREAM){
+
+			}
+		} break;
+		// Если производится получения фрейма с сервера
+		case static_cast <uint8_t> (nghttp2_t::direct_t::RECV): {
+			// Если подключение производится через, прокси-сервер
+			if(this->_scheme.isProxy())
+				// Выполняем обработку полученных данных фрейма для прокси-сервера
+				return this->frameProxySignal(sid, direct, type, flags);
+			// Если мы работаем с сервером напрямую
+			else {
+				// Выполняем поиск идентификатора воркера
+				auto it = this->_workers.find(sid);
+				// Если необходимый нам воркер найден
+				if(it != this->_workers.end()){
+					// Выполняем определение типа фрейма
+					switch(type){
+						// Если мы получили входящие данные тела ответа
+						case NGHTTP2_DATA: {
+							// Определяем протокол клиента
+							switch(static_cast <uint8_t> (it->second->agent)){
+								// Если агент является клиентом HTTP
+								case static_cast <uint8_t> (agent_t::HTTP): {
+									// Если мы получили флаг завершения потока
+									if(flags & NGHTTP2_FLAG_END_STREAM){
+										// Выполняем коммит полученного результата
+										it->second->http.commit();
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											{
+												// Если тело ответа существует
+												if(!it->second->http.body().empty())
+													// Выводим сообщение о выводе чанка тела
+													cout << this->_fmk->format("<body %u>", it->second->http.body().size()) << endl << endl;
+												// Иначе устанавливаем перенос строки
+												else cout << endl;
+											}
+										#endif
+										// Выполняем препарирование полученных данных
+										switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
+											// Если необходимо выполнить пропуск обработки данных
+											case static_cast <uint8_t> (status_t::SKIP):
+												// Завершаем работу
+												return 0;
+										}
+										// Если функция обратного вызова установлена, выводим сообщение
+										if(it->second->callback.is("entity"))
+											// Выполняем функцию обратного вызова дисконнекта
+											it->second->callback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+										// Если функция обратного вызова на получение удачного ответа установлена
+										if(this->_callback.is("goodResponse"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <const int32_t> ("goodResponse", sid);
+										// Выполняем удаление выполненного воркера
+										this->_workers.erase(sid);
+									}
+								} break;
+								// Если агент является клиентом WebSocket
+								case static_cast <uint8_t> (agent_t::WEBSOCKET):
+									// Выполняем передачу на WebSocket-клиент
+									this->_ws2.frameSignal(sid, direct, type, flags);
+								break;
+							}
+						} break;
+						// Если мы получили входящие данные заголовков ответа
+						case NGHTTP2_HEADERS: {
+							// Определяем протокол клиента
+							switch(static_cast <uint8_t> (it->second->agent)){
+								// Если агент является клиентом HTTP
+								case static_cast <uint8_t> (agent_t::HTTP): {
+									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
+									if(flags & NGHTTP2_FLAG_END_HEADERS){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											{
+												// Получаем данные ответа
+												const auto & response = it->second->http.process(http_t::process_t::RESPONSE, true);
+												// Если параметры ответа получены
+												if(!response.empty())
+													// Выводим параметры ответа
+													cout << string(response.begin(), response.end()) << endl;
+											}
+										#endif
+										// Получаем параметры запроса
+										const auto & response = it->second->http.response();
+										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+										if(this->_callback.is("response"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const u_int, const string &> ("response", sid, response.code, response.message);
+										// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+										if(this->_callback.is("headers"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
+									}
+								} break;
+								// Если агент является клиентом WebSocket
+								case static_cast <uint8_t> (agent_t::WEBSOCKET):
+									// Выполняем передачу на WebSocket-клиент
+									this->_ws2.frameSignal(sid, direct, type, flags);
+								break;
+							}
+						} break;
+					}
+				}
+			}
+		} break;
 	}
 	// Выводим результат
 	return 0;

@@ -26,12 +26,13 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 }
 /**
  * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
- * @param sid   идентификатор потока
- * @param type  тип полученного фрейма
- * @param flags флаг полученного фрейма
- * @return      статус полученных данных
+ * @param sid    идентификатор потока
+ * @param direct направление передачи фрейма
+ * @param type   тип полученного фрейма
+ * @param flags  флаг полученного фрейма
+ * @return       статус полученных данных
  */
-int awh::client::Web2::frameProxySignal(const int32_t sid, const uint8_t type, const uint8_t flags) noexcept {
+int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_proxy.sid == sid){
 		// Выполняем определение типа фрейма
@@ -466,12 +467,12 @@ void awh::client::Web2::implementation(const uint64_t aid, client::core_t * core
 			this->_nghttp2.on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			this->_nghttp2.on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
-			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			this->_nghttp2.on((function <int (const int32_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			this->_nghttp2.on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			this->_nghttp2.on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3));
+			// Выполняем установку функции обратного вызова получения фрейма
+			this->_nghttp2.on((function <int (const int32_t, const nghttp2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки

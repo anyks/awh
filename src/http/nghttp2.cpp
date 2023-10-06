@@ -65,25 +65,6 @@ void awh::NgHttp2::debug(const char * format, va_list args) noexcept {
 	cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << endl;
 }
 /**
- * frame Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
- * @param session объект сессии HTTP/2
- * @param frame   объект фрейма заголовков HTTP/2
- * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
- */
-int awh::NgHttp2::frame(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
-	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
-	// Если функция обратного вызова установлена
-	if(self->_callback.is("frame"))
-		// Выводим функцию обратного вызова
-		return self->_callback.apply <int, const int32_t, const uint8_t, const uint8_t> ("frame", frame->hd.stream_id, frame->hd.type, frame->hd.flags);
-	// Выводим результат
-	return 0;
-}
-/**
  * begin Функция начала получения фрейма заголовков HTTP/2
  * @param session объект сессии HTTP/2
  * @param frame   объект фрейма заголовков HTTP/2
@@ -148,7 +129,45 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
 	return 0;
 }
 /**
- * close Функция закрытия подключения с сервером HTTP/2
+ * frameRecv Функция обратного вызова при получении фрейма
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::NgHttp2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект родительского объекта
+	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("frame"))
+		// Выводим функцию обратного вызова
+		return self->_callback.apply <int, const int32_t, const direct_t, const uint8_t, const uint8_t> ("frame", frame->hd.stream_id, direct_t::RECV, frame->hd.type, frame->hd.flags);
+	// Выводим результат
+	return 0;
+}
+/**
+ * frameSend Функция обратного вызова при отправки фрейма
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::NgHttp2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект родительского объекта
+	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("frame"))
+		// Выводим функцию обратного вызова
+		return self->_callback.apply <int, const int32_t, const direct_t, const uint8_t, const uint8_t> ("frame", frame->hd.stream_id, direct_t::SEND, frame->hd.type, frame->hd.flags);
+	// Выводим результат
+	return 0;
+}
+/**
+ * close Функция закрытия подключения
  * @param session объект сессии HTTP/2
  * @param sid     идентификатор потока
  * @param error   флаг ошибки HTTP/2 если присутствует
@@ -177,7 +196,7 @@ int awh::NgHttp2::close(nghttp2_session * session, const int32_t sid, const uint
 	return 0;
 }
 /**
- * chunk Функция обратного вызова при получении чанка с сервера HTTP/2
+ * chunk Функция обратного вызова при получении чанка
  * @param session объект сессии HTTP/2
  * @param flags   флаги события для сессии HTTP/2
  * @param sid     идентификатор потока
@@ -250,7 +269,7 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 	return 0;
 }
 /**
- * send Функция обратного вызова при подготовки данных для отправки на сервер
+ * send Функция обратного вызова при подготовки данных для отправки
  * @param session объект сессии HTTP/2
  * @param buffer  буфер данных которые следует отправить
  * @param size    размер буфера данных для отправки
@@ -272,7 +291,7 @@ ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, co
 	return static_cast <ssize_t> (size);
 }
 /**
- * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
+ * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
  * @param session объект сессии HTTP/2
  * @param sid     идентификатор потока
  * @param buffer  буфер данных которые следует отправить
@@ -377,20 +396,19 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 		nghttp2_session_callbacks * callbacks;
 		// Выполняем инициализацию сессию функций обратного вызова
 		nghttp2_session_callbacks_new(&callbacks);
-
-		// nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &nghttp2_t::frame2);
-
-		// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
+		// Выполняем установку функции обратного вызова при подготовки данных для отправки
 		nghttp2_session_callbacks_set_send_callback(callbacks, &nghttp2_t::send);
-		// Выполняем установку функции обратного вызова при получении заголовка HTTP/2
+		// Выполняем установку функции обратного вызова при получении заголовка
 		nghttp2_session_callbacks_set_on_header_callback(callbacks, &nghttp2_t::header);
-		// Выполняем установку функции обратного вызова при получении фрейма заголовков HTTP/2 с сервера
-		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &nghttp2_t::frame);
-		// Выполняем установку функции обратного вызова закрытия подключения с сервером HTTP/2
+		// Выполняем установку функции обратного вызова закрытия подключения
 		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &nghttp2_t::close);
-		// Выполняем установку функции обратного вызова начала получения фрейма заголовков HTTP/2
+		// Выполняем установку функции обратного вызова начала получения фрейма заголовков
 		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &nghttp2_t::begin);
-		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
+		// Выполняем установку функции обратного вызова при получении фрейма заголовков
+		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &nghttp2_t::frameRecv);
+		// Выполняем установку функции обратного вызова при отправки фрейма заголовков
+		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &nghttp2_t::frameSend);
+		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &nghttp2_t::chunk);
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
@@ -454,7 +472,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const uint32_t)> callback) n
 	this->_callback.set <int (const int32_t, const uint32_t)> ("close", callback);
 }
 /**
- * on Метод установки функции обратного вызова при отправки сообщения на сервер
+ * on Метод установки функции обратного вызова при отправки сообщения
  * @param callback функция обратного вызова
  */
 void awh::NgHttp2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
@@ -462,15 +480,7 @@ void awh::NgHttp2::on(function <void (const uint8_t *, const size_t)> callback) 
 	this->_callback.set <void (const uint8_t *, const size_t)> ("send", callback);
 }
 /**
- * on Метод установки функции обратного вызова при получении фрейма
- * @param callback функция обратного вызова
- */
-void awh::NgHttp2::on(function <int (const int32_t, const uint8_t, const uint8_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const uint8_t, const uint8_t)> ("frame", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении чанка с сервера
+ * on Метод установки функции обратного вызова при получении чанка
  * @param callback функция обратного вызова
  */
 void awh::NgHttp2::on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept {
@@ -492,6 +502,14 @@ void awh::NgHttp2::on(function <int (const int32_t, const string &, const string
 void awh::NgHttp2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при обмене фреймами
+ * @param callback функция обратного вызова
+ */
+void awh::NgHttp2::on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> ("frame", callback);
 }
 /**
  * ~NgHttp2 Деструктор
