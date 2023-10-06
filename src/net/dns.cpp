@@ -534,7 +534,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 											// Если IP-адрес получен
 											if(!ip.empty()){
 												// Если чёрный список IP-адресов получен
-												if(!self->isInBlackList(this->_family, this->_domain, ip)){
+												if((count == 1) || !self->isInBlackList(this->_family, this->_domain, ip)){
 													// Добавляем IP-адрес в список адресов
 													ips.push_back(ip);
 													// Записываем данные в кэш
@@ -565,7 +565,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 										// Если IP-адрес получен
 										if(!ip.empty()){
 											// Если чёрный список IP-адресов получен
-											if(!self->isInBlackList(this->_family, this->_domain, ip)){
+											if((count == 1) || !self->isInBlackList(this->_family, this->_domain, ip)){
 												// Добавляем IP-адрес в список адресов
 												ips.push_back(ip);
 												// Записываем данные в кэш
