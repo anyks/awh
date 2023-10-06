@@ -1304,12 +1304,21 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
  * @return    буфер данных ответа в бинарном виде
  */
 vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
+	
+	cout << " ^^^^^^^^^^^^^^^^^1 " << endl;
+	
 	// Если текст сообщения не установлен
 	if(res.message.empty())
 		// Выполняем установку сообщения
 		const_cast <web_t::res_t &> (res).message = this->message(res.code);
+	
+	cout << " ================ " << res.code << endl;
+	
 	// Если сообщение получено
 	if(!res.message.empty()){
+		
+		cout << " ^^^^^^^^^^^^^^^^^2 " << endl;
+		
 		// Если заголовок подключения ещё не существует
 		if(!this->_web.isHeader("connection")){
 			// Если требуется ввод авторизационных данных
@@ -1319,10 +1328,16 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			// Добавляем заголовок закрытия подключения
 			else this->_web.header("Connection", "Close");
 		}
+		
+		cout << " ^^^^^^^^^^^^^^^^^3 " << endl;
+		
 		// Если заголовок типа контента не существует
 		if(!this->_web.isHeader("content-type"))
 			// Добавляем заголовок тип контента
 			this->_web.header("Content-type", "text/html; charset=utf-8");
+		
+		cout << " ^^^^^^^^^^^^^^^^^4 " << endl;
+		
 		// Если запрос должен содержать тело сообщения
 		if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 			// Получаем данные тела
@@ -1344,8 +1359,14 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			// Добавляем заголовок тела сообщения
 			this->_web.header("Content-Length", ::to_string(body.size()));
 		}
+
+		cout << " ^^^^^^^^^^^^^^^^^5 " << endl;
+
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
+
+		cout << " ^^^^^^^^^^^^^^^^^6 " << endl;
+
 		// Выводим результат
 		return this->process(process_t::RESPONSE, res);
 	}
