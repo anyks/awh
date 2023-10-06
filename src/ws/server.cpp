@@ -142,10 +142,25 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 		const string & auth = this->_web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
+			// Метод HTTP запроса
+			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->_auth.server.header(auth);
+			// Определяем метод запроса
+			switch(static_cast <uint8_t> (this->_web.request().method)){
+				// Если метод запроса указан как GET
+				case static_cast <uint8_t> (web_t::method_t::GET):
+					// Устанавливаем метод запроса
+					method = "get";
+				break;
+				// Если метод запроса указан как CONNECT
+				case static_cast <uint8_t> (web_t::method_t::CONNECT):
+					// Устанавливаем метод запроса
+					method = "connect";
+				break;
+			}
 			// Выполняем проверку авторизации
-			if(this->_auth.server.check("get"))
+			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
