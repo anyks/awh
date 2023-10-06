@@ -687,8 +687,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								}
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
+								
+								// Если нужно запросить авторизацию
+								if(response.code != 401){
+								
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.reset();
+
+								}
 								// Устанавливаем метод компрессии данных ответа
 								adj->http.compress(compress);
 								// Получаем заголовки ответа удалённому клиенту
