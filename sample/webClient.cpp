@@ -30,6 +30,19 @@ class WebClient {
 		client::awh_t * _awh;
 	public:
 		/**
+		 * end Метод завершения выполнения запроса
+		 * @param id     идентификатор потока
+		 * @param direct направление передачи данных
+		 */
+		void end(const int32_t id, const client::web_t::direct_t direct){
+			// Блокируем пустую переменную
+			(void) id;
+			// Если мы получили данные
+			if(direct == client::web_t::direct_t::RECV)
+				// Выполняем остановку
+				this->_awh->stop();
+		}
+		/**
 		 * message Метод получения статуса результата запроса
 		 * @param id      идентификатор потока
 		 * @param code    код ответа сервера
@@ -140,8 +153,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -215,8 +228,11 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	/*
+
 	// Устанавливаем метод активации подключения
 	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
+	// Устанавливаем метод отлова завершения запроса
+	awh.on((function <void (const int32_t, const client::web_t::direct_t)>) std::bind(&WebClient::end, &executor, _1, _2));
 	// Устанавливаем метод получения сообщения сервера
 	awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
 	// Устанавливаем метод получения тела ответа

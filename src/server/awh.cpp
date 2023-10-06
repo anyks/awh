@@ -119,6 +119,14 @@ void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const w
 	this->_http.on(callback);
 }
 /**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * on Метод установки функции вывода полученного чанка бинарных данных с клиента
  * @param callback функция обратного вызова
  */

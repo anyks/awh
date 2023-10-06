@@ -284,9 +284,13 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 											// Выполняем функцию обратного вызова
 											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
 										// Если функция обратного вызова на получение удачного запроса установлена
-										if(this->_callback.is("goodRequest"))
+										if(this->_callback.is("handshake"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
+											this->_callback.call <const int32_t, const uint64_t> ("handshake", adj->sid, aid);
+										// Если установлена функция отлова завершения запроса
+										if(this->_callback.is("end"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
 										// Завершаем работу
 										return;
 									// Выполняем реджект
@@ -309,7 +313,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем очистку буфера данных
 									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
-									buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (403)));
+									buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
 								}
 							} break;
 							// Если запрос неудачный
@@ -323,6 +327,17 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Формируем запрос авторизации
 								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							} break;
+							// Если результат определить не получилось
+							default: {
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
+								// Выполняем очистку буфера данных
+								adj->buffer.payload.clear();
+								// Формируем запрос авторизации
+								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
+							}
 						}
 						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){
@@ -375,6 +390,13 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							if(this->_callback.is("error"))
 								// Выводим функцию обратного вызова
 								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
+							// Если установлена функция отлова завершения запроса
+							if(this->_callback.is("end")){
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
+							}
 							// Завершаем работу
 							return;
 						}
@@ -529,6 +551,10 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", adj->mess.code, adj->mess.text.c_str()));
+				// Если установлена функция отлова завершения запроса
+				if(this->_callback.is("end"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 			}
 		}
 	}
@@ -1067,7 +1093,7 @@ void awh::server::WebSocket1::on(function <void (const uint64_t, const log_t::fl
 	web_t::on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket1::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
@@ -1079,6 +1105,14 @@ void awh::server::WebSocket1::on(function <void (const int32_t, const uint64_t)>
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket1::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket1::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

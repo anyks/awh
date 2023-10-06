@@ -198,9 +198,13 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.reset();
 							// Если функция обратного вызова на получение удачного запроса установлена
-							if(this->_callback.is("goodRequest"))
+							if(this->_callback.is("handshake"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t> ("goodRequest", 1, aid);
+								this->_callback.call <const int32_t, const uint64_t> ("handshake", 1, aid);
+							// Если установлена функция отлова завершения запроса
+							if(this->_callback.is("end"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
 							// Завершаем обработку
 							goto Next;
 						} break;
@@ -237,6 +241,10 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							if(this->_callback.is("error"))
 								// Выводим функцию обратного вызова
 								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+							// Если установлена функция отлова завершения запроса
+							if(this->_callback.is("end"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
 							// Выходим из функции
 							return;
 						}
@@ -427,6 +435,10 @@ void awh::server::Http1::send(const uint64_t aid, const u_int code, const string
 				// Отправляем тело клиенту
 				const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), aid);
 			}
+			// Если установлена функция отлова завершения запроса
+			if(this->_callback.is("end"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::SEND);
 		}
 	}
 }
@@ -487,7 +499,7 @@ void awh::server::Http1::on(function <void (const uint64_t, const log_t::flag_t,
 	web_t::on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
@@ -499,6 +511,14 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t)> call
  * @param callback функция обратного вызова
  */
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

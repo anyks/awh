@@ -67,6 +67,14 @@ namespace awh {
 					DISCONNECT = 0x04  // Флаг отключения
 				};
 				/**
+				 * Направления передачи фреймов
+				 */
+				enum class direct_t : uint8_t {
+					NONE = 0x00, // Направление не установлено
+					SEND = 0x01, // Направление отправки
+					RECV = 0x02  // Направление получения
+				};
+				/**
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
@@ -301,7 +309,7 @@ namespace awh {
 				virtual void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
@@ -310,6 +318,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при завершении запроса
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова

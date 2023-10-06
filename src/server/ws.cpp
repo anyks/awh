@@ -127,7 +127,7 @@ void awh::server::WebSocket::on(function <void (const uint64_t, const log_t::fla
 	this->_ws.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
@@ -139,6 +139,14 @@ void awh::server::WebSocket::on(function <void (const int32_t, const uint64_t)> 
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket::on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket::on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_ws.on(callback);
 }

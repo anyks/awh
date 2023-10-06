@@ -119,6 +119,11 @@ namespace awh {
 				 */
 				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
 				/**
+				 * on Метод установки функции обратного вызова при завершении запроса
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
 				 */

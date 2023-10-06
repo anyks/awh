@@ -125,7 +125,7 @@ namespace awh {
 				void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
@@ -134,6 +134,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при завершении запроса
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова

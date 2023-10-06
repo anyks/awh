@@ -368,6 +368,12 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 						const_cast <server::core_t *> (this->_core)->close(aid);
 					}
 				}
+				// Если установлена функция отлова завершения запроса
+				if(this->_callback.is("end"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::SEND);
+				// Выходим из функции
+				return 0;
 			}
 		} break;
 		// Если производится получения фрейма с сервера
@@ -482,6 +488,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												this->error(aid, adj->mess);
 												// Завершаем работу
 												const_cast <server::core_t *> (this->_core)->close(aid);
+												// Если мы получили флаг завершения потока
+												if(flags & NGHTTP2_FLAG_END_STREAM){
+													// Если установлена функция отлова завершения запроса
+													if(this->_callback.is("end"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+												}
 												// Выходим из функции
 												return NGHTTP2_ERR_CALLBACK_FAILURE;
 											} break;
@@ -508,6 +521,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									}
 									// Если данные мы все получили, выходим
 									if(!receive || adj->buffer.payload.empty()) break;
+								}
+								// Если мы получили флаг завершения потока
+								if(flags & NGHTTP2_FLAG_END_STREAM){
+									// Если установлена функция отлова завершения запроса
+									if(this->_callback.is("end"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
 								}
 								// Выходим из функции
 								return 0;
@@ -624,17 +644,32 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												// Выполняем ответ подключившемуся клиенту
 												int32_t sid = web2_t::send(adj->sid, aid, headers, false);
 												// Если запрос не получилось отправить
-												if(sid < 0)
+												if(sid < 0){
+													// Если мы получили флаг завершения потока
+													if(flags & NGHTTP2_FLAG_END_STREAM){
+														// Если установлена функция отлова завершения запроса
+														if(this->_callback.is("end"))
+															// Выводим функцию обратного вызова
+															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+													}
 													// Выходим из функции
 													return NGHTTP2_ERR_CALLBACK_FAILURE;
+												}
 												// Если функция обратного вызова активности потока установлена
 												if(this->_callback.is("stream"))
 													// Выполняем функцию обратного вызова
 													this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
 												// Если функция обратного вызова на получение удачного запроса установлена
-												if(this->_callback.is("goodRequest"))
+												if(this->_callback.is("handshake"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <const int32_t, const uint64_t> ("goodRequest", adj->sid, aid);
+													this->_callback.call <const int32_t, const uint64_t> ("handshake", adj->sid, aid);
+												// Если мы получили флаг завершения потока
+												if(flags & NGHTTP2_FLAG_END_STREAM){
+													// Если установлена функция отлова завершения запроса
+													if(this->_callback.is("end"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+												}
 												// Завершаем работу
 												return 0;
 											// Формируем ответ, что произошла внутренняя ошибка сервера
@@ -706,6 +741,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 											// Выполняем закрытие подключения
 											const_cast <server::core_t *> (this->_core)->close(aid);
+											// Если мы получили флаг завершения потока
+											if(flags & NGHTTP2_FLAG_END_STREAM){
+												// Если установлена функция отлова завершения запроса
+												if(this->_callback.is("end"))
+													// Выводим функцию обратного вызова
+													this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+											}
 											// Выходим из функции
 											return NGHTTP2_ERR_CALLBACK_FAILURE;
 										}{
@@ -719,9 +761,23 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 												// Выполняем закрытие подключения
 												const_cast <server::core_t *> (this->_core)->close(aid);
+												// Если мы получили флаг завершения потока
+												if(flags & NGHTTP2_FLAG_END_STREAM){
+													// Если установлена функция отлова завершения запроса
+													if(this->_callback.is("end"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+												}
 												// Выходим из функции
 												return NGHTTP2_ERR_CALLBACK_FAILURE;
 											}
+										}
+										// Если мы получили флаг завершения потока
+										if(flags & NGHTTP2_FLAG_END_STREAM){
+											// Если установлена функция отлова завершения запроса
+											if(this->_callback.is("end"))
+												// Выводим функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
 										}
 										// Завершаем работу
 										return 0;
@@ -730,6 +786,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 							}
 							// Завершаем работу
 							const_cast <server::core_t *> (this->_core)->close(aid);
+							// Если мы получили флаг завершения потока
+							if(flags & NGHTTP2_FLAG_END_STREAM){
+								// Если установлена функция отлова завершения запроса
+								if(this->_callback.is("end"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+							}
 						}
 					} break;
 				}
@@ -1454,7 +1517,7 @@ void awh::server::WebSocket2::on(function <void (const uint64_t, const log_t::fl
 	this->_ws1.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
@@ -1468,6 +1531,16 @@ void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t)>
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера

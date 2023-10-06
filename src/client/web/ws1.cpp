@@ -83,6 +83,10 @@ void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
 			this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+		// Если установлена функция отлова завершения запроса
+		if(this->_callback.is("end"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::SEND);
 	}
 }
 /**
@@ -182,6 +186,10 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 							this->_attempt = 0;
 							// Завершаем работу
 							dynamic_cast <client::core_t *> (core)->close(aid);
+							// Если установлена функция отлова завершения запроса
+							if(this->_callback.is("end"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
 						} break;
 						// Если необходимо выполнить переход к следующему этапу обработки
 						case static_cast <uint8_t> (status_t::NEXT): {
@@ -235,6 +243,10 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 				this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
 			// Выполняем очистку функций обратного вызова
 			this->_resultCallback.clear();
+			// Если установлена функция отлова завершения запроса
+			if(this->_callback.is("end"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
 		}
 	}
 }
@@ -534,9 +546,9 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::OPEN);
 					// Если функция обратного вызова на получение удачного ответа установлена
-					if(this->_callback.is("goodResponse"))
+					if(this->_callback.is("handshake"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t> ("goodResponse", sid);
+						this->_callback.call <const int32_t> ("handshake", sid);
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
@@ -1140,7 +1152,7 @@ void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const http
 	web_t::on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket1::on(function <void (const int32_t)> callback) noexcept {
@@ -1152,6 +1164,14 @@ void awh::client::WebSocket1::on(function <void (const int32_t)> callback) noexc
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket1::on(function <void (const int32_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

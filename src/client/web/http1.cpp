@@ -173,10 +173,10 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
 					// Выполняем очистку функций обратного вызова
 					this->_resultCallback.clear();
-					// Если функция обратного вызова на получение удачного ответа установлена
-					if(this->_callback.is("goodResponse"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t> ("goodResponse", sid);
+					// Если установлена функция отлова завершения запроса
+					if(this->_callback.is("end"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
 					// Если подключение выполнено и список запросов не пустой
 					if((this->_aid > 0) && !this->_requests.empty())
 						// Выполняем запрос на удалённый сервер
@@ -437,6 +437,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 					// Выполняем удаление объекта запроса
 					this->_requests.erase(it);
 			}
+			// Если функция обратного вызова на получение удачного ответа установлена
+			if(this->_callback.is("handshake"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const int32_t> ("handshake", sid);
 			// Устанавливаем размер стопбайт
 			if(!this->_http.isAlive()){
 				// Выполняем очистку оставшихся данных
@@ -566,6 +570,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					core->write(entity.data(), entity.size(), this->_aid);
 				}
 			}
+			// Если установлена функция отлова завершения запроса
+			if(this->_callback.is("end"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const direct_t> ("end", this->_requests.begin()->first, direct_t::SEND);
 		}
 	}
 }
@@ -645,7 +653,7 @@ void awh::client::Http1::on(function <void (const log_t::flag_t, const http::err
 	web_t::on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::client::Http1::on(function <void (const int32_t)> callback) noexcept {
@@ -657,6 +665,14 @@ void awh::client::Http1::on(function <void (const int32_t)> callback) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::client::Http1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при завершении запроса
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const int32_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

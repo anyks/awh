@@ -366,7 +366,12 @@ unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t
 void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
-		// Подписываемся на получение сообщения сервера
+		/**
+		 * Подписываемся на получение сообщения сервера
+		 * @param id      идентификатор потока
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 */
 		this->on([this](const int32_t id, const u_int code, const string & message) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) id;
@@ -375,7 +380,23 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				// Выводим сообщение о неудачном запросе
 				this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
 		});
-		// Подписываемся на событие коннекта и дисконнекта клиента
+		/**
+		 * Подписываемся на завершение выполнения запроса
+		 * @param id     идентификатор потока
+		 * @param direct направление передачи данных
+		 */
+		this->on([this](const int32_t id, const web_t::direct_t direct) noexcept -> void {
+			// Блокируем пустую переменную
+			(void) id;
+			// Если мы получили данные
+			if(direct == web_t::direct_t::RECV)
+				// Выполняем остановку
+				this->stop();
+		});
+		/**
+		 * Подписываемся на событие коннекта и дисконнекта клиента
+		 * @param mode событие модуля HTTP
+		 */
 		this->on([method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
@@ -394,7 +415,13 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			// Выполняем остановку работы модуля
 			} else this->stop();
 		});
-		// Подписываемся на событие получения тела ответа
+		/**
+		 * Подписываемся на событие получения тела ответа
+		 * @param id      идентификатор потока
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param data    данные полученного тела сообщения
+		 */
 		this->on([&entity, this](const int32_t id, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) id;
@@ -407,7 +434,13 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			// Выполняем остановку
 			this->stop();
 		});
-		// Подписываем на событие получения заголовков ответа
+		/**
+		 * Подписываем на событие получения заголовков ответа
+		 * @param id      идентификатор потока
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param data    данные полученных заголовков сообщения
+		 */
 		this->on([&headers, this](const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) id;
@@ -479,10 +512,18 @@ void awh::client::AWH::on(function <void (const int32_t, const vector <char> &)>
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
 void awh::client::AWH::on(function <void (const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * @param callback функция обратного вызова
+ */
+void awh::client::AWH::on(function <void (const int32_t, const int32_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -495,10 +536,10 @@ void awh::client::AWH::on(function <void (const int32_t, const web_t::mode_t)> c
 	this->_http.on(callback);
 }
 /**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * on Метод установки функции обратного вызова при завершении запроса
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const web_t::direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
