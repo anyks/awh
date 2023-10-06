@@ -39,17 +39,23 @@ void awh::server::Http1::connectCallback(const uint64_t aid, const uint16_t sid,
 			// Устанавливаем данные сервиса
 			adj->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 			// Если функция обратного вызова для обработки чанков установлена
-			if(this->_callback.is("chunks"))
+			if(this->_callback.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков
 				adj->http.on(this->_callback.get <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking"));
 			// Устанавливаем функцию обработки вызова для получения чанков
 			else adj->http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
-			// Устанавливаем функцию обратного вызова для получения заголовков запроса
-			adj->http.on((function <void (const uint64_t, const string &, const string &)>) std::bind(&http1_t::header, this, _1, _2, _3));
-			// Устанавливаем функцию обратного вызова для получения запроса клиента
-			adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&http1_t::request, this, _1, _2, _3));
-			// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
-			adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&http1_t::headers, this, _1, _2, _3, _4));
+			// Если функция обратного вызова на полученного заголовка с клиента установлена
+			if(this->_callback.is("header"))
+				// Устанавливаем функцию обратного вызова для получения заголовков запроса
+				adj->http.on((function <void (const uint64_t, const string &, const string &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const string &, const string &)> ("header"), 1, _1, _2, _3));
+			// Если функция обратного вызова на вывод запроса клиента установлена
+			if(this->_callback.is("request"))
+				// Устанавливаем функцию обратного вызова для получения запроса клиента
+				adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3));
+			// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
+			if(this->_callback.is("headers"))
+				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
+				adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
 			// Если требуется установить параметры шифрования
 			if(this->_crypto.mode)
 				// Устанавливаем параметры шифрования
@@ -305,43 +311,6 @@ void awh::server::Http1::persistCallback(const uint64_t aid, const uint16_t sid,
 			}
 		}
 	}
-}
-/**
- * request Метод получения запроса клиента
- * @param aid    идентификатор адъютанта
- * @param method метод запроса клиента
- * @param url    адрес запроса клиента
- */
-void awh::server::Http1::request(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url) noexcept {
-	// Если функция обратного вызова на вывод запроса клиента установлена
-	if(this->_callback.is("request"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", 1, aid, method, url);
-}
-/**
- * header Метод получения заголовка
- * @param aid   идентификатор адъютанта
- * @param key   ключ заголовка
- * @param value значение заголовка
- */
-void awh::server::Http1::header(const uint64_t aid, const string & key, const string & value) noexcept {
-	// Если функция обратного вызова на полученного заголовка с клиента установлена
-	if(this->_callback.is("header"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", 1, aid, key, value);
-}
-/**
- * headers Метод получения заголовков
- * @param aid     идентификатор адъютанта
- * @param method  метод запроса клиента
- * @param url     адрес запроса клиента
- * @param headers заголовки запроса клиента
- */
-void awh::server::Http1::headers(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
-	if(this->_callback.is("headers"))
-		// Выводим функцию обратного вызова
-		this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", 1, aid, method, url, headers);
 }
 /**
  * garbage Метод удаления мусорных адъютантов

@@ -91,30 +91,6 @@ namespace awh {
 				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * request Метод получения запроса клиента
-				 * @param aid    идентификатор адъютанта
-				 * @param method метод запроса клиента
-				 * @param url    адрес запроса клиента
-				 */
-				void request(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url) noexcept;
-			private:
-				/**
-				 * header Метод получения заголовка
-				 * @param aid   идентификатор адъютанта
-				 * @param key   ключ заголовка
-				 * @param value значение заголовка
-				 */
-				void header(const uint64_t aid, const string & key, const string & value) noexcept;
-				/**
-				 * headers Метод получения заголовков
-				 * @param aid     идентификатор адъютанта
-				 * @param method  метод запроса клиента
-				 * @param url     адрес запроса клиента
-				 * @param headers заголовки ответа сервера
-				 */
-				void headers(const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
-			private:
-				/**
 				 * garbage Метод удаления мусорных адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра

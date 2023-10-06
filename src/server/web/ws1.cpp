@@ -69,6 +69,24 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 				adj->frame.size = this->_frameSize;
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			adj->http.compress(this->_scheme.compress);
+			// Если функция обратного вызова для обработки чанков установлена
+			if(this->_callback.is("chunking"))
+				// Устанавливаем функцию обработки вызова для получения чанков
+				adj->http.on(this->_callback.get <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking"));
+			// Устанавливаем функцию обработки вызова для получения чанков
+			else adj->http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
+			// Если функция обратного вызова на полученного заголовка с клиента установлена
+			if(this->_callback.is("header"))
+				// Устанавливаем функцию обратного вызова для получения заголовков запроса
+				adj->http.on((function <void (const uint64_t, const string &, const string &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const string &, const string &)> ("header"), 1, _1, _2, _3));
+			// Если функция обратного вызова на вывод запроса клиента установлена
+			if(this->_callback.is("request"))
+				// Устанавливаем функцию обратного вызова для получения запроса клиента
+				adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3));
+			// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
+			if(this->_callback.is("headers"))
+				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
+				adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
 			// Если сервер требует авторизацию
 			if(this->_authType != auth_t::type_t::NONE){
 				// Определяем тип авторизации
