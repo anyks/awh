@@ -175,6 +175,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						vector <char> buffer;
 						// Выполняем создание объекта для генерации HTTP-ответа
 						http_t http(this->_fmk, this->_log);
+						// Устанавливаем правила закрытия подключения
+						http.header("Сonnection", "close");
 						// Метод компрессии данных
 						http_t::compress_t compress = http_t::compress_t::NONE;
 						/**
@@ -300,6 +302,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 								// Если сервер требует авторизацию
 								if(this->_authType != auth_t::type_t::NONE){
+									// Выполняем удаление заголовка закрытия подключения
+									http.rmHeader("Сonnection");
 									// Определяем тип авторизации
 									switch(static_cast <uint8_t> (this->_authType)){
 										// Если тип авторизации Basic
@@ -363,7 +367,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
 								#endif
 								// Устанавливаем флаг закрытия подключения
-								adj->stopped = http.body().empty();
+								adj->stopped = (http.isAlive() && http.body().empty());
 								// Выполняем отправку чанков
 								dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
 							}
