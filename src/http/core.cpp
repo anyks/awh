@@ -1338,6 +1338,8 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 				this->clearBody();
 				// Добавляем тело сообщения
 				this->_web.body(vector <char> (body.begin(), body.end()));
+
+				cout << " ######################1 " << body << endl;
 			}
 			// Удаляем размер передаваемого контента
 			this->_web.rmHeader("content-length");
@@ -1346,6 +1348,9 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		}
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
+		
+		cout << " ######################2 " << endl;
+
 		// Выводим результат
 		return this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
