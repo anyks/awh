@@ -493,6 +493,20 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_req.url.schema = "http";
 									// Выполняем установку хоста
 									this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
+									// Выполняем поиск разделителя
+									const size_t pos = this->_req.url.host.rfind(':');
+									// Если разделитель найден
+									if(pos != string::npos){
+										// Получаем порт сервера
+										const string & port = this->_req.url.host.substr(pos + 1);
+										// Если данные порта являются числом
+										if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
+											// Выполняем установку порта сервера
+											this->_req.url.port = static_cast <u_int> (::stoi(port));
+											// Выполняем получение хоста сервера
+											this->_req.url.host = this->_req.url.host.substr(0, pos);
+										}
+									}
 									// Определяем тип домена
 									switch(static_cast <uint8_t> (net.host(this->_req.url.host))){
 										// Если - это IP-адрес сети IPv4

@@ -578,13 +578,18 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Выполняем установку схемы запроса
 		request.url.schema = "http";
 		// Выполняем поиск разделителя
-		const size_t pos = val.rfind(':');
+		const size_t pos = request.url.host.rfind(':');
 		// Если разделитель найден
 		if(pos != string::npos){
-			// Выполняем получение хоста сервера
-			request.url.host = val.substr(0, pos);
-			// Выполняем установку порта сервера
-			request.url.port = static_cast <u_int> (::stoi(val.substr(pos + 1)));
+			// Получаем порт сервера
+			const string & port = request.url.host.substr(pos + 1);
+			// Если данные порта являются числом
+			if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
+				// Выполняем установку порта сервера
+				request.url.port = static_cast <u_int> (::stoi(port));
+				// Выполняем получение хоста сервера
+				request.url.host = request.url.host.substr(0, pos);
+			}
 		}
 		// Определяем тип домена
 		switch(static_cast <uint8_t> (net.host(request.url.host))){
