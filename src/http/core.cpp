@@ -1269,7 +1269,7 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		// Устанавливаем парарметр запроса
 		this->_web.request(req);
 		// Выполняем создание запроса
-		return this->process(process_t::REQUEST, req);
+		return this->process(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
 	}
 	// Выводим результат
 	return vector <char> ();
@@ -1293,7 +1293,7 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 		// Устанавливаем парарметр запроса
 		this->_web.request(req);
 		// Выполняем создание запроса
-		return this->process2(process_t::REQUEST, req);
+		return this->process2(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
 	}
 	// Выводим результат
 	return vector <pair <string, string>> ();
@@ -1347,7 +1347,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
 		// Выводим результат
-		return this->process(process_t::RESPONSE, res);
+		return this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
 	// Выводим результат
 	return vector <char> ();
@@ -1399,7 +1399,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
 		// Выводим результат
-		return this->process2(process_t::RESPONSE, res);
+		return this->process2(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
 	// Выводим результат
 	return vector <pair <string, string>> ();
