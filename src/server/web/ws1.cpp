@@ -203,28 +203,25 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						switch(static_cast <uint8_t> (adj->http.getAuth())){
 							// Если запрос выполнен удачно
 							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
-								
-								cout << " -----------1 " << endl;
-								
 								// Если рукопожатие выполнено
 								if(adj->http.isHandshake(http_t::process_t::REQUEST)){
 									// Получаем метод компрессии HTML данных
 									compress = adj->http.compression();
 									// Проверяем версию протокола
 									if(!adj->http.checkVer()){
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.clear();
+										// Выполняем создание объекта для генерации HTTP-ответа
+										http_t http(this->_fmk, this->_log);
 										// Получаем бинарные данные REST ответа
-										buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
+										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
 										// Завершаем работу
 										break;
 									}
 									// Проверяем ключ адъютанта
 									if(!adj->http.checkKey()){
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.clear();
+										// Выполняем создание объекта для генерации HTTP-ответа
+										http_t http(this->_fmk, this->_log);
 										// Получаем бинарные данные REST ответа
-										buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
+										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
 										// Завершаем работу
 										break;
 									}
@@ -298,62 +295,40 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										return;
 									// Выполняем реджект
 									} else {
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.clear();
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.reset();
-										// Выполняем очистку буфера данных
-										adj->buffer.payload.clear();
+										// Выполняем создание объекта для генерации HTTP-ответа
+										http_t http(this->_fmk, this->_log);
 										// Формируем ответ, что страница не доступна
-										buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (500)));
+										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500)));
 									}
 								// Сообщаем, что рукопожатие не выполнено
 								} else {
-									
-									cout << " -----------2 " << endl;
-									
-									// Выполняем сброс состояния HTTP парсера
-									adj->http.clear();
-									// Выполняем сброс состояния HTTP парсера
-									adj->http.reset();
-									// Выполняем очистку буфера данных
-									adj->buffer.payload.clear();
+									// Выполняем создание объекта для генерации HTTP-ответа
+									http_t http(this->_fmk, this->_log);
 									// Формируем ответ, что страница не доступна
-									buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
+									buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
 								}
 							} break;
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-								
-								cout << " -----------3 " << endl;
-								
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
-								// Выполняем очистку буфера данных
-								adj->buffer.payload.clear();
+								// Выполняем создание объекта для генерации HTTP-ответа
+								http_t http(this->_fmk, this->_log);
 								// Формируем запрос авторизации
-								buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (401)));
+								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							} break;
 							// Если результат определить не получилось
 							default: {
-								
-								cout << " -----------4 " << endl;
-								
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
-								// Выполняем очистку буфера данных
-								adj->buffer.payload.clear();
+								// Выполняем создание объекта для генерации HTTP-ответа
+								http_t http(this->_fmk, this->_log);
 								// Формируем запрос авторизации
-								buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
+								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
 							}
 						}
-						
-						cout << " -----------5 " << endl;
-						
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.clear();
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.reset();
+						// Выполняем очистку буфера данных
+						adj->buffer.payload.clear();
 						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){
 							// Тело полезной нагрузки
@@ -415,9 +390,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Завершаем работу
 							return;
 						}
-						
-						cout << " -----------6 " << endl;
-						
 						// Завершаем работу
 						dynamic_cast <server::core_t *> (core)->close(aid);
 					}
