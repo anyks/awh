@@ -203,6 +203,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						switch(static_cast <uint8_t> (adj->http.getAuth())){
 							// Если запрос выполнен удачно
 							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+								
+								cout << " -----------1 " << endl;
+								
 								// Если рукопожатие выполнено
 								if(adj->http.isHandshake(http_t::process_t::REQUEST)){
 									// Получаем метод компрессии HTML данных
@@ -306,6 +309,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									}
 								// Сообщаем, что рукопожатие не выполнено
 								} else {
+									
+									cout << " -----------2 " << endl;
+									
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Выполняем сброс состояния HTTP парсера
@@ -318,6 +324,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							} break;
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+								
+								cout << " -----------3 " << endl;
+								
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
@@ -329,6 +338,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							} break;
 							// Если результат определить не получилось
 							default: {
+								
+								cout << " -----------4 " << endl;
+								
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
@@ -339,6 +351,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
 							}
 						}
+						
+						cout << " -----------5 " << endl;
+						
 						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){
 							// Тело полезной нагрузки
@@ -400,6 +415,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Завершаем работу
 							return;
 						}
+						
+						cout << " -----------6 " << endl;
+						
 						// Завершаем работу
 						dynamic_cast <server::core_t *> (core)->close(aid);
 					}
