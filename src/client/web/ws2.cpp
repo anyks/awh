@@ -234,26 +234,9 @@ void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t si
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Если переключение протокола на HTTP/2 не выполнено
-		if(this->_proto == engine_t::proto_t::HTTP2)
+		if(this->_proto != engine_t::proto_t::HTTP2)
 			// Выполняем переброс вызова записи на клиент WebSocket
 			this->_ws1.writeCallback(buffer, size, aid, sid, core);
-		// Если переключение протокола на HTTP/2 выполнено
-		else {
-			// Если необходимо выполнить закрыть подключение
-			if(!this->_close && this->_stopped){
-				// Устанавливаем флаг закрытия подключения
-				this->_close = !this->_close;
-				// Если флаг инициализации сессии HTTP2 установлен
-				if(this->_sessionInitialized){
-					// Выполняем закрытие подключения
-					this->_nghttp2.close();
-					// Выполняем снятие флага инициализации сессии HTTP2
-					this->_sessionInitialized = !this->_sessionInitialized;
-				}
-				// Принудительно выполняем отключение лкиента
-				dynamic_cast <client::core_t *> (core)->close(aid);
-			}
-		}
 	}
 }
 /**
@@ -344,7 +327,20 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
-
+				// Если необходимо выполнить закрыть подключение
+				if(!this->_close && this->_stopped){
+					// Устанавливаем флаг закрытия подключения
+					this->_close = !this->_close;
+					// Если флаг инициализации сессии HTTP2 установлен
+					if(this->_sessionInitialized){
+						// Выполняем закрытие подключения
+						this->_nghttp2.close();
+						// Выполняем снятие флага инициализации сессии HTTP2
+						this->_sessionInitialized = !this->_sessionInitialized;
+					}
+					// Принудительно выполняем отключение лкиента
+					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+				}
 			}
 		} break;
 		// Если производится получения фрейма с сервера

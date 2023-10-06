@@ -268,7 +268,15 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
-
+				// Выполняем поиск идентификатора воркера
+				auto it = this->_workers.find(sid);
+				// Если необходимый нам воркер найден
+				if(it != this->_workers.end()){
+					// Если агент является клиентом WebSocket
+					if(it->second->agent == agent_t::WEBSOCKET)
+						// Выполняем передачу на WebSocket-клиент
+						this->_ws2.frameSignal(sid, direct, type, flags);
+				}
 			}
 		} break;
 		// Если производится получения фрейма с сервера
