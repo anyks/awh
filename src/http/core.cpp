@@ -1395,8 +1395,6 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 			}
 			// Удаляем размер передаваемого контента
 			this->_web.rmHeader("content-length");
-			// Добавляем заголовок тела сообщения
-			this->_web.header("Content-Length", ::to_string(body.size()));
 		}
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
@@ -1917,14 +1915,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 							break;
 						}
 					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						result.push_back(make_pair("transfer-encoding", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						result.push_back(make_pair("content-length", ::to_string(length)));
 				// Очищаем тела сообщения
 				} else this->clearBody();
 			}
@@ -2038,14 +2028,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 							break;
 						}
 					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						result.push_back(make_pair("transfer-encoding", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						result.push_back(make_pair("content-length", ::to_string(length)));
 				// Очищаем тела сообщения
 				} else this->clearBody();
 			}
@@ -2926,14 +2908,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							break;
 						}
 					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("transfer-encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						result.push_back(make_pair("transfer-encoding", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("content-length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						result.push_back(make_pair("content-length", ::to_string(length)));
 				// Очищаем тела сообщения
 				} else this->_web.clearBody();
 			}
@@ -3101,14 +3075,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							break;
 						}
 					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("transfer-encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						result.push_back(make_pair("transfer-encoding", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("content-length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						result.push_back(make_pair("content-length", ::to_string(length)));
 				// Очищаем тела сообщения
 				} else this->_web.clearBody();
 			}
