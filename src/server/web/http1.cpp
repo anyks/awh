@@ -225,12 +225,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								// Отправляем ответ адъютанту
 								dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
 								// Получаем данные тела запроса
-								while(!(payload = adj->http.payload()).empty()){
-									// Устанавливаем флаг закрытия подключения
-									adj->stopped = adj->http.body().empty();
+								while(!(payload = adj->http.payload()).empty())
 									// Отправляем тело клиенту
 									dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
-								}
 							// Выполняем отключение адъютанта
 							} else dynamic_cast <server::core_t *> (core)->close(aid);
 							// Если функция обратного вызова активности потока установлена
@@ -287,9 +284,6 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 			if(!adj->close && adj->stopped){
 				// Устанавливаем флаг закрытия подключения
 				adj->close = !adj->close;
-				
-				cout << " !!!!!!!!!!!!!!!!!!! " << endl;
-				
 				// Принудительно выполняем отключение лкиента
 				const_cast <server::core_t *> (this->_core)->close(aid);
 			}
