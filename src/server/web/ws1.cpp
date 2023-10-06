@@ -173,6 +173,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 					if(adj->http.isEnd()){
 						// Буфер данных для записи в сокет
 						vector <char> buffer;
+						// Выполняем создание объекта для генерации HTTP-ответа
+						http_t http(this->_fmk, this->_log);
 						// Метод компрессии данных
 						http_t::compress_t compress = http_t::compress_t::NONE;
 						/**
@@ -209,8 +211,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									compress = adj->http.compression();
 									// Проверяем версию протокола
 									if(!adj->http.checkVer()){
-										// Выполняем создание объекта для генерации HTTP-ответа
-										http_t http(this->_fmk, this->_log);
 										// Получаем бинарные данные REST ответа
 										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
 										// Завершаем работу
@@ -218,8 +218,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									}
 									// Проверяем ключ адъютанта
 									if(!adj->http.checkKey()){
-										// Выполняем создание объекта для генерации HTTP-ответа
-										http_t http(this->_fmk, this->_log);
 										// Получаем бинарные данные REST ответа
 										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
 										// Завершаем работу
@@ -293,42 +291,19 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
 										// Завершаем работу
 										return;
-									// Выполняем реджект
-									} else {
-										// Выполняем создание объекта для генерации HTTP-ответа
-										http_t http(this->_fmk, this->_log);
-										// Формируем ответ, что страница не доступна
-										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500)));
-									}
-								// Сообщаем, что рукопожатие не выполнено
-								} else {
-									// Выполняем создание объекта для генерации HTTP-ответа
-									http_t http(this->_fmk, this->_log);
 									// Формируем ответ, что страница не доступна
-									buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
-								}
+									} else buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500)));
+								// Сообщаем, что рукопожатие не выполнено
+								} else buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
 							} break;
 							// Если запрос неудачный
-							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-								// Выполняем создание объекта для генерации HTTP-ответа
-								http_t http(this->_fmk, this->_log);
+							case static_cast <uint8_t> (http_t::stath_t::FAULT):
 								// Формируем запрос авторизации
 								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
-							} break;
+							break;
 							// Если результат определить не получилось
-							default: {
-								// Выполняем создание объекта для генерации HTTP-ответа
-								http_t http(this->_fmk, this->_log);
-								// Формируем запрос авторизации
-								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
-							}
+							default: buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
 						}
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.clear();
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.reset();
-						// Выполняем очистку буфера данных
-						adj->buffer.payload.clear();
 						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){
 							// Тело полезной нагрузки
@@ -343,7 +318,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							// Устанавливаем метод компрессии данных ответа
-							adj->http.compress(compress);
+							http.compress(compress);
 							// Выполняем извлечение параметров запроса
 							const auto & request = adj->http.request();
 							// Получаем параметры ответа
@@ -351,7 +326,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Выполняем отправку заголовков сообщения
 							dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
 							// Получаем данные тела ответа
-							while(!(payload = adj->http.payload()).empty()){
+							while(!(payload = http.payload()).empty()){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -360,7 +335,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
 								#endif
 								// Устанавливаем флаг закрытия подключения
-								adj->stopped = adj->http.body().empty();
+								adj->stopped = http.body().empty();
 								// Выполняем отправку чанков
 								dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
 							}
@@ -387,6 +362,12 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выводим функцию обратного вызова
 								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
 							}
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.reset();
+							// Выполняем очистку буфера данных
+							adj->buffer.payload.clear();
 							// Завершаем работу
 							return;
 						}
