@@ -115,6 +115,19 @@ class Executor {
 				this->_ws->send(aid, buffer.data(), buffer.size(), text);
 			}
 		}
+		/**
+		 * request Метод вывода входящего запроса
+		 * @param sid    идентификатор входящего потока
+		 * @param aid    идентификатор адъютанта (клиента)
+		 * @param method метод входящего запроса
+		 * @param url    адрес входящего запроса
+		 */
+		void request(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url){
+			// Создаём объект URI
+			uri_t uri(this->_fmk);
+			// Выводим информацию в лог
+			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, uri.url(url).c_str());
+		}
 	public:
 		/**
 		 * Executor Конструктор
@@ -217,6 +230,8 @@ int main(int argc, char * argv[]){
 	ws.on((function <void (const uint64_t, const vector <char> &, const bool)>) bind(&Executor::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	ws.on((function <void (const int32_t, const uint64_t, const server::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2, _3));
+	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
+	ws.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&Executor::request, &executor, _1, _2, _3, _4));
 	// Выполняем запуск WebSocket сервер
 	ws.start();
 	// Выводим результат

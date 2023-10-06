@@ -521,7 +521,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Выполняем установку семейства IP-адресов
 											this->_req.url.family = AF_INET6;
 											// Выполняем установку IPv6 адреса
-											this->_req.url.ip = this->_req.url.host;
+											this->_req.url.ip = net = this->_req.url.host;
 										} break;
 										// Если - это доменное имя
 										case static_cast <uint8_t> (net_t::type_t::DOMN):

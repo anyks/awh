@@ -139,7 +139,7 @@ class WebServer {
 		 */
 		void entity(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
 			// Выводим информацию о входящих данных
-			cout << " ================ " << string(entity.begin(), entity.end()) << endl;
+			cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
 			// Отправляем сообщение клиенту
 			this->_awh->send(aid, 200, "OK", entity, {{"Connection", "close"}});
 		}
