@@ -287,6 +287,9 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 			if(!adj->close && adj->stopped){
 				// Устанавливаем флаг закрытия подключения
 				adj->close = !adj->close;
+				
+				cout << " !!!!!!!!!!!!!!!!!!! " << endl;
+				
 				// Принудительно выполняем отключение лкиента
 				const_cast <server::core_t *> (this->_core)->close(aid);
 			}
