@@ -117,16 +117,21 @@ class Executor {
 		}
 		/**
 		 * request Метод вывода входящего запроса
-		 * @param sid    идентификатор входящего потока
-		 * @param aid    идентификатор адъютанта (клиента)
-		 * @param method метод входящего запроса
-		 * @param url    адрес входящего запроса
+		 * @param sid     идентификатор входящего потока
+		 * @param aid     идентификатор адъютанта (клиента)
+		 * @param method  метод входящего запроса
+		 * @param url     адрес входящего запроса
+		 * @param headers заголовки запроса
 		 */
-		void request(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url){
+		void headers(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			// Создаём объект URI
 			uri_t uri(this->_fmk);
 			// Выводим информацию в лог
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, aid, uri.url(url).c_str());
+			// Переходим по всем заголовкам
+			for(auto & header : headers)
+				// Выводим информацию в лог
+				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
 	public:
 		/**
@@ -231,7 +236,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	ws.on((function <void (const int32_t, const uint64_t, const server::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
-	ws.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&Executor::request, &executor, _1, _2, _3, _4));
+	ws.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск WebSocket сервер
 	ws.start();
 	// Выводим результат
