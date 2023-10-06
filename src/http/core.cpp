@@ -2565,7 +2565,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Формируем результат ответа
 				result.assign(response.begin(), response.end());
 
-				cout << " *****************2 " << result << endl;
+				cout << " *****************2 " << string(result.begin(), result.end()) << endl;
 			}
 		} break;
 	}
