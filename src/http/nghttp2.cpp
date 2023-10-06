@@ -246,6 +246,9 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 				case static_cast <uint8_t> (mode_t::CLIENT): {
 					// Если мы получили ответ сервера
 					if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+						
+						cout << " ^^^^^^^^^^^^^ " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
+						
 						// Если функция обратного вызова установлена
 						if(self->_callback.is("header"))
 							// Выводим функцию обратного вызова
