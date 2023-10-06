@@ -356,9 +356,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 				if(adj != nullptr){
 					// Если необходимо выполнить закрыть подключение
 					if(!adj->close && adj->stopped){
-						
-						cout << " ********************* " << endl;
-						
 						// Устанавливаем флаг закрытия подключения
 						adj->close = !adj->close;
 						// Выполняем поиск адъютанта в списке активных сессий
@@ -719,6 +716,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													cout << string(buffer.begin(), buffer.end()) << endl << endl;
 											}
 										#endif
+										
+										/*
 										// Если нужно запросить авторизацию
 										if(response.code == 401){
 											// Выполняем ответ подключившемуся клиенту
@@ -737,6 +736,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 										// Если нужно просто отправить ответ клиенту
 										} else {
+										*/
 											// Список заголовков для ответа
 											vector <nghttp2_nv> nva;
 											// Выполняем перебор всех заголовков HTTP/2 ответа
@@ -793,15 +793,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													return NGHTTP2_ERR_CALLBACK_FAILURE;
 												}
 											}
-										}
-
-										cout << " !!!!!!1111 " << endl;
-
+										// }
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
-											
-											cout << " !!!!!!2222 " << endl;
-											
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова

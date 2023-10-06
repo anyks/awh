@@ -133,6 +133,8 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+	// Выполняем сброс идентификатора потока
+	this->_sid = -1;
 	// Если флаг инициализации сессии HTTP2 установлен
 	if(this->_sessionInitialized){
 		// Выполняем закрытие подключения
@@ -506,21 +508,12 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 								}
 								// Если необходимо выполнить пропуск обработки данных
 								case static_cast <uint8_t> (status_t::SKIP): {
-									// Если соединение является постоянным
-									if(this->_http.isAlive())
-										// Выполняем попытку повторить запрос
-										this->connectCallback(this->_aid, this->_scheme.sid, core);
-									// Если нам необходимо отключиться
-									else {
-										// Выполняем отключение
-										core->close(this->_aid);
-										// Если мы получили флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM){
-											// Если установлена функция отлова завершения запроса
-											if(this->_callback.is("end"))
-												// Выводим функцию обратного вызова
-												this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
-										}
+									// Если мы получили флаг завершения потока
+									if(flags & NGHTTP2_FLAG_END_STREAM){
+										// Если установлена функция отлова завершения запроса
+										if(this->_callback.is("end"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
 									}
 									// Завершаем работу
 									return 0;
@@ -941,6 +934,17 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					const uri_t::url_t & url = this->_http.getUrl();
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
+						
+						// Выполняем сброс параметров запроса
+						this->flush();
+						// Увеличиваем количество попыток
+						this->_attempt++;
+						// Устанавливаем новый адрес запроса
+						this->_uri.combine(this->_scheme.url, url);
+						// Если подключение не постоянное, то завершаем работу
+						dynamic_cast <client::core_t *> (core)->close(aid);
+						
+						/*
 						// Если соединение является постоянным
 						if(this->_http.isAlive()){
 							// Выполняем сброс параметров запроса
@@ -953,21 +957,33 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							this->connectCallback(aid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
 						} else dynamic_cast <client::core_t *> (core)->close(aid);
+						*/
+
 					// Если URL-адрес запроса не получен
 					} else {
+						
+						// Выполняем сброс параметров запроса
+						this->flush();
+						// Увеличиваем количество попыток
+						this->_attempt++;
+						// Выполняем попытку повторить запрос
+						this->connectCallback(aid, sid, core);
+						// Если подключение не постоянное, то завершаем работу
+						dynamic_cast <client::core_t *> (core)->close(aid);
+						
+						/*
 						// Если соединение является постоянным
 						if(this->_http.isAlive()){
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Увеличиваем количество попыток
 							this->_attempt++;
-
-							cout << " ^^^^^^^^^^^^^^^ " << endl;
-
 							// Выполняем попытку повторить запрос
 							this->connectCallback(aid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
 						} else dynamic_cast <client::core_t *> (core)->close(aid);
+						*/
+
 					}
 					// Завершаем работу
 					return status_t::SKIP;
@@ -1954,7 +1970,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(0), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
@@ -1968,7 +1984,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(0), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(core, fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
