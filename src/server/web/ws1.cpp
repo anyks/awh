@@ -298,17 +298,33 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							} break;
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-								// Получаем параметры авторизации
-								string auth = adj->http.header("authorization");
-								// Если заголовок авторизации получен
-								if(!auth.empty()){
-									
-									cout << " $$$$$$$$$$$$$$ " << auth << endl;
-									
-									// Выполняем добавление заголовка авторизации
-									http.header(std::move(auth));
-									// Выполняем коммит полученного результата
-									http.commit();
+								// Если сервер требует авторизацию
+								if(this->_authType != auth_t::type_t::NONE){
+									// Определяем тип авторизации
+									switch(static_cast <uint8_t> (this->_authType)){
+										// Если тип авторизации Basic
+										case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+											// Устанавливаем параметры авторизации
+											http.authType(this->_authType);
+											// Если функция обратного вызова для обработки чанков установлена
+											if(this->_callback.is("checkPassword"))
+												// Устанавливаем функцию проверки авторизации
+												http.authCallback(this->_callback.get <bool (const string &, const string &)> ("checkPassword"));
+										} break;
+										// Если тип авторизации Digest
+										case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+											// Устанавливаем название сервера
+											http.realm(this->_service.realm);
+											// Устанавливаем временный ключ сессии сервера
+											http.opaque(this->_service.opaque);
+											// Устанавливаем параметры авторизации
+											http.authType(this->_authType, this->_authHash);
+											// Если функция обратного вызова для обработки чанков установлена
+											if(this->_callback.is("extractPassword"))
+												// Устанавливаем функцию извлечения пароля
+												http.extractPassCallback(this->_callback.get <string (const string &)> ("extractPassword"));
+										} break;
+									}
 								}
 								// Формируем запрос авторизации
 								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
