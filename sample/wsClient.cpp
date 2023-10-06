@@ -321,8 +321,8 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 	
 	// Выполняем инициализацию типа авторизации
-	ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
+	// ws.authType(awh::auth_t::type_t::BASIC);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
 	// Устанавливаем тип авторизации прокси-сервера
