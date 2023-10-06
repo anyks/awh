@@ -493,6 +493,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_req.url.schema = "http";
 									// Выполняем установку хоста
 									this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
+									
+									cout << " ---------------------- " << this->_req.url.host << endl;
+									
 									// Выполняем поиск разделителя
 									const size_t pos = this->_req.url.host.rfind(':');
 									// Если разделитель найден
