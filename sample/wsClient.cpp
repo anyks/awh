@@ -300,7 +300,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем SSL сертификаты сервера
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
-	ws.user("user", "password");
+	// ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
@@ -322,7 +322,7 @@ int main(int argc, char * argv[]){
 	
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
+	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
 	// Устанавливаем тип авторизации прокси-сервера

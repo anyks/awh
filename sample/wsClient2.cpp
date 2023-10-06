@@ -372,14 +372,16 @@ int main(int argc, char * argv[]){
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 	
+	// Устанавливаем сабпротоколы
+	// awh.subs({"test2", "test8", "test9"});
 	// Устанавливаем тип компрессии
 	// awh.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	awh.authTypeProxy();
+	awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	// awh.authType();
-	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType(auth_t::type_t::BASIC);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 
 	// Устанавливаем метод активации подключения
 	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
@@ -397,7 +399,7 @@ int main(int argc, char * argv[]){
 	awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения заголовков
 	awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
-	// Выполняем инициализацию подключения
+	// Выполняем инициализацию подключения	
 	awh.init("wss://stream.binance.com:9443");
 	// Выполняем запуск работы
 	awh.start();

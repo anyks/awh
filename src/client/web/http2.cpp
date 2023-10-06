@@ -52,6 +52,8 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 		this->_ws2._core = this->_core;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
+		// Выполняем установку сессии HTTP2
+		this->_ws2._nghttp2.session = this->_nghttp2.session;
 		// Устанавливаем флаг инициализации сессии HTTP2
 		this->_ws2._sessionInitialized = this->_sessionInitialized;
 		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
