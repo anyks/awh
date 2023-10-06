@@ -125,10 +125,8 @@ class Executor {
 		void request(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url){
 			// Создаём объект URI
 			uri_t uri(this->_fmk);
-			// Получаем адрес запроса
-			const string address = uri.url(url);
 			// Выводим информацию в лог
-			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, address.c_str());
+			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, aid, uri.url(url).c_str());
 		}
 	public:
 		/**
