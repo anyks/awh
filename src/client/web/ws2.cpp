@@ -961,6 +961,9 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							this->flush();
 							// Увеличиваем количество попыток
 							this->_attempt++;
+
+							cout << " ^^^^^^^^^^^^^^^ " << endl;
+
 							// Выполняем попытку повторить запрос
 							this->connectCallback(aid, sid, core);
 						// Если подключение не постоянное, то завершаем работу

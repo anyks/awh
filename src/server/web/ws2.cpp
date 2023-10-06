@@ -356,6 +356,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 				if(adj != nullptr){
 					// Если необходимо выполнить закрыть подключение
 					if(!adj->close && adj->stopped){
+						
+						cout << " ********************* " << endl;
+						
 						// Устанавливаем флаг закрытия подключения
 						adj->close = !adj->close;
 						// Выполняем поиск адъютанта в списке активных сессий
@@ -791,8 +794,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												}
 											}
 										}
+
+										cout << " !!!!!!1111 " << endl;
+
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
+											
+											cout << " !!!!!!2222 " << endl;
+											
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
