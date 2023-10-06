@@ -314,7 +314,7 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// ws.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	
-	ws.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	// ws.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// ws.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
@@ -324,7 +324,7 @@ int main(int argc, char * argv[]){
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.authTypeProxy();
+	// ws.authTypeProxy();
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
