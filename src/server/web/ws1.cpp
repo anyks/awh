@@ -302,6 +302,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								string auth = adj->http.header("authorization");
 								// Если заголовок авторизации получен
 								if(!auth.empty()){
+									
+									cout << " $$$$$$$$$$$$$$ " << auth << endl;
+									
 									// Выполняем добавление заголовка авторизации
 									http.header(std::move(auth));
 									// Выполняем коммит полученного результата
