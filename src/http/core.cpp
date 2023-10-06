@@ -1338,8 +1338,6 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 				this->clearBody();
 				// Добавляем тело сообщения
 				this->_web.body(vector <char> (body.begin(), body.end()));
-
-				cout << " ######################1 " << body << endl;
 			}
 			// Удаляем размер передаваемого контента
 			this->_web.rmHeader("content-length");
@@ -1348,9 +1346,6 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		}
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
-		
-		cout << " ######################2 " << endl;
-
 		// Выводим результат
 		return this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
@@ -2050,9 +2045,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	// Результат работы функции
 	vector <char> result;
-	
-	cout << " *****************1 " << endl;
-	
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -2399,9 +2391,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 			if(res.message.empty())
 				// Выполняем установку сообщения
 				const_cast <web_t::res_t &> (res).message = this->message(res.code);
-			
-			cout << " *****************2 " << endl;
-			
 			// Если сообщение получено
 			if(!res.message.empty()){
 				/**
@@ -2572,8 +2561,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				response.append("\r\n");
 				// Формируем результат ответа
 				result.assign(response.begin(), response.end());
-
-				cout << " *****************3 " << string(result.begin(), result.end()) << endl;
 			}
 		} break;
 	}

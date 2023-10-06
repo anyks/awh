@@ -305,7 +305,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										// Выполняем очистку буфера данных
 										adj->buffer.payload.clear();
 										// Формируем ответ, что страница не доступна
-										buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (500)));
+										buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (500)));
 									}
 								// Сообщаем, что рукопожатие не выполнено
 								} else {
@@ -319,7 +319,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем очистку буфера данных
 									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
-									buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
+									buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
 								}
 							} break;
 							// Если запрос неудачный
@@ -334,7 +334,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выполняем очистку буфера данных
 								adj->buffer.payload.clear();
 								// Формируем запрос авторизации
-								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+								buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							} break;
 							// Если результат определить не получилось
 							default: {
@@ -348,7 +348,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выполняем очистку буфера данных
 								adj->buffer.payload.clear();
 								// Формируем запрос авторизации
-								buffer = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
+								buffer = reinterpret_cast <http_t &> (adj->http).reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
 							}
 						}
 						
