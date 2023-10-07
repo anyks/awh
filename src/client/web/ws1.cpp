@@ -1222,32 +1222,32 @@ void awh::client::WebSocket1::on(function <void (const int32_t, const u_int, con
 	this->_http.on((function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&ws1_t::headers, this, _1, _2, _3, _4));
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::client::WebSocket1::sub(const string & sub) noexcept {
+void awh::client::WebSocket1::subprotocol(const string & subprotocol) noexcept {
 	// Если поддерживаемый сабпротокол передан
-	if(!sub.empty())
+	if(!subprotocol.empty())
 		// Устанавливаем поддерживаемый сабподпротокол
-		this->_http.sub(sub);
+		this->_http.subprotocol(subprotocol);
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::WebSocket1::subs() const noexcept {
+const set <string> & awh::client::WebSocket1::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
-	return this->_http.subs();
+	return this->_http.subprotocols();
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::client::WebSocket1::subs(const set <string> & subs) noexcept {
+void awh::client::WebSocket1::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
-	if(!subs.empty())
+	if(!subprotocols.empty())
 		// Устанавливаем список поддерживаемых сабпротоколов
-		this->_http.subs(subs);
+		this->_http.subprotocols(subprotocols);
 }
 /**
  * extensions Метод извлечения списка расширений

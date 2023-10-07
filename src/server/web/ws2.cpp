@@ -66,7 +66,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				// Если сабпротоколы установлены
 				if(!this->_subprotocols.empty())
 					// Устанавливаем поддерживаемые сабпротоколы
-					adj->http.subs(this->_subprotocols);
+					adj->http.subprotocols(this->_subprotocols);
 				// Если список расширений установлены
 				if(!this->_extensions.empty())
 					// Устанавливаем список поддерживаемых расширений
@@ -123,7 +123,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 			// Если сабпротоколы установлены
 			if(!this->_subprotocols.empty())
 				// Устанавливаем поддерживаемые сабпротоколы
-				this->_ws1.subs(this->_subprotocols);
+				this->_ws1.subprotocols(this->_subprotocols);
 			// Если список расширений установлены
 			if(!this->_extensions.empty())
 				// Устанавливаем список поддерживаемых расширений
@@ -1670,31 +1670,31 @@ void awh::server::WebSocket2::close(const uint64_t aid) noexcept {
 	}
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::server::WebSocket2::sub(const string & sub) noexcept {
+void awh::server::WebSocket2::subprotocol(const string & subprotocol) noexcept {
 	// Устанавливаем сабпротокол
-	if(!sub.empty())
+	if(!subprotocol.empty())
 		// Выполняем установку сабпротокола
-		this->_subprotocols.emplace(sub);
+		this->_subprotocols.emplace(subprotocol);
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::server::WebSocket2::subs(const set <string> & subs) noexcept {
+void awh::server::WebSocket2::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
-	if(!subs.empty())
+	if(!subprotocols.empty())
 		// Выполняем установку сабпротоколов
-		this->_subprotocols = subs;
+		this->_subprotocols = subprotocols;
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @param aid идентификатор адъютанта
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::WebSocket2::subs(const uint64_t aid) const noexcept {
+const set <string> & awh::server::WebSocket2::subprotocols(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	static const set <string> result;
 	// Получаем параметры подключения адъютанта
@@ -1704,9 +1704,9 @@ const set <string> & awh::server::WebSocket2::subs(const uint64_t aid) const noe
 		// Если переключение протокола на HTTP/2 не выполнено
 		if(adj->proto != engine_t::proto_t::HTTP2)
 			// Выводим согласованный сабпротокол
-			return this->_ws1.subs(aid);
+			return this->_ws1.subprotocols(aid);
 		// Выполняем извлечение согласованного сабпротокола для текущего подключения
-		else return adj->http.subs();
+		else return adj->http.subprotocols();
 	}
 	// Выводим результат по умолчанию
 	return result;

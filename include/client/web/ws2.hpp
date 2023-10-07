@@ -368,20 +368,20 @@ namespace awh {
 				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
-				 * sub Метод установки поддерживаемого сабпротокола
-				 * @param sub сабпротокол для установки
+				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @param subprotocol сабпротокол для установки
 				 */
-				void sub(const string & sub) noexcept;
+				void subprotocol(const string & subprotocol) noexcept;
 				/**
-				 * sub Метод получения списка выбранных сабпротоколов
+				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const set <string> & subs() const noexcept;
+				const set <string> & subprotocols() const noexcept;
 				/**
-				 * subs Метод установки списка поддерживаемых сабпротоколов
-				 * @param subs сабпротоколы для установки
+				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subs(const set <string> & subs) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений

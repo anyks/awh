@@ -210,20 +210,20 @@ namespace awh {
 			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
-			 * sub Метод установки поддерживаемого сабпротокола
-			 * @param sub сабпротокол для установки
+			 * subprotocol Метод установки поддерживаемого сабпротокола
+			 * @param subprotocol сабпротокол для установки
 			 */
-			void sub(const string & sub) noexcept;
+			void subprotocol(const string & subprotocol) noexcept;
 			/**
-			 * sub Метод получения списка выбранных сабпротоколов
+			 * subprotocol Метод получения списка выбранных сабпротоколов
 			 * @return список выбранных сабпротоколов
 			 */
-			const set <string> & subs() const noexcept;
+			const set <string> & subprotocols() const noexcept;
 			/**
-			 * subs Метод установки списка поддерживаемых сабпротоколов
-			 * @param subs сабпротоколы для установки
+			 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+			 * @param subprotocols сабпротоколы для установки
 			 */
-			void subs(const set <string> & subs) noexcept;
+			void subprotocols(const set <string> & subprotocols) noexcept;
 		public:
 			/**
 			 * takeover Метод получения флага переиспользования контекста компрессии

@@ -1653,43 +1653,43 @@ void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, con
 	this->_ws1.on(callback);
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::client::WebSocket2::sub(const string & sub) noexcept {
+void awh::client::WebSocket2::subprotocol(const string & subprotocol) noexcept {
 	// Если сабпротокол передан
-	if(!sub.empty()){
+	if(!subprotocol.empty()){
 		// Устанавливаем поддерживаемый сабпротокол для WebSocket-клиента
-		this->_ws1.sub(sub);
+		this->_ws1.subprotocol(subprotocol);
 		// Устанавливаем поддерживаемый сабпротокол для HTTP-клиента
-		this->_http.sub(sub);
+		this->_http.subprotocol(subprotocol);
 	}
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::WebSocket2::subs() const noexcept {
+const set <string> & awh::client::WebSocket2::subprotocols() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим список выбранных сабпротоколов
-		return this->_ws1.subs();
+		return this->_ws1.subprotocols();
 	// Если переключение протокола на HTTP/2 выполнено
 	else
 		// Выводим список выбранных сабпротоколов
-		return this->_http.subs();
+		return this->_http.subprotocols();
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::client::WebSocket2::subs(const set <string> & subs) noexcept {
+void awh::client::WebSocket2::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
-	if(!subs.empty()){
+	if(!subprotocols.empty()){
 		// Устанавливаем список поддерживаемых сабсабпротоколов для WebSocket-клиента
-		this->_ws1.subs(subs);
+		this->_ws1.subprotocols(subprotocols);
 		// Устанавливаем список поддерживаемых сабсабпротоколов для HTTP-клиента
-		this->_http.subs(subs);
+		this->_http.subprotocols(subprotocols);
 	}
 }
 /**

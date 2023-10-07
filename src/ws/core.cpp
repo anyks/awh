@@ -148,26 +148,26 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Если количество поддерживаемых сабпротоколов больше 5-ти
 				if(this->_supportedProtocols.size() > 5){
 					// Список поддерживаемых сабпротоколов
-					string subs = "";
+					string subprotocols = "";
 					// Переходим по всему списку поддерживаемых сабпротоколов
-					for(auto & sub : this->_supportedProtocols){
+					for(auto & subprotocol : this->_supportedProtocols){
 						// Если сабпротокол уже не пустой
-						if(!subs.empty())
+						if(!subprotocols.empty())
 							// Добавляем разделитель
-							subs.append(", ");
+							subprotocols.append(", ");
 						// Добавляем в список поддерживаемых сабпротоколов
-						subs.append(sub);
+						subprotocols.append(subprotocol);
 					}
 					// Добавляем заголовок поддерживаемых сабпротоколов
-					this->header("Sec-WebSocket-Protocol", subs);
+					this->header("Sec-WebSocket-Protocol", subprotocols);
 				// Если сабпротоколов слишком много
 				} else {
 					// Получаем список заголовков
 					const auto & headers = this->_web.headers();
 					// Переходим по всему списку поддерживаемых сабпротоколов
-					for(auto & sub : this->_supportedProtocols)
+					for(auto & subprotocol : this->_supportedProtocols)
 						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
+						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 				}
 			}
 			// Добавляем заголовок Accept
@@ -196,26 +196,26 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Если количество выбранных сабпротоколов больше 5-ти
 				if(this->_selectedProtocols.size() > 5){
 					// Список выбранных сабпротоколов
-					string subs = "";
+					string subprotocols = "";
 					// Переходим по всему списку выбранных сабпротоколов
-					for(auto & sub : this->_selectedProtocols){
+					for(auto & subprotocol : this->_selectedProtocols){
 						// Если сабпротокол уже не пустой
-						if(!subs.empty())
+						if(!subprotocols.empty())
 							// Добавляем разделитель
-							subs.append(", ");
+							subprotocols.append(", ");
 						// Добавляем в список выбранных сабпротоколов
-						subs.append(sub);
+						subprotocols.append(subprotocol);
 					}
 					// Добавляем заголовок выбранных сабпротоколов
-					this->header("Sec-WebSocket-Protocol", subs);
+					this->header("Sec-WebSocket-Protocol", subprotocols);
 				// Если сабпротоколов слишком много
 				} else {
 					// Получаем список заголовков
 					const auto & headers = this->_web.headers();
 					// Переходим по всему списку выбранных сабпротоколов
-					for(auto & sub : this->_selectedProtocols)
+					for(auto & subprotocol : this->_selectedProtocols)
 						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
+						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 				}
 			}
 		} break;
@@ -546,26 +546,26 @@ vector <char> awh::WCore::dump() const noexcept {
 		// Устанавливаем количество выбранных сабпротоколов
 		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
 		// Выполняем перебор всех выбранных сабпротоколов
-		for(auto & sub : this->_selectedProtocols){
+		for(auto & subprotocol : this->_selectedProtocols){
 			// Получаем размер выбранному сабпротокола
-			length = sub.size();
+			length = subprotocol.size();
 			// Устанавливаем размер выбранному сабпротокола
 			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 			// Устанавливаем данные выбранному сабпротокола
-			result.insert(result.end(), sub.begin(), sub.end());
+			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
 		}
 		// Получаем количество поддерживаемых сабпротоколов
 		count = this->_supportedProtocols.size();
 		// Устанавливаем количество поддерживаемых сабпротоколов
 		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
 		// Выполняем перебор всех поддерживаемых сабпротоколов
-		for(auto & sub : this->_supportedProtocols){
+		for(auto & subprotocol : this->_supportedProtocols){
 			// Получаем размер поддерживаемого сабпротокола
-			length = sub.size();
+			length = subprotocol.size();
 			// Устанавливаем размер поддерживаемого сабпротокола
 			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
 			// Устанавливаем данные поддерживаемого сабпротокола
-			result.insert(result.end(), sub.begin(), sub.end());
+			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
 		}
 	}
 	// Выводим результат
@@ -658,15 +658,15 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для поддерживаемого сабпротокола
-			string sub(length, 0);
+			string subprotocol(length, 0);
 			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy((void *) sub.data(), data.data() + offset, length);
+			::memcpy((void *) subprotocol.data(), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
-			if(!sub.empty())
+			if(!subprotocol.empty())
 				// Выполняем установку списка выбранных сабпротоколов
-				this->_selectedProtocols.emplace(std::move(sub));
+				this->_selectedProtocols.emplace(std::move(subprotocol));
 		}
 		// Выполняем получение количества поддерживаемых сабпротоколов
 		::memcpy((void *) &count, data.data() + offset, sizeof(count));
@@ -681,15 +681,15 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для поддерживаемого сабпротокола
-			string sub(length, 0);
+			string subprotocol(length, 0);
 			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy((void *) sub.data(), data.data() + offset, length);
+			::memcpy((void *) subprotocol.data(), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
-			if(!sub.empty())
+			if(!subprotocol.empty())
 				// Выполняем установку списка поддерживаемых сабпротоколов
-				this->_supportedProtocols.emplace(std::move(sub));
+				this->_supportedProtocols.emplace(std::move(subprotocol));
 		}
 	}
 }
@@ -1037,32 +1037,32 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 	return http_t::process2(flag, provider);
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::WCore::sub(const string & sub) noexcept {
+void awh::WCore::subprotocol(const string & subprotocol) noexcept {
 	// Если сабпротокол передан
-	if(!sub.empty())
+	if(!subprotocol.empty())
 		// Выполняем установку поддерживаемого сабпротокола
-		this->_supportedProtocols.emplace(sub);
+		this->_supportedProtocols.emplace(subprotocol);
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::WCore::subs() const noexcept {
+const set <string> & awh::WCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subs(const set <string> & subs) noexcept {
+void awh::WCore::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
-	if(!subs.empty())
+	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов
-		this->_supportedProtocols = subs;
+		this->_supportedProtocols = subprotocols;
 }
 /**
  * takeover Метод получения флага переиспользования контекста компрессии

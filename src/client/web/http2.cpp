@@ -1659,28 +1659,28 @@ void awh::client::Http2::on(function <void (const int32_t, const u_int, const st
 	this->_http1.on(callback);
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::client::Http2::sub(const string & sub) noexcept {
+void awh::client::Http2::subprotocol(const string & subprotocol) noexcept {
 	// Выполняем установку поддерживаемого сабпротокола
-	this->_ws2.sub(sub);
+	this->_ws2.subprotocol(subprotocol);
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::Http2::subs() const noexcept {
+const set <string> & awh::client::Http2::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
-	return this->_ws2.subs();
+	return this->_ws2.subprotocols();
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Http2::subs(const set <string> & subs) noexcept {
+void awh::client::Http2::subprotocols(const set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
-	this->_ws2.subs(subs);
+	this->_ws2.subprotocols(subprotocols);
 }
 /**
  * extensions Метод извлечения списка расширений

@@ -220,7 +220,7 @@ class Executor {
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
-			const auto subprotocols = this->_ws->subs();
+			const auto subprotocols = this->_ws->subprotocols();
 			// Если список выбранных сабпротоколов получен
 			if(!subprotocols.empty())
 				// Выполняем получение выбранного сабпротокола
@@ -348,7 +348,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы
-	ws.subs({"test2", "test8", "test9"});
+	ws.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем поддерживаемые расширения
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов

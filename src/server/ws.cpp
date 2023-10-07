@@ -240,29 +240,29 @@ void awh::server::WebSocket::close(const uint64_t aid) noexcept {
 	this->_ws.close(aid);
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::server::WebSocket::sub(const string & sub) noexcept {
+void awh::server::WebSocket::subprotocol(const string & subprotocol) noexcept {
 	// Выполняем установку сабпротокола поддерживаемого сервером
-	this->_ws.sub(sub);
+	this->_ws.subprotocol(subprotocol);
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::server::WebSocket::subs(const set <string> & subs) noexcept {
+void awh::server::WebSocket::subprotocols(const set <string> & subprotocols) noexcept {
 	// Выполняем установку списка сабпротоколов поддерживаемых сервером
-	this->_ws.subs(subs);
+	this->_ws.subprotocols(subprotocols);
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @param aid идентификатор адъютанта
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::WebSocket::subs(const uint64_t aid) const noexcept {
+const set <string> & awh::server::WebSocket::subprotocols(const uint64_t aid) const noexcept {
 	// Выводим извлечение списка выбранных сабпротоколов
-	return this->_ws.subs(aid);
+	return this->_ws.subprotocols(aid);
 }
 /**
  * extensions Метод установки списка расширений

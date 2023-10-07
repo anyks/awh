@@ -597,28 +597,28 @@ void awh::client::AWH::start() noexcept {
 	this->_http.start();
 }
 /**
- * sub Метод установки поддерживаемого сабпротокола
- * @param sub сабпротокол для установки
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
  */
-void awh::client::AWH::sub(const string & sub) noexcept {
+void awh::client::AWH::subprotocol(const string & subprotocol) noexcept {
 	// Выполняем установку поддерживаемого сабпротокола
-	this->_http.sub(sub);
+	this->_http.subprotocol(subprotocol);
 }
 /**
- * sub Метод получения списка выбранных сабпротоколов
+ * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::AWH::subs() const noexcept {
+const set <string> & awh::client::AWH::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
-	return this->_http.subs();
+	return this->_http.subprotocols();
 }
 /**
- * subs Метод установки списка поддерживаемых сабпротоколов
- * @param subs сабпротоколы для установки
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
  */
-void awh::client::AWH::subs(const set <string> & subs) noexcept {
+void awh::client::AWH::subprotocols(const set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
-	this->_http.subs(subs);
+	this->_http.subprotocols(subprotocols);
 }
 /**
  * extensions Метод извлечения списка расширений WebSocket

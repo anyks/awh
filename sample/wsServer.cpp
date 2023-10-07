@@ -112,7 +112,7 @@ class Executor {
 				// Выбранный сабпротокол
 				string subprotocol = "";
 				// Получаем список выбранных сабпротоколов
-				const auto subprotocols = this->_ws->subs(aid);
+				const auto subprotocols = this->_ws->subprotocols(aid);
 				// Если список выбранных сабпротоколов получен
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
@@ -230,7 +230,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
-	ws.subs({"test1", "test2", "test3"});
+	ws.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
 	ws.on((function <string (const string &)>) std::bind(&Executor::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации

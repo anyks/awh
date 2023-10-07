@@ -204,7 +204,7 @@ class WebClient {
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
-			const auto subprotocols = this->_ws->subs();
+			const auto subprotocols = this->_ws->subprotocols();
 			// Если список выбранных сабпротоколов получен
 			if(!subprotocols.empty())
 				// Выполняем получение выбранного сабпротокола
@@ -381,7 +381,7 @@ int main(int argc, char * argv[]){
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 	
 	// Устанавливаем сабпротоколы
-	// awh.subs({"test2", "test8", "test9"});
+	// awh.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем тип компрессии
 	// awh.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
