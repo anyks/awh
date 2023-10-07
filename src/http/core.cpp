@@ -1346,6 +1346,9 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		}
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
+
+		cout << " ^^^^^^^^^^^^^^^^^^^1 " << endl;
+
 		// Выводим результат
 		return this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
@@ -2045,6 +2048,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	
+	cout << " ^^^^^^^^^^^^^^^^^^^2 " << endl;
+	
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса

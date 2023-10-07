@@ -182,6 +182,19 @@ namespace awh {
 			short wbit(const web_t::hid_t hid) const noexcept;
 		public:
 			/**
+			 * reject Метод создания отрицательного ответа
+			 * @param req объект параметров REST-ответа
+			 * @return    буфер данных ответа в бинарном виде
+			 */
+			vector <char> reject(const web_t::res_t & res) const noexcept;
+			/**
+			 * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
+			 * @param req объект параметров REST-ответа
+			 * @return    буфер данных ответа в бинарном виде
+			 */
+			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+		public:
+			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
 			 * @param flag     флаг выполняемого процесса
 			 * @param provider параметры провайдера обмена сообщениями

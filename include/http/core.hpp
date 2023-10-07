@@ -488,26 +488,26 @@ namespace awh {
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <char> proxy(const web_t::req_t & req) const noexcept;
+			virtual vector <char> proxy(const web_t::req_t & req) const noexcept;
 			/**
 			 * proxy2 Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
+			virtual vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
 		public:
 			/**
 			 * reject Метод создания отрицательного ответа
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <char> reject(const web_t::res_t & res) const noexcept;
+			virtual vector <char> reject(const web_t::res_t & res) const noexcept;
 			/**
 			 * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде

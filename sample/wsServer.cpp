@@ -204,7 +204,7 @@ int main(int argc, char * argv[]){
 	// ws.opaque("keySession");
 	// Устанавливаем тип авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	// ws.init(2222, "127.0.0.1", awh::http_t::compress_t::DEFLATE);
 	ws.init(2222, "", awh::http_t::compress_t::DEFLATE);
@@ -224,7 +224,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	ws.subs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
-	// ws.on((function <string (const string &)>) std::bind(&Executor::password, &executor, _1));
+	ws.on((function <string (const string &)>) std::bind(&Executor::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
 	// ws.on((function <bool (const string &, const string &)>) std::bind(&Executor::auth, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок
