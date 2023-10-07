@@ -807,8 +807,6 @@ void awh::server::WebSocket1::garbage(const u_short tid, awh::core_t * core) noe
 					adj->buffer.payload.clear();
 					// Выполняем очистку оставшихся фрагментов
 					adj->buffer.fragmes.clear();
-
-					cout << " --------------------------------- WS1 " << it->first << endl;
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);

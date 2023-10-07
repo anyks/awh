@@ -1205,8 +1205,6 @@ void awh::server::WebSocket2::garbage(const u_short tid, awh::core_t * core) noe
 						this->_ws1.garbage(tid, core);
 					// Выполняем удаление созданной ранее сессии HTTP/2
 					else this->_sessions.erase(it->first);
-
-					cout << " --------------------------------- WS2 " << it->first << endl;
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);
