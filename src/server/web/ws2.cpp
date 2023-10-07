@@ -283,7 +283,12 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 					// Завершаем работу
 					dynamic_cast <server::core_t *> (core)->close(aid);
 				// Отправляем запрос адъютанту
-				else this->ping(aid, core, ::to_string(aid));
+				else {
+
+					cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 SEND PING " << ::to_string(aid) << endl;
+
+					this->ping(aid, core, ::to_string(aid));
+				}
 			}
 		}
 	}
@@ -428,12 +433,18 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										// Определяем тип ответа
 										switch(static_cast <uint8_t> (head.optcode)){
 											// Если ответом является PING
-											case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
+											case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
+												
+												cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 SEND PONG " << string(data.begin(), data.end()) << endl;
+												
 												// Отправляем ответ адъютанту
 												this->pong(aid, const_cast <server::core_t *> (this->_core), string(data.begin(), data.end()));
-											break;
+											} break;
 											// Если ответом является PONG
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
+												
+												cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 RECV PONG " << string(data.begin(), data.end()) << endl;
+												
 												// Если идентификатор адъютанта совпадает
 												if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
 													// Обновляем контрольную точку

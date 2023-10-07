@@ -448,12 +448,18 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Определяем тип ответа
 							switch(static_cast <uint8_t> (head.optcode)){
 								// Если ответом является PING
-								case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
+								case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
+
+									cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 SEND PONG " << string(data.begin(), data.end()) << endl;
+
 									// Отправляем ответ адъютанту
 									this->pong(aid, core, string(data.begin(), data.end()));
-								break;
+								} break;
 								// Если ответом является PONG
 								case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
+									
+									cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 RECV PONG " << string(data.begin(), data.end()) << endl;
+									
 									// Если идентификатор адъютанта совпадает
 									if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
 										// Обновляем контрольную точку
@@ -607,7 +613,13 @@ void awh::server::WebSocket1::persistCallback(const uint64_t aid, const uint16_t
 				// Завершаем работу
 				dynamic_cast <server::core_t *> (core)->close(aid);
 			// Отправляем запрос адъютанту
-			else this->ping(aid, core, ::to_string(aid));
+			else {
+
+				cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 SEND PING " << ::to_string(aid) << endl;
+			
+				this->ping(aid, core, ::to_string(aid));
+
+			}
 		}
 	}
 }
