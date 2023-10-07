@@ -1310,19 +1310,16 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		const_cast <web_t::res_t &> (res).message = this->message(res.code);
 	// Если сообщение получено
 	if(!res.message.empty()){
-		// Если заголовок подключения ещё не существует
-		if(!this->_web.isHeader("connection")){
-			// Если требуется ввод авторизационных данных
-			if((res.code == 401) || (res.code == 407))
-				// Добавляем заголовок закрытия подключения
-				this->_web.header("Connection", "Keep-Alive");
+		// Выполняем очистку списка установленных заголовков
+		this->_web.clearHeaders();
+		// Если требуется ввод авторизационных данных
+		if((res.code == 401) || (res.code == 407))
 			// Добавляем заголовок закрытия подключения
-			else this->_web.header("Connection", "Close");
-		}
-		// Если заголовок типа контента не существует
-		if(!this->_web.isHeader("content-type"))
-			// Добавляем заголовок тип контента
-			this->_web.header("Content-type", "text/html; charset=utf-8");
+			this->_web.header("Connection", "Keep-Alive");
+		// Добавляем заголовок закрытия подключения
+		else this->_web.header("Connection", "Close");
+		// Добавляем заголовок тип контента
+		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
 		if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 			// Получаем данные тела
@@ -1339,8 +1336,6 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 				// Добавляем тело сообщения
 				this->_web.body(vector <char> (body.begin(), body.end()));
 			}
-			// Удаляем размер передаваемого контента
-			this->_web.rmHeader("content-length");
 			// Добавляем заголовок тела сообщения
 			this->_web.header("Content-Length", ::to_string(body.size()));
 		}
@@ -1364,19 +1359,16 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		const_cast <web_t::res_t &> (res).message = this->message(res.code);
 	// Если сообщение получено
 	if(!res.message.empty()){
-		// Если заголовок подключения ещё не существует
-		if(!this->_web.isHeader("connection")){
-			// Если требуется ввод авторизационных данных
-			if((res.code == 401) || (res.code == 407))
-				// Добавляем заголовок закрытия подключения
-				this->_web.header("Connection", "Keep-Alive");
+		// Выполняем очистку списка установленных заголовков
+		this->_web.clearHeaders();
+		// Если требуется ввод авторизационных данных
+		if((res.code == 401) || (res.code == 407))
 			// Добавляем заголовок закрытия подключения
-			else this->_web.header("Connection", "Close");
-		}
-		// Если заголовок типа контента не существует
-		if(!this->_web.isHeader("content-type"))
-			// Добавляем заголовок тип контента
-			this->_web.header("Content-type", "text/html; charset=utf-8");
+			this->_web.header("Connection", "Keep-Alive");
+		// Добавляем заголовок закрытия подключения
+		else this->_web.header("Connection", "Close");
+		// Добавляем заголовок тип контента
+		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
 		if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 			// Получаем данные тела
@@ -1393,14 +1385,9 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 				// Добавляем тело сообщения
 				this->_web.body(vector <char> (body.begin(), body.end()));
 			}
-			// Удаляем размер передаваемого контента
-			this->_web.rmHeader("content-length");
 		}
 		// Устанавливаем парарметр ответа
 		this->_web.response(res);
-
-		cout << " ^^^^^^^^^^^^^^^^^^^1 " << endl;
-
 		// Выводим результат
 		return this->process2(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
@@ -2577,9 +2564,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
  * @return         буфер данных в бинарном виде
  */
 vector <pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
-	
-	cout << " ^^^^^^^^^^^^^^^^^^^2 " << endl;
-	
 	// Результат работы функции
 	vector <pair<string, string>> result;
 	// Определяем флаг выполняемого процесса
