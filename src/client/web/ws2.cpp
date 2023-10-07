@@ -1964,4 +1964,8 @@ awh::client::WebSocket2::~WebSocket2() noexcept {
 	if(this->_ws1._thr.is())
 		// Выполняем завершение всех активных потоков
 		this->_ws1._thr.wait();
+	// Выполняем задержку на 3 секунды, чтобы избежать краха приложения
+	for(uint8_t i = 0; i < 3; i++)
+		// Усыпляем поток на 1 секунду
+		this_thread::sleep_for(1s);
 }

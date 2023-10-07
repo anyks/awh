@@ -277,7 +277,7 @@ int main(int argc, char * argv[]){
 	 */
 	ws.mode({
 		// client::web_t::flag_t::NOT_STOP,
-		// client::web_t::flag_t::ALIVE,
+		client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
 		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
