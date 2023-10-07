@@ -1964,6 +1964,12 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
  * ~Http2 Деструктор
  */
 awh::client::Http2::~Http2() noexcept {
+	// Снимаем адрес сетевого ядра
+	this->_ws2._core = nullptr;
+	// Снимаем активную сессию для зависимого модуля WebSocket
+	this->_ws2._nghttp2.session = nullptr;
+	// Снимаем флаг инициализации сессии HTTP2
+	this->_ws2._sessionInitialized = false;
 	// Если многопоточность активированна
 	if(this->_ws2._thr.is())
 		// Выполняем завершение всех активных потоков
