@@ -816,6 +816,8 @@ short awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
  * @return    буфер данных ответа в бинарном виде
  */
 vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
+	// Выполняем очистку выбранного сабпротокола
+	this->_sub.clear();
 	// Выполняем генерацию сообщения ответа
 	return http_t::reject(res);
 }
@@ -825,6 +827,8 @@ vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
  * @return    буфер данных ответа в бинарном виде
  */
 vector <pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
+	// Выполняем очистку выбранного сабпротокола
+	this->_sub.clear();
 	// Выполняем генерацию сообщения ответа
 	return http_t::reject2(res);
 }
