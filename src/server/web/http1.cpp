@@ -339,6 +339,8 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 					adj->close = true;
 					// Выполняем очистку оставшихся данных
 					adj->buffer.clear();
+
+					cout << " --------------------------------- HTTP1 " << it->first << endl;
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);

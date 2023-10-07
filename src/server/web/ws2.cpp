@@ -283,12 +283,7 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 					// Завершаем работу
 					dynamic_cast <server::core_t *> (core)->close(aid);
 				// Отправляем запрос адъютанту
-				else {
-
-					cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 SEND PING " << ::to_string(aid) << endl;
-
-					this->ping(aid, core, ::to_string(aid));
-				}
+				else this->ping(aid, core, ::to_string(aid));
 			}
 		}
 	}
@@ -433,23 +428,17 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										// Определяем тип ответа
 										switch(static_cast <uint8_t> (head.optcode)){
 											// Если ответом является PING
-											case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
-												
-												cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 SEND PONG " << string(data.begin(), data.end()) << endl;
-												
+											case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 												// Отправляем ответ адъютанту
 												this->pong(aid, const_cast <server::core_t *> (this->_core), string(data.begin(), data.end()));
-											} break;
+											break;
 											// Если ответом является PONG
-											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
-												
-												cout << " ^^^^^^^^^^^^^^^^^^^^^^WS2 RECV PONG " << string(data.begin(), data.end()) << endl;
-												
+											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
 												// Если идентификатор адъютанта совпадает
 												if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
 													// Обновляем контрольную точку
 													adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-											} break;
+											break;
 											// Если ответом является TEXT
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 											// Если ответом является BINARY
@@ -1216,6 +1205,8 @@ void awh::server::WebSocket2::garbage(const u_short tid, awh::core_t * core) noe
 						this->_ws1.garbage(tid, core);
 					// Выполняем удаление созданной ранее сессии HTTP/2
 					else this->_sessions.erase(it->first);
+
+					cout << " --------------------------------- WS2 " << it->first << endl;
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);

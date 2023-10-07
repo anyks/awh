@@ -448,23 +448,17 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Определяем тип ответа
 							switch(static_cast <uint8_t> (head.optcode)){
 								// Если ответом является PING
-								case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
-
-									cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 SEND PONG " << string(data.begin(), data.end()) << endl;
-
+								case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 									// Отправляем ответ адъютанту
 									this->pong(aid, core, string(data.begin(), data.end()));
-								} break;
+								break;
 								// Если ответом является PONG
-								case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
-									
-									cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 RECV PONG " << string(data.begin(), data.end()) << endl;
-									
+								case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
 									// Если идентификатор адъютанта совпадает
 									if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
 										// Обновляем контрольную точку
 										adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-								} break;
+								break;
 								// Если ответом является TEXT
 								case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 								// Если ответом является BINARY
@@ -613,13 +607,7 @@ void awh::server::WebSocket1::persistCallback(const uint64_t aid, const uint16_t
 				// Завершаем работу
 				dynamic_cast <server::core_t *> (core)->close(aid);
 			// Отправляем запрос адъютанту
-			else {
-
-				cout << " ^^^^^^^^^^^^^^^^^^^^^^WS1 SEND PING " << ::to_string(aid) << endl;
-			
-				this->ping(aid, core, ::to_string(aid));
-
-			}
+			else this->ping(aid, core, ::to_string(aid));
 		}
 	}
 }
@@ -819,6 +807,8 @@ void awh::server::WebSocket1::garbage(const u_short tid, awh::core_t * core) noe
 					adj->buffer.payload.clear();
 					// Выполняем очистку оставшихся фрагментов
 					adj->buffer.fragmes.clear();
+
+					cout << " --------------------------------- WS1 " << it->first << endl;
 				}
 				// Выполняем удаление параметров адъютанта
 				this->_scheme.rm(it->first);
