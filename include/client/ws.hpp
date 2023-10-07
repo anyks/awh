@@ -165,20 +165,20 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
-				 * sub Метод получения выбранного сабпротокола WebSocket
-				 * @return выбранный сабпротокол
-				 */
-				const string & sub() const noexcept;
-				/**
-				 * sub Метод установки сабпротокола поддерживаемого сервером WebSocket
+				 * sub Метод установки поддерживаемого сабпротокола
 				 * @param sub сабпротокол для установки
 				 */
 				void sub(const string & sub) noexcept;
 				/**
-				 * subs Метод установки списка сабпротоколов поддерживаемых сервером WebSocket
+				 * sub Метод получения списка выбранных сабпротоколов
+				 * @return список выбранных сабпротоколов
+				 */
+				const set <string> & subs() const noexcept;
+				/**
+				 * subs Метод установки списка поддерживаемых сабпротоколов
 				 * @param subs сабпротоколы для установки
 				 */
-				void subs(const vector <string> & subs) noexcept;
+				void subs(const set <string> & subs) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений WebSocket

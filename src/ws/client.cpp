@@ -82,14 +82,18 @@ void awh::client::WS::commit() noexcept {
 				extensions.push_back(std::move(extension));
 			// Выполняем очистку слова записи
 			extension.clear();
+		// Если заголовок сабпротокола найден
+		} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")){
+			// Проверяем, соответствует ли желаемый подпротокол нашему установленному
+			if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
+				// Устанавливаем выбранный подпротокол
+				this->_selectedProtocols.emplace(header.second);
 		}
 	}
 	// Если список записей собран
 	if(!extensions.empty())
 		// Выполняем добавление списка записей в список расширений
 		this->_extensions.push_back(std::move(extensions));
-	// Ищем подпротокол сервера
-	this->_sub = this->_web.header("sec-websocket-protocol");
 }
 /**
  * checkKey Метод проверки ключа сервера

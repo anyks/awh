@@ -201,21 +201,21 @@ namespace awh {
 				void close(const uint64_t aid) noexcept;
 			public:
 				/**
-				 * sub Метод установки сабпротокола поддерживаемого сервером
-				 * @param sub подпротокол для установки
+				 * sub Метод установки поддерживаемого сабпротокола
+				 * @param sub сабпротокол для установки
 				 */
 				void sub(const string & sub) noexcept;
 				/**
-				 * subs Метод установки списка сабпротоколов поддерживаемых сервером
-				 * @param subs подпротоколы для установки
+				 * subs Метод установки списка поддерживаемых сабпротоколов
+				 * @param subs сабпротоколы для установки
 				 */
-				void subs(const vector <string> & subs) noexcept;
+				void subs(const set <string> & subs) noexcept;
 				/**
-				 * sub Метод получения выбранного сабпротокола
+				 * sub Метод получения списка выбранных сабпротоколов
 				 * @param aid идентификатор адъютанта
-				 * @return    выбранный сабпротокол
+				 * @return    список выбранных сабпротоколов
 				 */
-				const string & sub(const uint64_t aid) const noexcept;
+				const set <string> & subs(const uint64_t aid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений

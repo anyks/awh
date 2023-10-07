@@ -35,10 +35,10 @@ void awh::server::WS::commit() noexcept {
 	for(auto & header : this->_web.headers()){
 		// Если заголовок сабпротокола найден
 		if(this->_fmk->compare(header.first, "sec-websocket-protocol")){
-			// Проверяем, соответствует ли желаемый подпротокол нашему
-			if(this->_subs.find(header.second) != this->_subs.end())
+			// Проверяем, соответствует ли желаемый подпротокол нашему установленному
+			if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
 				// Устанавливаем выбранный подпротокол
-				this->_sub = header.second;
+				this->_selectedProtocols.emplace(header.second);
 		// Если заголовок расширения найден
 		} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
 			// Запись названия расширения

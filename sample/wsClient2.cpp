@@ -201,17 +201,25 @@ class WebClient {
 		 * @param utf8   тип буфера сообщения
 		 */
 		void messageWebSocket(const vector <char> & buffer, const bool utf8){
+			// Выбранный сабпротокол
+			string subprotocol = "";
+			// Получаем список выбранных сабпротоколов
+			const auto subprotocols = this->_ws->subs();
+			// Если список выбранных сабпротоколов получен
+			if(!subprotocols.empty())
+				// Выполняем получение выбранного сабпротокола
+				subprotocol = (* subprotocols.begin());
 			// Если данные пришли в виде текста, выводим
 			if(utf8){
 				try {
 					// Создаём объект JSON
 					json data = json::parse(buffer.begin(), buffer.end());
 					// Выводим полученный результат
-					cout << " +++++++++++++ " << data.dump(4) << " == " << this->_awh->sub() << endl;
+					cout << " +++++++++++++ " << data.dump(4) << " == " << subprotocol << endl;
 				// Обрабатываем ошибку
 				} catch(const exception & e) {}
 			// Сообщаем количество полученных байт
-			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << this->_awh->sub() << endl;
+			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}
 		/**
 		 * message Метод получения статуса результата запроса

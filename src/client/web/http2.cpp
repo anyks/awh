@@ -1659,32 +1659,28 @@ void awh::client::Http2::on(function <void (const int32_t, const u_int, const st
 	this->_http1.on(callback);
 }
 /**
- * sub Метод получения выбранного сабпротокола
- * @return выбранный сабпротокол
- */
-const string & awh::client::Http2::sub() const noexcept {
-	// Выводим список сабпротоколов принадлежащих WebSocket-клиенту
-	return this->_ws2.sub();
-}
-/**
- * sub Метод установки сабпротокола поддерживаемого сервером
+ * sub Метод установки поддерживаемого сабпротокола
  * @param sub сабпротокол для установки
  */
 void awh::client::Http2::sub(const string & sub) noexcept {
-	// Если сабпротокол передан
-	if(!sub.empty())
-		// Устанавливаем сабпротокол
-		this->_ws2.sub(sub);
+	// Выполняем установку поддерживаемого сабпротокола
+	this->_ws2.sub(sub);
 }
 /**
- * subs Метод установки списка сабпротоколов поддерживаемых сервером
+ * sub Метод получения списка выбранных сабпротоколов
+ * @return список выбранных сабпротоколов
+ */
+const set <string> & awh::client::Http2::subs() const noexcept {
+	// Выполняем извлечение списка выбранных сабпротоколов
+	return this->_ws2.subs();
+}
+/**
+ * subs Метод установки списка поддерживаемых сабпротоколов
  * @param subs сабпротоколы для установки
  */
-void awh::client::Http2::subs(const vector <string> & subs) noexcept {
-	// Если список сабпротоколов получен
-	if(!subs.empty())
-		// Устанавливаем список сабсабпротоколов для WebSocket-клиента
-		this->_ws2.subs(subs);
+void awh::client::Http2::subs(const set <string> & subs) noexcept {
+	// Выполняем установку поддерживаемых сабпротоколов
+	this->_ws2.subs(subs);
 }
 /**
  * extensions Метод извлечения списка расширений

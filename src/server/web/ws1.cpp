@@ -56,9 +56,9 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 			// Устанавливаем данные сервиса
 			adj->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 			// Если сабпротоколы установлены
-			if(!this->_subs.empty())
+			if(!this->_subprotocols.empty())
 				// Устанавливаем поддерживаемые сабпротоколы
-				adj->http.subs(this->_subs);
+				adj->http.subs(this->_subprotocols);
 			// Если список расширений установлены
 			if(!this->_extensions.empty())
 				// Устанавливаем список поддерживаемых расширений
@@ -1220,39 +1220,39 @@ void awh::server::WebSocket1::close(const uint64_t aid) noexcept {
 	}
 }
 /**
- * sub Метод установки сабпротокола поддерживаемого сервером
- * @param sub подпротокол для установки
+ * sub Метод установки поддерживаемого сабпротокола
+ * @param sub сабпротокол для установки
  */
 void awh::server::WebSocket1::sub(const string & sub) noexcept {
 	// Устанавливаем сабпротокол
 	if(!sub.empty())
 		// Выполняем установку сабпротокола
-		this->_subs.push_back(sub);
+		this->_subprotocols.emplace(sub);
 }
 /**
- * subs Метод установки списка сабпротоколов поддерживаемых сервером
- * @param subs подпротоколы для установки
+ * subs Метод установки списка поддерживаемых сабпротоколов
+ * @param subs сабпротоколы для установки
  */
-void awh::server::WebSocket1::subs(const vector <string> & subs) noexcept {
+void awh::server::WebSocket1::subs(const set <string> & subs) noexcept {
 	// Если список сабпротоколов получен
 	if(!subs.empty())
 		// Выполняем установку сабпротоколов
-		this->_subs = subs;
+		this->_subprotocols = subs;
 }
 /**
- * sub Метод получения согласованного сабпротокола
+ * sub Метод получения списка выбранных сабпротоколов
  * @param aid идентификатор адъютанта
- * @return    выбранный сабпротокол
+ * @return    список выбранных сабпротоколов
  */
-const string & awh::server::WebSocket1::sub(const uint64_t aid) const noexcept {
+const set <string> & awh::server::WebSocket1::subs(const uint64_t aid) const noexcept {
 	// Результат работы функции
-	static const string result = "";
+	static const set <string> result;
 	// Получаем параметры подключения адъютанта
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr)
 		// Выводим согласованный сабпротокол
-		return adj->http.sub();
+		return adj->http.subs();
 	// Выводим результат по умолчанию
 	return result;
 }

@@ -109,8 +109,16 @@ class Executor {
 		void message(const uint64_t aid, const vector <char> & buffer, const bool text){
 			// Если даныне получены
 			if(!buffer.empty()){
+				// Выбранный сабпротокол
+				string subprotocol = "";
+				// Получаем список выбранных сабпротоколов
+				const auto subprotocols = this->_ws->subs(aid);
+				// Если список выбранных сабпротоколов получен
+				if(!subprotocols.empty())
+					// Выполняем получение выбранного сабпротокола
+					subprotocol = (* subprotocols.begin());
 				// Выводим информацию в лог
-				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), this->_ws->sub(aid).c_str());
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
 				this->_ws->send(aid, buffer.data(), buffer.size(), text);
 			}

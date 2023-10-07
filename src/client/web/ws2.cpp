@@ -1653,42 +1653,42 @@ void awh::client::WebSocket2::on(function <void (const int32_t, const u_int, con
 	this->_ws1.on(callback);
 }
 /**
- * sub Метод получения выбранного сабпротокола
- * @return выбранный сабпротокол
- */
-const string & awh::client::WebSocket2::sub() const noexcept {
-	// Если переключение протокола на HTTP/2 не выполнено
-	if(this->_proto != engine_t::proto_t::HTTP2)
-		// Выводим выбранный сабпротокол
-		return this->_ws1.sub();
-	// Если переключение протокола на HTTP/2 выполнено
-	else
-		// Выводим выбранный сабпротокол
-		return this->_http.sub();
-}
-/**
- * sub Метод установки сабпротокола поддерживаемого сервером
- * @param sub подпротокол для установки
+ * sub Метод установки поддерживаемого сабпротокола
+ * @param sub сабпротокол для установки
  */
 void awh::client::WebSocket2::sub(const string & sub) noexcept {
 	// Если сабпротокол передан
 	if(!sub.empty()){
-		// Устанавливаем сабподпротокол для WebSocket-клиента
+		// Устанавливаем поддерживаемый сабпротокол для WebSocket-клиента
 		this->_ws1.sub(sub);
-		// Устанавливаем сабподпротокол для HTTP-клиента
+		// Устанавливаем поддерживаемый сабпротокол для HTTP-клиента
 		this->_http.sub(sub);
 	}
 }
 /**
- * subs Метод установки списка сабпротоколов поддерживаемых сервером
- * @param subs подпротоколы для установки
+ * sub Метод получения списка выбранных сабпротоколов
+ * @return список выбранных сабпротоколов
  */
-void awh::client::WebSocket2::subs(const vector <string> & subs) noexcept {
-	// Если список сабпротоколов получен
+const set <string> & awh::client::WebSocket2::subs() const noexcept {
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(this->_proto != engine_t::proto_t::HTTP2)
+		// Выводим список выбранных сабпротоколов
+		return this->_ws1.subs();
+	// Если переключение протокола на HTTP/2 выполнено
+	else
+		// Выводим список выбранных сабпротоколов
+		return this->_http.subs();
+}
+/**
+ * subs Метод установки списка поддерживаемых сабпротоколов
+ * @param subs сабпротоколы для установки
+ */
+void awh::client::WebSocket2::subs(const set <string> & subs) noexcept {
+	// Если список поддерживаемых сабпротоколов получен
 	if(!subs.empty()){
-		// Устанавливаем список сабсабпротоколов для WebSocket-клиента
+		// Устанавливаем список поддерживаемых сабсабпротоколов для WebSocket-клиента
 		this->_ws1.subs(subs);
-		// Устанавливаем список сабсабпротоколов для HTTP-клиента
+		// Устанавливаем список поддерживаемых сабсабпротоколов для HTTP-клиента
 		this->_http.subs(subs);
 	}
 }

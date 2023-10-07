@@ -597,27 +597,27 @@ void awh::client::AWH::start() noexcept {
 	this->_http.start();
 }
 /**
- * sub Метод получения выбранного сабпротокола WebSocket
- * @return выбранный сабпротокол
- */
-const string & awh::client::AWH::sub() const noexcept {
-	// Выполняем извлечение выбранного сабпротокола
-	return this->_http.sub();
-}
-/**
- * sub Метод установки сабпротокола поддерживаемого сервером WebSocket
+ * sub Метод установки поддерживаемого сабпротокола
  * @param sub сабпротокол для установки
  */
 void awh::client::AWH::sub(const string & sub) noexcept {
-	// Выполняем установку сабпротокола
+	// Выполняем установку поддерживаемого сабпротокола
 	this->_http.sub(sub);
 }
 /**
- * subs Метод установки списка сабпротоколов поддерживаемых сервером WebSocket
+ * sub Метод получения списка выбранных сабпротоколов
+ * @return список выбранных сабпротоколов
+ */
+const set <string> & awh::client::AWH::subs() const noexcept {
+	// Выполняем извлечение списка выбранных сабпротоколов
+	return this->_http.subs();
+}
+/**
+ * subs Метод установки списка поддерживаемых сабпротоколов
  * @param subs сабпротоколы для установки
  */
-void awh::client::AWH::subs(const vector <string> & subs) noexcept {
-	// Выполняем установку списка сабпротоколов
+void awh::client::AWH::subs(const set <string> & subs) noexcept {
+	// Выполняем установку поддерживаемых сабпротоколов
 	this->_http.subs(subs);
 }
 /**

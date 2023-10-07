@@ -61,9 +61,6 @@ namespace awh {
 				Partner() noexcept : wbit(GZIP_MAX_WBITS), takeover(false) {}
 			} __attribute__((packed)) partner_t;
 		protected:
-			// Поддерживаемый сабпротокол
-			string _sub;
-		protected:
 			// Ключ клиента
 			mutable string _key;
 		protected:
@@ -75,8 +72,11 @@ namespace awh {
 			// Метод сжатия данных запроса/ответа
 			compress_t _compress;
 		protected:
-			// Поддерживаемые сабпротоколы
-			set <string> _subs;
+			// Список выбранных сабпротоколов
+			set <string> _selectedProtocols;
+			// Список поддерживаемых сабпротоколов
+			set <string> _supportedProtocols;
+		protected:
 			// Список поддверживаемых расширений
 			vector <vector <string>> _extensions;
 		private:
@@ -210,20 +210,20 @@ namespace awh {
 			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
-			 * sub Метод получения выбранного сабпротокола
-			 * @return выбранный сабпротокол
-			 */
-			const string & sub() const noexcept;
-			/**
-			 * sub Метод установки сабпротокола поддерживаемого сервером
+			 * sub Метод установки поддерживаемого сабпротокола
 			 * @param sub сабпротокол для установки
 			 */
 			void sub(const string & sub) noexcept;
 			/**
-			 * subs Метод установки списка сабпротоколов поддерживаемых сервером
+			 * sub Метод получения списка выбранных сабпротоколов
+			 * @return список выбранных сабпротоколов
+			 */
+			const set <string> & subs() const noexcept;
+			/**
+			 * subs Метод установки списка поддерживаемых сабпротоколов
 			 * @param subs сабпротоколы для установки
 			 */
-			void subs(const vector <string> & subs) noexcept;
+			void subs(const set <string> & subs) noexcept;
 		public:
 			/**
 			 * takeover Метод получения флага переиспользования контекста компрессии
@@ -244,7 +244,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			WCore(const fmk_t * fmk, const log_t * log) noexcept :
-			 http_t(fmk, log), _sub{""}, _key{""}, _compress(compress_t::DEFLATE) {}
+			 http_t(fmk, log), _key{""}, _compress(compress_t::DEFLATE) {}
 			/**
 			 * ~WCore Деструктор
 			 */
