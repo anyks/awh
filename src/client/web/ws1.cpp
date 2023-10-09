@@ -221,6 +221,9 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 			} else if(this->_allow.receive) {
 				// Добавляем полученные данные в буфер
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+				
+				cout << " ^^^^^^^^^^^^^^^^^^^^ " << size << " === " << this->_buffer.size() << endl;
+				
 				// Выполняем препарирование полученных данных
 				switch(static_cast <uint8_t> (this->prepare(1, aid, dynamic_cast <client::core_t *> (core)))){
 					// Если необходимо выполнить остановку обработки

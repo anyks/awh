@@ -951,10 +951,10 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 						(* const_cast <size_t *> (&size)) = buffer.size();
 					}
 				}
-				// Устанавливаем опкод сообщения
-				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Указываем, что сообщение передаётся в сжатом виде
 				head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
+				// Устанавливаем опкод сообщения
+				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				
 				cout << " ---------------6 " << size << endl;
 				
@@ -1046,7 +1046,7 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 					// Создаём буфер для отправки
 					const auto & buffer = adj->frame.methods.set(head, message, size);
 					
-					cout << " ---------------12 " << buffer.size() << endl;
+					cout << " ---------------12 " << (u_short) head.optcode << " === " << buffer.size() << endl;
 					
 					// Если бинарный буфер для отправки данных получен
 					if(!buffer.empty())
