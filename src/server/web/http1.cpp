@@ -1143,6 +1143,8 @@ void awh::server::Http1::keepAlive(const int cnt, const int idle, const int intv
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
+	// Устанавливаем флаги настроек модуля для WebSocket-сервера
+	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения

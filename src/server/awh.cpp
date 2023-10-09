@@ -35,6 +35,26 @@ void awh::server::AWH::init(const u_int port, const string & host, const http_t:
 	this->_http.init(port, host, compress);
 }
 /**
+ * sendError Метод отправки сообщения об ошибке
+ * @param aid  идентификатор адъютанта
+ * @param mess отправляемое сообщение об ошибке
+ */
+void awh::server::AWH::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
+	// Выполняем отправку сообещния об ошибке клиенту
+	this->_http.sendError(aid, mess);
+}
+/**
+ * send Метод отправки сообщения клиенту
+ * @param aid     идентификатор адъютанта
+ * @param message буфер сообщения в бинарном виде
+ * @param size    размер сообщения в байтах
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::server::AWH::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+	// Выполняем отправку сообщения клиенту
+	this->_http.send(aid, message, size, text);
+}
+/**
  * send Метод отправки сообщения адъютанту
  * @param aid     идентификатор адъютанта
  * @param code    код сообщения для адъютанта
@@ -91,6 +111,22 @@ void awh::server::AWH::on(function <void (const awh::core_t::status_t, awh::core
  * @param callback функция обратного вызова
  */
 void awh::server::AWH::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибок
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -216,12 +252,62 @@ void awh::server::AWH::close(const uint64_t aid) noexcept {
 	this->_http.close(aid);
 }
 /**
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
+ */
+void awh::server::AWH::subprotocol(const string & subprotocol) noexcept {
+	// Выполняем установку поддерживаемого сабпротокола
+	this->_http.subprotocol(subprotocol);
+}
+/**
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
+ */
+void awh::server::AWH::subprotocols(const set <string> & subprotocols) noexcept {
+	// Выполняем установку списка поддерживаемых сабпротоколов
+	this->_http.subprotocols(subprotocols);
+}
+/**
+ * subprotocol Метод получения списка выбранных сабпротоколов
+ * @param aid идентификатор адъютанта
+ * @return    список выбранных сабпротоколов
+ */
+const set <string> & awh::server::AWH::subprotocols(const uint64_t aid) const noexcept {
+	// Выполняем извлечение списка выбранных сабпротоколов
+	return this->_http.subprotocols(aid);
+}
+/**
+ * extensions Метод установки списка расширений
+ * @param extensions список поддерживаемых расширений
+ */
+void awh::server::AWH::extensions(const vector <vector <string>> & extensions) noexcept {
+	// Выполняем установку списка поддерживаемых расширений
+	this->_http.extensions(extensions);
+}
+/**
+ * extensions Метод извлечения списка поддерживаемых расширений
+ * @param aid идентификатор адъютанта
+ * @return    список поддерживаемых расширений
+ */
+const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t aid) const noexcept {
+	// Выполняем извлечение списка поддерживаемых расширений
+	return this->_http.extensions(aid);
+}
+/**
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::AWH::total(const u_short total) noexcept {
 	// Выполняем установку максимального количества одновременных подключений
 	this->_http.total(total);
+}
+/**
+ * segmentSize Метод установки размеров сегментов фрейма
+ * @param size минимальный размер сегмента
+ */
+void awh::server::AWH::segmentSize(const size_t size) noexcept {
+	// Выполняем установку размеров сегментов фрейма
+	this->_http.segmentSize(size);
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов

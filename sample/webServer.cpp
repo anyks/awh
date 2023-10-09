@@ -175,9 +175,20 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем разрешение использовать протокол WebSocket
+	 * 1. Устанавливаем валидацию SSL сертификата
+	 * 2. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 3. Устанавливаем флаг перехвата контекста компрессии
+	 * 4. Устанавливаем разрешение использовать протокол WebSocket
 	 */
-	awh.mode({server::web_t::flag_t::WEBSOCKET_ENABLE});
+	awh.mode({
+		// server::web_t::flag_t::NOT_STOP,
+		// server::web_t::flag_t::NOT_INFO,
+		// server::web_t::flag_t::WAIT_MESS,
+		server::web_t::flag_t::VERIFY_SSL,
+		server::web_t::flag_t::TAKEOVER_CLIENT,
+		server::web_t::flag_t::TAKEOVER_SERVER,
+		server::web_t::flag_t::WEBSOCKET_ENABLE
+	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
@@ -222,6 +233,8 @@ int main(int argc, char * argv[]){
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// awh.crypto("PASS");
+	// Устанавливаем сабпротоколы
+	awh.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
 	// awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
