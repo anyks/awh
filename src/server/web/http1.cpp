@@ -313,9 +313,6 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							adj->buffer.assign(adj->buffer.begin() + bytes, adj->buffer.end());
 						// Если байт в буфере меньше, просто очищаем буфер
 						else adj->buffer.clear();
-						
-						cout << " ^^^^^^^^^^^^^^^^^^^ " << adj->buffer.size() << endl;
-						
 						// Если данных для обработки не осталось, выходим
 						if(adj->buffer.empty()) break;
 					// Если данных для обработки недостаточно, выходим

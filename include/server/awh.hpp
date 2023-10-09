@@ -71,7 +71,7 @@ namespace awh {
 				 * @param size    размер сообщения в байтах
 				 * @param text    данные передаются в текстовом виде
 				 */
-				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
+				void send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept;
 				/**
 				 * send Метод отправки сообщения адъютанту
 				 * @param aid     идентификатор адъютанта
