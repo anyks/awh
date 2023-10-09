@@ -79,6 +79,39 @@ class WebServer {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
+		 * error Метод вывода ошибок WebSocket сервера
+		 * @param aid  идентификатор адъютанта (клиента)
+		 * @param code код ошибки
+		 * @param mess сообщение ошибки
+		 */
+		void error(const uint64_t aid, const u_int code, const string & mess){
+			// Выводим информацию в лог
+			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+		}
+		/**
+		 * message Метод получения сообщений
+		 * @param aid    идентификатор адъютанта (клиента)
+		 * @param buffer бинарный буфер сообщения
+		 * @param text   тип буфера сообщения
+		 */
+		void message(const uint64_t aid, const vector <char> & buffer, const bool text){
+			// Если даныне получены
+			if(!buffer.empty()){
+				// Выбранный сабпротокол
+				string subprotocol = "";
+				// Получаем список выбранных сабпротоколов
+				const auto subprotocols = this->_awh->subprotocols(aid);
+				// Если список выбранных сабпротоколов получен
+				if(!subprotocols.empty())
+					// Выполняем получение выбранного сабпротокола
+					subprotocol = (* subprotocols.begin());
+				// Выводим информацию в лог
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
+				// Отправляем сообщение обратно
+				this->_awh->send(aid, buffer.data(), buffer.size(), text);
+			}
+		}
+		/**
 		 * good Метод получения удачного запроса
 		 * @param sid идентификатор потока
 		 * @param aid идентификатор адъютанта
@@ -243,8 +276,12 @@ int main(int argc, char * argv[]){
 	awh.on((function <void (const int32_t, const uint64_t)>) std::bind(&WebServer::good, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
+	// Установливаем функцию обратного вызова на событие получения ошибок
+	awh.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	awh.on((function <bool (const string &, const string &, const u_int)>) std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие получения сообщений
+	awh.on((function <void (const uint64_t, const vector <char> &, const bool)>) bind(&WebServer::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения запроса
 	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
 	// Установливаем функцию обратного вызова на событие получения тела сообщения
