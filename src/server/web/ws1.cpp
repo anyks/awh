@@ -466,6 +466,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выполняем отключение адъютанта
 								goto Stop;
 							}
+
+							cout << " ^^^^^^^^^^^^^^^^^^^^^^8 " << data.size() << endl;
+
 							// Определяем тип ответа
 							switch(static_cast <uint8_t> (head.optcode)){
 								// Если ответом является PING
@@ -484,6 +487,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 								// Если ответом является BINARY
 								case static_cast <uint8_t> (ws::frame_t::opcode_t::BINARY): {
+									
+									cout << " ^^^^^^^^^^^^^^^^^^^^^^9 " << data.size() << endl;
+									
 									// Запоминаем полученный опкод
 									adj->frame.opcode = head.optcode;
 									// Запоминаем, что данные пришли сжатыми
@@ -548,6 +554,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						}
 						// Если сообщения получены
 						if(!buffer.empty()){
+							
+							cout << " ^^^^^^^^^^^^^^^^^^^^^^10 " << buffer.size() << endl;
+							
 							// Если тредпул активирован
 							if(this->_thr.is())
 								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
