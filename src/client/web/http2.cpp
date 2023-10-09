@@ -42,10 +42,7 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 			this->_http1._core = this->_core;
 			// Выполняем установку данных URL-адреса
 			this->_http1._scheme.url = this->_scheme.url;
-			// Активируем синхронный режим работы
-			dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::SYNC);
-		// Активируем асинхронный режим работы
-		} else dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::ASYNC);
+		}
 		// Выполняем установку идентификатора объекта
 		this->_ws2._http.id(aid);
 		// Выполняем установку сетевого ядра
@@ -175,9 +172,18 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
  */
 void awh::client::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr))
-		// Выполняем переброс вызова записи на клиент WebSocket
-		this->_ws2.writeCallback(buffer, size, aid, sid, core);
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Выполняем перебор всех доступных воркеров
+		for(auto & worker : this->_workers){
+			// Если агент является клиентом WebSocket
+			if(worker.second->agent == agent_t::WEBSOCKET){
+				// Выполняем переброс вызова записи на клиент WebSocket
+				this->_ws2.writeCallback(buffer, size, aid, sid, core);
+				// Выполняем выход из цикла
+				break;
+			}
+		}
+	}
 }
 /**
  * persistCallback Функция персистентного вызова
@@ -972,7 +978,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								// Устанавливаем новый адрес запроса
 								this->_uri.combine(jt->second->url, url);
 								// Отправляем повторный запрос
-								this->send(it->second->agent, * jt->second.get());
+								this->send(* jt->second.get());
 								// Завершаем работу
 								return status_t::SKIP;
 							}
@@ -987,7 +993,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Отправляем повторный запрос
-								this->send(it->second->agent, * jt->second.get());
+								this->send(* jt->second.get());
 								// Завершаем работу
 								return status_t::SKIP;
 							}
@@ -1101,11 +1107,10 @@ void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
 }
 /**
  * send Метод отправки сообщения на сервер
- * @param agent   агент воркера
  * @param request параметры запроса на удалённый сервер
  * @return        идентификатор отправленного запроса
  */
-int32_t awh::client::Http2::send(const agent_t agent, const request_t & request) noexcept {
+int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -1116,6 +1121,43 @@ int32_t awh::client::Http2::send(const agent_t agent, const request_t & request)
 		if(this->_aid > 0){
 			// Идентификатор предыдущего потока
 			int32_t sid = -1;
+			// Агент воркера выполнения запроса
+			agent_t agent = agent_t::HTTP;
+			// Если список заголовков установлен
+			if(!request.headers.empty()){
+				// Выполняем перебор всего списка заголовков
+				for(auto & item : request.headers){
+					// Если заголовок соответствует смене протокола на WebSocket
+					if(this->_fmk->compare(item.first, "upgrade") && this->_fmk->compare(item.second, "websocket")){
+						// Если протокол WebSocket разрешён для подключения
+						if(this->_webSocket){
+							// Выполняем установку агента воркера WebSocket
+							agent = agent_t::WEBSOCKET;
+							// Если флаг инициализации сессии HTTP2 установлен
+							if(this->_sessionInitialized){
+								// Если протокол ещё не установлен
+								if(request.headers.count(":protocol") < 1)
+									// Выполняем установку протокола WebSocket
+									const_cast <request_t &> (request).headers.emplace(":protocol", item.second);
+								// Выполняем удаление заголовка Upgrade
+								const_cast <request_t &> (request).headers.erase(item.first);
+							}
+						// Если протокол WebSocket запрещён
+						} else {
+							// Выводим сообщение об ошибке
+							this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
+							// Выходим из функции
+							return sid;
+						}
+						// Выходим из цикла
+						break;
+					}
+				}
+			}
 			// Определяем тип агента
 			switch(static_cast <uint8_t> (agent)){
 				// Если протоколом агента является HTTP-клиент
@@ -1511,8 +1553,6 @@ void awh::client::Http2::on(function <void (const mode_t)> callback) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::client::Http2::on(function <void (const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const u_int, const string &)> ("wserror", callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(callback);
 }
@@ -1521,8 +1561,6 @@ void awh::client::Http2::on(function <void (const u_int, const string &)> callba
  * @param callback функция обратного вызова
  */
 void awh::client::Http2::on(function <void (const vector <char> &, const bool)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих сообщений
-	this->_callback.set <void (const vector <char> &, const bool)> ("message", callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(callback);
 }
@@ -1718,12 +1756,9 @@ void awh::client::Http2::chunk(const size_t size) noexcept {
  */
 void awh::client::Http2::segmentSize(const size_t size) noexcept {
 	// Если размер передан, устанавливаем
-	if(size > 0){
-		// Устанавливаем размер сегментов фрейма
-		this->_frameSize = size;
+	if(size > 0)
 		// Устанавливаем размер сегментов фрейма для WebSocket-клиента
 		this->_ws2.segmentSize(size);
-	}
 }
 /**
  * mode Метод установки флагов настроек модуля
@@ -1736,23 +1771,8 @@ void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
 	this->_http1.mode(flags);
 	// Выполняем установку флагов настроек модуля
 	web2_t::mode(flags);
-	// Если протокол подключения желательно установить HTTP/2
-	if(this->_core->proto() == engine_t::proto_t::HTTP2){
-		// Флаг активации работы персистентного вызова
-		bool enable = this->_scheme.alive;
-		// Если необходимо выполнить отключение персистентного вызова
-		if(!enable && !this->_workers.empty()){
-			// Выполняем переход по всему списку воркеров
-			for(auto & worker : this->_workers){
-				// Если среди списка воркеров найден клиент WebSocket
-				if((enable = (worker.second->agent == agent_t::WEBSOCKET)))
-					// Выходим из цикла
-					break;
-			}
-		}
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(enable);
-	}
+	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
+	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 }
 /**
  * core Метод установки сетевого ядра
@@ -1765,13 +1785,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 		this->_core = core;
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Если протокол подключения желательно установить HTTP/2
-		if(this->_core->proto() == engine_t::proto_t::HTTP2){
-			// Активируем персистентный запуск для работы пингов
-			const_cast <client::core_t *> (this->_core)->persistEnable(true);
-			// Активируем асинхронный режим работы
-			const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
-		}
+		// Активируем персистентный запуск для работы пингов
+		const_cast <client::core_t *> (this->_core)->persistEnable(true);
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->on(std::bind(&http2_t::eventsCallback, this, _1, _2));
 		// Если многопоточность активированна
@@ -1792,13 +1807,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Если протокол подключения желательно установить HTTP/2
-		if(this->_core->proto() == engine_t::proto_t::HTTP2){
-			// Деактивируем персистентный запуск для работы пингов
-			const_cast <client::core_t *> (this->_core)->persistEnable(false);
-			// Активируем асинхронный режим работы
-			const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::SYNC);
-		}
+		// Деактивируем персистентный запуск для работы пингов
+		const_cast <client::core_t *> (this->_core)->persistEnable(false);
 		// Удаляем схему сети из сетевого ядра
 		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
 		// Выполняем установку объекта сетевого ядра
@@ -1926,7 +1936,11 @@ void awh::client::Http2::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _threads(-1), _frameSize(0) {
+ web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1939,7 +1953,9 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _threads(-1), _frameSize(0) {
+ web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
+	// Активируем персистентный запуск для работы пингов
+	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
@@ -1948,13 +1964,6 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
-	// Если протокол подключения желательно установить HTTP/2
-	if(this->_core->proto() == engine_t::proto_t::HTTP2){
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(true);
-		// Активируем асинхронный режим работы
-		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
-	}
 }
 /**
  * ~Http2 Деструктор

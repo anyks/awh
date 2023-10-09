@@ -69,10 +69,11 @@ namespace awh {
 				// Объект для работы с HTTP-протколом
 				http_t _http;
 			private:
+				// Флаг разрешения использования клиента WebSocket
+				bool _webSocket;
+			private:
 				// Количество активных ядер
 				ssize_t _threads;
-				// Размер фрейма WebSocket
-				size_t _frameSize;
 			private:
 				// Список активных воркеров
 				map <int32_t, unique_ptr <worker_t>> _workers;
@@ -202,13 +203,14 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
+			public:
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param agent   агент воркера
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
-				int32_t send(const agent_t agent, const request_t & request) noexcept;
+				int32_t send(const request_t & request) noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param message буфер сообщения в бинарном виде

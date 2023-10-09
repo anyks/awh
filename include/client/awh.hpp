@@ -63,11 +63,10 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер HTTP/2
-				 * @param agent   агент воркера
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
-				int32_t send(const web_t::agent_t agent, const web_t::request_t & request) noexcept;
+				int32_t send(const web_t::request_t & request) noexcept;
 				/**
 				 * send Метод отправки сообщения на сервер WebSocket
 				 * @param message буфер сообщения в бинарном виде

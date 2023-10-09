@@ -32,13 +32,12 @@ void awh::client::AWH::sendError(const ws::mess_t & mess) noexcept {
 }
 /**
  * send Метод отправки сообщения на сервер HTTP/2
- * @param agent   агент воркера
  * @param request параметры запроса на удалённый сервер
  * @return        идентификатор отправленного запроса
  */
-int32_t awh::client::AWH::send(const web_t::agent_t agent, const web_t::request_t & request) noexcept {
+int32_t awh::client::AWH::send(const web_t::request_t & request) noexcept {
 	// Выполняем отправку сообщения на удалённый сервер
-	return this->_http.send(agent, request);
+	return this->_http.send(request);
 }
 /**
  * send Метод отправки сообщения на сервер WebSocket
@@ -411,7 +410,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				// Запоминаем переданные заголовки
 				request.headers = std::forward <const unordered_multimap <string, string>> (headers);
 				// Выполняем запрос на сервер
-				this->send(web_t::agent_t::HTTP, request);
+				this->send(request);
 			// Выполняем остановку работы модуля
 			} else this->stop();
 		});

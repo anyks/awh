@@ -123,6 +123,8 @@ void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint1
 	if(this->_callback.is("active"))
 		// Выводим функцию обратного вызова
 		this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
+	// Активируем асинхронный режим работы
+	dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::SYNC);
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с сервера
@@ -529,6 +531,8 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Активируем асинхронный режим работы
+					dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::ASYNC);
 					// Разрешаем перехватывать контекст компрессии для клиента
 					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
 					// Разрешаем перехватывать контекст компрессии для сервера
@@ -879,7 +883,7 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
-		if(this->_core->working() && this->_allow.send && (this->_aid > 0)){
+		if((this->_core != nullptr) && this->_core->working() && this->_allow.send && (this->_aid > 0)){
 			// Запрещаем получение данных
 			this->_allow.receive = false;
 			// Получаем объект биндинга ядра TCP/IP
@@ -924,7 +928,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
-		if(this->_core->working() && this->_allow.send){
+		if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
@@ -1323,8 +1327,6 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 		const_cast <client::core_t *> (this->_core)->persistEnable(true);
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Активируем асинхронный режим работы
-		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 		// Устанавливаем функцию активации ядра клиента
 		const_cast <client::core_t *> (this->_core)->on(std::bind(&ws1_t::eventsCallback, this, _1, _2));
 		// Если многопоточность активированна
@@ -1344,8 +1346,6 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 		const_cast <client::core_t *> (this->_core)->persistEnable(false);
 		// Удаляем схему сети из сетевого ядра
 		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Активируем асинхронный режим работы
-		const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::SYNC);
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
 	}
@@ -1490,8 +1490,6 @@ awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * f
 	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
-	// Активируем асинхронный режим работы
-	const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 }
 /**
  * ~WebSocket1 Деструктор

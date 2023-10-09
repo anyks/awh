@@ -57,139 +57,127 @@ class Executor {
 			}
 		}
 		/**
-		 * active Метод событий сервера
-		 * @param sid  идентификатор потока
-		 * @param mode флаг события
+		 * handshake Метод рукопожатия
+		 * @param sid идентификатор потока
 		 */
-		void active(const int32_t sid, const client::web_t::mode_t mode){
+		void handshake(const int32_t sid){
 			// Блокируем неиспользуемую переменную
 			(void) sid;
-			// Определяем флаг события сервера
-			switch(static_cast <uint8_t> (mode)){
-				// Если клиент подключился к серверу
-				case static_cast <uint8_t> (client::web_t::mode_t::OPEN): {
-					// Выводим информацию в лог
-					this->_log->print("CONNECT", log_t::flag_t::INFO);
-					// Создаём объект JSON
-					json data = json::object();
-					// Формируем идентификатор объекта
-					data["id"] = 1;
-					// Формируем метод подписки
-					data["method"] = "SUBSCRIBE";
-					// Формируем параметры запрашиваемых криптовалютных пар
-					data["params"] = json::array();
-					// Формируем параметры криптовалютных пар
-					data["params"][0] = "omgusdt@aggTrade";
-					data["params"][1] = "umausdt@aggTrade";
-					data["params"][2] = "radusdt@aggTrade";
-					data["params"][3] = "fttusdt@aggTrade";
-					data["params"][4] = "xrpusdt@aggTrade";
-					data["params"][5] = "adausdt@aggTrade";
-					data["params"][6] = "solusdt@aggTrade";
-					data["params"][7] = "dotusdt@aggTrade";
-					data["params"][8] = "ethusdt@aggTrade";
-					data["params"][9] = "bnbusdt@aggTrade";
-					data["params"][10] = "btcusdt@aggTrade";
-					data["params"][11] = "ltcusdt@aggTrade";
-					data["params"][12] = "trxusdt@aggTrade";
-					data["params"][13] = "xlmusdt@aggTrade";
-					data["params"][14] = "zecusdt@aggTrade";
-					data["params"][15] = "zilusdt@aggTrade";
-					data["params"][16] = "vetusdt@aggTrade";
-					data["params"][17] = "wrxusdt@aggTrade";
-					data["params"][18] = "oneusdt@aggTrade";
-					data["params"][19] = "xtzusdt@aggTrade";
-					data["params"][20] = "filusdt@aggTrade";
-					data["params"][21] = "eosusdt@aggTrade";
-					data["params"][22] = "xmrusdt@aggTrade";
-					data["params"][23] = "neousdt@aggTrade";
-					data["params"][24] = "kdausdt@aggTrade";
-					data["params"][25] = "ksmusdt@aggTrade";
-					data["params"][26] = "icxusdt@aggTrade";
-					data["params"][27] = "dgbusdt@aggTrade";
-					data["params"][28] = "bchusdt@aggTrade";
-					data["params"][29] = "ontusdt@aggTrade";
-					data["params"][30] = "etcusdt@aggTrade";
-					data["params"][31] = "chzusdt@aggTrade";
-					data["params"][32] = "kncusdt@aggTrade";
-					data["params"][33] = "astusdt@aggTrade";
-					data["params"][34] = "atausdt@aggTrade";
-					data["params"][35] = "snxusdt@aggTrade";
-					data["params"][36] = "grtusdt@aggTrade";
-					data["params"][37] = "mkrusdt@aggTrade";
-					data["params"][38] = "dcrusdt@aggTrade";
-					data["params"][39] = "c98usdt@aggTrade";
-					data["params"][40] = "uniusdt@aggTrade";
-					data["params"][41] = "rvnusdt@aggTrade";
-					data["params"][42] = "zenusdt@aggTrade";
-					data["params"][43] = "lrcusdt@aggTrade";
-					data["params"][44] = "ftmusdt@aggTrade";
-					data["params"][45] = "xecusdt@aggTrade";
-					data["params"][46] = "xemusdt@aggTrade";
-					data["params"][47] = "btgusdt@aggTrade";
-					data["params"][48] = "srmusdt@aggTrade";
-					data["params"][49] = "ckbusdt@aggTrade";
-					data["params"][50] = "xvgusdt@aggTrade";
-					data["params"][51] = "lskusdt@aggTrade";
-					data["params"][52] = "ernusdt@aggTrade";
-					data["params"][53] = "stxusdt@aggTrade";
-					data["params"][54] = "bcdusdt@aggTrade";
-					data["params"][55] = "sysusdt@aggTrade";
-					data["params"][56] = "axsusdt@aggTrade";
-					data["params"][57] = "qntusdt@aggTrade";
-					data["params"][58] = "enjusdt@aggTrade";
-					data["params"][59] = "hotusdt@aggTrade";
-					data["params"][60] = "algousdt@aggTrade";
-					data["params"][61] = "arpausdt@aggTrade";
-					data["params"][62] = "compusdt@aggTrade";
-					data["params"][63] = "iostusdt@aggTrade";
-					data["params"][64] = "flowusdt@aggTrade";
-					data["params"][65] = "aaveusdt@aggTrade";
-					data["params"][66] = "runeusdt@aggTrade";
-					data["params"][67] = "celrusdt@aggTrade";
-					data["params"][68] = "linkusdt@aggTrade";
-					data["params"][69] = "qtumusdt@aggTrade";
-					data["params"][70] = "egldusdt@aggTrade";
-					data["params"][71] = "dashusdt@aggTrade";
-					data["params"][72] = "lunausdt@aggTrade";
-					data["params"][73] = "cakeusdt@aggTrade";
-					data["params"][74] = "atomusdt@aggTrade";
-					data["params"][75] = "minausdt@aggTrade";
-					data["params"][76] = "idexusdt@aggTrade";
-					data["params"][77] = "dogeusdt@aggTrade";
-					data["params"][78] = "avaxusdt@aggTrade";
-					data["params"][79] = "iotausdt@aggTrade";
-					data["params"][80] = "hbarusdt@aggTrade";
-					data["params"][81] = "nearusdt@aggTrade";
-					data["params"][82] = "klayusdt@aggTrade";
-					data["params"][83] = "maskusdt@aggTrade";
-					data["params"][84] = "iotxusdt@aggTrade";
-					data["params"][85] = "celousdt@aggTrade";
-					data["params"][86] = "waxpusdt@aggTrade";
-					data["params"][87] = "scrtusdt@aggTrade";
-					data["params"][88] = "manausdt@aggTrade";
-					data["params"][89] = "reefusdt@aggTrade";
-					data["params"][90] = "nanousdt@aggTrade";
-					data["params"][91] = "shibusdt@aggTrade";
-					data["params"][92] = "sandusdt@aggTrade";
-					data["params"][93] = "thetausdt@aggTrade";
-					data["params"][94] = "wavesusdt@aggTrade";
-					data["params"][95] = "audiousdt@aggTrade";
-					data["params"][96] = "maticusdt@aggTrade";
-					data["params"][97] = "sushiusdt@aggTrade";
-					data["params"][98] = "1inchusdt@aggTrade";
-					data["params"][99] = "oceanusdt@aggTrade";
-					// Получаем параметры запроса в виде строки
-					const string query = data.dump();
-					// Отправляем сообщение на сервер
-					this->_ws->send(query.data(), query.size());
-				} break;
-				// Если клиент отключился от сервера
-				case static_cast <uint8_t> (client::web_t::mode_t::CLOSE):
-					// Выводим информацию в лог
-					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
-				break;
-			}
+			// Выводим информацию в лог
+			this->_log->print("Handshake", log_t::flag_t::INFO);
+			// Создаём объект JSON
+			json data = json::object();
+			// Формируем идентификатор объекта
+			data["id"] = 1;
+			// Формируем метод подписки
+			data["method"] = "SUBSCRIBE";
+			// Формируем параметры запрашиваемых криптовалютных пар
+			data["params"] = json::array();
+			// Формируем параметры криптовалютных пар
+			data["params"][0] = "omgusdt@aggTrade";
+			data["params"][1] = "umausdt@aggTrade";
+			data["params"][2] = "radusdt@aggTrade";
+			data["params"][3] = "fttusdt@aggTrade";
+			data["params"][4] = "xrpusdt@aggTrade";
+			data["params"][5] = "adausdt@aggTrade";
+			data["params"][6] = "solusdt@aggTrade";
+			data["params"][7] = "dotusdt@aggTrade";
+			data["params"][8] = "ethusdt@aggTrade";
+			data["params"][9] = "bnbusdt@aggTrade";
+			data["params"][10] = "btcusdt@aggTrade";
+			data["params"][11] = "ltcusdt@aggTrade";
+			data["params"][12] = "trxusdt@aggTrade";
+			data["params"][13] = "xlmusdt@aggTrade";
+			data["params"][14] = "zecusdt@aggTrade";
+			data["params"][15] = "zilusdt@aggTrade";
+			data["params"][16] = "vetusdt@aggTrade";
+			data["params"][17] = "wrxusdt@aggTrade";
+			data["params"][18] = "oneusdt@aggTrade";
+			data["params"][19] = "xtzusdt@aggTrade";
+			data["params"][20] = "filusdt@aggTrade";
+			data["params"][21] = "eosusdt@aggTrade";
+			data["params"][22] = "xmrusdt@aggTrade";
+			data["params"][23] = "neousdt@aggTrade";
+			data["params"][24] = "kdausdt@aggTrade";
+			data["params"][25] = "ksmusdt@aggTrade";
+			data["params"][26] = "icxusdt@aggTrade";
+			data["params"][27] = "dgbusdt@aggTrade";
+			data["params"][28] = "bchusdt@aggTrade";
+			data["params"][29] = "ontusdt@aggTrade";
+			data["params"][30] = "etcusdt@aggTrade";
+			data["params"][31] = "chzusdt@aggTrade";
+			data["params"][32] = "kncusdt@aggTrade";
+			data["params"][33] = "astusdt@aggTrade";
+			data["params"][34] = "atausdt@aggTrade";
+			data["params"][35] = "snxusdt@aggTrade";
+			data["params"][36] = "grtusdt@aggTrade";
+			data["params"][37] = "mkrusdt@aggTrade";
+			data["params"][38] = "dcrusdt@aggTrade";
+			data["params"][39] = "c98usdt@aggTrade";
+			data["params"][40] = "uniusdt@aggTrade";
+			data["params"][41] = "rvnusdt@aggTrade";
+			data["params"][42] = "zenusdt@aggTrade";
+			data["params"][43] = "lrcusdt@aggTrade";
+			data["params"][44] = "ftmusdt@aggTrade";
+			data["params"][45] = "xecusdt@aggTrade";
+			data["params"][46] = "xemusdt@aggTrade";
+			data["params"][47] = "btgusdt@aggTrade";
+			data["params"][48] = "srmusdt@aggTrade";
+			data["params"][49] = "ckbusdt@aggTrade";
+			data["params"][50] = "xvgusdt@aggTrade";
+			data["params"][51] = "lskusdt@aggTrade";
+			data["params"][52] = "ernusdt@aggTrade";
+			data["params"][53] = "stxusdt@aggTrade";
+			data["params"][54] = "bcdusdt@aggTrade";
+			data["params"][55] = "sysusdt@aggTrade";
+			data["params"][56] = "axsusdt@aggTrade";
+			data["params"][57] = "qntusdt@aggTrade";
+			data["params"][58] = "enjusdt@aggTrade";
+			data["params"][59] = "hotusdt@aggTrade";
+			data["params"][60] = "algousdt@aggTrade";
+			data["params"][61] = "arpausdt@aggTrade";
+			data["params"][62] = "compusdt@aggTrade";
+			data["params"][63] = "iostusdt@aggTrade";
+			data["params"][64] = "flowusdt@aggTrade";
+			data["params"][65] = "aaveusdt@aggTrade";
+			data["params"][66] = "runeusdt@aggTrade";
+			data["params"][67] = "celrusdt@aggTrade";
+			data["params"][68] = "linkusdt@aggTrade";
+			data["params"][69] = "qtumusdt@aggTrade";
+			data["params"][70] = "egldusdt@aggTrade";
+			data["params"][71] = "dashusdt@aggTrade";
+			data["params"][72] = "lunausdt@aggTrade";
+			data["params"][73] = "cakeusdt@aggTrade";
+			data["params"][74] = "atomusdt@aggTrade";
+			data["params"][75] = "minausdt@aggTrade";
+			data["params"][76] = "idexusdt@aggTrade";
+			data["params"][77] = "dogeusdt@aggTrade";
+			data["params"][78] = "avaxusdt@aggTrade";
+			data["params"][79] = "iotausdt@aggTrade";
+			data["params"][80] = "hbarusdt@aggTrade";
+			data["params"][81] = "nearusdt@aggTrade";
+			data["params"][82] = "klayusdt@aggTrade";
+			data["params"][83] = "maskusdt@aggTrade";
+			data["params"][84] = "iotxusdt@aggTrade";
+			data["params"][85] = "celousdt@aggTrade";
+			data["params"][86] = "waxpusdt@aggTrade";
+			data["params"][87] = "scrtusdt@aggTrade";
+			data["params"][88] = "manausdt@aggTrade";
+			data["params"][89] = "reefusdt@aggTrade";
+			data["params"][90] = "nanousdt@aggTrade";
+			data["params"][91] = "shibusdt@aggTrade";
+			data["params"][92] = "sandusdt@aggTrade";
+			data["params"][93] = "thetausdt@aggTrade";
+			data["params"][94] = "wavesusdt@aggTrade";
+			data["params"][95] = "audiousdt@aggTrade";
+			data["params"][96] = "maticusdt@aggTrade";
+			data["params"][97] = "sushiusdt@aggTrade";
+			data["params"][98] = "1inchusdt@aggTrade";
+			data["params"][99] = "oceanusdt@aggTrade";
+			// Получаем параметры запроса в виде строки
+			const string query = data.dump();
+			// Отправляем сообщение на сервер
+			this->_ws->send(query.data(), query.size());
 		}
 	public:
 		/**
@@ -353,12 +341,12 @@ int main(int argc, char * argv[]){
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
+	// Подписываемся на событие рукопожатия
+	ws.on((function <void (const int32_t)>) std::bind(&Executor::handshake, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.on((function <void (const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on((function <void (const vector <char> &, const bool)>) std::bind(&Executor::message, &executor, _1, _2));
-	// Подписываемся на событие коннекта/дисконнекта
-	ws.on((function <void (const int32_t, const client::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
 	ws.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&Executor::status, &executor, _1, _2));
 	// Выполняем запуск WebSocket клиента

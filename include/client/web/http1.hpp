@@ -19,6 +19,7 @@
  * Наши модули
  */
 #include <client/web/web.hpp>
+#include <client/web/ws1.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -47,9 +48,19 @@ namespace awh {
 			private:
 				// Флаг открытия подключения
 				bool _mode;
+				// Флаг разрешения использования клиента WebSocket
+				bool _webSocket;
 			private:
+				// Объект для работы c WebSocket
+				ws1_t _ws1;
 				// Объект для работы с HTTP-протколом
 				http_t _http;
+			private:
+				// Агент воркера выполнения запроса
+				agent_t _agent;
+			private:
+				// Количество активных ядер
+				ssize_t _threads;
 			private:
 				// Объект функций обратного вызова для вывода результата
 				fn_t _resultCallback;
@@ -80,12 +91,32 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				/**
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param aid    идентификатор адъютанта
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
+				 */
+				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * persistCallback Функция персистентного вызова
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 */
+				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * redirect Метод выполнения редиректа если требуется
-				 * @return результат выполнения редиректа
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 * @return     результат выполнения редиректа
 				 */
-				bool redirect() noexcept;
+				bool redirect(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * response Метод получения ответа сервера
@@ -140,17 +171,45 @@ namespace awh {
 				void submit(const request_t & request) noexcept;
 			public:
 				/**
+				 * sendError Метод отправки сообщения об ошибке
+				 * @param mess отправляемое сообщение об ошибке
+				 */
+				void sendError(const ws::mess_t & mess) noexcept;
+				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
 				int32_t send(const request_t & request) noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param message буфер сообщения в бинарном виде
+				 * @param size    размер сообщения в байтах
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void send(const char * message, const size_t size, const bool text = true) noexcept;
+			public:
+				/**
+				 * pause Метод установки на паузу клиента
+				 */
+				void pause() noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const mode_t)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибок
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения сообщений
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
@@ -211,15 +270,52 @@ namespace awh {
 				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
+				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @param subprotocol сабпротокол для установки
+				 */
+				void subprotocol(const string & subprotocol) noexcept;
+				/**
+				 * subprotocol Метод получения списка выбранных сабпротоколов
+				 * @return список выбранных сабпротоколов
+				 */
+				const set <string> & subprotocols() const noexcept;
+				/**
+				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @param subprotocols сабпротоколы для установки
+				 */
+				void subprotocols(const set <string> & subprotocols) noexcept;
+			public:
+				/**
+				 * extensions Метод извлечения списка расширений
+				 * @return список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions() const noexcept;
+				/**
+				 * extensions Метод установки списка расширений
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
+			public:
+				/**
 				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
+				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
+				/**
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				void mode(const set <flag_t> & flags) noexcept;
+				/**
+				 * core Метод установки сетевого ядра
+				 * @param core объект сетевого ядра
+				 */
+				void core(const client::core_t * core) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
@@ -239,6 +335,13 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void ident(const string & id, const string & name, const string & ver) noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера
@@ -284,7 +387,7 @@ namespace awh {
 				/**
 				 * ~Http1 Деструктор
 				 */
-				~Http1() noexcept {}
+				~Http1() noexcept;
 		} http1_t;
 	};
 };
