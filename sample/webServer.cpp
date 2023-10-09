@@ -112,11 +112,12 @@ class WebServer {
 			}
 		}
 		/**
-		 * good Метод получения удачного запроса
+		 * handshake Метод получения удачного запроса
 		 * @param sid идентификатор потока
 		 * @param aid идентификатор адъютанта
 		 */
-		void good(const int32_t sid, const uint64_t aid){
+		void handshake(const int32_t sid, const uint64_t aid){
+			/*
 			// Если метод запроса соответствует GET-запросу
 			if(this->_method == awh::web_t::method_t::GET){
 				// Формируем тело ответа
@@ -132,6 +133,7 @@ class WebServer {
 				// Отправляем сообщение клиенту
 				this->_awh->send(aid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
+			*/
 		}
 		/**
 		 * request Метод запроса клиента
@@ -272,8 +274,8 @@ int main(int argc, char * argv[]){
 	// awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
 	// awh.on((function <bool (const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2));
-	// Устанавливаем функцию обратного вызова при получении удачного запроса
-	awh.on((function <void (const int32_t, const uint64_t)>) std::bind(&WebServer::good, &executor, _1, _2));
+	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
+	awh.on((function <void (const int32_t, const uint64_t)>) std::bind(&WebServer::handshake, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок
