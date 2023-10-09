@@ -123,11 +123,14 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(aid);
 		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET)){
+			
+			cout << " $$$$$$$$$$$$$$$$$$$ " << size << endl;
+
 			// Выполняем передачу данных клиенту WebSocket
 			this->_ws1.readCallback(buffer, size, aid, sid, core);
 		// Иначе выполняем обработку входящих данных как Web-сервер
-		else {
+		} else {
 			// Получаем параметры подключения адъютанта
 			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены
