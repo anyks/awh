@@ -897,16 +897,28 @@ void awh::server::WebSocket1::sendError(const uint64_t aid, const ws::mess_t & m
  * @param text    данные передаются в текстовом виде
  */
 void awh::server::WebSocket1::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+	
+	cout << " ---------------1 " << size << endl;
+	
 	// Если подключение выполнено
 	if(this->_core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
+		
+		cout << " ---------------2 " << size << endl;
+		
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
+			
+			cout << " ---------------3 " << size << endl;
+			
 			// Выполняем блокировку отправки сообщения
 			adj->allow.send = !adj->allow.send;
 			// Если рукопожатие выполнено
 			if(adj->http.isHandshake(http_t::process_t::REQUEST)){
+				
+				cout << " ---------------4 " << size << endl;
+				
 				/**
 				 * Если включён режим отладки
 				 */
@@ -920,6 +932,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 					// Выводим сообщение о выводе чанка полезной нагрузки
 					else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
 				#endif
+				
+				cout << " ---------------5 " << size << endl;
+				
 				// Буфер сжатых данных
 				vector <char> buffer;
 				// Создаём объект заголовка для отправки
@@ -940,6 +955,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Указываем, что сообщение передаётся в сжатом виде
 				head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
+				
+				cout << " ---------------6 " << size << endl;
+				
 				// Если необходимо сжимать сообщение перед отправкой
 				if(head.rsv[0]){
 					// Компрессионные данные
@@ -948,6 +966,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 					switch(static_cast <uint8_t> (adj->compress)){
 						// Если метод компрессии выбран Deflate
 						case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
+							
+							cout << " ---------------7 " << size << endl;
+							
 							// Устанавливаем размер скользящего окна
 							adj->hash.wbit(adj->server.wbit);
 							// Выполняем компрессию полученных данных
@@ -966,6 +987,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 							data = adj->hash.compress(message, size, hash_t::method_t::BROTLI);
 						break;
 					}
+					
+					cout << " ---------------8 " << size << endl;
+					
 					// Если сжатие данных прошло удачно
 					if(!data.empty()){
 						// Выполняем перемещение данных
@@ -976,9 +1000,15 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 						(* const_cast <size_t *> (&size)) = buffer.size();
 					// Снимаем флаг сжатых данных
 					} else head.rsv[0] = false;
+
+
+					cout << " ---------------9 " << size << endl;
 				}
 				// Если требуется фрагментация сообщения
 				if(size > adj->frame.size){
+					
+					cout << " ---------------10 " << size << endl;
+					
 					// Бинарный буфер чанка данных
 					vector <char> chunk(adj->frame.size);
 					// Смещение в бинарном буфере
@@ -995,6 +1025,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 						chunk.assign(message + start, message + stop);
 						// Создаём буфер для отправки
 						const auto & buffer = adj->frame.methods.set(head, chunk.data(), chunk.size());
+						
+						cout << " ---------------11 " << buffer.size() << endl;
+						
 						// Если бинарный буфер для отправки данных получен
 						if(!buffer.empty())
 							// Отправляем серверу сообщение
@@ -1012,6 +1045,9 @@ void awh::server::WebSocket1::send(const uint64_t aid, const char * message, con
 				} else {
 					// Создаём буфер для отправки
 					const auto & buffer = adj->frame.methods.set(head, message, size);
+					
+					cout << " ---------------12 " << buffer.size() << endl;
+					
 					// Если бинарный буфер для отправки данных получен
 					if(!buffer.empty())
 						// Отправляем серверу сообщение

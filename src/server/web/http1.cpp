@@ -762,13 +762,9 @@ void awh::server::Http1::send(const uint64_t aid, const char * message, const si
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(aid);
 		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET)){
-			
-			cout << " ******************* " << string(message, size) << endl;
-			
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту WebSocket
 			this->_ws1.send(aid, message, size, text);
-		}
 	}
 }
 /**
