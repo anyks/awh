@@ -74,13 +74,12 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
  * @param core объект сетевого ядра
  */
 void awh::client::Http2::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если флаг инициализации сессии HTTP2 установлен
-	if(this->_sessionInitialized){
-		// Выполняем закрытие подключения
-		this->_nghttp2.close();
-		// Выполняем снятие флага инициализации сессии HTTP2
-		this->_sessionInitialized = !this->_sessionInitialized;
-	}
+	// Выполняем удаление подключения
+	this->_nghttp2.close();
+	// Выполняем удаление сессии подключения HTTP/2
+	this->_nghttp2.free();
+	// Выполняем снятие флага инициализации сессии HTTP/2
+	this->_sessionInitialized = false;
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(aid, sid, core))
 		// Выходим из функции
@@ -126,29 +125,35 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 		if(core->proto(aid) == engine_t::proto_t::HTTP2){
 			// Если флаг инициализации сессии HTTP2 установлен
 			if(this->_sessionInitialized){
-				// Выполняем извлечение полученного чанка данных из сокета
-				ssize_t bytes = nghttp2_session_mem_recv(this->_nghttp2.session, (const uint8_t *) buffer, size);
-				// Если данные не прочитаны, выводим ошибку и выходим
-				if(bytes < 0){
-					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
-					// Выходим из функции
-					return;
-				}
-				// Фиксируем полученный результат
-				if((bytes = nghttp2_session_send(this->_nghttp2.session)) != 0){
-					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(static_cast <int> (bytes)));
-					// Выходим из функции
-					return;
+				// Если сессия HTTP/2 инициализированна
+				if(this->_nghttp2.session != nullptr){
+					// Выполняем извлечение полученного чанка данных из сокета
+					ssize_t bytes = nghttp2_session_mem_recv(this->_nghttp2.session, (const uint8_t *) buffer, size);
+					// Если данные не прочитаны, выводим ошибку и выходим
+					if(bytes < 0){
+						// Выводим сообщение об полученной ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
+						// Выходим из функции
+						return;
+					}
+					// Если сессия HTTP/2 инициализированна
+					if(this->_nghttp2.session != nullptr){
+						// Фиксируем полученный результат
+						if((bytes = nghttp2_session_send(this->_nghttp2.session)) != 0){
+							// Выводим сообщение об полученной ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выводим функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(static_cast <int> (bytes)));
+							// Выходим из функции
+							return;
+						}
+					}
 				}
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом

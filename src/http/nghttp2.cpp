@@ -352,12 +352,6 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
 void awh::NgHttp2::free() noexcept {
 	// Если сессия HTTP/2 создана удачно
 	if(this->session != nullptr){
-		
-		// Выполняем задержку на 3 секунды, чтобы избежать краха приложения
-		for(uint8_t i = 0; i < 3; i++)
-			// Усыпляем поток на 1 секунду
-			this_thread::sleep_for(1s);
-
 		// Выполняем удаление сессии
 		nghttp2_session_del(this->session);
 		// Выполняем обнуление активной сессии
