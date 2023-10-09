@@ -197,8 +197,26 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										this->websocket(aid, sid, core);
 									// Если протокол запрещён или не поддерживается
 									else {
-										// Выводим сообщение об полученной ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, "Requested protocol is not supported by this server");
+										// Выполняем сброс состояния HTTP парсера
+										adj->http.clear();
+										// Выполняем сброс состояния HTTP парсера
+										adj->http.reset();
+										// Выполняем очистку буфера полученных данных
+										adj->buffer.clear();
+										// Формируем запрос авторизации
+										const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Requested protocol is not supported by this server"));
+										// Если ответ получен
+										if(!response.empty()){
+											// Тело полезной нагрузки
+											vector <char> payload;
+											// Отправляем ответ адъютанту
+											dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
+											// Получаем данные тела запроса
+											while(!(payload = adj->http.payload()).empty())
+												// Отправляем тело клиенту
+												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+										// Выполняем отключение адъютанта
+										} else dynamic_cast <server::core_t *> (core)->close(aid);
 										// Если функция обратного вызова активности потока установлена
 										if(this->_callback.is("stream"))
 											// Выводим функцию обратного вызова
@@ -206,7 +224,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										// Если функция обратного вызова на на вывод ошибок установлена
 										if(this->_callback.is("error"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
 											// Выводим функцию обратного вызова
