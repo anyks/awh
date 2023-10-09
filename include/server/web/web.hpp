@@ -51,13 +51,6 @@ namespace awh {
 		typedef class Web {
 			public:
 				/**
-				 * Идентификатор агента
-				 */
-				enum class agent_t : uint8_t {
-					HTTP      = 0x01, // HTTP-клиент
-					WEBSOCKET = 0x02  // WebSocket-клиент
-				};
-				/**
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
@@ -78,13 +71,22 @@ namespace awh {
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
-					ALIVE           = 0x01, // Флаг автоматического поддержания подключения
-					NOT_INFO        = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOT_STOP        = 0x03, // Флаг запрета остановки биндинга
-					WAIT_MESS       = 0x04, // Флаг ожидания входящих сообщений
-					VERIFY_SSL      = 0x05, // Флаг выполнения проверки сертификата SSL
-					TAKEOVER_CLIENT = 0x06, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER = 0x07  // Флаг ожидания входящих сообщений для сервера
+					ALIVE            = 0x01, // Флаг автоматического поддержания подключения
+					NOT_INFO         = 0x02, // Флаг запрещающий вывод информационных сообщений
+					NOT_STOP         = 0x03, // Флаг запрета остановки биндинга
+					WAIT_MESS        = 0x04, // Флаг ожидания входящих сообщений
+					VERIFY_SSL       = 0x05, // Флаг выполнения проверки сертификата SSL
+					TAKEOVER_CLIENT  = 0x06, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER  = 0x07, // Флаг ожидания входящих сообщений для сервера
+					WEBSOCKET_ENABLE = 0x08  // Флаг разрешения использования WebSocket-сервера
+				};
+			protected:
+				/**
+				 * Идентификатор агента
+				 */
+				enum class agent_t : uint8_t {
+					HTTP      = 0x01, // HTTP-клиент
+					WEBSOCKET = 0x02  // WebSocket-клиент
 				};
 			protected:
 				/**
@@ -164,6 +166,8 @@ namespace awh {
 				// Максимальное количество запросов
 				size_t _maxRequests;
 			protected:
+				// Список активных агентов
+				map <uint64_t, agent_t> _agents;
 				// Список мусорных адъютантов
 				map <uint64_t, time_t> _garbage;
 			protected:

@@ -20,6 +20,7 @@
  */
 #include <scheme/web.hpp>
 #include <server/web/web.hpp>
+#include <server/web/ws1.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -45,6 +46,12 @@ namespace awh {
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
 				 */
 				friend class Http2;
+			private:
+				// Флаг разрешения использования клиента WebSocket
+				bool _webSocket;
+			private:
+				// Объект работы с WebSocket-сервером
+				ws1_t _ws1;
 			private:
 				// Объект рабочего
 				web_scheme_t _scheme;
@@ -83,6 +90,14 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
+				 * websocket Метод инициализации WebSocket протокола
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 */
+				void websocket(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
@@ -111,6 +126,20 @@ namespace awh {
 				 */
 				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 			public:
+				/**
+				 * sendError Метод отправки сообщения об ошибке
+				 * @param aid  идентификатор адъютанта
+				 * @param mess отправляемое сообщение об ошибке
+				 */
+				void sendError(const uint64_t aid, const ws::mess_t & mess) noexcept;
+				/**
+				 * send Метод отправки сообщения клиенту
+				 * @param aid     идентификатор адъютанта
+				 * @param message буфер сообщения в бинарном виде
+				 * @param size    размер сообщения в байтах
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
 				/**
 				 * send Метод отправки сообщения адъютанту
 				 * @param aid     идентификатор адъютанта
@@ -154,6 +183,17 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибок
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения сообщений
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
@@ -238,10 +278,44 @@ namespace awh {
 				void close(const uint64_t aid) noexcept;
 			public:
 				/**
+				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @param subprotocol сабпротокол для установки
+				 */
+				void subprotocol(const string & subprotocol) noexcept;
+				/**
+				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @param subprotocols сабпротоколы для установки
+				 */
+				void subprotocols(const set <string> & subprotocols) noexcept;
+				/**
+				 * subprotocol Метод получения списка выбранных сабпротоколов
+				 * @param aid идентификатор адъютанта
+				 * @return    список выбранных сабпротоколов
+				 */
+				const set <string> & subprotocols(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * extensions Метод установки списка расширений
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
+				/**
+				 * extensions Метод извлечения списка расширений
+				 * @param aid идентификатор адъютанта
+				 * @return    список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions(const uint64_t aid) const noexcept;
+			public:
+				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+				/**
+				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов

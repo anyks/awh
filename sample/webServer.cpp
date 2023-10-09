@@ -175,11 +175,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
+	 * 1. Устанавливаем разрешение использовать протокол WebSocket
 	 */
-	/*
-	awh.mode({server::web_t::flag_t::WAIT_MESS});
-	*/
+	awh.mode({server::web_t::flag_t::WEBSOCKET_ENABLE});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
@@ -200,9 +198,6 @@ int main(int argc, char * argv[]){
 	// core.clusterSize();
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	awh.clusterAutoRestart(true);
-	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
-	 */
 	// Устанавливаем режим мультипоточной обработки
 	// core.multiThreads(22);
 	// Устанавливаем название сервера
@@ -211,7 +206,7 @@ int main(int argc, char * argv[]){
 	// awh.opaque("keySession");
 	// Устанавливаем тип авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	// awh.init(2222, "127.0.0.1", awh::http_t::compress_t::ALL_COMPRESS);
 	awh.init(2222, "", awh::http_t::compress_t::ALL_COMPRESS);
@@ -228,7 +223,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем шифрование
 	// awh.crypto("PASS");
 	// Устанавливаем функцию извлечения пароля
-	awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
+	// awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
 	// awh.on((function <bool (const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении удачного запроса

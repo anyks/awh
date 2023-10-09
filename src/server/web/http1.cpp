@@ -120,147 +120,186 @@ void awh::server::Http1::disconnectCallback(const uint64_t aid, const uint16_t s
 void awh::server::Http1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Получаем параметры подключения адъютанта
-		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
-			// Если подключение закрыто
-			if(adj->close){
-				// Принудительно выполняем отключение лкиента
-				dynamic_cast <server::core_t *> (core)->close(aid);
-				// Выходим из функции
-				return;
-			}
-			// Добавляем полученные данные в буфер
-			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
-			// Если функция обратного вызова активности потока установлена
-			if(!adj->mode && (adj->mode = this->_callback.is("stream")))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::OPEN);
-			// Выполняем обработку полученных данных
-			while(!adj->close){
-				// Выполняем парсинг полученных данных
-				size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
-				// Если все данные получены
-				if(adj->http.isEnd()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						{
-							// Получаем данные запроса
-							const auto & request = adj->http.process(http_t::process_t::REQUEST, true);
-							// Если параметры запроса получены
-							if(!request.empty()){
-								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-								// Выводим параметры запроса
-								cout << string(request.begin(), request.end()) << endl;
-								// Если тело запроса существует
-								if(!adj->http.body().empty())
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
-								// Иначе устанавливаем перенос строки
-								else cout << endl;
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует WebSocket-у
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			// Выполняем передачу данных клиенту WebSocket
+			this->_ws1.readCallback(buffer, size, aid, sid, core);
+		// Иначе выполняем обработку входящих данных как Web-сервер
+		else {
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Если подключение закрыто
+				if(adj->close){
+					// Принудительно выполняем отключение лкиента
+					dynamic_cast <server::core_t *> (core)->close(aid);
+					// Выходим из функции
+					return;
+				}
+				// Добавляем полученные данные в буфер
+				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+				// Если функция обратного вызова активности потока установлена
+				if(!adj->mode && (adj->mode = this->_callback.is("stream")))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::OPEN);
+				// Выполняем обработку полученных данных
+				while(!adj->close){
+					// Выполняем парсинг полученных данных
+					size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
+					// Если все данные получены
+					if(adj->http.isEnd()){
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем данные запроса
+								const auto & request = adj->http.process(http_t::process_t::REQUEST, true);
+								// Если параметры запроса получены
+								if(!request.empty()){
+									// Выводим заголовок запроса
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры запроса
+									cout << string(request.begin(), request.end()) << endl;
+									// Если тело запроса существует
+									if(!adj->http.body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
+								}
+							}
+						#endif
+						// Если подключение не установлено как постоянное
+						if(!this->_service.alive && !adj->alive){
+							// Увеличиваем количество выполненных запросов
+							adj->requests++;
+							// Если количество выполненных запросов превышает максимальный
+							if(adj->requests >= this->_maxRequests)
+								// Устанавливаем флаг закрытия подключения
+								adj->close = true;
+							// Получаем текущий штамп времени
+							else adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						// Выполняем сброс количества выполненных запросов
+						} else adj->requests = 0;
+						// Выполняем проверку авторизации
+						switch(static_cast <uint8_t> (adj->http.getAuth())){
+							// Если запрос выполнен удачно
+							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+								// Если заголовок Upgrade установлен
+								if(adj->http.isHeader("upgrade")){
+									// Выполняем извлечение заголовка Upgrade
+									const string & header = adj->http.header("upgrade");
+									// Если запрашиваемый протокол соответствует WebSocket
+									if(this->_webSocket && this->_fmk->compare(header, "websocket"))
+										// Выполняем инициализацию WebSocket-сервера
+										this->websocket(aid, sid, core);
+									// Если протокол запрещён или не поддерживается
+									else {
+										// Выводим сообщение об полученной ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, "Requested protocol is not supported by this server");
+										// Если функция обратного вызова активности потока установлена
+										if(this->_callback.is("stream"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+										// Если функция обратного вызова на на вывод ошибок установлена
+										if(this->_callback.is("error"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+										// Если установлена функция отлова завершения запроса
+										if(this->_callback.is("end"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
+									}
+									// Завершаем обработку
+									goto Next;
+								}
+								// Получаем флаг шифрованных данных
+								adj->crypt = adj->http.isCrypt();
+								// Получаем поддерживаемый метод компрессии
+								adj->compress = adj->http.compress();
+								// Выполняем извлечение параметров запроса
+								const auto & request = adj->http.request();
+								// Если функция обратного вызова активности потока установлена
+								if(this->_callback.is("stream"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+								if(!adj->http.body().empty() && this->_callback.is("entity"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());								
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
+								// Если функция обратного вызова на получение удачного запроса установлена
+								if(this->_callback.is("handshake"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t> ("handshake", 1, aid);
+								// Если установлена функция отлова завершения запроса
+								if(this->_callback.is("end"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
+								// Выполняем добавление агнета
+								this->_agents.emplace(aid, agent_t::HTTP);
+								// Завершаем обработку
+								goto Next;
+							} break;
+							// Если запрос неудачный
+							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
+								// Выполняем очистку буфера полученных данных
+								adj->buffer.clear();
+								// Формируем запрос авторизации
+								const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+								// Если ответ получен
+								if(!response.empty()){
+									// Тело полезной нагрузки
+									vector <char> payload;
+									// Отправляем ответ адъютанту
+									dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
+									// Получаем данные тела запроса
+									while(!(payload = adj->http.payload()).empty())
+										// Отправляем тело клиенту
+										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+								// Выполняем отключение адъютанта
+								} else dynamic_cast <server::core_t *> (core)->close(aid);
+								// Если функция обратного вызова активности потока установлена
+								if(this->_callback.is("stream"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+								// Если установлена функция отлова завершения запроса
+								if(this->_callback.is("end"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
+								// Выходим из функции
+								return;
 							}
 						}
-					#endif
-					// Если подключение не установлено как постоянное
-					if(!this->_service.alive && !adj->alive){
-						// Увеличиваем количество выполненных запросов
-						adj->requests++;
-						// Если количество выполненных запросов превышает максимальный
-						if(adj->requests >= this->_maxRequests)
-							// Устанавливаем флаг закрытия подключения
-							adj->close = true;
-						// Получаем текущий штамп времени
-						else adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					// Выполняем сброс количества выполненных запросов
-					} else adj->requests = 0;
-					// Выполняем проверку авторизации
-					switch(static_cast <uint8_t> (adj->http.getAuth())){
-						// Если запрос выполнен удачно
-						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
-							// Получаем флаг шифрованных данных
-							adj->crypt = adj->http.isCrypt();
-							// Получаем поддерживаемый метод компрессии
-							adj->compress = adj->http.compress();
-							// Выполняем извлечение параметров запроса
-							const auto & request = adj->http.request();
-							// Если функция обратного вызова активности потока установлена
-							if(this->_callback.is("stream"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
-							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-							if(!adj->http.body().empty() && this->_callback.is("entity"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());								
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Если функция обратного вызова на получение удачного запроса установлена
-							if(this->_callback.is("handshake"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t> ("handshake", 1, aid);
-							// Если установлена функция отлова завершения запроса
-							if(this->_callback.is("end"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
-							// Завершаем обработку
-							goto Next;
-						} break;
-						// Если запрос неудачный
-						case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Выполняем очистку буфера полученных данных
-							adj->buffer.clear();
-							// Формируем запрос авторизации
-							const auto & response = adj->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
-							// Если ответ получен
-							if(!response.empty()){
-								// Тело полезной нагрузки
-								vector <char> payload;
-								// Отправляем ответ адъютанту
-								dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
-								// Получаем данные тела запроса
-								while(!(payload = adj->http.payload()).empty())
-									// Отправляем тело клиенту
-									dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
-							// Выполняем отключение адъютанта
-							} else dynamic_cast <server::core_t *> (core)->close(aid);
-							// Если функция обратного вызова активности потока установлена
-							if(this->_callback.is("stream"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, aid, mode_t::CLOSE);
-							// Если функция обратного вызова на на вывод ошибок установлена
-							if(this->_callback.is("error"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
-							// Если установлена функция отлова завершения запроса
-							if(this->_callback.is("end"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::RECV);
-							// Выходим из функции
-							return;
-						}
 					}
+					// Устанавливаем метку продолжения обработки пайплайна
+					Next:
+					// Если парсер обработал какое-то количество байт
+					if((bytes > 0) && !adj->buffer.empty()){
+						// Если размер буфера больше количества удаляемых байт
+						if(adj->buffer.size() >= bytes)
+							// Удаляем количество обработанных байт
+							adj->buffer.assign(adj->buffer.begin() + bytes, adj->buffer.end());
+						// Если байт в буфере меньше, просто очищаем буфер
+						else adj->buffer.clear();
+						// Если данных для обработки не осталось, выходим
+						if(adj->buffer.empty()) break;
+					// Если данных для обработки недостаточно, выходим
+					} else break;
 				}
-				// Устанавливаем метку продолжения обработки пайплайна
-				Next:
-				// Если парсер обработал какое-то количество байт
-				if((bytes > 0) && !adj->buffer.empty()){
-					// Если размер буфера больше количества удаляемых байт
-					if(adj->buffer.size() >= bytes)
-						// Удаляем количество обработанных байт
-						adj->buffer.assign(adj->buffer.begin() + bytes, adj->buffer.end());
-					// Если байт в буфере меньше, просто очищаем буфер
-					else adj->buffer.clear();
-					// Если данных для обработки не осталось, выходим
-					if(adj->buffer.empty()) break;
-				// Если данных для обработки недостаточно, выходим
-				} else break;
 			}
 		}
 	}
@@ -276,16 +315,283 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 void awh::server::Http1::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует WebSocket-у
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			// Выполняем передачу данных клиенту WebSocket
+			this->_ws1.writeCallback(buffer, size, aid, sid, core);
+		// Иначе выполняем обработку входящих данных как Web-сервер
+		else {
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Если необходимо выполнить закрыть подключение
+				if(!adj->close && adj->stopped){
+					// Устанавливаем флаг закрытия подключения
+					adj->close = !adj->close;
+					// Принудительно выполняем отключение лкиента
+					const_cast <server::core_t *> (this->_core)->close(aid);
+				}
+			}
+		}
+	}
+}
+/**
+ * websocket Метод инициализации WebSocket протокола
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ */
+void awh::server::Http1::websocket(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Создаём адъютанта
+		this->_ws1._scheme.set(aid);
 		// Получаем параметры подключения адъютанта
-		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_ws1._scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Если необходимо выполнить закрыть подключение
-			if(!adj->close && adj->stopped){
-				// Устанавливаем флаг закрытия подключения
-				adj->close = !adj->close;
-				// Принудительно выполняем отключение лкиента
-				const_cast <server::core_t *> (this->_core)->close(aid);
+			// Если данные необходимо зашифровать
+			if(this->_crypto.mode){
+				// Устанавливаем соль шифрования
+				adj->hash.salt(this->_crypto.salt);
+				// Устанавливаем пароль шифрования
+				adj->hash.pass(this->_crypto.pass);
+				// Устанавливаем размер шифрования
+				adj->hash.cipher(this->_crypto.cipher);
+			}
+			// Выполняем установку идентификатора объекта
+			adj->http.id(aid);
+			// Устанавливаем флаг перехвата контекста компрессии
+			adj->server.takeover = this->_ws1._server.takeover;
+			// Устанавливаем флаг перехвата контекста декомпрессии
+			adj->client.takeover = this->_ws1._client.takeover;
+			// Разрешаем перехватывать контекст компрессии
+			adj->hash.takeoverCompress(this->_ws1._server.takeover);
+			// Разрешаем перехватывать контекст декомпрессии
+			adj->hash.takeoverDecompress(this->_ws1._client.takeover);
+			// Разрешаем перехватывать контекст для клиента
+			adj->http.takeover(awh::web_t::hid_t::CLIENT, this->_ws1._client.takeover);
+			// Разрешаем перехватывать контекст для сервера
+			adj->http.takeover(awh::web_t::hid_t::SERVER, this->_ws1._server.takeover);
+			// Устанавливаем данные сервиса
+			adj->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+			// Если сабпротоколы установлены
+			if(!this->_ws1._subprotocols.empty())
+				// Устанавливаем поддерживаемые сабпротоколы
+				adj->http.subprotocols(this->_ws1._subprotocols);
+			// Если список расширений установлены
+			if(!this->_ws1._extensions.empty())
+				// Устанавливаем список поддерживаемых расширений
+				adj->http.extensions(this->_ws1._extensions);
+			// Если размер фрейма установлен
+			if(this->_ws1._frameSize > 0)
+				// Выполняем установку размера фрейма
+				adj->frame.size = this->_ws1._frameSize;
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			adj->http.compress(this->_scheme.compress);
+			// Если сервер требует авторизацию
+			if(this->_authType != auth_t::type_t::NONE){
+				// Определяем тип авторизации
+				switch(static_cast <uint8_t> (this->_authType)){
+					// Если тип авторизации Basic
+					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+						// Устанавливаем параметры авторизации
+						adj->http.authType(this->_authType);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("checkPassword"))
+							// Устанавливаем функцию проверки авторизации
+							adj->http.authCallback(this->_callback.get <bool (const string &, const string &)> ("checkPassword"));
+					} break;
+					// Если тип авторизации Digest
+					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+						// Устанавливаем название сервера
+						adj->http.realm(this->_service.realm);
+						// Устанавливаем временный ключ сессии сервера
+						adj->http.opaque(this->_service.opaque);
+						// Устанавливаем параметры авторизации
+						adj->http.authType(this->_authType, this->_authHash);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("extractPassword"))
+							// Устанавливаем функцию извлечения пароля
+							adj->http.extractPassCallback(this->_callback.get <string (const string &)> ("extractPassword"));
+					} break;
+				}
+			}
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * web = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(web != nullptr){
+				// Буфер данных для записи в сокет
+				vector <char> buffer;
+				// Выполняем установку параметров запроса
+				adj->http.request(web->http.request());
+				// Выполняем установку полученных заголовков
+				adj->http.headers(web->http.headers());
+				// Выполняем коммит полученного результата
+				adj->http.commit();
+				// Метод компрессии данных
+				http_t::compress_t compress = http_t::compress_t::NONE;
+				// Если рукопожатие выполнено
+				if(adj->http.isHandshake(http_t::process_t::REQUEST)){
+					// Получаем метод компрессии HTML данных
+					compress = adj->http.compression();
+					// Проверяем версию протокола
+					if(!adj->http.checkVer()){
+						// Получаем бинарные данные REST ответа
+						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
+						// Завершаем работу
+						goto End;
+					}
+					// Проверяем ключ адъютанта
+					if(!adj->http.checkKey()){
+						// Получаем бинарные данные REST ответа
+						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
+						// Завершаем работу
+						goto End;
+					}
+					// Выполняем сброс состояния HTTP-парсера
+					adj->http.clear();
+					// Получаем флаг шифрованных данных
+					adj->crypt = adj->http.isCrypt();
+					// Если клиент согласился на шифрование данных
+					if(adj->crypt)
+						// Устанавливаем параметры шифрования
+						adj->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+					// Получаем поддерживаемый метод компрессии
+					adj->compress = adj->http.compress();
+					// Получаем размер скользящего окна сервера
+					adj->server.wbit = adj->http.wbit(awh::web_t::hid_t::SERVER);
+					// Получаем размер скользящего окна клиента
+					adj->client.wbit = adj->http.wbit(awh::web_t::hid_t::CLIENT);
+					// Если разрешено выполнять перехват контекста компрессии для сервера
+					if(adj->http.takeover(awh::web_t::hid_t::SERVER))
+						// Разрешаем перехватывать контекст компрессии для клиента
+						adj->hash.takeoverCompress(true);
+					// Если разрешено выполнять перехват контекста компрессии для клиента
+					if(adj->http.takeover(awh::web_t::hid_t::CLIENT))
+						// Разрешаем перехватывать контекст компрессии для сервера
+						adj->hash.takeoverDecompress(true);
+					// Если заголовки для передаче клиенту установлены
+					if(!this->_ws1._headers.empty())
+						// Выполняем установку HTTP-заголовков
+						adj->http.headers(this->_ws1._headers);
+					// Получаем бинарные данные REST-ответа клиенту
+					buffer = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (101)));
+					// Если бинарные данные ответа получены
+					if(!buffer.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(buffer.begin(), buffer.end()) << endl << endl;
+						#endif
+						// Выполняем установку сетевого ядра
+						this->_ws1._core = dynamic_cast <server::core_t *> (core);
+						// Выполняем отправку данных адъютанту
+						dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
+						// Выполняем извлечение параметров запроса
+						const auto & request = adj->http.request();
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(!adj->http.body().empty() && this->_callback.is("entity"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", adj->sid, aid, request.method, request.url, adj->http.body());
+						// Если функция обратного вызова активности потока установлена
+						if(this->_callback.is("stream"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::OPEN);
+						// Если функция обратного вызова на получение удачного запроса установлена
+						if(this->_callback.is("handshake"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t> ("handshake", adj->sid, aid);
+						// Если установлена функция отлова завершения запроса
+						if(this->_callback.is("end"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
+						// Выполняем добавление агнета
+						this->_agents.emplace(aid, agent_t::WEBSOCKET);
+						// Завершаем работу
+						return;
+					// Формируем ответ, что страница не доступна
+					} else buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (500)));
+				// Сообщаем, что рукопожатие не выполнено
+				} else buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (403), "Handshake failed"));
+				// Устанавливаем метку завершения запроса
+				End:
+				// Если бинарные данные запроса получены, отправляем клиенту
+				if(!buffer.empty()){
+					// Тело полезной нагрузки
+					vector <char> payload;
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры ответа
+						cout << string(buffer.begin(), buffer.end()) << endl << endl;
+					#endif
+					// Устанавливаем метод компрессии данных ответа
+					web->http.compress(compress);
+					// Выполняем извлечение параметров запроса
+					const auto & request = adj->http.request();
+					// Получаем параметры ответа
+					const auto response = adj->http.response();
+					// Выполняем отправку заголовков сообщения
+					dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
+					// Получаем данные тела ответа
+					while(!(payload = web->http.payload()).empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение о выводе чанка полезной нагрузки
+							cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+						#endif
+						// Устанавливаем флаг закрытия подключения
+						adj->stopped = (!web->http.isAlive() && web->http.body().empty());
+						// Выполняем отправку чанков
+						dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+					}
+					// Если получение данных нужно остановить
+					if(adj->stopped)
+						// Выполняем запрет на получение входящих данных
+						dynamic_cast <server::core_t *> (core)->disabled(engine_t::method_t::READ, aid);
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(!web->http.body().empty() && this->_callback.is("entity"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", adj->sid, aid, request.method, request.url, web->http.body());
+					// Если функция обратного вызова активности потока установлена
+					if(this->_callback.is("stream"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", adj->sid, aid, mode_t::CLOSE);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
+					// Если установлена функция отлова завершения запроса
+					if(this->_callback.is("end")){
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::SEND);
+					}
+					// Выполняем сброс состояния HTTP парсера
+					adj->http.clear();
+					// Выполняем сброс состояния HTTP парсера
+					adj->http.reset();
+					// Выполняем очистку буфера данных
+					adj->buffer.payload.clear();
+					// Завершаем работу
+					return;
+				}
+				// Завершаем работу
+				dynamic_cast <server::core_t *> (core)->close(aid);
 			}
 		}
 	}
@@ -299,20 +605,29 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 void awh::server::Http1::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && ((!adj->alive && !this->_service.alive) || adj->close)){
-			// Если адъютант давно должен был быть отключён, отключаем его
-			if(adj->close || !adj->http.isAlive()) dynamic_cast <server::core_t *> (core)->close(aid);
-			// Иначе проверяем прошедшее время
-			else {
-				// Получаем текущий штамп времени
-				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if((stamp - adj->checkPoint) >= this->_timeAlive)
-					// Завершаем работу
-					dynamic_cast <server::core_t *> (core)->close(aid);
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует WebSocket-у
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			// Выполняем передачу данных клиенту WebSocket
+			this->_ws1.persistCallback(aid, sid, core);
+		// Иначе выполняем обработку входящих данных как Web-сервер
+		else {
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if((adj != nullptr) && ((!adj->alive && !this->_service.alive) || adj->close)){
+				// Если адъютант давно должен был быть отключён, отключаем его
+				if(adj->close || !adj->http.isAlive()) dynamic_cast <server::core_t *> (core)->close(aid);
+				// Иначе проверяем прошедшее время
+				else {
+					// Получаем текущий штамп времени
+					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+					if((stamp - adj->checkPoint) >= this->_timeAlive)
+						// Завершаем работу
+						dynamic_cast <server::core_t *> (core)->close(aid);
+				}
 			}
 		}
 	}
@@ -331,17 +646,43 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
 			// Если адъютант уже давно удалился
 			if((date - it->second) >= 10000){
-				// Получаем параметры подключения адъютанта
-				web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(it->first));
-				// Если параметры подключения адъютанта получены
-				if(adj != nullptr){
-					// Устанавливаем флаг отключения
-					adj->close = true;
-					// Выполняем очистку оставшихся данных
-					adj->buffer.clear();
+				{
+					// Выполняем поиск агента которому соответствует клиент
+					auto jt = this->_agents.find(it->first);
+					// Если агент найден в списке активных агентов
+					if(jt != this->_agents.end()){
+						// Если агент соответствует WebSocket-у
+						if(jt->second == agent_t::WEBSOCKET){
+							// Получаем параметры подключения адъютанта
+							ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_ws1._scheme.get(it->first));
+							// Если параметры подключения адъютанта получены
+							if(adj != nullptr){
+								// Устанавливаем флаг отключения
+								adj->close = true;
+								// Выполняем очистку оставшихся данных
+								adj->buffer.payload.clear();
+								// Выполняем очистку оставшихся фрагментов
+								adj->buffer.fragmes.clear();
+							}
+							// Выполняем удаление параметров адъютанта
+							this->_ws1._scheme.rm(it->first);
+						}
+						// Выполняем удаление активного агента
+						this->_agents.erase(jt);
+					}
+				}{
+					// Получаем параметры подключения адъютанта
+					web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(it->first));
+					// Если параметры подключения адъютанта получены
+					if(adj != nullptr){
+						// Устанавливаем флаг отключения
+						adj->close = true;
+						// Выполняем очистку оставшихся данных
+						adj->buffer.clear();
+					}
+					// Выполняем удаление параметров адъютанта
+					this->_scheme.rm(it->first);
 				}
-				// Выполняем удаление параметров адъютанта
-				this->_scheme.rm(it->first);
 				// Выполняем удаление объекта адъютантов из списка мусора
 				it = this->_garbage.erase(it);
 			// Выполняем пропуск адъютанта
@@ -375,6 +716,40 @@ void awh::server::Http1::init(const u_int port, const string & host, const http_
 	web_t::init(port, host, compress);
 }
 /**
+ * sendError Метод отправки сообщения об ошибке
+ * @param aid  идентификатор адъютанта
+ * @param mess отправляемое сообщение об ошибке
+ */
+void awh::server::Http1::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
+	// Если подключение выполнено
+	if(this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует WebSocket-у
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			// Выполняем отправку ошибки клиенту WebSocket
+			this->_ws1.sendError(aid, mess);
+	}
+}
+/**
+ * send Метод отправки сообщения клиенту
+ * @param aid     идентификатор адъютанта
+ * @param message буфер сообщения в бинарном виде
+ * @param size    размер сообщения в байтах
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::server::Http1::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+	// Если подключение выполнено
+	if(this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует WebSocket-у
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			// Выполняем передачу данных клиенту WebSocket
+			this->_ws1.send(aid, message, size, text);
+	}
+}
+/**
  * send Метод отправки сообщения адъютанту
  * @param aid     идентификатор адъютанта
  * @param code    код сообщения для адъютанта
@@ -385,57 +760,62 @@ void awh::server::Http1::init(const u_int port, const string & host, const http_
 void awh::server::Http1::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Получаем параметры подключения адъютанта
-		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
-			// Тело полезной нагрузки
-			vector <char> payload;
-			// Устанавливаем полезную нагрузку
-			adj->http.body(entity);
-			// Устанавливаем заголовки ответа
-			adj->http.headers(headers);
-			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->_service.alive && !adj->alive && adj->http.isAlive())
-				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
-			// Если сообщение ответа не установлено
-			if(mess.empty())
-				// Выполняем установку сообщения по умолчанию
-				const_cast <string &> (mess) = adj->http.message(code);
-			// Формируем запрос авторизации
-			const auto & response = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (code), mess));
-			// Если включён режим отладки
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок ответа
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры ответа
-				cout << string(response.begin(), response.end()) << endl;
-			#endif
-			// Если тело данных не установлено для отправки
-			if(adj->http.body().empty())
-				// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-				adj->stopped = (!this->_service.alive && !adj->alive);
-			// Отправляем серверу сообщение
-			const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), aid);
-			// Получаем данные полезной нагрузки ответа
-			while(!(payload = adj->http.payload()).empty()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Тело полезной нагрузки
+				vector <char> payload;
+				// Устанавливаем полезную нагрузку
+				adj->http.body(entity);
+				// Устанавливаем заголовки ответа
+				adj->http.headers(headers);
+				// Если подключение не установлено как постоянное, но подключение долгоживущее
+				if(!this->_service.alive && !adj->alive && adj->http.isAlive())
+					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+					adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
+				// Если сообщение ответа не установлено
+				if(mess.empty())
+					// Выполняем установку сообщения по умолчанию
+					const_cast <string &> (mess) = adj->http.message(code);
+				// Формируем запрос авторизации
+				const auto & response = adj->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <u_int> (code), mess));
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
-					// Выводим сообщение о выводе чанка полезной нагрузки
-					cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры ответа
+					cout << string(response.begin(), response.end()) << endl;
 				#endif
-				// Если тела данных для отправки больше не осталось
+				// Если тело данных не установлено для отправки
 				if(adj->http.body().empty())
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					adj->stopped = (!this->_service.alive && !adj->alive);
-				// Отправляем тело клиенту
-				const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), aid);
+				// Отправляем серверу сообщение
+				const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), aid);
+				// Получаем данные полезной нагрузки ответа
+				while(!(payload = adj->http.payload()).empty()){
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка полезной нагрузки
+						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+					#endif
+					// Если тела данных для отправки больше не осталось
+					if(adj->http.body().empty())
+						// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+						adj->stopped = (!this->_service.alive && !adj->alive);
+					// Отправляем тело клиенту
+					const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), aid);
+				}
+				// Если установлена функция отлова завершения запроса
+				if(this->_callback.is("end"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::SEND);
 			}
-			// Если установлена функция отлова завершения запроса
-			if(this->_callback.is("end"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, aid, direct_t::SEND);
 		}
 	}
 }
@@ -454,6 +834,8 @@ void awh::server::Http1::on(function <void (const uint64_t, const mode_t)> callb
 void awh::server::Http1::on(function <string (const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова для обработки авторизации
@@ -462,6 +844,8 @@ void awh::server::Http1::on(function <string (const string &)> callback) noexcep
 void awh::server::Http1::on(function <bool (const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова для перехвата полученных чанков
@@ -470,6 +854,8 @@ void awh::server::Http1::on(function <bool (const string &, const string &)> cal
 void awh::server::Http1::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
@@ -486,6 +872,24 @@ void awh::server::Http1::on(function <void (const awh::core_t::status_t, awh::co
 void awh::server::Http1::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибок
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http1::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http1::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибки
@@ -494,6 +898,8 @@ void awh::server::Http1::on(function <bool (const string &, const string &, cons
 void awh::server::Http1::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функция обратного вызова при выполнении рукопожатия
@@ -502,6 +908,8 @@ void awh::server::Http1::on(function <void (const uint64_t, const log_t::flag_t,
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока
@@ -510,6 +918,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t)> call
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова при завершении запроса
@@ -518,6 +928,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученного чанка бинарных данных с клиента
@@ -526,6 +938,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const vector <char> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученного заголовка с клиента
@@ -534,6 +948,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода запроса клиента к серверу
@@ -542,6 +958,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученного тела данных с клиента
@@ -550,6 +968,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции вывода полученных заголовков с клиента
@@ -558,6 +978,8 @@ void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const
 void awh::server::Http1::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * port Метод получения порта подключения адъютанта
@@ -609,15 +1031,66 @@ void awh::server::Http1::start() noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::Http1::close(const uint64_t aid) noexcept {
-	// Получаем параметры подключения адъютанта
-	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-	if(adj != nullptr){
-		// Устанавливаем флаг закрытия подключения адъютанта
-		adj->close = true;
-		// Выполняем отключение адъютанта
-		const_cast <server::core_t *> (this->_core)->close(aid);
+	// Выполняем поиск агента которому соответствует клиент
+	auto it = this->_agents.find(aid);
+	// Если агент соответствует WebSocket-у
+	if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+		// Выполняем закрытие подключения клиента WebSocket
+		this->_ws1.close(aid);
+	// Иначе выполняем обработку входящих данных как Web-сервер
+	else {
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
+		if(adj != nullptr){
+			// Устанавливаем флаг закрытия подключения адъютанта
+			adj->close = true;
+			// Выполняем отключение адъютанта
+			const_cast <server::core_t *> (this->_core)->close(aid);
+		}
 	}
+}
+/**
+ * subprotocol Метод установки поддерживаемого сабпротокола
+ * @param subprotocol сабпротокол для установки
+ */
+void awh::server::Http1::subprotocol(const string & subprotocol) noexcept {
+	// Выполняем установку сабпротокола
+	this->_ws1.subprotocol(subprotocol);
+}
+/**
+ * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @param subprotocols сабпротоколы для установки
+ */
+void awh::server::Http1::subprotocols(const set <string> & subprotocols) noexcept {
+	// Выполняем установку сабпротоколов
+	this->_ws1.subprotocols(subprotocols);
+}
+/**
+ * subprotocol Метод получения списка выбранных сабпротоколов
+ * @param aid идентификатор адъютанта
+ * @return    список выбранных сабпротоколов
+ */
+const set <string> & awh::server::Http1::subprotocols(const uint64_t aid) const noexcept {
+	// Выполняем извлечение выбранных сабпротоколов
+	return this->_ws1.subprotocols(aid);
+}
+/**
+ * extensions Метод установки списка расширений
+ * @param extensions список поддерживаемых расширений
+ */
+void awh::server::Http1::extensions(const vector <vector <string>> & extensions) noexcept {
+	// Выполняем установку список поддерживаемых расширений
+	this->_ws1.extensions(extensions);
+}
+/**
+ * extensions Метод извлечения списка расширений
+ * @param aid идентификатор адъютанта
+ * @return    список поддерживаемых расширений
+ */
+const vector <vector <string>> & awh::server::Http1::extensions(const uint64_t aid) const noexcept {
+	// Выполняем извлечение списка поддерживаемых расширений
+	return this->_ws1.extensions(aid);
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -626,6 +1099,14 @@ void awh::server::Http1::close(const uint64_t aid) noexcept {
 void awh::server::Http1::total(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
 	const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
+}
+/**
+ * segmentSize Метод установки размеров сегментов фрейма
+ * @param size минимальный размер сегмента
+ */
+void awh::server::Http1::segmentSize(const size_t size) noexcept {
+	// Выполняем установку размеров сегмента фрейма
+	this->_ws1.segmentSize(size);
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
@@ -668,6 +1149,8 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
+	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -765,7 +1248,7 @@ void awh::server::Http1::bytesDetect(const scheme_t::mark_t read, const scheme_t
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _scheme(fmk, log) {
+awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _webSocket(false), _ws1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http1_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -787,7 +1270,7 @@ awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _scheme(fmk, log) {
+awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _webSocket(false), _ws1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

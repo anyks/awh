@@ -342,7 +342,7 @@ int main(int argc, char * argv[]){
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
 	// Подписываемся на событие рукопожатия
-	// ws.on((function <void (const int32_t)>) std::bind(&Executor::handshake, &executor, _1));
+	ws.on((function <void (const int32_t)>) std::bind(&Executor::handshake, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.on((function <void (const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
