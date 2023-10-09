@@ -439,7 +439,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						// Выполняем чтение фрейма WebSocket
 						const auto & data = adj->frame.methods.get(head, adj->buffer.payload.data(), adj->buffer.payload.size());
 						
-						cout << " ^^^^^^^^^^^^^^^^^^^^^^7 " << data << endl;
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^7 " << data.size() << endl;
 						
 						// Если буфер данных получен
 						if(!data.empty()){
