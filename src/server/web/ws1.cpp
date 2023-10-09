@@ -150,10 +150,16 @@ void awh::server::WebSocket1::disconnectCallback(const uint64_t aid, const uint1
 void awh::server::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^^^^1 " << endl;
+		
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^^^2 " << endl;
+			
 			// Если подключение закрыто
 			if(adj->close){
 				// Принудительно выполняем отключение лкиента
@@ -161,8 +167,14 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 				// Выходим из функции
 				return;
 			}
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^^^3 " << endl;
+			
 			// Если разрешено получение данных
 			if(adj->allow.receive){
+				
+				cout << " ^^^^^^^^^^^^^^^^^^^^^^4 " << size << endl;
+				
 				// Добавляем полученные данные в буфер
 				adj->buffer.payload.insert(adj->buffer.payload.end(), buffer, buffer + size);
 				// Если рукопожатие не выполнено
@@ -410,6 +422,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 					return;
 				// Если рукопожатие выполнено
 				} else if(adj->allow.receive) {
+					
+					cout << " ^^^^^^^^^^^^^^^^^^^^^^5 " << endl;
+					
 					// Флаг удачного получения данных
 					bool receive = false;
 					// Создаём буфер сообщения
@@ -418,8 +433,14 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 					ws::frame_t::head_t head;
 					// Выполняем обработку полученных данных
 					while(!adj->close && adj->allow.receive){
+						
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^6 " << adj->buffer.payload.size() << endl;
+						
 						// Выполняем чтение фрейма WebSocket
 						const auto & data = adj->frame.methods.get(head, adj->buffer.payload.data(), adj->buffer.payload.size());
+						
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^7 " << data << endl;
+						
 						// Если буфер данных получен
 						if(!data.empty()){
 							// Проверяем состояние флагов RSV2 и RSV3
