@@ -307,34 +307,31 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t aid, 
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
-		// Если идентификатор сессии клиента совпадает
-		if(adj->sid == sid){
-			// Если функция обратного вызова на перехват входящих чанков установлена
-			if(this->_callback.is("chunking"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &adj->http);
-			// Если функция перехвата полученных чанков не установлена
-			else {
-				// Если подключение закрыто
-				if(adj->close){
-					// Принудительно выполняем отключение лкиента
-					const_cast <server::core_t *> (this->_core)->close(aid);
-					// Выходим из функции
-					return 0;
-				}
-				// Если рукопожатие не выполнено
-				if(!adj->shake)
-					// Добавляем полученный чанк в тело данных
-					adj->http.body(vector <char> (buffer, buffer + size));
-				// Если рукопожатие выполнено
-				else if(adj->allow.receive)
-					// Добавляем полученные данные в буфер
-					adj->buffer.payload.insert(adj->buffer.payload.end(), buffer, buffer + size);
-				// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-				if(this->_callback.is("chunks"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", sid, aid, vector <char> (buffer, buffer + size));
+		// Если функция обратного вызова на перехват входящих чанков установлена
+		if(this->_callback.is("chunking"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &adj->http);
+		// Если функция перехвата полученных чанков не установлена
+		else {
+			// Если подключение закрыто
+			if(adj->close){
+				// Принудительно выполняем отключение лкиента
+				const_cast <server::core_t *> (this->_core)->close(aid);
+				// Выходим из функции
+				return 0;
 			}
+			// Если рукопожатие не выполнено
+			if(!adj->shake)
+				// Добавляем полученный чанк в тело данных
+				adj->http.body(vector <char> (buffer, buffer + size));
+			// Если рукопожатие выполнено
+			else if(adj->allow.receive)
+				// Добавляем полученные данные в буфер
+				adj->buffer.payload.insert(adj->buffer.payload.end(), buffer, buffer + size);
+			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
+			if(this->_callback.is("chunks"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", sid, aid, vector <char> (buffer, buffer + size));
 		}
 	}
 	// Выводим результат
@@ -815,7 +812,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
-										
+										}
 
 										cout << " ===================3 " << sid << " === " << aid << endl;
 
@@ -853,17 +850,16 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t aid) 
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
-		// Если идентификатор сессии клиента совпадает
-		if(adj->sid == sid){
-			// Выполняем сброс флага рукопожатия
-			adj->shake = false;
-			// Выполняем очистку параметров HTTP запроса
-			adj->http.clear();
-			// Очищаем буфер собранных данных
-			adj->buffer.payload.clear();
-			// Выполняем очистку оставшихся фрагментов
-			adj->buffer.fragmes.clear();
-		}
+		// Устанавливаем новый идентификатор потока
+		adj->sid = sid;
+		// Выполняем сброс флага рукопожатия
+		adj->shake = false;
+		// Выполняем очистку параметров HTTP запроса
+		adj->http.clear();
+		// Очищаем буфер собранных данных
+		adj->buffer.payload.clear();
+		// Выполняем очистку оставшихся фрагментов
+		adj->buffer.fragmes.clear();
 	}
 	// Выводим результат
 	return 0;
@@ -1032,15 +1028,12 @@ int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t aid,
 	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
-		// Если идентификатор сессии клиента совпадает
-		if(adj->sid == sid){
-			// Устанавливаем полученные заголовки
-			adj->http.header2(key, val);
-			// Если функция обратного вызова на полученного заголовка с сервера установлена
-			if(this->_callback.is("header"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, aid, key, val);
-		}
+		// Устанавливаем полученные заголовки
+		adj->http.header2(key, val);
+		// Если функция обратного вызова на полученного заголовка с сервера установлена
+		if(this->_callback.is("header"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, aid, key, val);
 	}
 	// Выводим результат
 	return 0;
