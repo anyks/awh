@@ -356,6 +356,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
+				
+				cout << " ===================1 " << sid << << " === " << aid << endl;
+				
 				// Получаем параметры подключения адъютанта
 				ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 				// Если параметры подключения адъютанта получены
@@ -804,11 +807,17 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										}
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
+											
+											cout << " ===================2 " << sid << << " === " << aid << endl;
+											
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
 										}
+
+										cout << " ===================3 " << sid << << " === " << aid << endl;
+
 										// Завершаем работу
 										return 0;
 									}

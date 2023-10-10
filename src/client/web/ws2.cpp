@@ -947,6 +947,12 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 					// Получаем новый адрес запроса
 					const uri_t::url_t & url = this->_http.getUrl();
+					
+					// Выполняем сброс состояния HTTP парсера
+					this->_http.clear();
+					// Выполняем сброс состояния HTTP парсера
+					this->_http.reset();
+					
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
@@ -980,7 +986,9 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем запрос на удалённый сервер	
-							web2_t::send(sid, headers, false);
+							if(web2_t::send(sid, headers, false) < 0)
+								// Выполняем отключение от сервера
+								dynamic_cast <client::core_t *> (core)->close(aid);
 
 
 							// Завершаем работу
@@ -1013,11 +1021,19 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 									cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							
+							
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+							
+							for(auto & header : headers)
+								cout << " ^^^^^^^^^^^^^^ " << header.first << " === " << header.second << endl;
+							
 							// Выполняем запрос на удалённый сервер	
-							web2_t::send(sid, headers, false);
-
+							if(web2_t::send(sid, headers, false) < 0)
+								// Выполняем отключение от сервера
+								dynamic_cast <client::core_t *> (core)->close(aid);
+							
+							
 							// Завершаем работу
 							return status_t::SKIP;
 						// Если подключение не постоянное, то завершаем работу
