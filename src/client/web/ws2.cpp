@@ -60,7 +60,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Создаём объек запроса
 			awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
-			// Если метод CONNECT запрещён для прокси-сервера
+			// Если метод CONNECT не запрещён для прокси-сервера
 			if(!this->_proxy.connect){
 				// Получаем строку авторизации на проксе-сервере
 				const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, awh::web_t::method_t::CONNECT);
@@ -937,6 +937,96 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 			case static_cast <uint8_t> (http_t::stath_t::RETRY): {
 				// Если попытка повторить авторизацию ещё не проводилась
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+					// Выполняем сброс параметров запроса
+					this->flush();
+					// Увеличиваем количество попыток
+					this->_attempt++;
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if((response.code == 401) && this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+					// Получаем новый адрес запроса
+					const uri_t::url_t & url = this->_http.getUrl();
+					// Если URL-адрес запроса получен
+					if(!url.empty()){
+						// Выполняем проверку соответствие протоколов
+						const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
+						
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^1 " << this->_sessionInitialized << endl;
+						
+						// Если соединение является постоянным
+						if(schema && this->_http.isAlive()){
+							// Устанавливаем новый адрес запроса
+							this->_uri.combine(this->_scheme.url, url);
+
+							
+
+							// Создаём объек запроса
+							awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+								// Получаем бинарные данные REST запроса
+								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+								// Если бинарные данные запроса получены
+								if(!buffer.empty())
+									// Выводим параметры запроса
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							#endif
+							
+							// Выполняем запрос на получение заголовков
+							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+							// Выполняем запрос на удалённый сервер	
+							web2_t::send(sid, headers, false);
+
+
+							// Завершаем работу
+							return status_t::SKIP;
+						// Если подключение не постоянное, то завершаем работу
+						} else dynamic_cast <client::core_t *> (core)->close(aid);
+					// Если URL-адрес запроса не получен
+					} else {
+						
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^2 " << this->_sessionInitialized << endl;
+
+						// Если соединение является постоянным
+						if(this->_http.isAlive()){
+
+							
+							
+							// Создаём объек запроса
+							awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+								// Получаем бинарные данные REST запроса
+								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+								// Если бинарные данные запроса получены
+								if(!buffer.empty())
+									// Выводим параметры запроса
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							#endif
+							
+							// Выполняем запрос на получение заголовков
+							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+							// Выполняем запрос на удалённый сервер	
+							web2_t::send(sid, headers, false);
+
+							// Завершаем работу
+							return status_t::SKIP;
+						// Если подключение не постоянное, то завершаем работу
+						} else dynamic_cast <client::core_t *> (core)->close(aid);
+					}
+					// Завершаем работу
+					return status_t::SKIP;
+
+					/*
 					// Получаем новый адрес запроса
 					const uri_t::url_t & url = this->_http.getUrl();
 					// Если URL-адрес запроса получен
@@ -951,6 +1041,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					dynamic_cast <client::core_t *> (core)->close(aid);
 					// Завершаем работу
 					return status_t::SKIP;
+					*/
 				}
 				// Создаём сообщение
 				this->_mess = ws::mess_t(response.code, this->_http.message(response.code));
