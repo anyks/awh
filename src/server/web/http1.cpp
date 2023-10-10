@@ -681,6 +681,8 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 								adj->buffer.payload.clear();
 								// Выполняем очистку оставшихся фрагментов
 								adj->buffer.fragmes.clear();
+
+								cout << " ^^^^^^^^^^^^^^^^^^^^^ REMOVE WEBSOCKET " << it->first << endl;
 							}
 							// Выполняем удаление параметров адъютанта
 							this->_ws1._scheme.rm(it->first);
@@ -697,6 +699,8 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 						adj->close = true;
 						// Выполняем очистку оставшихся данных
 						adj->buffer.clear();
+
+						cout << " ^^^^^^^^^^^^^^^^^^^^^ REMOVE HTTP " << it->first << endl;
 					}
 					// Выполняем удаление параметров адъютанта
 					this->_scheme.rm(it->first);
