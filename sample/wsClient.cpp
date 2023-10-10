@@ -322,7 +322,7 @@ int main(int argc, char * argv[]){
 	
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
 	// Устанавливаем тип авторизации прокси-сервера
