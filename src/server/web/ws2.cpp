@@ -725,6 +725,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													cout << string(buffer.begin(), buffer.end()) << endl << endl;
 											}
 										#endif
+										
+										/*
 										// Если требуется произвести авторизацию
 										if(response.code == 401){
 											// Выполняем ответ подключившемуся клиенту
@@ -743,6 +745,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 										// Если производится закрытие подключения
 										} else {
+										*/
+
 											// Список заголовков для ответа
 											vector <nghttp2_nv> nva;
 											// Выполняем перебор всех заголовков HTTP/2 ответа
@@ -804,17 +808,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													}
 												}
 											}
-										}
+										// }
 										// Если мы получили флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM){
-											
-											cout << " ===================2 " << sid << " === " << aid << endl;
-											
+										if(flags & NGHTTP2_FLAG_END_STREAM)
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
-										}
+										
 
 										cout << " ===================3 " << sid << " === " << aid << endl;
 
