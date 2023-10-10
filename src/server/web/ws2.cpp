@@ -728,7 +728,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										// Если требуется произвести авторизацию
 										if(response.code == 401){
 											// Выполняем ответ подключившемуся клиенту
-											int32_t sid = web2_t::send(adj->sid, aid, headers, false);
+											int32_t sid = web2_t::send(adj->sid, aid, headers, true);
 											// Если запрос не получилось отправить
 											if(sid < 0){
 												// Если мы получили флаг завершения потока

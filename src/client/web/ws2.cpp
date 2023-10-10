@@ -986,7 +986,9 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем запрос на удалённый сервер	
-							if(web2_t::send(sid, headers, false) < 0)
+							this->_sid = web2_t::send(-1, headers, false);
+							// Если запрос не получилось отправить
+							if(this->_sid < 0)
 								// Выполняем отключение от сервера
 								dynamic_cast <client::core_t *> (core)->close(aid);
 
@@ -1029,7 +1031,9 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 								cout << " ^^^^^^^^^^^^^^ " << header.first << " === " << header.second << endl;
 							
 							// Выполняем запрос на удалённый сервер	
-							if(web2_t::send(sid, headers, false) < 0)
+							this->_sid = web2_t::send(-1, headers, false);
+							// Если запрос не получилось отправить
+							if(this->_sid < 0)
 								// Выполняем отключение от сервера
 								dynamic_cast <client::core_t *> (core)->close(aid);
 							
