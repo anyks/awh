@@ -102,7 +102,7 @@ void awh::server::Http1::disconnectCallback(const uint64_t aid, const uint16_t s
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Добавляем в очередь список мусорных адъютантов
-		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
@@ -651,18 +651,18 @@ void awh::server::Http1::persistCallback(const uint64_t aid, const uint16_t sid,
 	}
 }
 /**
- * garbage Метод удаления мусорных адъютантов
+ * disconected Метод удаления отключившихся адъютантов
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept {
-	// Если список мусорных адъютантов не пустой
-	if(!this->_garbage.empty()){
+void awh::server::Http1::disconected(const u_short tid, awh::core_t * core) noexcept {
+	// Если список отключившихся адъютантов не пустой
+	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку мусорных адъютантов
-		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
-			// Если адъютант уже давно удалился
+		// Выполняем переход по всему списку отключившихся адъютантов
+		for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			// Если адъютант уже давно отключился
 			if((date - it->second) >= 10000){
 				{
 					// Выполняем поиск агента которому соответствует клиент
@@ -681,8 +681,6 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 								adj->buffer.payload.clear();
 								// Выполняем очистку оставшихся фрагментов
 								adj->buffer.fragmes.clear();
-
-								cout << " ^^^^^^^^^^^^^^^^^^^^^ REMOVE WEBSOCKET " << it->first << endl;
 							}
 							// Выполняем удаление параметров адъютанта
 							this->_ws1._scheme.rm(it->first);
@@ -699,20 +697,18 @@ void awh::server::Http1::garbage(const u_short tid, awh::core_t * core) noexcept
 						adj->close = true;
 						// Выполняем очистку оставшихся данных
 						adj->buffer.clear();
-
-						cout << " ^^^^^^^^^^^^^^^^^^^^^ REMOVE HTTP " << it->first << endl;
 					}
 					// Выполняем удаление параметров адъютанта
 					this->_scheme.rm(it->first);
 				}
-				// Выполняем удаление объекта адъютантов из списка мусора
-				it = this->_garbage.erase(it);
+				// Выполняем удаление объекта адъютантов из списка отключившихся
+				it = this->_disconected.erase(it);
 			// Выполняем пропуск адъютанта
 			} else ++it;
 		}
 	}
-	// Выполняем удаление мусора в родительском объекте
-	web_t::garbage(tid, core);
+	// Выполняем удаление отключённых адъютантов в родительском объекте
+	web_t::disconected(tid, core);
 }
 /**
  * init Метод инициализации WEB-сервера

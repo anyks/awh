@@ -193,11 +193,11 @@ namespace awh {
 				void ping(const uint64_t aid, awh::core_t * core, const string & message = "") noexcept;
 			private:
 				/**
-				 * garbage Метод удаления мусорных адъютантов
+				 * disconected Метод удаления отключившихся адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void garbage(const u_short tid, awh::core_t * core) noexcept;
+				void disconected(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WebSocket-сервера

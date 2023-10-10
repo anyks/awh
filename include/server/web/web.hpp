@@ -169,7 +169,7 @@ namespace awh {
 				// Список активных агентов
 				map <uint64_t, agent_t> _agents;
 				// Список мусорных адъютантов
-				map <uint64_t, time_t> _garbage;
+				map <uint64_t, time_t> _disconected;
 			protected:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -252,11 +252,11 @@ namespace awh {
 				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
-				 * garbage Метод удаления мусорных адъютантов
+				 * disconected Метод удаления отключившихся адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				virtual void garbage(const u_short tid, awh::core_t * core) noexcept;
+				virtual void disconected(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта

@@ -44,7 +44,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
 				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
+				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -103,27 +103,27 @@ void awh::server::Web::chunking(const uint64_t aid, const vector <char> & chunk,
 	}
 }
 /**
- * garbage Метод удаления мусорных адъютантов
+ * disconected Метод удаления отключившихся адъютантов
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void awh::server::Web::garbage(const u_short tid, awh::core_t * core) noexcept {
+void awh::server::Web::disconected(const u_short tid, awh::core_t * core) noexcept {
 	// Если список мусорных адъютантов не пустой
-	if(!this->_garbage.empty()){
+	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку мусорных адъютантов
-		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
-			// Если адъютант уже давно удалился
+		// Выполняем переход по всему списку отключившихся адъютантов
+		for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			// Если адъютант уже давно отключился
 			if((date - it->second) >= 10000)
-				// Выполняем удаление объекта адъютантов из списка мусора
-				it = this->_garbage.erase(it);
+				// Выполняем удаление объекта адъютантов из списка отключившихся
+				it = this->_disconected.erase(it);
 			// Выполняем пропуск адъютанта
 			else ++it;
 		}
 	}
-	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
+	// Устанавливаем таймаут времени на удаление отключившихся адъютантов раз в 10 секунд
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
 }
 /**
  * init Метод инициализации WEB адъютанта
