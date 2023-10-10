@@ -139,18 +139,18 @@ void awh::server::AWH::on(function <void (const uint64_t, const log_t::flag_t, c
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
- * @param callback функция обратного вызова
- */
-void awh::server::AWH::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
 void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -210,6 +210,15 @@ void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const a
 u_int awh::server::AWH::port(const uint64_t aid) const noexcept {
 	// Выполняем извлечение порта адъютанта
 	return this->_http.port(aid);
+}
+/**
+ * agent Метод извлечения агента клиента
+ * @param aid идентификатор адъютанта
+ * @return    агент к которому относится подключённый клиент
+ */
+awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t aid) const noexcept {
+	// Выводим идентификатор агента к которому относится клиент
+	return this->_http.agent(aid);
 }
 /**
  * ip Метод получения IP-адреса адъютанта

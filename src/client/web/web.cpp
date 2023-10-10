@@ -431,20 +431,20 @@ void awh::client::Web::on(function <void (const log_t::flag_t, const http::error
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
- * @param callback функция обратного вызова
- */
-void awh::client::Web::on(function <void (const int32_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t)> ("handshake", callback);
-}
-/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
 void awh::client::Web::on(function <void (const int32_t, const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const int32_t, const mode_t)> ("stream", callback);
+}
+/**
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t, const agent_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const agent_t)> ("handshake", callback);
 }
 /**
  * on Метод установки функции обратного вызова при завершении запроса

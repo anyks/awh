@@ -134,20 +134,21 @@ namespace awh {
 				void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при полном получении запроса клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
-				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
 				/**
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
+			public:
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
@@ -193,6 +194,12 @@ namespace awh {
 				 * @return    адрес устройства адъютанта
 				 */
 				const string & mac(const uint64_t aid) const noexcept;
+				/**
+				 * agent Метод извлечения агента клиента
+				 * @param aid идентификатор адъютанта
+				 * @return    агент к которому относится подключённый клиент
+				 */
+				web_t::agent_t agent(const uint64_t aid) const noexcept;
 			public:
 				/**
 				 * stop Метод остановки сервера

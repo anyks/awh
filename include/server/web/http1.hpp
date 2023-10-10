@@ -202,20 +202,21 @@ namespace awh {
 				void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при выполнении рукопожатия
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
-				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
+			public:
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
@@ -249,6 +250,12 @@ namespace awh {
 				 * @return    порт подключения адъютанта
 				 */
 				u_int port(const uint64_t aid) const noexcept;
+				/**
+				 * agent Метод извлечения агента клиента
+				 * @param aid идентификатор адъютанта
+				 * @return    агент к которому относится подключённый клиент
+				 */
+				agent_t agent(const uint64_t aid) const noexcept;
 				/**
 				 * ip Метод получения IP-адреса адъютанта
 				 * @param aid идентификатор адъютанта

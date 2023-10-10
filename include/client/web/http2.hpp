@@ -276,25 +276,26 @@ namespace awh {
 				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при полном получении запроса клиента
+				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t)> callback) noexcept;
+				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
 				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const mode_t)> callback) noexcept;
 				/**
-				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+				 * on Метод установки функция обратного вызова при полном получении запроса клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
+				void on(function <void (const int32_t, const agent_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const direct_t)> callback) noexcept;
+			public:
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова

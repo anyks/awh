@@ -113,18 +113,18 @@ void awh::client::WebSocket::on(function <void (const int32_t, const vector <cha
 	this->_ws.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket::on(function <void (const int32_t, const web_t::mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
+ * on Метод установки функция обратного вызова при полном получении запроса клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const int32_t, const web_t::agent_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_ws.on(callback);
 }

@@ -267,11 +267,6 @@ namespace awh {
 				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при выполнении рукопожатия
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t)> callback) noexcept;
-				/**
 				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
 				 * @param callback функция обратного вызова
 				 */
@@ -282,10 +277,16 @@ namespace awh {
 				 */
 				void on(function <void (const int32_t, const web_t::mode_t)> callback) noexcept;
 				/**
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const web_t::agent_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const int32_t, const web_t::direct_t)> callback) noexcept;
+			public:
 				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова

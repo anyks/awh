@@ -552,7 +552,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Если функция обратного вызова на получение удачного ответа установлена
 					if(this->_callback.is("handshake"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t> ("handshake", sid);
+						this->_callback.call <const int32_t, const agent_t> ("handshake", sid, agent_t::WEBSOCKET);
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
@@ -1156,18 +1156,18 @@ void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const http
 	web_t::on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket1::on(function <void (const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web_t::on(callback);
-}
-/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket1::on(function <void (const int32_t, const mode_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+}
+/**
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket1::on(function <void (const int32_t, const agent_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

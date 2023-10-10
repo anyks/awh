@@ -668,7 +668,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												// Если функция обратного вызова на получение удачного запроса установлена
 												if(this->_callback.is("handshake"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <const int32_t, const uint64_t> ("handshake", adj->sid, aid);
+													this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", adj->sid, aid, agent_t::WEBSOCKET);
 												// Если мы получили флаг завершения потока
 												if(flags & NGHTTP2_FLAG_END_STREAM){
 													// Если установлена функция отлова завершения запроса
@@ -1528,20 +1528,20 @@ void awh::server::WebSocket2::on(function <void (const uint64_t, const log_t::fl
 	this->_ws1.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
+ * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
+void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws1.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова активности потока
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
+void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
@@ -1615,6 +1615,17 @@ void awh::server::WebSocket2::on(function <void (const int32_t, const uint64_t, 
 u_int awh::server::WebSocket2::port(const uint64_t aid) const noexcept {
 	// Выводим результат
 	return this->_scheme.getPort(aid);
+}
+/**
+ * agent Метод извлечения агента клиента
+ * @param aid идентификатор адъютанта
+ * @return    агент к которому относится подключённый клиент
+ */
+awh::server::web_t::agent_t awh::server::WebSocket2::agent(const uint64_t aid) const noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) aid;
+	// Выводим сообщение, что ничего не найдено
+	return agent_t::WEBSOCKET;
 }
 /**
  * ip Метод получения IP-адреса адъютанта

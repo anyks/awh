@@ -347,7 +347,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 										// Если функция обратного вызова на получение удачного ответа установлена
 										if(this->_callback.is("handshake"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t> ("handshake", sid);
+											this->_callback.call <const int32_t, const agent_t> ("handshake", sid, it->second->agent);
 										// Выполняем удаление выполненного воркера
 										this->_workers.erase(sid);
 										// Если установлена функция отлова завершения запроса
@@ -1602,18 +1602,6 @@ void awh::client::Http2::on(function <void (const log_t::flag_t, const http::err
 	this->_http1.on(callback);
 }
 /**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
  * @param callback функция обратного вызова
  */
@@ -1628,6 +1616,18 @@ void awh::client::Http2::on(function <void (const int32_t, const int32_t)> callb
 void awh::client::Http2::on(function <void (const int32_t, const mode_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+}
+/**
+ * on Метод установки функция обратного вызова при выполнении рукопожатия
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const int32_t, const agent_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова при завершении запроса

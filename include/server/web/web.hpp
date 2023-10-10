@@ -68,6 +68,14 @@ namespace awh {
 					RECV = 0x02  // Направление получения
 				};
 				/**
+				 * Идентификатор агента
+				 */
+				enum class agent_t : uint8_t {
+					NONE      = 0x00, // Агент не определён
+					HTTP      = 0x01, // HTTP-клиент
+					WEBSOCKET = 0x02  // WebSocket-клиент
+				};
+				/**
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
@@ -79,14 +87,6 @@ namespace awh {
 					TAKEOVER_CLIENT  = 0x06, // Флаг ожидания входящих сообщений для клиента
 					TAKEOVER_SERVER  = 0x07, // Флаг ожидания входящих сообщений для сервера
 					WEBSOCKET_ENABLE = 0x08  // Флаг разрешения использования WebSocket-сервера
-				};
-			protected:
-				/**
-				 * Идентификатор агента
-				 */
-				enum class agent_t : uint8_t {
-					HTTP      = 0x01, // HTTP-клиент
-					WEBSOCKET = 0x02  // WebSocket-клиент
 				};
 			protected:
 				/**
@@ -313,20 +313,21 @@ namespace awh {
 				virtual void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при выполнении рукопожатия
-				 * @param callback функция обратного вызова
-				 */
-				virtual void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
-				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept;
+				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
+			public:
 				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
 				 * @param callback функция обратного вызова
@@ -360,6 +361,12 @@ namespace awh {
 				 * @return    порт подключения адъютанта
 				 */
 				virtual u_int port(const uint64_t aid) const noexcept = 0;
+				/**
+				 * agent Метод извлечения агента клиента
+				 * @param aid идентификатор адъютанта
+				 * @return    агент к которому относится подключённый клиент
+				 */
+				virtual agent_t agent(const uint64_t aid) const noexcept = 0;
 				/**
 				 * ip Метод получения IP адреса адъютанта
 				 * @param aid идентификатор адъютанта
