@@ -113,6 +113,14 @@ void awh::client::WebSocket::on(function <void (const int32_t, const vector <cha
 	this->_ws.on(callback);
 }
 /**
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */

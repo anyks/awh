@@ -843,9 +843,6 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t aid) 
  * @return      статус полученных данных
  */
 int awh::server::WebSocket2::closedSignal(const int32_t sid, const uint64_t aid, const uint32_t error) noexcept {
-	
-	cout << " ******************* closedSignal " << sid << endl;
-	
 	// Определяем тип получаемой ошибки
 	switch(error){
 		// Если получена ошибка протокола

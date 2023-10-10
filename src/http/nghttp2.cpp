@@ -182,7 +182,7 @@ int awh::NgHttp2::close(nghttp2_session * session, const int32_t sid, const uint
 	 */
 	#if defined(DEBUG_MODE)
 		// Выводим заголовок ответа
-		cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+		cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE STREAM HTTP2 ^^^^^^^^^\x1B[0m" << endl;
 		// Если ошибка не была получена
 		if(error == 0x0)
 			// Выводим информацию о закрытии сессии

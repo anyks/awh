@@ -65,6 +65,8 @@ void awh::client::WebSocket2::send(const uint64_t aid, client::core_t * core) no
 			// Выводим параметры запроса
 			cout << string(buffer.begin(), buffer.end()) << endl << endl;
 	#endif
+	// Запоминаем предыдущее значение идентификатора потока
+	const int32_t sid = this->_sid;
 	// Выполняем запрос на получение заголовков
 	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 	// Выполняем запрос на удалённый сервер	
@@ -73,6 +75,10 @@ void awh::client::WebSocket2::send(const uint64_t aid, client::core_t * core) no
 	if(this->_sid < 0)
 		// Выполняем отключение от сервера
 		core->close(aid);
+	// Если функция обратного вызова на вывод редиректа потоков установлена
+	else if((sid > -1) && (sid != this->_sid) && this->_callback.is("redirect"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const int32_t> ("redirect", sid, this->_sid);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
@@ -599,9 +605,6 @@ int awh::client::WebSocket2::beginSignal(const int32_t sid) noexcept {
  * @return      статус полученных данных
  */
 int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t error) noexcept {
-	
-	cout << " ******************* closedSignal " << sid << endl;
-	
 	// Определяем тип получаемой ошибки
 	switch(error){
 		// Если получена ошибка протокола
@@ -1627,6 +1630,14 @@ void awh::client::WebSocket2::on(function <void (const log_t::flag_t, const http
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws1.on(callback);
+}
+/**
+ * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket2::on(function <void (const int32_t, const int32_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока

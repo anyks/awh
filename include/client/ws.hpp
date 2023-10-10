@@ -115,6 +115,11 @@ namespace awh {
 				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
