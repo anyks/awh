@@ -807,7 +807,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 										// }
 										// Если мы получили флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM)
+										if(flags & NGHTTP2_FLAG_END_STREAM){
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
