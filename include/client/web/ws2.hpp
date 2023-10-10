@@ -140,6 +140,13 @@ namespace awh {
 				unordered_multimap <string, string> _headers;
 			private:
 				/**
+				 * send Метод отправки запроса на удалённый сервер
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 */
+				void send(const uint64_t aid, client::core_t * core) noexcept;
+			private:
+				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
