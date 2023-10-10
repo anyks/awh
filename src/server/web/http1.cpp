@@ -209,12 +209,33 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										if(!response.empty()){
 											// Тело полезной нагрузки
 											vector <char> payload;
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим заголовок ответа
+												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												// Выводим параметры ответа
+												cout << string(response.begin(), response.end()) << endl << endl;
+											#endif
 											// Отправляем ответ адъютанту
 											dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
 											// Получаем данные тела запроса
-											while(!(payload = adj->http.payload()).empty())
+											while(!(payload = adj->http.payload()).empty()){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим сообщение о выводе чанка полезной нагрузки
+													cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+												#endif
+												// Если тела данных для отправки больше не осталось
+												if(adj->http.body().empty())
+													// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+													adj->stopped = (!this->_service.alive && !adj->alive);
 												// Отправляем тело клиенту
 												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+											}
 										// Выполняем отключение адъютанта
 										} else dynamic_cast <server::core_t *> (core)->close(aid);
 										// Если функция обратного вызова активности потока установлена
