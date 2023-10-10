@@ -221,7 +221,7 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::VERIFY_SSL,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER,
-		// server::web_t::flag_t::WEBSOCKET_ENABLE
+		server::web_t::flag_t::WEBSOCKET_ENABLE
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
