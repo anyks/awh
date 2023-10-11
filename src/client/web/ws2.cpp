@@ -100,7 +100,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(aid, sid, core);
 		// Если флаг инициализации сессии HTTP2 установлен
-		if(this->_sessionInitialized){
+		if(this->_nghttp2.is()){
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Выполняем отправку запроса на удалённый сервер
@@ -158,10 +158,6 @@ void awh::client::WebSocket2::disconnectCallback(const uint64_t aid, const uint1
 	this->_sid = -1;
 	// Выполняем удаление подключения
 	this->_nghttp2.close();
-	// Выполняем удаление сессии подключения HTTP/2
-	this->_nghttp2.free();
-	// Выполняем снятие флага инициализации сессии HTTP/2
-	this->_sessionInitialized = false;
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(aid, sid, core))
 		// Выходим из функции
@@ -361,15 +357,10 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 				if(!this->_close && this->_stopped){
 					// Устанавливаем флаг закрытия подключения
 					this->_close = !this->_close;
-					// Если флаг инициализации сессии HTTP2 установлен
-					if(this->_sessionInitialized){
-						// Выполняем закрытие подключения
-						this->_nghttp2.close();
-						// Выполняем снятие флага инициализации сессии HTTP2
-						this->_sessionInitialized = !this->_sessionInitialized;
-					}
-					// Принудительно выполняем отключение лкиента
-					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					// Выполняем закрытие подключения
+					this->_nghttp2.close();
+					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+					this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
@@ -730,17 +721,15 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 		// Выводим функцию обратного вызова
 		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 	// Если флаг инициализации сессии HTTP2 установлен
-	if((error > 0x00) && this->_sessionInitialized){
-		// Выполняем снятие флага инициализации сессии HTTP2
-		this->_sessionInitialized = !this->_sessionInitialized;
+	if((error > 0x00) && this->_nghttp2.is()){
 		// Если закрытие подключения не выполнено
 		if(!this->_nghttp2.close()){
-			// Выполняем отключение от сервера
-			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+			this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
 			// Выводим сообщение об ошибке
 			return NGHTTP2_ERR_CALLBACK_FAILURE;
-		// Выполняем отключение от сервера
-		} else const_cast <client::core_t *> (this->_core)->close(this->_aid);
+		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+		} else this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
 	}
 	// Выводим результат
 	return 0;

@@ -59,7 +59,7 @@ bool awh::URI::URL::empty() const noexcept {
 }
 /**
  * Оператор [=] получения параметров URL-запроса
- * @param url строка URL-запроса для получения параметров
+ * @param url объект URL-запроса для получения параметров
  * @return    параметры URL-запроса
  */
 awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {

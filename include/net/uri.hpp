@@ -125,7 +125,7 @@ namespace awh {
 				public:
 					/**
 					 * Оператор [=] получения параметров URL-запроса
-					 * @param url строка URL-запроса для получения параметров
+					 * @param url объект URL-запроса для получения параметров
 					 * @return    параметры URL-запроса
 					 */
 					URL & operator = (const URL & url) noexcept;

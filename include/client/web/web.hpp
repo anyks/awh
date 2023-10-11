@@ -551,9 +551,6 @@ namespace awh {
 				auth_t::type_t _authType;
 				// Алгоритм шифрования для Digest-авторизации
 				auth_t::hash_t _authHash;
-			protected:
-				// Флаг выполнения подключения к серверу
-				bool _sessionInitialized;
 			private:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;

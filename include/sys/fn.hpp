@@ -451,7 +451,7 @@ namespace awh {
 						 */
 						try {
 							// Выполняем функцию обратного вызова
-							std::apply(fn);
+							std::apply(fn, std::make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */
@@ -483,7 +483,7 @@ namespace awh {
 						 */
 						try {
 							// Выполняем функцию обратного вызова
-							std::apply(fn);
+							std::apply(fn, std::make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */
@@ -627,7 +627,7 @@ namespace awh {
 						 */
 						try {
 							// Выполняем функцию обратного вызова
-							result = std::apply(fn);
+							result = std::apply(fn, std::make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */
@@ -664,7 +664,7 @@ namespace awh {
 						 */
 						try {
 							// Выполняем функцию обратного вызова
-							result = std::apply(fn);
+							result = std::apply(fn, std::make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */

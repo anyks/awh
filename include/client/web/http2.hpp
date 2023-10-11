@@ -69,6 +69,8 @@ namespace awh {
 				// Объект для работы с HTTP-протколом
 				http_t _http;
 			private:
+				// Флаг блокировки очистки контекста подключения
+				bool _lockClean;
 				// Флаг разрешения использования клиента WebSocket
 				bool _webSocket;
 			private:

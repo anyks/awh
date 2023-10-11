@@ -72,8 +72,21 @@ namespace awh {
 				RECV = 0x02  // Направление получения
 			};
 		private:
+			/**
+			 * Событие обмена данными
+			 */
+			enum class event_t : uint8_t {
+				NONE         = 0x00, // Событие не установлено
+				SEND_PING    = 0x01, // Событие отправки пинга
+				SEND_DATA    = 0x02, // Событие отправки данных
+				RECV_FRAME   = 0x03, // События получения данных
+				SEND_HEADERS = 0x04  // Событие отправки заголовков
+			};
+		private:
 			// Флаг идентификации сервиса
 			mode_t _mode;
+			// Флаг активного последнего события
+			event_t _event;
 		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
@@ -173,6 +186,44 @@ namespace awh {
 			 * @return        количество отправленных байт
 			 */
 			static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+		private:
+			/**
+			 * completed Метод завершения выполнения операции
+			 * @param event событие выполненной операции
+			 */
+			void completed(const event_t event) noexcept;
+		public:
+			/**
+			 * ping Метод выполнения пинга
+			 * @return результат работы пинга
+			 */
+			bool ping() noexcept;
+		public:
+			/**
+			 * readFrame Метод чтения данных фрейма из бинарного буфера
+			 * @param buffer буфер бинарных данных для чтения фрейма
+			 * @param size   размер буфера бинарных данных
+			 * @return       результат чтения данных фрейма
+			 */
+			bool readFrame(const uint8_t * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * sendData Метод отправки бинарных данных на сервер
+			 * @param id     идентификатор потока
+			 * @param buffer буфер бинарных данных передаваемых на сервер
+			 * @param size   размер передаваемых данных в байтах
+			 * @param end    флаг завершения потока передачи данных
+			 * @return       результат отправки данных фрейма
+			 */
+			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const bool end) noexcept;
+			/**
+			 * sendHeaders Метод отправки заголовков на сервер
+			 * @param id      идентификатор потока
+			 * @param headers заголовки отправляемые на сервер
+			 * @param end     размер сообщения в байтах
+			 * @return        флаг завершения потока передачи данных
+			 */
+			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept;
 		public:
 			/**
 			 * free Метод очистки активной сессии
@@ -185,6 +236,12 @@ namespace awh {
 			bool close() noexcept;
 		public:
 			/**
+			 * is Метод проверки инициализации модуля
+			 * @return результат проверки инициализации
+			 */
+			bool is() const noexcept;
+		public:
+			/**
 			 * init Метод инициализации
 			 * @param mode     идентификатор сервиса
 			 * @param settings параметры настроек сессии
@@ -192,6 +249,11 @@ namespace awh {
 			 */
 			bool init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept;
 		public:
+			/**
+			 * on Метод установки функции обратного вызова триггера выполнения операции
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (void)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова начала открытии потока
 			 * @param callback функция обратного вызова
@@ -229,12 +291,19 @@ namespace awh {
 			void on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept;
 		public:
 			/**
+			 * Оператор [=] копирования объекта фрейма NgHttp2
+			 * @param ctx объект фрейма NgHttp2
+			 * @return    сформированный объект NgHttp2
+			 */
+			NgHttp2 & operator = (const NgHttp2 & ctx) noexcept;
+		public:
+			/**
 			 * NgHttp2 Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			NgHttp2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(mode_t::NONE), _callback(log), session(nullptr), _fmk(fmk), _log(log) {}
+			 _mode(mode_t::NONE), _event(event_t::NONE), _callback(log), session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~NgHttp2 Деструктор
 			 */
