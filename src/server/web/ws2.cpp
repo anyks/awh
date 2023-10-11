@@ -699,7 +699,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 										#endif
 										// Выполняем заголовки запроса на сервер
-										const int32_t sid = it->second->sendHeaders(adj->sid, headers, true);
+										const int32_t sid = it->second->sendHeaders(adj->sid, headers, false);
 										// Если запрос не получилось отправить
 										if(sid < 0){
 											// Выполняем закрытие подключения
@@ -713,6 +713,28 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											}
 											// Выходим из функции
 											return NGHTTP2_ERR_CALLBACK_FAILURE;
+										}
+										// Если тело запроса существует
+										if(!adj->http.body().empty()){
+											// Тело WEB запроса
+											vector <char> entity;
+											// Получаем данные тела запроса
+											while(!(entity = adj->http.payload()).empty()){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим сообщение о выводе чанка тела
+													cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+												#endif
+												// Выполняем отправку тела запроса на сервер
+												if(!it->second->sendData(adj->sid, (const uint8_t *) entity.data(), entity.size(), ((response.code != 401) && adj->http.body().empty()))){
+													// Выполняем закрытие подключения
+													const_cast <server::core_t *> (this->_core)->close(aid);
+													// Выходим из функции
+													return NGHTTP2_ERR_CALLBACK_FAILURE;
+												}
+											}
 										}
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){

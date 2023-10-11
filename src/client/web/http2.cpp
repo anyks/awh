@@ -922,20 +922,32 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Запрещаем выполнять редирект
 					status = awh::http_t::stath_t::GOOD;
 		}
+
+		cout << " **********-1 " << response.code << endl;
+
 		// Выполняем анализ результата авторизации
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+				
+				cout << " **********0 " << endl;
+				
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if((response.code == 401) && this->_callback.is("error"))
 					// Выводим функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
 				// Если попытки повторить переадресацию ещё не закончились
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+					
+					cout << " **********1 " << endl;
+					
 					// Выполняем поиск параметров запроса
 					auto jt = this->_requests.find(sid);
 					// Если параметры запроса получены
 					if((it->second->update = (jt != this->_requests.end()))){
+						
+						cout << " **********2 " << endl;
+						
 						// Получаем новый адрес запроса
 						const uri_t::url_t & url = it->second->http.getUrl();
 						// Если адрес запроса получен
@@ -962,8 +974,14 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 							return status_t::SKIP;
 						// Если URL-адрес запроса не получен
 						} else {
+							
+							cout << " **********3 " << endl;
+							
 							// Если соединение является постоянным
 							if(it->second->http.isAlive()){
+								
+								cout << " **********4 " << endl;
+								
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Отправляем повторный запрос
@@ -976,6 +994,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 							// Завершаем работу
 							return status_t::SKIP;
 						}
+
+						cout << " **********5 " << endl;
 					}
 				}
 			} break;
