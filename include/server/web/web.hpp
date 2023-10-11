@@ -660,12 +660,12 @@ namespace awh {
 				virtual int32_t send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept;
 			public:
 				/**
-				 * setOrigin Метод установки списка разрешенных источников
+				 * setOrigin Метод установки списка разрешённых источников
 				 * @param origins список разрешённых источников
 				 */
 				void setOrigin(const vector <string> & origins) noexcept;
 				/**
-				 * sendOrigin Метод отправки списка разрешенных источников
+				 * sendOrigin Метод отправки списка разрешённых источников
 				 * @param aid     идентификатор адъютанта
 				 * @param origins список разрешённых источников
 				 */

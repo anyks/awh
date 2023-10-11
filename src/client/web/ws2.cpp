@@ -214,35 +214,12 @@ void awh::client::WebSocket2::readCallback(const char * buffer, const size_t siz
 			if(!this->_allow.receive)
 				// Выходим из функции
 				return;
-			// Если сессия HTTP/2 инициализированна
-			if(this->_nghttp2.session != nullptr){
-				// Выполняем извлечение полученного чанка данных из сокета
-				ssize_t bytes = nghttp2_session_mem_recv(this->_nghttp2.session, (const uint8_t *) buffer, size);
-				// Если данные не прочитаны, выводим ошибку и выходим
-				if(bytes < 0){
-					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
-					// Выходим из функции
-					return;
-				}
-				// Если сессия HTTP/2 инициализированна
-				if(this->_nghttp2.session != nullptr){
-					// Фиксируем полученный результат
-					if((bytes = nghttp2_session_send(this->_nghttp2.session)) != 0){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
-						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(static_cast <int> (bytes)));
-						// Выходим из функции
-						return;
-					}
-				}
+			// Если отправить данные фрейма не удалось, выходим из функции
+			if(!this->_nghttp2.frame((const uint8_t *) buffer, size)){
+				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));
+				// Выходим из функции
+				return;
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
 		} else this->_ws1.readCallback(buffer, size, aid, sid, core);

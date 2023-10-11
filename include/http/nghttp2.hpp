@@ -80,7 +80,8 @@ namespace awh {
 				SEND_PING    = 0x01, // Событие отправки пинга
 				SEND_DATA    = 0x02, // Событие отправки данных
 				RECV_FRAME   = 0x03, // События получения данных
-				SEND_HEADERS = 0x04  // Событие отправки заголовков
+				SEND_ORIGIN  = 0x04, // События отправки доверенных источников
+				SEND_HEADERS = 0x05  // Событие отправки заголовков
 			};
 		private:
 			// Флаг идентификации сервиса
@@ -90,9 +91,9 @@ namespace awh {
 		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
-		public:
+		private:
 			// Ессия HTTP/2 подключения
-			nghttp2_session * session;
+			nghttp2_session * _session;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -200,13 +201,18 @@ namespace awh {
 			bool ping() noexcept;
 		public:
 			/**
-			 * readFrame Метод чтения данных фрейма из бинарного буфера
+			 * frame Метод чтения данных фрейма из бинарного буфера
 			 * @param buffer буфер бинарных данных для чтения фрейма
 			 * @param size   размер буфера бинарных данных
 			 * @return       результат чтения данных фрейма
 			 */
-			bool readFrame(const uint8_t * buffer, const size_t size) noexcept;
+			bool frame(const uint8_t * buffer, const size_t size) noexcept;
 		public:
+			/**
+			 * sendOrigin Метод отправки списка разрешенных источников
+			 * @param origins список разрешённых источников
+			 */
+			bool sendOrigin(const vector <string> & origins) noexcept;
 			/**
 			 * sendData Метод отправки бинарных данных на сервер
 			 * @param id     идентификатор потока
@@ -303,7 +309,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			NgHttp2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(mode_t::NONE), _event(event_t::NONE), _callback(log), session(nullptr), _fmk(fmk), _log(log) {}
+			 _mode(mode_t::NONE), _event(event_t::NONE),
+			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~NgHttp2 Деструктор
 			 */

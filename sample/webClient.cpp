@@ -209,7 +209,7 @@ int main(int argc, char * argv[]){
 	// awh.authType(auth_t::type_t::BASIC);
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parse("https://2ip.ru");
+	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
 	// uri_t::url_t url = uri.parse("http://stalin.info");
@@ -218,7 +218,7 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
-	// uri_t::url_t url = uri.parse("https://anyks.net:2222");
+	uri_t::url_t url = uri.parse("https://anyks.net:2222");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");

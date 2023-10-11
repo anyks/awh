@@ -206,7 +206,7 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				// Если активная сессия найдена
 				if(it != this->_sessions.end()){
 					// Если отправить данные фрейма не удалось, выходим из функции
-					if(!it->second->readFrame((const uint8_t *) buffer, size)){
+					if(!it->second->frame((const uint8_t *) buffer, size)){
 						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
 						// Выходим из функции

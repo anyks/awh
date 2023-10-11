@@ -374,9 +374,9 @@ bool awh::NgHttp2::ping() noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_PING;
 	// Если сессия HTTP/2 инициализированна
-	if(this->session != nullptr){
+	if(this->_session != nullptr){
 		// Выполняем пинг удалённого сервера
-		if((rv = nghttp2_submit_ping(this->session, 0, nullptr)) != 0){
+		if((rv = nghttp2_submit_ping(this->_session, 0, nullptr)) != 0){
 			// Выводим сообщение об полученной ошибке
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 			// Если функция обратного вызова на на вывод ошибок установлена
@@ -389,9 +389,9 @@ bool awh::NgHttp2::ping() noexcept {
 			return false;
 		}
 		// Если сессия HTTP/2 инициализированна
-		if(this->session != nullptr){
+		if(this->_session != nullptr){
 			// Фиксируем отправленный результат
-			if((rv = nghttp2_session_send(this->session)) != 0){
+			if((rv = nghttp2_session_send(this->_session)) != 0){
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -411,20 +411,20 @@ bool awh::NgHttp2::ping() noexcept {
 	return true;
 }
 /**
- * readFrame Метод чтения данных фрейма из бинарного буфера
+ * frame Метод чтения данных фрейма из бинарного буфера
  * @param buffer буфер бинарных данных для чтения фрейма
  * @param size   размер буфера бинарных данных
  * @return       результат чтения данных фрейма
  */
-bool awh::NgHttp2::readFrame(const uint8_t * buffer, const size_t size) noexcept {
+bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::RECV_FRAME;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Если сессия HTTP/2 инициализированна
-		if(this->session != nullptr){
+		if(this->_session != nullptr){
 			// Выполняем извлечение полученного чанка данных из сокета
-			ssize_t bytes = nghttp2_session_mem_recv(this->session, buffer, size);
+			ssize_t bytes = nghttp2_session_mem_recv(this->_session, buffer, size);
 			// Если данные не прочитаны, выводим ошибку и выходим
 			if(bytes < 0){
 				// Выводим сообщение об полученной ошибке
@@ -439,9 +439,9 @@ bool awh::NgHttp2::readFrame(const uint8_t * buffer, const size_t size) noexcept
 				return false;
 			}
 			// Если сессия HTTP/2 инициализированна
-			if(this->session != nullptr){
+			if(this->_session != nullptr){
 				// Фиксируем полученный результат
-				if((bytes = nghttp2_session_send(this->session)) != 0){
+				if((bytes = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -462,6 +462,57 @@ bool awh::NgHttp2::readFrame(const uint8_t * buffer, const size_t size) noexcept
 	}
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::RECV_FRAME);
+	// Выводим результат
+	return false;
+}
+/**
+ * sendOrigin Метод отправки списка разрешенных источников
+ * @param origins список разрешённых источников
+ */
+bool awh::NgHttp2::sendOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_ORIGIN;
+	// Если список источников передан
+	if(!origins.empty()){
+		// Список источников для установки на клиенте
+		vector <nghttp2_origin_entry> ov;
+		// Выполняем перебор списка источников
+		for(auto & origin : origins)
+			// Выполняем добавление источника в списку
+			ov.push_back({(uint8_t *) origin.c_str(), origin.size()});
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Результат выполнения поерации
+			int rv = -1;
+			// Выполняем установку фрейма полученных источников
+			if((rv = nghttp2_submit_origin(this->_session, NGHTTP2_FLAG_NONE, (!ov.empty() ? ov.data() : nullptr), ov.size())) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_ORIGIN);
+				// Выходим из функции
+				return false;
+			}
+			// Если сессия HTTP/2 инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_ORIGIN);
+					// Выходим из функции
+					return false;
+				}
+			}
+		}
+		// Выполняем вызов метода выполненного события
+		this->completed(event_t::SEND_ORIGIN);
+		// Выводим результат
+		return true;
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_ORIGIN);
 	// Выводим результат
 	return false;
 }
@@ -571,11 +622,11 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
 		// Устанавливаем функцию обратного вызова
 		data.read_callback = &nghttp2_t::read;
 		// Если сессия HTTP/2 инициализированна
-		if(this->session != nullptr){
+		if(this->_session != nullptr){
 			// Результат фиксации сессии
 			int rv = -1;
 			// Выполняем формирование данных фрейма для отправки
-			if((rv = nghttp2_submit_data(this->session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
+			if((rv = nghttp2_submit_data(this->_session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, &data)) != 0){
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -588,9 +639,9 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
 				return false;
 			}
 			// Если сессия HTTP/2 инициализированна
-			if(this->session != nullptr){
+			if(this->_session != nullptr){
 				// Фиксируем отправленный результат
-				if((rv = nghttp2_session_send(this->session)) != 0){
+				if((rv = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -642,9 +693,9 @@ int32_t awh::NgHttp2::sendHeaders(const int32_t id, const vector <pair <string, 
 			});
 		}
 		// Если сессия HTTP/2 инициализированна
-		if(this->session != nullptr){
+		if(this->_session != nullptr){
 			// Выполняем запрос на удалённый сервер			
-			result = nghttp2_submit_headers(this->session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, nullptr, nva.data(), nva.size(), nullptr);
+			result = nghttp2_submit_headers(this->_session, (end ? NGHTTP2_FLAG_END_STREAM : NGHTTP2_FLAG_NONE), id, nullptr, nva.data(), nva.size(), nullptr);
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выводим в лог сообщение
@@ -659,11 +710,11 @@ int32_t awh::NgHttp2::sendHeaders(const int32_t id, const vector <pair <string, 
 				return result;
 			}
 			// Если сессия HTTP/2 инициализированна
-			if(this->session != nullptr){
+			if(this->_session != nullptr){
 				// Результат фиксации сессии
 				int rv = -1;
 				// Фиксируем отправленный результат
-				if((rv = nghttp2_session_send(this->session)) != 0){
+				if((rv = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -688,11 +739,11 @@ int32_t awh::NgHttp2::sendHeaders(const int32_t id, const vector <pair <string, 
  */
 void awh::NgHttp2::free() noexcept {
 	// Если сессия HTTP/2 создана удачно
-	if(this->session != nullptr){
+	if(this->_session != nullptr){
 		// Выполняем удаление сессии
-		nghttp2_session_del(this->session);
+		nghttp2_session_del(this->_session);
 		// Выполняем обнуление активной сессии
-		this->session = nullptr;
+		this->_session = nullptr;
 	}
 }
 /**
@@ -703,13 +754,13 @@ bool awh::NgHttp2::close() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если сессия HTTP/2 создана удачно
-	if(this->session != nullptr){
+	if(this->_session != nullptr){
 		// Выполняем остановку активной сессии
-		result = (nghttp2_session_terminate_session(this->session, NGHTTP2_NO_ERROR) == 0);
+		result = (nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR) == 0);
 		// Выполняем удаление сессии
-		nghttp2_session_del(this->session);
+		nghttp2_session_del(this->_session);
 		// Выполняем обнуление активной сессии
-		this->session = nullptr;
+		this->_session = nullptr;
 		// Выводим результат
 		return result;
 	}
@@ -722,7 +773,7 @@ bool awh::NgHttp2::close() noexcept {
  */
 bool awh::NgHttp2::is() const noexcept {
 	// Выводим результат проверки
-	return (this->session != nullptr);
+	return (this->_session != nullptr);
 }
 /**
  * init Метод инициализации
@@ -769,12 +820,12 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT):
 				// Выполняем создание клиента HTTP/2
-				nghttp2_session_client_new(&this->session, callbacks, this);
+				nghttp2_session_client_new(&this->_session, callbacks, this);
 			break;
 			// Если сервис идентифицирован как сервер
 			case static_cast <uint8_t> (mode_t::SERVER):
 				// Выполняем создание сервера HTTP/2
-				nghttp2_session_server_new(&this->session, callbacks, this);
+				nghttp2_session_server_new(&this->_session, callbacks, this);
 			break;
 		}
 		// Выполняем удаление объекта функций обратного вызова
@@ -782,7 +833,7 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
-			const int rv = nghttp2_submit_settings(this->session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
+			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
 			if(!(result = (rv == 0))){
 				// Выводим сообщение об ошибке
@@ -887,7 +938,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const direct_t, const uint8_
  */
 awh::NgHttp2 & awh::NgHttp2::operator = (const NgHttp2 & ctx) noexcept {
 	// Выполняем копирование сессии подключения
-	this->session = ctx.session;
+	this->_session = ctx._session;
 	// Выводим текущий объект в качестве результата
 	return (* this);
 }
