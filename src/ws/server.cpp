@@ -175,7 +175,9 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
  */
 void awh::server::WS::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->_auth.server.realm(realm);
+	if(!realm.empty())
+		// Устанавливаем название сервера
+		this->_auth.server.realm(realm);
 }
 /**
  * opaque Метод установки временного ключа сессии сервера
@@ -183,7 +185,9 @@ void awh::server::WS::realm(const string & realm) noexcept {
  */
 void awh::server::WS::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->_auth.server.opaque(opaque);
+	if(!opaque.empty())
+		// Устанавливаем временный ключ сессии
+		this->_auth.server.opaque(opaque);
 }
 /**
  * extractPassCallback Метод добавления функции извлечения пароля

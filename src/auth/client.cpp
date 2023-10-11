@@ -21,7 +21,9 @@
  */
 void awh::client::Auth::uri(const string & uri) noexcept {
 	// Если параметры HTTP запроса переданы
-	if(!uri.empty()) this->_digest.uri = uri;
+	if(!uri.empty())
+		// Устанавливаем адрес запроса
+		this->_digest.uri = uri;
 }
 /**
  * user Метод установки логина пользователя

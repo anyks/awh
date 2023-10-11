@@ -361,11 +361,11 @@ namespace awh {
 			stath_t getAuth() const noexcept;
 			/**
 			 * getAuth Метод извлечения строки авторизации
-			 * @param flag   флаг выполняемого процесса
-			 * @param method метод выполняемого запроса
-			 * @return       строка авторизации на удалённом сервере
+			 * @param flag флаг выполняемого процесса
+			 * @param prov параметры провайдера обмена сообщениями
+			 * @return     строка авторизации на удалённом сервере
 			 */
-			string getAuth(const process_t flag, const web_t::method_t method = web_t::method_t::NONE) const noexcept;
+			string getAuth(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
 			 * getUrl Метод извлечения параметров запроса
@@ -484,6 +484,13 @@ namespace awh {
 			crypto_t encode(const vector <char> & buffer) const noexcept;
 		public:
 			/**
+			 * mapping Метод маппинга полученных данных
+			 * @param flag флаг выполняемого процесса
+			 * @param http объект для маппинга
+			 */
+			void mapping(const process_t flag, Http & http) noexcept;
+		public:
+			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
@@ -526,18 +533,18 @@ namespace awh {
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
-			 * @param flag     флаг выполняемого процесса
-			 * @param provider параметры провайдера обмена сообщениями
-			 * @return         буфер данных в бинарном виде
+			 * @param flag флаг выполняемого процесса
+			 * @param prov параметры провайдера обмена сообщениями
+			 * @return     буфер данных в бинарном виде
 			 */
-			virtual vector <char> process(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			virtual vector <char> process(const process_t flag, const web_t::provider_t & prov) const noexcept;
 			/**
 			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
-			 * @param flag     флаг выполняемого процесса
-			 * @param provider параметры провайдера обмена сообщениями
-			 * @return         буфер данных в бинарном виде
+			 * @param flag флаг выполняемого процесса
+			 * @param prov параметры провайдера обмена сообщениями
+			 * @return     буфер данных в бинарном виде
 			 */
-			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос

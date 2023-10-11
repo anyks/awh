@@ -365,6 +365,16 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 										if(this->_callback.is("headers"))
 											// Выводим функцию обратного вызова
 											this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
+										// Если мы получили флаг завершения потока
+										if(flags & NGHTTP2_FLAG_END_STREAM){
+											// Выполняем препарирование полученных данных
+											switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
+												// Если необходимо выполнить пропуск обработки данных
+												case static_cast <uint8_t> (status_t::SKIP):
+													// Завершаем работу
+													return 0;
+											}
+										}
 									}
 									// Если мы получили флаг завершения потока
 									if(flags & NGHTTP2_FLAG_END_STREAM){
@@ -622,6 +632,53 @@ int awh::client::Http2::headerSignal(const int32_t sid, const string & key, cons
 	}
 	// Выводим результат
 	return 0;
+}
+/**
+ * end Метод завершения работы потока
+ * @param sid    идентификатор потока
+ * @param direct направление передачи данных
+ */
+void awh::client::Http2::end(const int32_t sid, const direct_t direct) noexcept {
+	// Определяем направление передачи данных
+	switch(static_cast <uint8_t> (direct)){
+		// Если направление передачи данных отправка на сервер
+		case static_cast <uint8_t> (direct_t::SEND):
+			/** Здесь мы пока ничего не выполняем **/
+		break;
+		// Если направление передачи данных получение с сервера
+		case static_cast <uint8_t> (direct_t::RECV):
+			// Выполняем удаление выполненного воркера
+			this->_workers.erase(sid);
+		break;
+	}
+	// Если установлена функция отлова завершения запроса
+	if(this->_callback.is("end"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const direct_t> ("end", sid, direct);
+}
+/**
+ * redirect Метод выполнения смены потоков
+ * @param from идентификатор предыдущего потока
+ * @param to   идентификатор нового потока
+ */
+void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept {
+	// Выполняем поиск воркера предыдущего потока
+	auto it = this->_workers.find(from);
+	// Если воркер для предыдущего потока найден
+	if(it != this->_workers.end()){
+		// Выполняем установку объекта воркера
+		auto ret = this->_workers.emplace(to, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
+		// Выполняем установку типа агента
+		ret.first->second->agent = it->second->agent;
+		// Выполняем установку активный прототип интернета
+		ret.first->second->proto = it->second->proto;
+		// Выполняем установку флага обновления данных
+		ret.first->second->update = it->second->update;
+	}
+	// Если функция обратного вызова на вывод редиректа потоков установлена
+	if((from != to) && this->_callback.is("redirect"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const int32_t, const int32_t> ("redirect", from, to);
 }
 /**
  * redirect Метод выполнения редиректа если требуется
@@ -888,6 +945,8 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 						// Выполняем очистку полученных данных тела запроса
 						else request.entity.clear();
 					}
+					// Выполняем извлечение полученных данных запроса
+					it->second->http.mapping(http_t::process_t::REQUEST, this->_http);
 					// Выходим из цикла
 					break;
 				}
@@ -964,9 +1023,6 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 						} else {
 							// Если соединение является постоянным
 							if(it->second->http.isAlive()){
-								
-								cout << " **********4 " << endl;
-								
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Отправляем повторный запрос
@@ -1166,6 +1222,15 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							this->_uri.combine(this->_scheme.url, request.url);
 							// Создаём объек запроса
 							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
+							// Если метод CONNECT запрещён для прокси-сервера
+							if(!this->_proxy.connect){
+								// Выполняем извлечение заголовка авторизации на прокси-сервера
+								const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+								// Если заголовок авторизации получен
+								if(!header.empty())
+									// Выполняем установки заголовка авторизации на прокси-сервере
+									this->_http.header("Proxy-Authorization", header);
+							}
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1177,15 +1242,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl;
 							#endif
-							// Если метод CONNECT запрещён для прокси-сервера
-							if(!this->_proxy.connect){
-								// Получаем строку авторизации на проксе-сервере
-								const string & auth = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, request.method);
-								// Если строка автоирации получена
-								if(!auth.empty())
-									// Выполняем добавление заголовка авторизации
-									this->_http.header("Proxy-Authorization", auth);
-							}
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем заголовки запроса на сервер
@@ -1493,8 +1549,6 @@ void awh::client::Http2::on(function <void (const int32_t, const agent_t)> callb
 void awh::client::Http2::on(function <void (const int32_t, const direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on(callback);
 }
@@ -1808,7 +1862,11 @@ void awh::client::Http2::crypto(const string & pass, const string & salt, const 
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _lockClean(false), _webSocket(false), _threads(-1) {
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2));
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
+	// Выполняем установку функции обратного вызова перехвата события редиректа
+	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -1827,7 +1885,11 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2));
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
+	// Выполняем установку функции обратного вызова перехвата события редиректа
+	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова

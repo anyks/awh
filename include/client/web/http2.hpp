@@ -182,6 +182,19 @@ namespace awh {
 				int headerSignal(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
+				 * end Метод завершения работы потока
+				 * @param sid    идентификатор потока
+				 * @param direct направление передачи данных
+				 */
+				void end(const int32_t sid, const direct_t direct) noexcept;
+			private:
+				/**
+				 * redirect Метод выполнения смены потоков
+				 * @param from идентификатор предыдущего потока
+				 * @param to   идентификатор нового потока
+				 */
+				void redirect(const int32_t from, const int32_t to) noexcept;
+				/**
 				 * redirect Метод выполнения редиректа если требуется
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети

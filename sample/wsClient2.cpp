@@ -352,7 +352,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	awh.user("user", "password");
+	// awh.user("user", "password");
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение
@@ -385,7 +385,7 @@ int main(int argc, char * argv[]){
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем метод активации подключения
 	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
@@ -404,9 +404,9 @@ int main(int argc, char * argv[]){
 	awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
 	// Выполняем инициализацию подключения	
 	awh.init("wss://stream.binance.com:9443");
+	// awh.init("wss://anyks.net:2222");
 	// Выполняем запуск работы
 	awh.start();
-
 	// Выводим результат
 	return 0;
 }

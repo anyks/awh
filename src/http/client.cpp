@@ -29,21 +29,12 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		// Если требуется авторизация
 		case 401:
 		case 407: {
-			
-			cout << " ^^^^^^^^^^^^^^^^^^^^^1 " << (u_short) this->_auth.client.type() << endl;
-			
 			// Определяем тип авторизации
 			switch(static_cast <uint8_t> (this->_auth.client.type())){
 				// Если производится авторизация DIGEST
 				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^^2 " << endl;
-					
 					// Получаем параметры авторизации
 					const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^^3 " << auth << endl;
-					
 					// Если параметры авторизации найдены
 					if(!auth.empty()){
 						// Устанавливаем заголовок HTTP в параметры авторизации
@@ -54,9 +45,6 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 				} break;
 				// Если производится авторизация BASIC
 				case static_cast <uint8_t> (awh::auth_t::type_t::BASIC):
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^^4 " << endl;
-					
 					// Просим повторить авторизацию ещё раз
 					result = stath_t::RETRY;
 				break;

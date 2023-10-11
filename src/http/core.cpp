@@ -653,53 +653,60 @@ awh::Http::stath_t awh::Http::getAuth() const noexcept {
 }
 /**
  * getAuth Метод извлечения строки авторизации
- * @param flag   флаг выполняемого процесса
- * @param method метод выполняемого запроса
- * @return       строка авторизации на удалённом сервере
+ * @param flag флаг выполняемого процесса
+ * @param prov параметры провайдера обмена сообщениями
+ * @return     строка авторизации на удалённом сервере
  */
-string awh::Http::getAuth(const process_t flag, const web_t::method_t method) const noexcept {
+string awh::Http::getAuth(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
-			// Определяем метод запроса
-			switch(static_cast <uint8_t> (method)){
-				// Если метод запроса указан как GET
-				case static_cast <uint8_t> (web_t::method_t::GET):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("get");
-				// Если метод запроса указан как PUT
-				case static_cast <uint8_t> (web_t::method_t::PUT):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("put");
-				// Если метод запроса указан как POST
-				case static_cast <uint8_t> (web_t::method_t::POST):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("post");
-				// Если метод запроса указан как HEAD
-				case static_cast <uint8_t> (web_t::method_t::HEAD):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("head");
-				// Если метод запроса указан как DELETE
-				case static_cast <uint8_t> (web_t::method_t::DEL):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("delete");
-				// Если метод запроса указан как PATCH
-				case static_cast <uint8_t> (web_t::method_t::PATCH):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("patch");
-				// Если метод запроса указан как TRACE
-				case static_cast <uint8_t> (web_t::method_t::TRACE):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("trace");
-				// Если метод запроса указан как OPTIONS
-				case static_cast <uint8_t> (web_t::method_t::OPTIONS):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("options");
-				// Если метод запроса указан как CONNECT
-				case static_cast <uint8_t> (web_t::method_t::CONNECT):
-					// Получаем параметры авторизации
-					return this->_auth.client.auth("connect");
+			// Получаем объект ответа клиенту
+			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
+			// Если параметры REST-запроса переданы
+			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
+				// Устанавливаем параметры REST-запроса
+				this->_auth.client.uri(this->_uri.url(req.url));
+				// Определяем метод запроса
+				switch(static_cast <uint8_t> (req.method)){
+					// Если метод запроса указан как GET
+					case static_cast <uint8_t> (web_t::method_t::GET):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("get");
+					// Если метод запроса указан как PUT
+					case static_cast <uint8_t> (web_t::method_t::PUT):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("put");
+					// Если метод запроса указан как POST
+					case static_cast <uint8_t> (web_t::method_t::POST):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("post");
+					// Если метод запроса указан как HEAD
+					case static_cast <uint8_t> (web_t::method_t::HEAD):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("head");
+					// Если метод запроса указан как DELETE
+					case static_cast <uint8_t> (web_t::method_t::DEL):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("delete");
+					// Если метод запроса указан как PATCH
+					case static_cast <uint8_t> (web_t::method_t::PATCH):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("patch");
+					// Если метод запроса указан как TRACE
+					case static_cast <uint8_t> (web_t::method_t::TRACE):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("trace");
+					// Если метод запроса указан как OPTIONS
+					case static_cast <uint8_t> (web_t::method_t::OPTIONS):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("options");
+					// Если метод запроса указан как CONNECT
+					case static_cast <uint8_t> (web_t::method_t::CONNECT):
+						// Получаем параметры авторизации
+						return this->_auth.client.auth("connect");
+				}
 			}
 		} break;
 		// Если нужно сформировать данные ответа
@@ -1241,6 +1248,88 @@ awh::Http::crypto_t awh::Http::encode(const vector <char> & buffer) const noexce
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * mapping Метод маппинга полученных данных
+ * @param flag флаг выполняемого процесса
+ * @param http объект для маппинга
+ */
+void awh::Http::mapping(const process_t flag, Http & http) noexcept {
+	// Выполняем очистку списка заголовков
+	http.clearHeaders();
+	// Устанавливаем идентификатор объекта
+	http.id(this->_web.id());
+	// Устанавливаем размер одного чанка
+	http.chunk(this->_chunk);
+	// Устанавливаем активный стейт объекта
+	http._state = this->_state;
+	// Устанавливаем тип статуса авторизации
+	http._stath = this->_stath;
+	// Устанавливаем флаг шифрования объекта
+	http._crypt = this->_crypt;
+	// Устанавливаем активный метод компрессии
+	http._compress = this->_compress;
+	// Извлекаем список заголовков
+	const auto & headers = this->_web.headers();
+	// Если заголовки получены, выполняем установку
+	if(!headers.empty())
+		// Выполняем установку заголовков
+		http.headers(headers);
+	// Устанавливаем параметры идентификации сервиса
+	http.ident(this->_ident.id, this->_ident.name, this->_ident.version);
+	// Если нужно сформировать данные запроса
+	if(flag == process_t::REQUEST){
+		// Устанавливаем User-Agent, если он установлен
+		http.userAgent(this->_userAgent);
+		// Получаем ответ с удалённого сервера
+		const web_t::res_t & response = this->_web.response();
+		// Если авторизация установлена как Digest
+		if(this->_auth.client.type() == awh::auth_t::type_t::DIGEST){
+			// Проверяем код ответа
+			switch(response.code){
+				// Если требуется авторизация для сервера
+				case 401: {
+					// Получаем параметры авторизации
+					const string & auth = this->_web.header("www-authenticate");
+					// Если параметры авторизации найдены
+					if(!auth.empty())
+						// Устанавливаем заголовок HTTP в параметры авторизации
+						http._auth.client.header(auth);
+				} break;
+				// Если требуется авторизация для прокси-сервера
+				case 407: {
+					// Получаем параметры авторизации
+					const string & auth = this->_web.header("proxy-authenticate");
+					// Если параметры авторизации найдены
+					if(!auth.empty())
+						// Устанавливаем заголовок HTTP в параметры авторизации
+						http._auth.client.header(auth);
+				} break;
+			}
+		}
+		// Проверяем код ответа
+		switch(response.code){
+			// Если нужно произвести редирект
+			case 201:
+			case 301:
+			case 302:
+			case 303:
+			case 307:
+			case 308: {
+				// Получаем параметры переадресации
+				const string & location = this->_web.header("location");
+				// Если адрес перенаправления найден
+				if(!location.empty()){
+					// Получаем объект параметров запроса
+					web_t::req_t request = this->_web.request();
+					// Выполняем парсинг полученного URL-адреса
+					request.url = this->_uri.parse(location);
+					// Выполняем установку параметров запроса
+					http._web.request(std::move(request));
+				}
+			} break;
+		}
+	}
 }
 /**
  * proxy Метод создания запроса для авторизации на прокси-сервере
@@ -2028,11 +2117,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const b
 }
 /**
  * process Метод создания выполняемого процесса в бинарном виде
- * @param flag     флаг выполняемого процесса
- * @param provider параметры провайдера обмена сообщениями
- * @return         буфер данных в бинарном виде
+ * @param flag флаг выполняемого процесса
+ * @param prov параметры провайдера обмена сообщениями
+ * @return     буфер данных в бинарном виде
  */
-vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Определяем флаг выполняемого процесса
@@ -2040,7 +2129,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
 			// Получаем объект ответа клиенту
-			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
+			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры REST-запроса переданы
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
 				/**
@@ -2374,7 +2463,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 		// Если нужно сформировать данные ответа
 		case static_cast <uint8_t> (process_t::RESPONSE): {
 			// Получаем объект ответа клиенту
-			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
+			const web_t::res_t & res = static_cast <const web_t::res_t &> (prov);
 			// Устанавливаем парарметры ответа
 			this->_web.response(res);
 			// Если текст сообщения не установлен
@@ -2559,11 +2648,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 }
 /**
  * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
- * @param flag     флаг выполняемого процесса
- * @param provider параметры провайдера обмена сообщениями
- * @return         буфер данных в бинарном виде
+ * @param flag флаг выполняемого процесса
+ * @param prov параметры провайдера обмена сообщениями
+ * @return     буфер данных в бинарном виде
  */
-vector <pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
 	vector <pair<string, string>> result;
 	// Определяем флаг выполняемого процесса
@@ -2571,7 +2660,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
 			// Получаем объект ответа клиенту
-			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
+			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
 				// Размер тела сообщения
@@ -2921,7 +3010,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				false  // Proxy-Authenticate
 			};
 			// Получаем объект ответа клиенту
-			const web_t::res_t & res = static_cast <const web_t::res_t &> (provider);
+			const web_t::res_t & res = static_cast <const web_t::res_t &> (prov);
 			// Устанавливаем параметры ответа
 			this->_web.response(res);
 			// Если текст сообщения не установлен
