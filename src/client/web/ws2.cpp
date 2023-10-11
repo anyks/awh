@@ -214,7 +214,7 @@ void awh::client::WebSocket2::readCallback(const char * buffer, const size_t siz
 			if(!this->_allow.receive)
 				// Выходим из функции
 				return;
-			// Если отправить данные фрейма не удалось, выходим из функции
+			// Если прочитать данные фрейма не удалось, выходим из функции
 			if(!this->_nghttp2.frame((const uint8_t *) buffer, size)){
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));

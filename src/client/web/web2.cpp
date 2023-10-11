@@ -347,7 +347,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Если протокол подключения является HTTP/2
 					if(core->proto(aid) == engine_t::proto_t::HTTP2){
-						// Если отправить данные фрейма не удалось, выходим из функции
+						// Если прочитать данные фрейма не удалось, выходим из функции
 						if(!this->_nghttp2.frame((const uint8_t *) buffer, size))
 							// Выходим из функции
 							return;
