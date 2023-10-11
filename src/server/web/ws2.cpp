@@ -728,7 +728,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 												#endif
 												// Выполняем отправку тела запроса на сервер
-												if(!it->second->sendData(adj->sid, (const uint8_t *) entity.data(), entity.size(), ((response.code != 401) && adj->http.body().empty()))){
+												if(!it->second->sendData(adj->sid, (const uint8_t *) entity.data(), entity.size(), adj->http.body().empty())){
 													// Выполняем закрытие подключения
 													const_cast <server::core_t *> (this->_core)->close(aid);
 													// Выходим из функции
