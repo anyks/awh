@@ -88,13 +88,13 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
 				adj->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
 			// Если сервер требует авторизацию
-			if(this->_authType != auth_t::type_t::NONE){
+			if(this->_service.type != auth_t::type_t::NONE){
 				// Определяем тип авторизации
-				switch(static_cast <uint8_t> (this->_authType)){
+				switch(static_cast <uint8_t> (this->_service.type)){
 					// Если тип авторизации Basic
 					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType);
+						adj->http.authType(this->_service.type);
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("checkPassword"))
 							// Устанавливаем функцию проверки авторизации
@@ -107,7 +107,7 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 						// Устанавливаем временный ключ сессии сервера
 						adj->http.opaque(this->_service.opaque);
 						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType, this->_authHash);
+						adj->http.authType(this->_service.type, this->_service.hash);
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("extractPassword"))
 							// Устанавливаем функцию извлечения пароля
@@ -301,15 +301,15 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 								// Если сервер требует авторизацию
-								if(this->_authType != auth_t::type_t::NONE){
+								if(this->_service.type != auth_t::type_t::NONE){
 									// Выполняем удаление заголовка закрытия подключения
 									http.rmHeader("Сonnection");
 									// Определяем тип авторизации
-									switch(static_cast <uint8_t> (this->_authType)){
+									switch(static_cast <uint8_t> (this->_service.type)){
 										// Если тип авторизации Basic
 										case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 											// Устанавливаем параметры авторизации
-											http.authType(this->_authType);
+											http.authType(this->_service.type);
 											// Если функция обратного вызова для обработки чанков установлена
 											if(this->_callback.is("checkPassword"))
 												// Устанавливаем функцию проверки авторизации
@@ -322,7 +322,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 											// Устанавливаем временный ключ сессии сервера
 											http.opaque(this->_service.opaque);
 											// Устанавливаем параметры авторизации
-											http.authType(this->_authType, this->_authHash);
+											http.authType(this->_service.type, this->_service.hash);
 											// Если функция обратного вызова для обработки чанков установлена
 											if(this->_callback.is("extractPassword"))
 												// Устанавливаем функцию извлечения пароля

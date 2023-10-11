@@ -391,9 +391,9 @@ void awh::server::Web::ident(const string & id, const string & name, const strin
  */
 void awh::server::Web::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->_authHash = hash;
+	this->_service.hash = hash;
 	// Устанавливаем тип авторизации
-	this->_authType = type;
+	this->_service.type = type;
 }
 /**
  * crypto Метод установки параметров шифрования
@@ -418,8 +418,8 @@ void awh::server::Web::crypto(const string & pass, const string & salt, const ha
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 }
@@ -430,8 +430,8 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 	// Активируем персистентный запуск для работы пингов

@@ -618,17 +618,6 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
 	}
 }
 /**
- * authType Метод установки типа авторизации
- * @param type тип авторизации
- * @param hash алгоритм шифрования для Digest-авторизации
- */
-void awh::client::Web2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
-	// Выполняем установку типа авторизации
-	this->_authType = type;
-	// Выполняем установку алгоритма шифрования для Digest-авторизации
-	this->_authHash = hash;
-}
-/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
@@ -653,8 +642,7 @@ void awh::client::Web2::crypto(const string & pass, const string & salt, const h
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _nghttp2(fmk, log),
- _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK),
- _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5) {
+ _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем функцию персистентного вызова
@@ -668,8 +656,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _nghttp2(fmk, log),
- _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK),
- _authType(auth_t::type_t::BASIC), _authHash(auth_t::hash_t::MD5) {
+ _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем функцию персистентного вызова

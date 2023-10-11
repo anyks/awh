@@ -546,11 +546,6 @@ namespace awh {
 			protected:
 				// Размер одного чанка бинарных данных
 				size_t _chunkSize;
-			protected:
-				// Тип авторизации
-				auth_t::type_t _authType;
-				// Алгоритм шифрования для Digest-авторизации
-				auth_t::hash_t _authHash;
 			private:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
@@ -740,13 +735,6 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void ident(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * authType Метод установки типа авторизации
-				 * @param type тип авторизации
-				 * @param hash алгоритм шифрования для Digest-авторизации
-				 */
-				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * crypto Метод установки параметров шифрования

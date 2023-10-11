@@ -78,13 +78,13 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				// Устанавливаем метод компрессии поддерживаемый сервером
 				adj->http.compress(this->_scheme.compress);
 				// Если сервер требует авторизацию
-				if(this->_authType != auth_t::type_t::NONE){
+				if(this->_service.type != auth_t::type_t::NONE){
 					// Определяем тип авторизации
-					switch(static_cast <uint8_t> (this->_authType)){
+					switch(static_cast <uint8_t> (this->_service.type)){
 						// Если тип авторизации Basic
 						case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 							// Устанавливаем параметры авторизации
-							adj->http.authType(this->_authType);
+							adj->http.authType(this->_service.type);
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callback.is("checkPassword"))
 								// Устанавливаем функцию проверки авторизации
@@ -97,7 +97,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 							// Устанавливаем временный ключ сессии сервера
 							adj->http.opaque(this->_service.opaque);
 							// Устанавливаем параметры авторизации
-							adj->http.authType(this->_authType, this->_authHash);
+							adj->http.authType(this->_service.type, this->_service.hash);
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callback.is("extractPassword"))
 								// Устанавливаем функцию извлечения пароля

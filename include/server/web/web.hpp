@@ -118,20 +118,20 @@ namespace awh {
 				 * Service Структура сервиса
 				 */
 				typedef struct Service {
-					// Флаг долгоживущего подключения
-					bool alive;
-					// Порт сервера
-					u_int port;
-					// Хости сервера
-					string host;
-					// Название сервера
-					string realm;
-					// Временный ключ сессии сервера
-					string opaque;
+					bool alive;          // Флаг долгоживущего подключения
+					u_int port;          // Порт сервера
+					string host;         // Хости сервера
+					string realm;        // Название сервера
+					string opaque;       // Временный ключ сессии сервера
+					auth_t::hash_t hash; // Алгоритм шифрования для Digest авторизации
+					auth_t::type_t type; // Тип авторизации
 					/**
 					 * Service Конструктор
 					 */
-					Service() noexcept : alive(false), port(SERVER_PORT), host{""}, realm{""}, opaque{""} {}
+					Service() noexcept :
+					 alive(false), port(SERVER_PORT),
+					 host{""}, realm{""}, opaque{""},
+					 hash(auth_t::hash_t::MD5), type(auth_t::type_t::NONE) {}
 				} service_t;
 			protected:
 				// Идентификатор основного процесса
@@ -150,11 +150,6 @@ namespace awh {
 			protected:
 				// Ядро локальных таймеров
 				awh::core_t _timer;
-			protected:
-				// Алгоритм шифрования для Digest авторизации
-				auth_t::hash_t _authHash;
-				// Тип авторизации
-				auth_t::type_t _authType;
 			protected:
 				// Выполнять анбиндинг после завершения запроса
 				bool _unbind;

@@ -922,32 +922,20 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Запрещаем выполнять редирект
 					status = awh::http_t::stath_t::GOOD;
 		}
-
-		cout << " **********-1 " << response.code << endl;
-
 		// Выполняем анализ результата авторизации
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
-				
-				cout << " **********0 " << endl;
-				
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if((response.code == 401) && this->_callback.is("error"))
 					// Выводим функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
 				// Если попытки повторить переадресацию ещё не закончились
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
-					
-					cout << " **********1 " << endl;
-					
 					// Выполняем поиск параметров запроса
 					auto jt = this->_requests.find(sid);
 					// Если параметры запроса получены
 					if((it->second->update = (jt != this->_requests.end()))){
-						
-						cout << " **********2 " << endl;
-						
 						// Получаем новый адрес запроса
 						const uri_t::url_t & url = it->second->http.getUrl();
 						// Если адрес запроса получен
@@ -974,9 +962,6 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 							return status_t::SKIP;
 						// Если URL-адрес запроса не получен
 						} else {
-							
-							cout << " **********3 " << endl;
-							
 							// Если соединение является постоянным
 							if(it->second->http.isAlive()){
 								
@@ -994,8 +979,6 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 							// Завершаем работу
 							return status_t::SKIP;
 						}
-
-						cout << " **********5 " << endl;
 					}
 				}
 			} break;
@@ -1307,6 +1290,13 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					ret.first->second->http.clear();
 					// Выполняем установку идентификатора объекта
 					ret.first->second->http.id(this->_aid);
+					// Если сервер требует авторизацию
+					if(this->_service.type != auth_t::type_t::NONE){
+						// Устанавливаем параметры авторизации для клиента
+						ret.first->second->http.authType(this->_service.type, this->_service.hash);
+						// Устанавливаем логин и пароль пользователя для клиента
+						ret.first->second->http.user(this->_service.login, this->_service.password);
+					}
 					// Если метод компрессии установлен
 					if(request.compress != http_t::compress_t::NONE)
 						// Устанавливаем метод компрессии переданный пользователем
@@ -1325,8 +1315,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					if(!this->_userAgent.empty())
 						// Устанавливаем пользовательского агента
 						ret.first->second->http.userAgent(this->_userAgent);
-					// Устанавливаем параметры авторизации для HTTP-клиента
-					ret.first->second->http.authType(this->_authType, this->_authHash);
 					// Если логин пользователя и пароль установлены
 					if(!this->_login.empty() && !this->_password.empty())
 						// Устанавливаем логин и пароль пользователя
@@ -1695,6 +1683,10 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
  * @param password пароль пользователя для авторизации на сервере
  */
 void awh::client::Http2::user(const string & login, const string & password) noexcept {
+	// Устанавливаем логин пользователя для авторизации на сервере
+	this->_service.login = login;
+	// Устанавливаем пароль пользователя для авторизации на сервере
+	this->_service.password = password;
 	// Устанавливаем логин и пароль пользователя для WebSocket-клиента
 	this->_ws2.user(login, password);
 	// Устанавливаем логин и пароль пользователя для HTTP-арсера
@@ -1770,6 +1762,10 @@ void awh::client::Http2::proxy(const string & uri, const scheme_t::family_t fami
  * @param hash алгоритм шифрования для Digest-авторизации
  */
 void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+	// Устанавливаем алгоритм шифрования для Digest-авторизации
+	this->_service.hash = hash;
+	// Устанавливаем тип авторизации
+	this->_service.type = type;
 	// Устанавливаем параметры авторизации для WebSocket-клиента
 	this->_ws2.authType(type, hash);
 	// Устанавливаем параметры авторизации для HTTP-парсера

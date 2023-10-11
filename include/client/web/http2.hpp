@@ -39,6 +39,22 @@ namespace awh {
 		typedef class Http2 : public web2_t {
 			private:
 				/**
+				 * Service Структура сервиса
+				 */
+				typedef struct Service {
+					string login;        // Логин пользователя для авторизации
+					string password;     // Пароль пользователя для авторизации
+					auth_t::hash_t hash; // Алгоритм шифрования для Digest авторизации
+					auth_t::type_t type; // Тип авторизации
+					/**
+					 * Service Конструктор
+					 */
+					Service() noexcept :
+					 login{""}, password{""},
+					 hash(auth_t::hash_t::MD5),
+					 type(auth_t::type_t::NONE) {}
+				} service_t;
+				/**
 				 * Worker Структура активного воркера
 				 */
 				typedef struct Worker {
@@ -68,6 +84,8 @@ namespace awh {
 			private:
 				// Объект для работы с HTTP-протколом
 				http_t _http;
+				// Объект параметров сервиса
+				service_t _service;
 			private:
 				// Флаг блокировки очистки контекста подключения
 				bool _lockClean;
