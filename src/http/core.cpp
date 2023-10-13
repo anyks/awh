@@ -429,8 +429,6 @@ const vector <char> awh::Http::payload() const noexcept {
  * clearBody Метод очистки данных тела
  */
 void awh::Http::clearBody() const noexcept {
-	// Выполняем сброс флага формирования чанков
-	this->_chunking = false;
 	// Выполняем очистку данных тела
 	this->_web.clearBody();
 }

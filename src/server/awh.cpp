@@ -44,15 +44,14 @@ void awh::server::AWH::sendError(const uint64_t aid, const ws::mess_t & mess) no
 	this->_http.sendError(aid, mess);
 }
 /**
- * send Метод отправки сообщения клиенту
+ * sendMessage Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
+ * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::AWH::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+void awh::server::AWH::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_http.send(aid, message, size, text);
+	this->_http.sendMessage(aid, message, text);
 }
 /**
  * send Метод отправки тела сообщения на клиенту
@@ -118,18 +117,18 @@ void awh::server::AWH::on(function <bool (const string &, const string &)> callb
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::server::AWH::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::server::AWH::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }

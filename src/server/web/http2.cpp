@@ -22,7 +22,74 @@
  * @param core объект сетевого ядра
  */
 void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные переданы верные
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Создаём адъютанта
+		this->_scheme.set(aid);
+		// Выполняем активацию HTTP/2 протокола
+		web2_t::connectCallback(aid, sid, core);
+		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
+		auto it = this->_sessions.find(aid);
+		// Если проктокол интернета HTTP/2 инициализирован для клиента
+		if(it != this->_sessions.end()){
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Выполняем установку идентификатора объекта
+				adj->http.id(aid);
+				// Устанавливаем размер чанка
+				adj->http.chunk(this->_chunkSize);
+				// Устанавливаем метод компрессии поддерживаемый сервером
+				adj->http.compress(this->_scheme.compress);
+				// Устанавливаем данные сервиса
+				adj->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+				// Выполняем установку протокола подключения
+				adj->proto = engine_t::proto_t::HTTP2;
+				// Если требуется установить параметры шифрования
+				if(this->_crypto.mode)
+					// Устанавливаем параметры шифрования
+					adj->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+				// Определяем тип авторизации
+				switch(static_cast <uint8_t> (this->_service.type)){
+					// Если тип авторизации Basic
+					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+						// Устанавливаем параметры авторизации
+						adj->http.authType(this->_service.type);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("checkPassword"))
+							// Устанавливаем функцию проверки авторизации
+							adj->http.authCallback(this->_callback.get <bool (const string &, const string &)> ("checkPassword"));
+					} break;
+					// Если тип авторизации Digest
+					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+						// Устанавливаем название сервера
+						adj->http.realm(this->_service.realm);
+						// Устанавливаем временный ключ сессии сервера
+						adj->http.opaque(this->_service.opaque);
+						// Устанавливаем параметры авторизации
+						adj->http.authType(this->_service.type, this->_service.hash);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("extractPassword"))
+							// Устанавливаем функцию извлечения пароля
+							adj->http.extractPassCallback(this->_callback.get <string (const string &)> ("extractPassword"));
+					} break;
+				}
+			}
+		// Если протокол HTTP/2 для клиента не инициализирован
+		} else {
+			// Выполняем установку сетевого ядра
+			this->_http1._core = this->_core;
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			this->_http1._scheme.compress = this->_scheme.compress;
+			// Выполняем переброс вызова коннекта на клиент WebSocket
+			this->_http1.connectCallback(aid, sid, core);
+		}
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const uint64_t, const mode_t> ("active", aid, mode_t::CONNECT);
+	}
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении клиента
@@ -31,7 +98,21 @@ void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
  * @param core объект сетевого ядра
  */
 void awh::server::Http2::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные переданы верные
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Выполняем поиск адъютанта в списке активных сессий
+		auto it = this->_sessions.find(aid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end())
+			// Выполняем закрытие подключения
+			it->second->close();
+		// Выполняем отключение подключившегося адъютанта
+		this->disconnect(aid);
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const uint64_t, const mode_t> ("active", aid, mode_t::DISCONNECT);
+	}
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с клиента
@@ -42,7 +123,60 @@ void awh::server::Http2::disconnectCallback(const uint64_t aid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные существуют
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Если подключение закрыто
+			if(adj->close){
+				// Принудительно выполняем отключение лкиента
+				dynamic_cast <server::core_t *> (core)->close(aid);
+				// Выходим из функции
+				return;
+			}
+			// Выполняем поиск агента которому соответствует клиент
+			auto it = this->_agents.find(aid);
+			// Если активный агент клиента установлен
+			if(it != this->_agents.end()){
+				// Определяем тип активного протокола
+				switch(static_cast <uint8_t> (it->second)){
+					// Если протокол соответствует HTTP-протоколу
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Определяем протокола подключения
+						switch(static_cast <uint8_t> (adj->proto)){
+							// Если протокол подключения соответствует HTTP/1.1
+							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+								// Выполняем переброс вызова чтения клиенту HTTP
+								this->_http1.readCallback(buffer, size, aid, sid, core);
+							break;
+							// Если протокол подключения соответствует HTTP/2
+							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+								// Выполняем поиск адъютанта в списке активных сессий
+								auto it = this->_sessions.find(aid);
+								// Если активная сессия найдена
+								if(it != this->_sessions.end()){
+									// Если прочитать данные фрейма не удалось, выходим из функции
+									if(!it->second->frame((const uint8_t *) buffer, size)){
+										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
+										// Выходим из функции
+										return;
+									}
+								}
+							} break;
+						}
+					} break;
+					// Если протокол соответствует протоколу WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем переброс вызова чтения клиенту WebSocket
+						this->_ws2.readCallback(buffer, size, aid, sid, core);
+					break;
+				}
+			}
+		}
+	}
 }
 /**
  * writeCallback Функция обратного вызова при записи сообщение адъютанту
@@ -55,12 +189,31 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 void awh::server::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(aid);
-		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем переброс вызова записи клиенту WebSocket
-			this->_ws2.writeCallback(buffer, size, aid, sid, core);
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Выполняем поиск агента которому соответствует клиент
+			auto it = this->_agents.find(aid);
+			// Если активный агент клиента установлен
+			if(it != this->_agents.end()){
+				// Определяем тип активного протокола
+				switch(static_cast <uint8_t> (it->second)){
+					// Если протокол соответствует HTTP-протоколу
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Если переключение протокола на HTTP/2 не выполнено
+						if(adj->proto != engine_t::proto_t::HTTP2)
+							// Выполняем переброс вызова записи клиенту HTTP
+							this->_http1.writeCallback(buffer, size, aid, sid, core);
+					} break;
+					// Если протокол соответствует протоколу WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем переброс вызова записи клиенту WebSocket
+						this->_ws2.writeCallback(buffer, size, aid, sid, core);
+					break;
+				}
+			}
+		}
 	}
 }
 /**
@@ -70,7 +223,50 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
  * @param core объект сетевого ядра
  */
 void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-
+	// Если данные существуют
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Выполняем поиск агента которому соответствует клиент
+			auto it = this->_agents.find(aid);
+			// Если активный агент клиента установлен
+			if(it != this->_agents.end()){
+				// Определяем тип активного протокола
+				switch(static_cast <uint8_t> (it->second)){
+					// Если протокол соответствует HTTP-протоколу
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Определяем протокола подключения
+						switch(static_cast <uint8_t> (adj->proto)){
+							// Если протокол подключения соответствует HTTP/1.1
+							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+								// Выполняем переброс персистентного вызова
+								this->_http1.persistCallback(aid, sid, core);
+							break;
+							// Если протокол подключения соответствует HTTP/2
+							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
+								if(!this->ping(aid)){
+									// Выполняем поиск адъютанта в списке активных сессий
+									auto it = this->_sessions.find(aid);
+									// Если активная сессия найдена
+									if(it != this->_sessions.end())
+										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
+								}
+							} break;
+						}
+					} break;
+					// Если протокол соответствует протоколу WebSocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем переброс персистентного вызова
+						this->_ws2.persistCallback(aid, sid, core);
+					break;
+				}
+			}
+		}
+	}
 }
 /**
  * chunkSignal Метод обратного вызова при получении чанка HTTP/2
@@ -88,7 +284,7 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t aid, const
 		// Если функция обратного вызова на перехват входящих чанков установлена
 		if(this->_callback.is("chunking"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &adj->http);
+			this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", aid, vector <char> (buffer, buffer + size), &adj->http);
 		// Если функция перехвата полученных чанков не установлена
 		else {
 			// Если подключение закрыто
@@ -335,12 +531,125 @@ int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t aid, cons
 	return 0;
 }
 /**
- * disconected Метод удаления отключившихся адъютантов
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
+ * erase Метод удаления отключившихся адъютантов
+ * @param aid идентификатор адъютанта
  */
-void awh::server::Http2::disconected(const u_short tid, awh::core_t * core) noexcept {
-
+void awh::server::Http2::erase(const uint64_t aid) noexcept {
+	// Если список отключившихся адъютантов не пустой
+	if(!this->_disconected.empty()){
+		/**
+		 * eraseFn Функция удаления отключившегося адъютанта
+		 * @param aid идентификатор адъютанта
+		 */
+		auto eraseFn = [this](const uint64_t aid) noexcept -> void {
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Устанавливаем флаг отключения
+				adj->close = true;
+				// Выполняем очистку оставшихся данных
+				adj->buffer.clear();
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(aid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP): {
+							// Если переключение протокола на HTTP/2 не выполнено
+							if(adj->proto != engine_t::proto_t::HTTP2)
+								// Выполняем удаление отключённого адъютанта HTTP-клиента
+								this->_http1.erase(aid);
+							// Выполняем удаление созданной ранее сессии HTTP/2
+							else this->_sessions.erase(aid);
+						} break;
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+							// Если переключение протокола на HTTP/2 выполнено
+							if(adj->proto == engine_t::proto_t::HTTP2){
+								// Выполняем поиск адъютанта в списке активных сессий
+								auto it = this->_ws2._sessions.find(aid);
+								// Если активная сессия найдена
+								if(it != this->_ws2._sessions.end())
+									// Выполняем закрытие подключения
+									(* it->second.get()) = (* this->_sessions.at(aid).get());
+								// Выполняем удаление созданной ранее сессии HTTP/2
+								this->_sessions.erase(aid);
+							}
+							// Выполняем удаление отключённого адъютанта WebSocket-клиента
+							this->_ws2.erase(aid);
+						} break;
+					}
+					// Выполняем удаление активного агента
+					this->_agents.erase(it);
+				}
+			}
+			// Выполняем удаление параметров адъютанта
+			this->_scheme.rm(aid);
+		};
+		// Получаем текущее значение времени
+		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Если идентификатор адъютанта передан
+		if(aid > 0){
+			// Выполняем поиск указанного адъютанта
+			auto it = this->_disconected.find(aid);
+			// Если данные отключившегося адъютанта найдены
+			if((it != this->_disconected.end()) && ((date - it->second) >= 10000)){
+				// Выполняем удаление отключившегося адъютанта
+				eraseFn(it->first);
+				// Выполняем удаление адъютанта
+				this->_disconected.erase(it);
+			}
+		// Если идентификатор адъютанта не передан
+		} else {
+			// Выполняем переход по всему списку отключившихся адъютантов
+			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+				// Если адъютант уже давно отключился
+				if((date - it->second) >= 10000){
+					// Выполняем удаление отключившегося адъютанта
+					eraseFn(it->first);
+					// Выполняем удаление объекта адъютантов из списка отключившихся
+					it = this->_disconected.erase(it);
+				// Выполняем пропуск адъютанта
+				} else ++it;
+			}
+		}
+	}
+}
+/**
+ * disconnect Метод отключения адъютанта
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::Http2::disconnect(const uint64_t aid) noexcept {
+	// Получаем параметры подключения адъютанта
+	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	// Если параметры подключения адъютанта получены
+	if(adj != nullptr){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если активный агент клиента установлен
+		if(it != this->_agents.end()){
+			// Определяем тип активного протокола
+			switch(static_cast <uint8_t> (it->second)){
+				// Если протокол соответствует HTTP-протоколу
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Если переключение протокола на HTTP/2 не выполнено
+					if(adj->proto != engine_t::proto_t::HTTP2)
+						// Добавляем в очередь список мусорных адъютантов
+						this->_http1.disconnect(aid);
+					// Добавляем в очередь список мусорных адъютантов
+					this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+				} break;
+				// Если протокол соответствует протоколу WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Выполняем отключение адъютанта клиента WebSocket
+					this->_ws2.disconnect(aid);
+				break;
+			}
+		}
+	}
 }
 /**
  * init Метод инициализации WebSocket-сервера
@@ -382,13 +691,12 @@ void awh::server::Http2::sendError(const uint64_t aid, const ws::mess_t & mess) 
 	}
 }
 /**
- * send Метод отправки сообщения клиенту
+ * sendMessage Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
+ * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::Http2::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+void awh::server::Http2::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -396,7 +704,7 @@ void awh::server::Http2::send(const uint64_t aid, const char * message, const si
 		// Если агент соответствует WebSocket-у
 		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту WebSocket
-			this->_ws2.send(aid, message, size, text);
+			this->_ws2.sendMessage(aid, message, text);
 	}
 }
 /**
@@ -409,7 +717,51 @@ void awh::server::Http2::send(const uint64_t aid, const char * message, const si
  * @return       результат отправки данных указанному клиенту
  */
 bool awh::server::Http2::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы верные
+	if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (adj->proto)){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+						// Выполняем отправку тала сообщения клиенту через протокол HTTP/1.1
+						return this->_http1.send(aid, buffer, size, end);
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						// Тело WEB сообщения
+						vector <char> entity;
+						// Выполняем сброс данных тела
+						adj->http.clearBody();
+						// Устанавливаем тело запроса
+						adj->http.body(vector <char> (buffer, buffer + size));
+						// Получаем данные тела запроса
+						while(!(entity = adj->http.payload()).empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение о выводе чанка тела
+								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+							#endif
+							// Выполняем отправку данных на удалённый сервер
+							result = web2_t::send(id, aid, entity.data(), entity.size(), (end && adj->http.body().empty()));
+						}
+					} break;
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
 }
 /**
  * send Метод отправки заголовков клиенту
@@ -422,7 +774,65 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t aid, const char *
  * @return        идентификатор нового запроса
  */
 int32_t awh::server::Http2::send(const int32_t id, const uint64_t aid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
-
+	// Результат работы функции
+	int32_t result = -1;
+	// Если заголовки запроса переданы
+	if((result = (this->_core->working() && !headers.empty()))){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(aid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры подключения адъютанта
+			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (adj->proto)){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+						// Выполняем отправку заголовков клиенту через протокол HTTP/1.1
+						return this->_http1.send(aid, code, mess, headers, end);
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						// Выполняем очистку параметров HTTP запроса
+						adj->http.clear();
+						// Устанавливаем заголовоки запроса
+						adj->http.headers(headers);
+						// Если сообщение ответа не установлено
+						if(mess.empty())
+							// Выполняем установку сообщения по умолчанию
+							const_cast <string &> (mess) = adj->http.message(code);
+						// Формируем ответ на запрос клиента
+						awh::web_t::res_t response(2.0f, code, mess);
+						// Получаем заголовки ответа удалённому клиенту
+						const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
+						// Если заголовки запроса получены
+						if(!headers.empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								{
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Получаем бинарные данные REST-ответа
+									const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+									// Если бинарные данные ответа получены
+									if(!buffer.empty())
+										// Выводим параметры ответа
+										cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								}
+							#endif
+							// Выполняем заголовки запроса на сервер
+							result = web2_t::send(id, aid, headers, end);
+						}
+					} break;
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
 }
 /**
  * send Метод отправки сообщения адъютанту
@@ -443,70 +853,71 @@ void awh::server::Http2::send(const uint64_t aid, const u_int code, const string
 			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены
 			if(adj != nullptr){
-				// Устанавливаем полезную нагрузку
-				adj->http.body(entity);
-				// Устанавливаем заголовки ответа
-				adj->http.headers(headers);
-				// Если сообщение ответа не установлено
-				if(mess.empty())
-					// Выполняем установку сообщения по умолчанию
-					const_cast <string &> (mess) = adj->http.message(code);
-				{
-					// Формируем ответ на запрос клиента
-					awh::web_t::res_t response(2.0f, code, mess);
-					// Получаем заголовки ответа удалённому клиенту
-					const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
-					// Если бинарные данные ответа получены
-					if(!headers.empty()){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							{
-								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-								// Получаем объект работы с HTTP-запросами
-								const http_t & http = reinterpret_cast <http_t &> (adj->http);
-								// Получаем бинарные данные REST-ответа
-								const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-								// Если бинарные данные ответа получены
-								if(!buffer.empty())
-									// Выводим параметры ответа
-									cout << string(buffer.begin(), buffer.end()) << endl << endl;
-							}
-						#endif
-						// Если тело данных не установлено для отправки
-						if(adj->http.body().empty())
-							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-							adj->stopped = (!this->_service.alive && !adj->alive);
-						// Выполняем ответ подключившемуся клиенту
-						int32_t sid = web2_t::send(adj->sid, aid, headers, adj->http.body().empty());
-						// Если запрос не получилось отправить, выходим из функции
-						if(sid < 0) return;
-						// Если тело запроса существует
-						if(!adj->http.body().empty()){
-							// Тело WEB запроса
-							vector <char> entity;
-							// Получаем данные тела запроса
-							while(!(entity = adj->http.payload()).empty()){
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (adj->proto)){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+						// Выполняем передачу запроса на сервер HTTP/1.1
+						this->_http1.send(aid, code, mess, entity, headers);
+					break;
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						// Устанавливаем полезную нагрузку
+						adj->http.body(entity);
+						// Устанавливаем заголовки ответа
+						adj->http.headers(headers);
+						// Если сообщение ответа не установлено
+						if(mess.empty())
+							// Выполняем установку сообщения по умолчанию
+							const_cast <string &> (mess) = adj->http.message(code);
+						{
+							// Формируем ответ на запрос клиента
+							awh::web_t::res_t response(2.0f, code, mess);
+							// Получаем заголовки ответа удалённому клиенту
+							const auto & headers = adj->http.process2(http_t::process_t::RESPONSE, response);
+							// Если бинарные данные ответа получены
+							if(!headers.empty()){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if defined(DEBUG_MODE)
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+									{
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										// Получаем бинарные данные REST-ответа
+										const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+										// Если бинарные данные ответа получены
+										if(!buffer.empty())
+											// Выводим параметры ответа
+											cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									}
 								#endif
-								// Если тело данных не установлено для отправки
-								if(adj->http.body().empty())
-									// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-									adj->stopped = (!this->_service.alive && !adj->alive);
-								// Выполняем отправку тела запроса на сервер
-								if(!web2_t::send((adj->sid > -1 ? adj->sid : sid), aid, entity.data(), entity.size(), adj->http.body().empty()))
-									// Выходим из функции
-									return;
+								// Выполняем ответ подключившемуся клиенту
+								int32_t sid = web2_t::send(adj->sid, aid, headers, adj->http.body().empty());
+								// Если запрос не получилось отправить, выходим из функции
+								if(sid < 0) return;
+								// Если тело запроса существует
+								if(!adj->http.body().empty()){
+									// Тело WEB запроса
+									vector <char> entity;
+									// Получаем данные тела запроса
+									while(!(entity = adj->http.payload()).empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение о выводе чанка тела
+											cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+										#endif
+										// Выполняем отправку тела запроса на сервер
+										if(!web2_t::send((adj->sid > -1 ? adj->sid : sid), aid, entity.data(), entity.size(), adj->http.body().empty()))
+											// Выходим из функции
+											return;
+									}
+								}
 							}
 						}
-					}
+					} break;
 				}
 			}
 		}
@@ -545,24 +956,24 @@ void awh::server::Http2::on(function <bool (const string &, const string &)> cal
 	this->_http1.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::server::Http2::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-сервера
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP-сервера
-	this->_http1.on(callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::server::Http2::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http2::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP-сервера
+	this->_http1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере

@@ -180,7 +180,7 @@ class Executor {
 				// Получаем параметры запроса в виде строки
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
-				this->_ws->send(query.data(), query.size());
+				this->_ws->sendMessage(vector <char> (query.begin(), query.end()));
 			}
 		}
 	public:

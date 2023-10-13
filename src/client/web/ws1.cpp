@@ -921,12 +921,11 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 	}
 }
 /**
- * send Метод отправки сообщения на сервер
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::client::WebSocket1::send(const char * message, const size_t size, const bool text) noexcept {
+void awh::client::WebSocket1::sendMessage(const vector <char> & message, const bool text) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -936,7 +935,7 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
-			if((message != nullptr) && (size > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
+			if(!message.empty() && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -946,30 +945,25 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 					// Если отправляемое сообщение является текстом
 					if(text)
 						// Выводим параметры ответа
-						cout << string(message, size) << endl << endl;
+						cout << string(message.begin(), message.end()) << endl << endl;
 					// Выводим сообщение о выводе чанка полезной нагрузки
-					else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
+					else cout << this->_fmk->format("<bytes %zu>", message.size()) << endl << endl;
 				#endif
-				// Буфер сжатых данных
-				vector <char> buffer;
 				// Создаём объект заголовка для отправки
 				ws::frame_t::head_t head(true, true);
 				// Если нужно производить шифрование
 				if(this->_crypt){
 					// Выполняем шифрование переданных данных
-					buffer = this->_hash.encrypt(message, size);
+					const auto & payload = this->_hash.encrypt(message.data(), message.size());
 					// Если данные зашифрованны
-					if(!buffer.empty()){
+					if(!payload.empty())
 						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
-					}
+						const_cast <vector <char> &> (message).assign(payload.begin(), payload.end());
 				}
-				// Указываем, что сообщение передаётся в сжатом виде
-				head.rsv[0] = ((size >= 1024) && (this->_compress != http_t::compress_t::NONE));
 				// Устанавливаем опкод сообщения
 				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
+				// Указываем, что сообщение передаётся в сжатом виде
+				head.rsv[0] = ((message.size() >= 1024) && (this->_compress != http_t::compress_t::NONE));
 				// Если необходимо сжимать сообщение перед отправкой
 				if(head.rsv[0]){
 					// Компрессионные данные
@@ -981,54 +975,50 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 							// Устанавливаем размер скользящего окна
 							this->_hash.wbit(this->_client.wbit);
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::DEFLATE);
+							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::DEFLATE);
 							// Удаляем хвост в полученных данных
 							this->_hash.rmTail(data);
 						} break;
 						// Если метод компрессии выбран GZip
 						case static_cast <uint8_t> (http_t::compress_t::GZIP):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::GZIP);
+							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::GZIP);
 						break;
 						// Если метод компрессии выбран Brotli
 						case static_cast <uint8_t> (http_t::compress_t::BROTLI):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress(message, size, hash_t::method_t::BROTLI);
+							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::BROTLI);
 						break;
 					}
 					// Если сжатие данных прошло удачно
-					if(!data.empty()){
-						// Выполняем перемещение данных
-						buffer = std::forward <vector <char>> (data);
+					if(!data.empty())
 						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
+						const_cast <vector <char> &> (message).assign(data.begin(), data.end());
 					// Снимаем флаг сжатых данных
-					} else head.rsv[0] = false;
+					else head.rsv[0] = !head.rsv[0];
 				}
 				// Если требуется фрагментация сообщения
-				if(size > this->_frame.size){
+				if(message.size() > this->_frame.size){
 					// Бинарный буфер чанка данных
 					vector <char> chunk(this->_frame.size);
 					// Смещение в бинарном буфере
 					size_t start = 0, stop = this->_frame.size;
 					// Выполняем разбивку полезной нагрузки на сегменты
-					while(stop < size){
+					while(stop < message.size()){
 						// Увеличиваем длину чанка
 						stop += this->_frame.size;
 						// Если длина чанка слишком большая, компенсируем
-						stop = (stop > size ? size : stop);
+						stop = (stop > message.size() ? message.size() : stop);
 						// Устанавливаем флаг финального сообщения
-						head.fin = (stop == size);
+						head.fin = (stop == message.size());
 						// Формируем чанк бинарных данных
-						chunk.assign(message + start, message + stop);
+						chunk.assign(message.data() + start, message.data() + stop);
 						// Создаём буфер для отправки
-						const auto & buffer = this->_frame.methods.set(head, chunk.data(), chunk.size());
+						const auto & payload = this->_frame.methods.set(head, chunk.data(), chunk.size());
 						// Если бинарный буфер для отправки данных получен
-						if(!buffer.empty())
+						if(!payload.empty())
 							// Отправляем серверу сообщение
-							const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+							const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_aid);
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
@@ -1039,11 +1029,11 @@ void awh::client::WebSocket1::send(const char * message, const size_t size, cons
 				// Если фрагментация сообщения не требуется
 				} else {
 					// Создаём буфер для отправки
-					const auto & buffer = this->_frame.methods.set(head, message, size);
+					const auto & payload = this->_frame.methods.set(head, message.data(), message.size());
 					// Если бинарный буфер для отправки данных получен
-					if(!buffer.empty())
+					if(!payload.empty())
 						// Отправляем серверу сообщение
-						const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+						const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_aid);
 				}
 			}
 			// Выполняем разблокировку отправки сообщения

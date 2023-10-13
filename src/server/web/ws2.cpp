@@ -159,14 +159,8 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t aid, const uint1
 		if(it != this->_sessions.end())
 			// Выполняем закрытие подключения
 			it->second->close();
-		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены и переключение протокола на HTTP/2 не выполнено
-		if((adj != nullptr) && (adj->proto != engine_t::proto_t::HTTP2))
-			// Добавляем в очередь список мусорных адъютантов
-			this->_ws1._disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
-		// Добавляем в очередь список мусорных адъютантов
-		this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		// Выполняем отключение подключившегося адъютанта
+		this->disconnect(aid);
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
@@ -287,7 +281,7 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t aid, 
 		// Если функция обратного вызова на перехват входящих чанков установлена
 		if(this->_callback.is("chunking"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &adj->http);
+			this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", aid, vector <char> (buffer, buffer + size), &adj->http);
 		// Если функция перехвата полученных чанков не установлена
 		else {
 			// Если подключение закрыто
@@ -1140,46 +1134,79 @@ void awh::server::WebSocket2::ping(const uint64_t aid, awh::core_t * core, const
 	}
 }
 /**
- * disconected Метод удаления отключившихся адъютантов
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
+ * erase Метод удаления отключившихся адъютантов
+ * @param aid идентификатор адъютанта
  */
-void awh::server::WebSocket2::disconected(const u_short tid, awh::core_t * core) noexcept {
+void awh::server::WebSocket2::erase(const uint64_t aid) noexcept {
 	// Если список отключившихся адъютантов не пустой
 	if(!this->_disconected.empty()){
+		/**
+		 * eraseFn Функция удаления отключившегося адъютанта
+		 * @param aid идентификатор адъютанта
+		 */
+		auto eraseFn = [this](const uint64_t aid) noexcept -> void {
+			// Получаем параметры подключения адъютанта
+			ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Если параметры подключения адъютанта получены
+			if(adj != nullptr){
+				// Устанавливаем флаг отключения
+				adj->close = true;
+				// Выполняем очистку оставшихся данных
+				adj->buffer.payload.clear();
+				// Выполняем очистку оставшихся фрагментов
+				adj->buffer.fragmes.clear();
+				// Если переключение протокола на HTTP/2 не выполнено
+				if(adj->proto != engine_t::proto_t::HTTP2)
+					// Выполняем очистку отключившихся адъютантов у WebSocket-сервера
+					this->_ws1.erase(aid);
+				// Выполняем удаление созданной ранее сессии HTTP/2
+				else this->_sessions.erase(aid);
+			}
+			// Выполняем удаление параметров адъютанта
+			this->_scheme.rm(aid);
+		};
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку отключившихся адъютантов
-		for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
-			// Если адъютант уже давно отключился
-			if((date - it->second) >= 10000){
-				// Получаем параметры подключения адъютанта
-				ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(it->first));
-				// Если параметры подключения адъютанта получены
-				if(adj != nullptr){
-					// Устанавливаем флаг отключения
-					adj->close = true;
-					// Выполняем очистку оставшихся данных
-					adj->buffer.payload.clear();
-					// Выполняем очистку оставшихся фрагментов
-					adj->buffer.fragmes.clear();
-					// Если переключение протокола на HTTP/2 не выполнено
-					if(adj->proto != engine_t::proto_t::HTTP2)
-						// Выполняем очистку отключившихся адъютантов у WebSocket-сервера
-						this->_ws1.disconected(tid, core);
-					// Выполняем удаление созданной ранее сессии HTTP/2
-					else this->_sessions.erase(it->first);
-				}
-				// Выполняем удаление параметров адъютанта
-				this->_scheme.rm(it->first);
-				// Выполняем удаление объекта адъютантов из списка отключившихся
-				it = this->_disconected.erase(it);
-			// Выполняем пропуск адъютанта
-			} else ++it;
+		// Если идентификатор адъютанта передан
+		if(aid > 0){
+			// Выполняем поиск указанного адъютанта
+			auto it = this->_disconected.find(aid);
+			// Если данные отключившегося адъютанта найдены
+			if((it != this->_disconected.end()) && ((date - it->second) >= 10000)){
+				// Выполняем удаление отключившегося адъютанта
+				eraseFn(it->first);
+				// Выполняем удаление адъютанта
+				this->_disconected.erase(it);
+			}
+		// Если идентификатор адъютанта не передан
+		} else {
+			// Выполняем переход по всему списку отключившихся адъютантов
+			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+				// Если адъютант уже давно отключился
+				if((date - it->second) >= 10000){
+					// Выполняем удаление отключившегося адъютанта
+					eraseFn(it->first);
+					// Выполняем удаление объекта адъютантов из списка отключившихся
+					it = this->_disconected.erase(it);
+				// Выполняем пропуск адъютанта
+				} else ++it;
+			}
 		}
 	}
-	// Выполняем удаление отключённых адъютантов в родительском объекте
-	web2_t::disconected(tid, core);
+}
+/**
+ * disconnect Метод отключения адъютанта
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::WebSocket2::disconnect(const uint64_t aid) noexcept {
+	// Получаем параметры подключения адъютанта
+	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	// Если параметры подключения адъютанта получены и переключение протокола на HTTP/2 не выполнено
+	if((adj != nullptr) && (adj->proto != engine_t::proto_t::HTTP2))
+		// Добавляем в очередь список мусорных адъютантов
+		this->_ws1.disconnect(aid);
+	// Добавляем в очередь список мусорных адъютантов
+	this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 }
 /**
  * init Метод инициализации WebSocket-сервера
@@ -1254,15 +1281,14 @@ void awh::server::WebSocket2::sendError(const uint64_t aid, const ws::mess_t & m
 	}
 }
 /**
- * send Метод отправки сообщения клиенту
+ * sendMessage Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
+ * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::WebSocket2::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+void awh::server::WebSocket2::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
+	if(this->_core->working() && (aid > 0) && !message.empty()){
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
@@ -1272,7 +1298,7 @@ void awh::server::WebSocket2::send(const uint64_t aid, const char * message, con
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(adj->proto != engine_t::proto_t::HTTP2)
 				// Выполняем отправку сообщения клиенту WebSocket
-				this->_ws1.send(aid, message, size, text);
+				this->_ws1.sendMessage(aid, message, text);
 			// Если переключение протокола на HTTP/2 выполнено
 			else {
 				// Если рукопожатие выполнено
@@ -1286,30 +1312,25 @@ void awh::server::WebSocket2::send(const uint64_t aid, const char * message, con
 						// Если отправляемое сообщение является текстом
 						if(text)
 							// Выводим параметры ответа
-							cout << string(message, size) << endl << endl;
+							cout << string(message.begin(), message.end()) << endl << endl;
 						// Выводим сообщение о выводе чанка полезной нагрузки
-						else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
+						else cout << this->_fmk->format("<bytes %zu>", message.size()) << endl << endl;
 					#endif
-					// Буфер сжатых данных
-					vector <char> buffer;
 					// Создаём объект заголовка для отправки
 					ws::frame_t::head_t head(true, false);
 					// Если нужно производить шифрование
 					if(adj->crypt){
 						// Выполняем шифрование переданных данных
-						buffer = adj->hash.encrypt(message, size);
+						const auto & payload = adj->hash.encrypt(message.data(), message.size());
 						// Если данные зашифрованны
-						if(!buffer.empty()){
+						if(!payload.empty())
 							// Заменяем сообщение для передачи
-							message = buffer.data();
-							// Заменяем размер сообщения
-							(* const_cast <size_t *> (&size)) = buffer.size();
-						}
+							const_cast <vector <char> &> (message).assign(payload.begin(), payload.end());
 					}
 					// Устанавливаем опкод сообщения
 					head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 					// Указываем, что сообщение передаётся в сжатом виде
-					head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
+					head.rsv[0] = ((message.size() >= 1024) && (adj->compress != http_t::compress_t::NONE));
 					// Если необходимо сжимать сообщение перед отправкой
 					if(head.rsv[0]){
 						// Компрессионные данные
@@ -1321,54 +1342,50 @@ void awh::server::WebSocket2::send(const uint64_t aid, const char * message, con
 								// Устанавливаем размер скользящего окна
 								adj->hash.wbit(adj->server.wbit);
 								// Выполняем компрессию полученных данных
-								data = adj->hash.compress(message, size, hash_t::method_t::DEFLATE);
+								data = adj->hash.compress(message.data(), message.size(), hash_t::method_t::DEFLATE);
 								// Удаляем хвост в полученных данных
 								adj->hash.rmTail(data);
 							} break;
 							// Если метод компрессии выбран GZip
 							case static_cast <uint8_t> (http_t::compress_t::GZIP):
 								// Выполняем компрессию полученных данных
-								data = adj->hash.compress(message, size, hash_t::method_t::GZIP);
+								data = adj->hash.compress(message.data(), message.size(), hash_t::method_t::GZIP);
 							break;
 							// Если метод компрессии выбран Brotli
 							case static_cast <uint8_t> (http_t::compress_t::BROTLI):
 								// Выполняем компрессию полученных данных
-								data = adj->hash.compress(message, size, hash_t::method_t::BROTLI);
+								data = adj->hash.compress(message.data(), message.size(), hash_t::method_t::BROTLI);
 							break;
 						}
 						// Если сжатие данных прошло удачно
-						if(!data.empty()){
-							// Выполняем перемещение данных
-							buffer = std::forward <vector <char>> (data);
+						if(!data.empty())
 							// Заменяем сообщение для передачи
-							message = buffer.data();
-							// Заменяем размер сообщения
-							(* const_cast <size_t *> (&size)) = buffer.size();
+							const_cast <vector <char> &> (message).assign(data.begin(), data.end());
 						// Снимаем флаг сжатых данных
-						} else head.rsv[0] = false;
+						else head.rsv[0] = !head.rsv[0];
 					}
 					// Если требуется фрагментация сообщения
-					if(size > adj->frame.size){
+					if(message.size() > adj->frame.size){
 						// Бинарный буфер чанка данных
 						vector <char> chunk(adj->frame.size);
 						// Смещение в бинарном буфере
 						size_t start = 0, stop = adj->frame.size;
 						// Выполняем разбивку полезной нагрузки на сегменты
-						while(stop < size){
+						while(stop < message.size()){
 							// Увеличиваем длину чанка
 							stop += adj->frame.size;
 							// Если длина чанка слишком большая, компенсируем
-							stop = (stop > size ? size : stop);
+							stop = (stop > message.size() ? message.size() : stop);
 							// Устанавливаем флаг финального сообщения
-							head.fin = (stop == size);
+							head.fin = (stop == message.size());
 							// Формируем чанк бинарных данных
-							chunk.assign(message + start, message + stop);
+							chunk.assign(message.data() + start, message.data() + stop);
 							// Создаём буфер для отправки
-							const auto & buffer = adj->frame.methods.set(head, chunk.data(), chunk.size());
+							const auto & payload = adj->frame.methods.set(head, chunk.data(), chunk.size());
 							// Если бинарный буфер для отправки данных получен
-							if(!buffer.empty())
+							if(!payload.empty())
 								// Выполняем отправку сообщения на клиенту
-								web2_t::send(adj->sid, aid, buffer.data(), buffer.size(), false);
+								web2_t::send(adj->sid, aid, payload.data(), payload.size(), false);
 							// Иначе просто выходим
 							else break;
 							// Выполняем сброс RSV1
@@ -1381,11 +1398,11 @@ void awh::server::WebSocket2::send(const uint64_t aid, const char * message, con
 					// Если фрагментация сообщения не требуется
 					} else {
 						// Создаём буфер для отправки
-						const auto & buffer = adj->frame.methods.set(head, message, size);
+						const auto & payload = adj->frame.methods.set(head, message.data(), message.size());
 						// Если бинарный буфер для отправки данных получен
-						if(!buffer.empty())
+						if(!payload.empty())
 							// Выполняем отправку сообщения на клиенту
-							web2_t::send(adj->sid, aid, buffer.data(), buffer.size(), false);
+							web2_t::send(adj->sid, aid, payload.data(), payload.size(), false);
 					}
 				}
 			}
@@ -1423,22 +1440,22 @@ void awh::server::WebSocket2::on(function <bool (const string &, const string &)
 	this->_ws1.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::server::WebSocket2::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-сервера
-	this->_ws1.on(callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket2::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере

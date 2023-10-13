@@ -140,7 +140,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 											// Выводим заголовок ответа
 											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl;
+											cout << string(response.begin(), response.end()) << endl << endl;
 											// Если тело ответа существует
 											if(!this->_http.body().empty())
 												// Выводим сообщение о выводе чанка тела
@@ -621,6 +621,23 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 	// Выполняем завершение работы
 	return status_t::STOP;
 }
+/**
+ * sendError Метод отправки сообщения об ошибке
+ * @param mess отправляемое сообщение об ошибке
+ */
+void awh::client::Http1::sendError(const ws::mess_t & mess) noexcept {
+	// Выполняем отправку сообщения ошибки на WebSocket-сервер
+	this->_ws1.sendError(mess);
+}
+/**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::client::Http1::sendMessage(const vector <char> & message, const bool text) noexcept {
+	// Выполняем отправку сообщения на WebSocket-сервер
+	this->_ws1.sendMessage(message, text);
+}
 /** 
  * submit Метод выполнения удалённого запроса на сервер
  * @param request объект запроса на удалённый сервер
@@ -705,14 +722,6 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				this->_callback.call <const int32_t, const direct_t> ("end", this->_requests.begin()->first, direct_t::SEND);
 		}
 	}
-}
-/**
- * sendError Метод отправки сообщения об ошибке
- * @param mess отправляемое сообщение об ошибке
- */
-void awh::client::Http1::sendError(const ws::mess_t & mess) noexcept {
-	// Выполняем отправку сообщения ошибки на WebSocket-сервер
-	this->_ws1.sendError(mess);
 }
 /**
  * send Метод отправки сообщения на сервер
@@ -816,14 +825,104 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 	return -1;
 }
 /**
- * send Метод отправки сообщения на сервер
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
- * @param text    данные передаются в текстовом виде
+ * send Метод отправки тела сообщения на сервер
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param end    флаг последнего сообщения после которого поток закрывается
+ * @return       результат отправки данных указанному клиенту
  */
-void awh::client::Http1::send(const char * message, const size_t size, const bool text) noexcept {
-	// Выполняем отправку сообщения на WebSocket-сервер
-	this->_ws1.send(message, size, text);
+bool awh::client::Http1::send(const char * buffer, const size_t size, const bool end) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если данные переданы верные
+		if((result = ((buffer != nullptr) && (size > 0)))){
+			// Тело WEB сообщения
+			vector <char> entity;
+			// Выполняем сброс данных тела
+			this->_http.clearBody();
+			// Устанавливаем тело запроса
+			this->_http.body(vector <char> (buffer, buffer + size));
+			// Получаем данные тела запроса
+			while(!(entity = this->_http.payload()).empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение о выводе чанка тела
+					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+				#endif
+				// Устанавливаем флаг закрытия подключения
+				this->_stopped = (end && this->_http.body().empty());
+				// Выполняем отправку тела запроса на сервер
+				const_cast <client::core_t *> (this->_core)->write(entity.data(), entity.size(), this->_aid);
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
+}
+/**
+ * send Метод отправки заголовков на сервер
+ * @param url     адрес запроса на сервере
+ * @param method  метод запроса на сервере
+ * @param headers заголовки отправляемые на сервер
+ * @param end     размер сообщения в байтах
+ * @return        идентификатор нового запроса
+ */
+int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если заголовки запроса переданы
+		if(!headers.empty()){
+			// Выполняем очистку параметров HTTP запроса
+			this->_http.clear();
+			// Устанавливаем заголовоки запроса
+			this->_http.headers(headers);
+			// Устанавливаем новый адрес запроса
+			this->_uri.combine(this->_scheme.url, url);
+			// Создаём объек запроса
+			awh::web_t::req_t query(method, this->_scheme.url);
+			// Если метод CONNECT запрещён для прокси-сервера
+			if(!this->_proxy.connect){
+				// Выполняем извлечение заголовка авторизации на прокси-сервера
+				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+				// Если заголовок авторизации получен
+				if(!header.empty())
+					// Выполняем установки заголовка авторизации на прокси-сервере
+					this->_http.header("Proxy-Authorization", header);
+			}
+			// Получаем бинарные данные WEB запроса
+			const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(query));
+			// Если заголовки запроса получены
+			if(!headers.empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(headers.begin(), headers.end()) << endl << endl;
+				#endif
+				// Устанавливаем флаг закрытия подключения
+				this->_stopped = end;
+				// Выполняем отправку заголовков запроса на сервер
+				const_cast <client::core_t *> (this->_core)->write(headers.data(), headers.size(), this->_aid);
+				// Устанавливаем результат
+				result = 1;
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
 }
 /**
  * pause Метод установки на паузу клиента

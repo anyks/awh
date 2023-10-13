@@ -108,7 +108,7 @@ class WebServer {
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
-				this->_awh->send(aid, buffer.data(), buffer.size(), text);
+				this->_awh->sendMessage(aid, buffer, text);
 			}
 		}
 		/**

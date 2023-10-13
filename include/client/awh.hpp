@@ -60,6 +60,12 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
+				/**
+				 * sendMessage Метод отправки сообщения на сервер
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void sendMessage(const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер HTTP/2
@@ -67,14 +73,6 @@ namespace awh {
 				 * @return        идентификатор отправленного запроса
 				 */
 				int32_t send(const web_t::request_t & request) noexcept;
-				/**
-				 * send Метод отправки сообщения на сервер WebSocket
-				 * @param message буфер сообщения в бинарном виде
-				 * @param size    размер сообщения в байтах
-				 * @param text    данные передаются в текстовом виде
-				 */
-				void send(const char * message, const size_t size, const bool text = true) noexcept;
-			public:
 				/**
 				 * send Метод отправки тела сообщения на сервер
 				 * @param id     идентификатор потока HTTP

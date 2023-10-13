@@ -44,15 +44,14 @@ void awh::server::WebSocket::sendError(const uint64_t aid, const ws::mess_t & me
 	this->_ws.sendError(aid, mess);
 }
 /**
- * send Метод отправки сообщения клиенту
+ * sendMessage Метод отправки сообщения клиенту
  * @param aid     идентификатор адъютанта
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
+ * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::WebSocket::send(const uint64_t aid, const char * message, const size_t size, const bool text) noexcept {
+void awh::server::WebSocket::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_ws.send(aid, message, size, text);
+	this->_ws.sendMessage(aid, message, text);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -79,18 +78,18 @@ void awh::server::WebSocket::on(function <bool (const string &, const string &)>
 	this->_ws.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::server::WebSocket::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_ws.on(callback);
 }

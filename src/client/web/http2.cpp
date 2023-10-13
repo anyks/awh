@@ -1149,6 +1149,26 @@ void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
 	}
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::client::Http2::sendMessage(const vector <char> & message, const bool text) noexcept {
+	// Если список воркеров активен
+	if(!this->_workers.empty()){
+		// Выполняем перебор всего списка воркеров
+		for(auto & worker : this->_workers){
+			// Если найден воркер WebSocket-клиента
+			if(worker.second->agent == agent_t::WEBSOCKET){
+				// Выполняем отправку сообщения на WebSocket-сервер
+				this->_ws2.sendMessage(message, text);
+				// Выходим из цикла
+				break;
+			}
+		}
+	}
+}
+/**
  * send Метод отправки сообщения на сервер
  * @param request параметры запроса на удалённый сервер
  * @return        идентификатор отправленного запроса
@@ -1250,7 +1270,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Получаем бинарные данные WEB запроса
 								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
-								cout << string(buffer.begin(), buffer.end()) << endl;
+								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
@@ -1402,27 +1422,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	return result;
 }
 /**
- * send Метод отправки сообщения на сервер
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
- * @param text    данные передаются в текстовом виде
- */
-void awh::client::Http2::send(const char * message, const size_t size, const bool text) noexcept {
-	// Если список воркеров активен
-	if(!this->_workers.empty()){
-		// Выполняем перебор всего списка воркеров
-		for(auto & worker : this->_workers){
-			// Если найден воркер WebSocket-клиента
-			if(worker.second->agent == agent_t::WEBSOCKET){
-				// Выполняем отправку сообщения на WebSocket-сервер
-				this->_ws2.send(message, size, text);
-				// Выходим из цикла
-				break;
-			}
-		}
-	}
-}
-/**
  * send Метод отправки тела сообщения на сервер
  * @param id     идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
@@ -1433,44 +1432,34 @@ void awh::client::Http2::send(const char * message, const size_t size, const boo
 bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если данные переданы верные
-	if((result = ((buffer != nullptr) && (size > 0)))){
-		// Тело WEB сообщения
-		vector <char> entity;
-		// Устанавливаем тело запроса
-		this->_http.body(vector <char> (buffer, buffer + size));
-		// Если флаг инициализации сессии HTTP/2 установлен
-		if(this->_nghttp2.is()){
-			// Получаем данные тела запроса
-			while(!(entity = this->_http.payload()).empty()){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
-				#endif
-				// Устанавливаем флаг закрытия подключения
-				this->_stopped = (end && this->_http.body().empty());
-				// Выполняем отправку данных на удалённый сервер
-				result = web2_t::send(id, entity.data(), entity.size(), this->_stopped);
-			}
-		// Если протокол HTTP/2 не активирован
-		} else {
-			// Получаем данные тела запроса
-			while(!(entity = this->_http.payload()).empty()){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
-				#endif
-				// Устанавливаем флаг закрытия подключения
-				this->_stopped = (end && this->_http.body().empty());
-				// Выполняем отправку тела запроса на сервер
-				const_cast <client::core_t *> (this->_core)->write(entity.data(), entity.size(), this->_aid);
-			}
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если данные переданы верные
+		if((result = ((buffer != nullptr) && (size > 0)))){
+			// Если флаг инициализации сессии HTTP/2 установлен
+			if(this->_nghttp2.is()){
+				// Тело WEB сообщения
+				vector <char> entity;
+				// Выполняем сброс данных тела
+				this->_http.clearBody();
+				// Устанавливаем тело запроса
+				this->_http.body(vector <char> (buffer, buffer + size));
+				// Получаем данные тела запроса
+				while(!(entity = this->_http.payload()).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					#endif
+					// Выполняем отправку данных на удалённый сервер
+					result = web2_t::send(id, entity.data(), entity.size(), (end && this->_http.body().empty()));
+				}
+			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
+			} else result = this->_http1.send(buffer, size, end);
 		}
 	}
 	// Выводим значение по умолчанию
@@ -1488,29 +1477,33 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
-	// Если заголовки запроса переданы
-	if((result = !headers.empty())){
-		// Выполняем очистку параметров HTTP запроса
-		this->_http.clear();
-		// Устанавливаем заголовоки запроса
-		this->_http.headers(headers);
-		// Устанавливаем новый адрес запроса
-		this->_uri.combine(this->_scheme.url, url);
-		// Если флаг инициализации сессии HTTP/2 установлен
-		if(this->_nghttp2.is()){
-			// Создаём объек запроса
-			awh::web_t::req_t query(2.0f, method, this->_scheme.url);
-			// Если метод CONNECT запрещён для прокси-сервера
-			if(!this->_proxy.connect){
-				// Выполняем извлечение заголовка авторизации на прокси-сервера
-				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
-				// Если заголовок авторизации получен
-				if(!header.empty())
-					// Выполняем установки заголовка авторизации на прокси-сервере
-					this->_http.header("Proxy-Authorization", header);
-			}{
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если заголовки запроса переданы
+		if(!headers.empty()){
+			// Если флаг инициализации сессии HTTP/2 установлен
+			if(this->_nghttp2.is()){
+				// Выполняем очистку параметров HTTP запроса
+				this->_http.clear();
+				// Устанавливаем заголовоки запроса
+				this->_http.headers(headers);
+				// Устанавливаем новый адрес запроса
+				this->_uri.combine(this->_scheme.url, url);
+				// Создаём объек запроса
+				awh::web_t::req_t query(2.0f, method, this->_scheme.url);
+				// Если метод CONNECT запрещён для прокси-сервера
+				if(!this->_proxy.connect){
+					// Выполняем извлечение заголовка авторизации на прокси-сервера
+					const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+					// Если заголовок авторизации получен
+					if(!header.empty())
+						// Выполняем установки заголовка авторизации на прокси-сервере
+						this->_http.header("Proxy-Authorization", header);
+				}
 				// Выполняем запрос на получение заголовков
-				const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+				const auto & headers = this->_http.process2(http_t::process_t::REQUEST, query);
 				// Если заголовки запроса получены
 				if(!headers.empty()){
 					/**
@@ -1522,46 +1515,13 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 						// Получаем бинарные данные WEB запроса
 						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
-						cout << string(buffer.begin(), buffer.end()) << endl;
+						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif
 					// Выполняем заголовки запроса на сервер
 					result = web2_t::send(id, headers, end);
 				}
-			}
-		// Если протокол HTTP/2 не активирован
-		} else {
-			// Создаём объек запроса
-			awh::web_t::req_t query(method, this->_scheme.url);
-			// Если метод CONNECT запрещён для прокси-сервера
-			if(!this->_proxy.connect){
-				// Выполняем извлечение заголовка авторизации на прокси-сервера
-				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
-				// Если заголовок авторизации получен
-				if(!header.empty())
-					// Выполняем установки заголовка авторизации на прокси-сервере
-					this->_http.header("Proxy-Authorization", header);
-			}{
-				// Получаем бинарные данные WEB запроса
-				const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(query));
-				// Если заголовки запроса получены
-				if(!headers.empty()){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры запроса
-						cout << string(headers.begin(), headers.end()) << endl << endl;
-					#endif
-					// Устанавливаем флаг закрытия подключения
-					this->_stopped = end;
-					// Выполняем отправку заголовков запроса на сервер
-					const_cast <client::core_t *> (this->_core)->write(headers.data(), headers.size(), this->_aid);
-					// Устанавливаем результат
-					result = 1;
-				}
-			}
+			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
+			} else result = this->_http1.send(url, method, headers, end);
 		}
 	}
 	// Выводим значение по умолчанию

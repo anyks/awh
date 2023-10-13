@@ -109,7 +109,7 @@ void awh::client::Web::proxyConnectCallback(const uint64_t aid, const uint16_t s
 								// Выводим заголовок запроса
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
 								// Выводим параметры запроса
-								cout << string(buffer.begin(), buffer.end()) << endl;
+								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							// Выполняем отправку сообщения на сервер
 							dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
@@ -196,7 +196,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры ответа
-										cout << string(answer.begin(), answer.end()) << endl;
+										cout << string(answer.begin(), answer.end()) << endl << endl;
 									}
 								#endif
 								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
@@ -233,7 +233,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
-									cout << string(response.begin(), response.end()) << endl;
+									cout << string(response.begin(), response.end()) << endl << endl;
 									// Если тело ответа существует
 									if(!this->_scheme.proxy.http.body().empty())
 										// Выводим сообщение о выводе чанка тела

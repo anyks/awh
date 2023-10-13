@@ -52,14 +52,12 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
-			public:
 				/**
-				 * send Метод отправки сообщения на сервер
-				 * @param message буфер сообщения в бинарном виде
-				 * @param size    размер сообщения в байтах
+				 * sendMessage Метод отправки сообщения на сервер
+				 * @param message передаваемое сообщения в бинарном виде
 				 * @param utf8    данные передаются в текстовом виде
 				 */
-				void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
+				void sendMessage(const vector <char> & message, const bool utf8 = true) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента

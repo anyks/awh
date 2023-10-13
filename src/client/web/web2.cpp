@@ -277,7 +277,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 									// Получаем бинарные данные WEB запроса
 									const auto & buffer = this->_scheme.proxy.http.proxy(query);
 									// Выводим параметры запроса
-									cout << string(buffer.begin(), buffer.end()) << endl;
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
 								#endif
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));

@@ -64,15 +64,13 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const uint64_t aid, const ws::mess_t & mess) noexcept;
-			public:
 				/**
-				 * send Метод отправки сообщения клиенту
+				 * sendMessage Метод отправки сообщения клиенту
 				 * @param aid     идентификатор адъютанта
-				 * @param message буфер сообщения в бинарном виде
-				 * @param size    размер сообщения в байтах
+				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
 				 */
-				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
+				void sendMessage(const uint64_t aid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту
@@ -95,7 +93,6 @@ namespace awh {
 				 * @return        идентификатор нового запроса
 				 */
 				int32_t send(const int32_t id, const uint64_t aid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
-			public:
 				/**
 				 * send Метод отправки сообщения адъютанту
 				 * @param aid     идентификатор адъютанта
@@ -124,15 +121,15 @@ namespace awh {
 				void on(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере

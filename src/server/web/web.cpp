@@ -92,15 +92,52 @@ bool awh::server::Web::acceptCallback(const string & ip, const string & mac, con
 void awh::server::Web::chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
-		// Выполняем блокировку неиспользуемую переменную
-		(void) aid;
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const vector <char> &> ("chunks", 1, chunk);
+			this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", 1, aid, chunk);
 	}
+}
+/**
+ * erase Метод удаления отключившихся адъютантов
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::Web::erase(const uint64_t aid) noexcept {
+	// Если список мусорных адъютантов не пустой
+	if(!this->_disconected.empty()){
+		// Получаем текущее значение времени
+		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Если идентификатор адъютанта передан
+		if(aid > 0){
+			// Выполняем поиск указанного адъютанта
+			auto it = this->_disconected.find(aid);
+			// Если данные отключившегося адъютанта найдены
+			if((it != this->_disconected.end()) && ((date - it->second) >= 10000))
+				// Выполняем удаление адъютанта
+				this->_disconected.erase(it);
+		// Если идентификатор адъютанта не передан
+		} else {
+			// Выполняем переход по всему списку отключившихся адъютантов
+			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+				// Если адъютант уже давно отключился
+				if((date - it->second) >= 10000)
+					// Выполняем удаление объекта адъютантов из списка отключившихся
+					it = this->_disconected.erase(it);
+				// Выполняем пропуск адъютанта
+				else ++it;
+			}
+		}
+	}
+}
+/**
+ * disconnect Метод отключения адъютанта
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::Web::disconnect(const uint64_t aid) noexcept {
+	// Добавляем в очередь список мусорных адъютантов
+	this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 }
 /**
  * disconected Метод удаления отключившихся адъютантов
@@ -108,20 +145,8 @@ void awh::server::Web::chunking(const uint64_t aid, const vector <char> & chunk,
  * @param core объект сетевого ядра
  */
 void awh::server::Web::disconected(const u_short tid, awh::core_t * core) noexcept {
-	// Если список мусорных адъютантов не пустой
-	if(!this->_disconected.empty()){
-		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку отключившихся адъютантов
-		for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
-			// Если адъютант уже давно отключился
-			if((date - it->second) >= 10000)
-				// Выполняем удаление объекта адъютантов из списка отключившихся
-				it = this->_disconected.erase(it);
-			// Выполняем пропуск адъютанта
-			else ++it;
-		}
-	}
+	// Выполняем удаление отключившихся адъютантов
+	this->erase();
 	// Устанавливаем таймаут времени на удаление отключившихся адъютантов раз в 10 секунд
 	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
 }
@@ -183,20 +208,20 @@ void awh::server::Web::on(function <bool (const string &, const string &)> callb
 	this->_callback.set <bool (const string &, const string &)> ("checkPassword", callback);
 }
 /**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::server::Web::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
-}
-/**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
 void awh::server::Web::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
+}
+/**
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
+ * @param callback функция обратного вызова
+ */
+void awh::server::Web::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере

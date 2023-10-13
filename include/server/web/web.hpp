@@ -245,11 +245,21 @@ namespace awh {
 				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
+				 * erase Метод удаления отключившихся адъютантов
+				 * @param aid идентификатор адъютанта
+				 */
+				virtual void erase(const uint64_t aid = 0) noexcept;
+				/**
+				 * disconnect Метод отключения адъютанта
+				 * @param aid идентификатор адъютанта
+				 */
+				virtual void disconnect(const uint64_t aid) noexcept;
+				/**
 				 * disconected Метод удаления отключившихся адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconected(const u_short tid, awh::core_t * core) noexcept;
+				void disconected(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта
@@ -283,15 +293,15 @@ namespace awh {
 				virtual void on(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				virtual void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
-				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере

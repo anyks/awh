@@ -175,7 +175,7 @@ class WebClient {
 				// Получаем параметры запроса в виде строки
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
-				this->_awh->send(query.data(), query.size());
+				this->_awh->sendMessage(vector <char> (query.begin(), query.end()));
 			}
 		}
 		/**
