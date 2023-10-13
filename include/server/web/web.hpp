@@ -161,8 +161,6 @@ namespace awh {
 				// Максимальное количество запросов
 				size_t _maxRequests;
 			protected:
-				// Список активных агентов
-				map <uint64_t, agent_t> _agents;
 				// Список мусорных адъютантов
 				map <uint64_t, time_t> _disconected;
 			protected:
@@ -642,8 +640,9 @@ namespace awh {
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @return       результат отправки данных указанному клиенту
 				 */
-				virtual void send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept;
+				virtual bool send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
 				 * send Метод отправки заголовков на сервер
 				 * @param id      идентификатор потока HTTP/2

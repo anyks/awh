@@ -1294,22 +1294,22 @@ const vector <vector <string>> & awh::server::WebSocket1::extensions(const uint6
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::server::WebSocket1::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::server::WebSocket1::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Если многопоточность ещё не активированна
 		if(!this->_thr.is())
 			// Выполняем инициализацию пула потоков
-			this->_thr.init(threads);
+			this->_thr.init(count);
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
 			this->_thr.wait();
 			// Выполняем инициализацию нового тредпула
-			this->_thr.init(threads);
+			this->_thr.init(count);
 		}
 		// Если сетевое ядро установлено
 		if(this->_core != nullptr)

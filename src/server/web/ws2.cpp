@@ -632,7 +632,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 														// Если установлена функция отлова завершения запроса
 														if(this->_callback.is("end"))
 															// Выводим функцию обратного вызова
-															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 													}
 													// Выходим из функции
 													return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -650,7 +650,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
 														// Выводим функцию обратного вызова
-														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 												}
 												// Завершаем работу
 												return 0;
@@ -677,85 +677,89 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								const auto & headers = adj->http.reject2(response);
 								// Если бинарные данные ответа получены
 								if(!headers.empty()){
-									// Выполняем поиск адъютанта в списке активных сессий
-									auto it = this->_sessions.find(aid);
-									// Если активная сессия найдена
-									if(it != this->_sessions.end()){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											{
-												// Выводим заголовок ответа
-												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-												// Получаем объект работы с HTTP-запросами
-												const http_t & http = reinterpret_cast <http_t &> (adj->http);
-												// Получаем бинарные данные REST-ответа
-												const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-												// Если бинарные данные ответа получены
-												if(!buffer.empty())
-													// Выводим параметры ответа
-													cout << string(buffer.begin(), buffer.end()) << endl << endl;
-											}
-										#endif
-										// Выполняем заголовки запроса на сервер
-										const int32_t sid = it->second->sendHeaders(adj->sid, headers, false);
-										// Если запрос не получилось отправить
-										if(sid < 0){
-											// Выполняем закрытие подключения
-											const_cast <server::core_t *> (this->_core)->close(aid);
-											// Если мы получили флаг завершения потока
-											if(flags & NGHTTP2_FLAG_END_STREAM){
-												// Если установлена функция отлова завершения запроса
-												if(this->_callback.is("end"))
-													// Выводим функцию обратного вызова
-													this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
-											}
-											// Выходим из функции
-											return NGHTTP2_ERR_CALLBACK_FAILURE;
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										{
+											// Выводим заголовок ответа
+											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											// Получаем объект работы с HTTP-запросами
+											const http_t & http = reinterpret_cast <http_t &> (adj->http);
+											// Получаем бинарные данные REST-ответа
+											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+											// Если бинарные данные ответа получены
+											if(!buffer.empty())
+												// Выводим параметры ответа
+												cout << string(buffer.begin(), buffer.end()) << endl << endl;
 										}
-										// Если тело запроса существует
-										if(!adj->http.body().empty()){
-											// Тело WEB запроса
-											vector <char> entity;
-											// Получаем данные тела запроса
-											while(!(entity = adj->http.payload()).empty()){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
-												#endif
-												// Выполняем отправку тела запроса на сервер
-												if(!it->second->sendData(adj->sid, (const uint8_t *) entity.data(), entity.size(), adj->http.body().empty())){
-													// Выполняем закрытие подключения
-													const_cast <server::core_t *> (this->_core)->close(aid);
-													// Выходим из функции
-													return NGHTTP2_ERR_CALLBACK_FAILURE;
-												}
-											}
-										}
+									#endif
+									// Выполняем заголовки запроса на сервер
+									const int32_t sid = web2_t::send(adj->sid, aid, headers, false);
+									// Если запрос не получилось отправить
+									if(sid < 0){
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 										}
-										// Завершаем работу
-										return 0;
+										// Выходим из функции
+										return NGHTTP2_ERR_CALLBACK_FAILURE;
 									}
+									// Если тело запроса существует
+									if(!adj->http.body().empty()){
+										// Тело WEB запроса
+										vector <char> entity;
+										// Получаем данные тела запроса
+										while(!(entity = adj->http.payload()).empty()){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о выводе чанка тела
+												cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+											#endif
+											// Выполняем отправку тела запроса на сервер
+											if(!web2_t::send(adj->sid, aid, entity.data(), entity.size(), adj->http.body().empty())){
+												// Если мы получили флаг завершения потока
+												if(flags & NGHTTP2_FLAG_END_STREAM){
+													// Если установлена функция отлова завершения запроса
+													if(this->_callback.is("end"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
+												}
+												// Выходим из функции
+												return NGHTTP2_ERR_CALLBACK_FAILURE;
+											}
+										}
+									}
+									// Если мы получили флаг завершения потока
+									if(flags & NGHTTP2_FLAG_END_STREAM){
+										// Если установлена функция отлова завершения запроса
+										if(this->_callback.is("end"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
+									}
+									// Завершаем работу
+									return 0;
 								}
 							}
+							// Выполняем поиск адъютанта в списке активных сессий
+							auto it = this->_sessions.find(aid);
+							// Если активная сессия найдена
+							if(it != this->_sessions.end())
+								// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+								it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), aid));
 							// Завершаем работу
-							const_cast <server::core_t *> (this->_core)->close(aid);
+							else const_cast <server::core_t *> (this->_core)->close(aid);
 							// Если мы получили флаг завершения потока
 							if(flags & NGHTTP2_FLAG_END_STREAM){
 								// Если установлена функция отлова завершения запроса
 								if(this->_callback.is("end"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, aid, direct_t::RECV);
+									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 							}
 						}
 					} break;
@@ -1716,14 +1720,14 @@ const vector <vector <string>> & awh::server::WebSocket2::extensions(const uint6
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::server::WebSocket2::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::server::WebSocket2::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Выполняем установку количества активных ядер
-		this->_threads = threads;
+		this->_threads = count;
 		// Если многопоточность ещё не активированна
 		if(!this->_thr.is())
 			// Выполняем инициализацию пула потоков
@@ -2057,8 +2061,4 @@ awh::server::WebSocket2::~WebSocket2() noexcept {
 	if(this->_thr.is())
 		// Выполняем завершение всех активных потоков
 		this->_thr.wait();
-	// Если многопоточность активированна у WebSocket/1.1 клиента
-	if(this->_ws1._thr.is())
-		// Выполняем завершение всех активных потоков
-		this->_ws1._thr.wait();
 }

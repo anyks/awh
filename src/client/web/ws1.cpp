@@ -269,6 +269,10 @@ void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t si
 			this->_close = !this->_close;
 			// Принудительно выполняем отключение лкиента
 			dynamic_cast <client::core_t *> (core)->close(aid);
+			// Если установлена функция отлова завершения запроса
+			if(this->_callback.is("end"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::SEND);
 		}
 	}
 }
@@ -1397,22 +1401,22 @@ void awh::client::WebSocket1::ident(const string & id, const string & name, cons
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::WebSocket1::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::client::WebSocket1::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Если многопоточность ещё не активированна
 		if(!this->_thr.is())
 			// Выполняем инициализацию пула потоков
-			this->_thr.init(threads);
+			this->_thr.init(count);
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
 			this->_thr.wait();
 			// Выполняем инициализацию нового тредпула
-			this->_thr.init(threads);
+			this->_thr.init(count);
 		}
 		// Если сетевое ядро установлено
 		if(this->_core != nullptr)

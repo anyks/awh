@@ -48,7 +48,7 @@ namespace awh {
 			private:
 				// Флаг открытия подключения
 				bool _mode;
-				// Флаг разрешения использования клиента WebSocket
+				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
 			private:
 				// Объект для работы c WebSocket
@@ -60,7 +60,7 @@ namespace awh {
 				agent_t _agent;
 			private:
 				// Количество активных ядер
-				ssize_t _threads;
+				int16_t _threads;
 			private:
 				// Объект функций обратного вызова для вывода результата
 				fn_t _resultCallback;
@@ -339,10 +339,10 @@ namespace awh {
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера

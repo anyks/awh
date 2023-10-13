@@ -41,22 +41,33 @@ namespace awh {
 	typedef class ThreadPool {
 		private:
 			// Сингнал остановки работы пула потоков
-			bool stop;
+			bool _stop;
 		private:
 			// Количество потоков
-			size_t threads;
+			uint16_t _threads;
 		private:
 			// Тип очереди задач
-			typedef queue <function <void()>> TaskQueue_t;
+			typedef queue <function <void()>> task_t;
 		private:
 			// Очередь задач на исполнение
-			TaskQueue_t tasks;
-			// Мьютекс для разграничения доступа к очереди задач
-			mutable mutex queueMutex;
-			// Рабочие потоки для обработки задач
-			vector <std::thread> workers;
+			task_t _tasks;
+		private:
 			// Условная переменная, контролирующая исполнение задачи
-			condition_variable condition;
+			condition_variable _cv;
+			// Мьютекс для разграничения доступа к очереди задач
+			mutable mutex _queueMutex;
+		private:
+			// Рабочие потоки для обработки задач
+			vector <std::thread> _workers;
+		private:
+			/**
+			 * check Метод проверки завершения заморозки потока
+			 * @return результат проверки
+			 */
+			bool check() const noexcept {
+				// Если данные получены или произошла остановка
+				return (this->_stop || !this->_tasks.empty());
+			}
 		private:
 			/**
 			 * work Метод обработки очереди задач в одном потоке
@@ -69,22 +80,19 @@ namespace awh {
 					// Ожидаем своей задачи в очереди потоков
 					{
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <mutex> lock(this->queueMutex);
+						unique_lock <mutex> lock(this->_queueMutex);
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
-						this->condition.wait_for(lock, 100ms, [this]() noexcept -> bool {
-							// Если данные получены или произошла остановка
-							return (this->stop || !this->tasks.empty());
-						});
+						this->_cv.wait_for(lock, 100ms, std::bind(&ThreadPool::check, this));
 						// Если это остановка приложения и список задач пустой, выходим
-						if(this->stop && this->tasks.empty())
+						if(this->_stop && this->_tasks.empty())
 							// Выходим из функции
 							return;
 						// Если данные в очереди существуют
-						if(!this->tasks.empty()){
+						if(!this->_tasks.empty()){
 							// Получаем текущее задание
-							task = std::move(this->tasks.front());
+							task = std::move(this->_tasks.front());
 							// Удаляем текущее задание
-							this->tasks.pop();
+							this->_tasks.pop();
 						// Иначе выполняем пропуск
 						} else continue;
 					}
@@ -99,7 +107,7 @@ namespace awh {
 			 */
 			bool is() const noexcept {
 				// Выводим результат проверки
-				return !this->workers.empty();
+				return !this->_workers.empty();
 			}
 		public:
 			/**
@@ -109,26 +117,26 @@ namespace awh {
 			void wait(const bool stop = true) noexcept {
 				{
 					// Останавливаем работу потоков
-					this->stop = true;
+					this->_stop = true;
 					// Создаем уникальный мютекс
-					unique_lock <mutex> lock(this->queueMutex);
+					unique_lock <mutex> lock(this->_queueMutex);
 				}
 				// Создаем пустой список задач
-				TaskQueue_t empty;
+				task_t empty;
 				// Сообщаем всем что мы завершаем работу
-				this->condition.notify_all();
+				this->_cv.notify_all();
 				// Ожидаем завершение работы каждого воркера
-				for(auto & worker: this->workers)
+				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
 				// Если нужно завершить работу всех потоков
 				if(stop){
 					// Очищаем список потоков
-					this->workers.clear();
+					this->_workers.clear();
 					// Очищаем список задач
-					swap(this->tasks, empty);
+					std::swap(this->_tasks, empty);
 					// Восстанавливаем работу потоков
-					this->stop = false;
+					this->_stop = false;
 				}
 			}
 			/**
@@ -136,21 +144,21 @@ namespace awh {
 			 */
 			void clean() noexcept {
 				// Очищаем список потоков
-				this->workers.clear();
+				this->_workers.clear();
 			}
 			/**
 			 * init Метод инициализации работы тредпула
-			 * @param threads количество потоков
+			 * @param count количество потоков
 			 */
-			void init(const size_t threads = 0) noexcept {
+			void init(const uint16_t count = 0) noexcept {
+				// Устанавливаем количество потоков
+				this->_threads = count;
 				// Ели количество потоков передано
-				if(threads > 0) this->threads = threads;
-				// Ели количество потоков передано
-				if(this->threads > 0){
+				if(this->_threads > 0){
 					// Добавляем в список воркеров, новую задачу
-					for(size_t i = 0; i < this->threads; ++i)
+					for(uint16_t i = 0; i < this->_threads; ++i)
 						// Добавляем новую задачу
-						this->workers.emplace_back(bind(&ThreadPool::work, this));
+						this->_workers.emplace_back(std::bind(&ThreadPool::work, this));
 				}
 			}
 		public:
@@ -160,18 +168,22 @@ namespace awh {
 			 */
 			const size_t getTaskQueueSize() const noexcept {
 				// Выполняем блокировку уникальным мютексом
-				unique_lock <mutex> lock(this->queueMutex);
+				unique_lock <mutex> lock(this->_queueMutex);
 				// Выводим количество заданий
-				return this->tasks.size();
+				return this->_tasks.size();
 			}
 		public:
 			/**
 			 * ThreadPool Конструктор
-			 * @param threads потоки
+			 * @param count количество потоков
 			 */
-			explicit ThreadPool(const size_t threads = std::thread::hardware_concurrency()) noexcept : stop(false), threads(0) {
+			explicit ThreadPool(const uint16_t count = static_cast <uint16_t> (std::thread::hardware_concurrency())) noexcept : _stop(false), _threads(0) {
 				// Ели количество потоков передано
-				if(threads > 0) this->threads = threads;
+				if(count > 0)
+					// Устанавливаем количество потоков
+					this->_threads = count;
+				// Иначе устанавливаем один поток
+				else this->_threads = 1;
 			}
 			/**
 			 * ~ThreadPool Деструктор
@@ -199,12 +211,14 @@ namespace awh {
 				future <return_type> res = task->get_future();
 				{
 					// Выполняем блокировку уникальным мютексом
-					unique_lock <mutex> lock(this->queueMutex);
+					unique_lock <mutex> lock(this->_queueMutex);
 					// Если это не остановка работы
-					if(!this->stop) this->tasks.emplace([task](){(* task)();});
+					if(!this->_stop)
+						// Выполняем добавление задания в список заданий
+						this->_tasks.emplace([task](){(* task)();});
 				}
 				// Сообщаем потокам, что появилась новая задача
-				this->condition.notify_one();
+				this->_cv.notify_one();
 				// Выводим результат
 				return res;
 			}

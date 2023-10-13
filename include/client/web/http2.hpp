@@ -87,13 +87,11 @@ namespace awh {
 				// Объект параметров сервиса
 				service_t _service;
 			private:
-				// Флаг блокировки очистки контекста подключения
-				bool _lockClean;
-				// Флаг разрешения использования клиента WebSocket
+				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
 			private:
 				// Количество активных ядер
-				ssize_t _threads;
+				int16_t _threads;
 			private:
 				// Список активных воркеров
 				map <int32_t, unique_ptr <worker_t>> _workers;
@@ -253,21 +251,24 @@ namespace awh {
 				void send(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения на сервер
-				 * @param id     идентификатор потока HTTP/2
+				 * send Метод отправки тела сообщения на сервер
+				 * @param id     идентификатор потока HTTP
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @return       результат отправки данных указанному клиенту
 				 */
-				void send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
 				 * send Метод отправки заголовков на сервер
-				 * @param id      идентификатор потока HTTP/2
+				 * @param id      идентификатор потока HTTP
+				 * @param url     адрес запроса на сервере
+				 * @param method  метод запроса на сервере
 				 * @param headers заголовки отправляемые на сервер
 				 * @param end     размер сообщения в байтах
-				 * @return        флаг последнего сообщения после которого поток закрывается
+				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept;
+				int32_t send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента
@@ -424,10 +425,10 @@ namespace awh {
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера

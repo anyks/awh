@@ -32,7 +32,7 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 		this->_http.id(aid);
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(aid, sid, core);
-		// Если флаг инициализации сессии HTTP2 не установлен
+		// Если флаг инициализации сессии HTTP/2 не установлен
 		if(!this->_nghttp2.is()){
 			// Запоминаем идентификатор адъютанта
 			this->_http1._aid = this->_aid;
@@ -47,7 +47,7 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 		this->_ws2._http.id(aid);
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = this->_core;
-		// Выполняем установку сессии HTTP2
+		// Выполняем установку сессии HTTP/2
 		this->_ws2._nghttp2 = this->_nghttp2;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
@@ -74,7 +74,7 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 void awh::client::Http2::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем удаление подключения
 	this->_nghttp2.close();
-	// Выполняем установку сессии HTTP2
+	// Выполняем установку сессии HTTP/2
 	this->_ws2._nghttp2 = this->_nghttp2;
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(aid, sid, core))
@@ -150,11 +150,19 @@ void awh::client::Http2::writeCallback(const char * buffer, const size_t size, c
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Выполняем перебор всех доступных воркеров
 		for(auto & worker : this->_workers){
-			// Если агент является клиентом WebSocket
-			if(worker.second->agent == agent_t::WEBSOCKET){
-				// Выполняем переброс вызова записи на клиент WebSocket
-				this->_ws2.writeCallback(buffer, size, aid, sid, core);
-				// Выполняем выход из цикла
+			// Определяем протокол клиента
+			switch(static_cast <uint8_t> (worker.second->agent)){
+				// Если агент является клиентом HTTP
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Если переключение протокола на HTTP/2 не выполнено
+					if(worker.second->proto != engine_t::proto_t::HTTP2)
+						// Выполняем переброс вызова записи на клиент HTTP/1.1
+						this->_http1.writeCallback(buffer, size, aid, sid, core);
+				} break;
+				// Если агент является клиентом WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Выполняем переброс вызова записи на клиент WebSocket
+					this->_ws2.writeCallback(buffer, size, aid, sid, core);
 				break;
 			}
 		}
@@ -310,6 +318,8 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 												// Завершаем работу
 												return 0;
 										}
+										// Выполняем очистку параметров HTTP запроса
+										this->_http.clear();
 										// Если функция обратного вызова установлена, выводим сообщение
 										if(it->second->callback.is("entity"))
 											// Выполняем функцию обратного вызова дисконнекта
@@ -575,7 +585,7 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 		if(this->_callback.is("stream"))
 			// Выводим функцию обратного вызова
 			this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
-		// Если флаг инициализации сессии HTTP2 установлен
+		// Если флаг инициализации сессии HTTP/2 установлен
 		if((error > 0x0) && this->_nghttp2.is()){
 			// Если закрытие подключения не выполнено
 			if(!this->_nghttp2.close()){
@@ -837,7 +847,7 @@ bool awh::client::Http2::redirect(const uint64_t aid, const uint16_t sid, awh::c
 				} break;
 				// Если протоколом агента является WebSocket-клиент
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-					// Выполняем установку сессии HTTP2
+					// Выполняем установку сессии HTTP/2
 					this->_ws2._nghttp2 = this->_nghttp2;
 					// Выполняем переброс вызова дисконнекта на клиент WebSocket
 					this->_ws2.disconnectCallback(aid, sid, core);
@@ -1166,7 +1176,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						if(this->_webSocket){
 							// Выполняем установку агента воркера WebSocket
 							agent = agent_t::WEBSOCKET;
-							// Если флаг инициализации сессии HTTP2 установлен
+							// Если флаг инициализации сессии HTTP/2 установлен
 							if(this->_nghttp2.is()){
 								// Если протокол ещё не установлен
 								if(request.headers.count(":protocol") < 1)
@@ -1195,7 +1205,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			switch(static_cast <uint8_t> (agent)){
 				// Если протоколом агента является HTTP-клиент
 				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Если флаг инициализации сессии HTTP2 установлен
+					// Если флаг инициализации сессии HTTP/2 установлен
 					if(this->_nghttp2.is()){
 						// Выполняем сброс состояния HTTP парсера
 						this->_http.reset();
@@ -1245,14 +1255,11 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 							// Выполняем заголовки запроса на сервер
-							result = this->_nghttp2.sendHeaders(-1, headers, request.entity.empty());
+							result = web2_t::send(-1, headers, request.entity.empty());
 							// Если запрос не получилось отправить
-							if(result < 0){
-								// Выполняем закрытие подключения
-								const_cast <client::core_t *> (this->_core)->close(this->_aid);
+							if(result < 0)
 								// Выходим из функции
 								return result;
-							}
 							// Если функция обратного вызова на вывод редиректа потоков установлена
 							if((sid > -1) && (sid != result) && this->_callback.is("redirect"))
 								// Выводим функцию обратного вызова
@@ -1271,12 +1278,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку тела запроса на сервер
-									if(!this->_nghttp2.sendData(result, (const uint8_t *) entity.data(), entity.size(), this->_http.body().empty())){
-										// Выполняем закрытие подключения
-										const_cast <client::core_t *> (this->_core)->close(this->_aid);
+									if(!web2_t::send(result, entity.data(), entity.size(), this->_http.body().empty()))
 										// Выходим из функции
 										return -1;
-									}
 								}
 							}
 						}
@@ -1359,7 +1363,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						ret.first->second->http.compress(request.compress);
 					// Устанавливаем метод компрессии
 					else ret.first->second->http.compress(this->_compress);
-					// Если флаг инициализации сессии HTTP2 установлен
+					// Если флаг инициализации сессии HTTP/2 установлен
 					if(this->_nghttp2.is())
 						// Выполняем смену активного протокола на HTTP/2
 						ret.first->second->proto = engine_t::proto_t::HTTP2;
@@ -1419,26 +1423,149 @@ void awh::client::Http2::send(const char * message, const size_t size, const boo
 	}
 }
 /**
- * send Метод отправки сообщения на сервер
- * @param id     идентификатор потока HTTP/2
+ * send Метод отправки тела сообщения на сервер
+ * @param id     идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
+ * @return       результат отправки данных указанному клиенту
  */
-void awh::client::Http2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
-	// Выполняем отправку данных на удалённый сервер
-	web2_t::send(id, buffer, size, end);
+bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы верные
+	if((result = ((buffer != nullptr) && (size > 0)))){
+		// Тело WEB сообщения
+		vector <char> entity;
+		// Устанавливаем тело запроса
+		this->_http.body(vector <char> (buffer, buffer + size));
+		// Если флаг инициализации сессии HTTP/2 установлен
+		if(this->_nghttp2.is()){
+			// Получаем данные тела запроса
+			while(!(entity = this->_http.payload()).empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение о выводе чанка тела
+					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+				#endif
+				// Устанавливаем флаг закрытия подключения
+				this->_stopped = (end && this->_http.body().empty());
+				// Выполняем отправку данных на удалённый сервер
+				result = web2_t::send(id, entity.data(), entity.size(), this->_stopped);
+			}
+		// Если протокол HTTP/2 не активирован
+		} else {
+			// Получаем данные тела запроса
+			while(!(entity = this->_http.payload()).empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение о выводе чанка тела
+					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+				#endif
+				// Устанавливаем флаг закрытия подключения
+				this->_stopped = (end && this->_http.body().empty());
+				// Выполняем отправку тела запроса на сервер
+				const_cast <client::core_t *> (this->_core)->write(entity.data(), entity.size(), this->_aid);
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
 }
 /**
  * send Метод отправки заголовков на сервер
- * @param id      идентификатор потока HTTP/2
+ * @param id      идентификатор потока HTTP
+ * @param url     адрес запроса на сервере
+ * @param method  метод запроса на сервере
  * @param headers заголовки отправляемые на сервер
  * @param end     размер сообщения в байтах
- * @return        флаг последнего сообщения после которого поток закрывается
+ * @return        идентификатор нового запроса
  */
-int32_t awh::client::Http2::send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
-	// Выполняем отправку заголовков на сервер
-	return web2_t::send(id, headers, end);
+int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Если заголовки запроса переданы
+	if((result = !headers.empty())){
+		// Выполняем очистку параметров HTTP запроса
+		this->_http.clear();
+		// Устанавливаем заголовоки запроса
+		this->_http.headers(headers);
+		// Устанавливаем новый адрес запроса
+		this->_uri.combine(this->_scheme.url, url);
+		// Если флаг инициализации сессии HTTP/2 установлен
+		if(this->_nghttp2.is()){
+			// Создаём объек запроса
+			awh::web_t::req_t query(2.0f, method, this->_scheme.url);
+			// Если метод CONNECT запрещён для прокси-сервера
+			if(!this->_proxy.connect){
+				// Выполняем извлечение заголовка авторизации на прокси-сервера
+				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+				// Если заголовок авторизации получен
+				if(!header.empty())
+					// Выполняем установки заголовка авторизации на прокси-сервере
+					this->_http.header("Proxy-Authorization", header);
+			}{
+				// Выполняем запрос на получение заголовков
+				const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+				// Если заголовки запроса получены
+				if(!headers.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок запроса
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+						// Получаем бинарные данные WEB запроса
+						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+						// Выводим параметры запроса
+						cout << string(buffer.begin(), buffer.end()) << endl;
+					#endif
+					// Выполняем заголовки запроса на сервер
+					result = web2_t::send(id, headers, end);
+				}
+			}
+		// Если протокол HTTP/2 не активирован
+		} else {
+			// Создаём объек запроса
+			awh::web_t::req_t query(method, this->_scheme.url);
+			// Если метод CONNECT запрещён для прокси-сервера
+			if(!this->_proxy.connect){
+				// Выполняем извлечение заголовка авторизации на прокси-сервера
+				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+				// Если заголовок авторизации получен
+				if(!header.empty())
+					// Выполняем установки заголовка авторизации на прокси-сервере
+					this->_http.header("Proxy-Authorization", header);
+			}{
+				// Получаем бинарные данные WEB запроса
+				const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(query));
+				// Если заголовки запроса получены
+				if(!headers.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок запроса
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры запроса
+						cout << string(headers.begin(), headers.end()) << endl << endl;
+					#endif
+					// Устанавливаем флаг закрытия подключения
+					this->_stopped = end;
+					// Выполняем отправку заголовков запроса на сервер
+					const_cast <client::core_t *> (this->_core)->write(headers.data(), headers.size(), this->_aid);
+					// Устанавливаем результат
+					result = 1;
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
 }
 /**
  * pause Метод установки на паузу клиента
@@ -1786,14 +1913,14 @@ void awh::client::Http2::ident(const string & id, const string & name, const str
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::Http2::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::client::Http2::multiThreads(const int16_t count, const bool mode) noexcept {
 	// Если необходимо активировать мультипоточность
 	if(mode)
 		// Выполняем установку количества ядер мультипоточности
-		this->_threads = static_cast <ssize_t> (threads);
+		this->_threads = count;
 	// Если необходимо отключить мультипоточность
 	else this->_threads = -1;
 }
@@ -1860,7 +1987,7 @@ void awh::client::Http2::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _lockClean(false), _webSocket(false), _threads(-1) {
+ web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2));
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
@@ -1881,7 +2008,7 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _lockClean(false), _webSocket(false), _threads(-1) {
+ web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
@@ -1903,14 +2030,10 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 awh::client::Http2::~Http2() noexcept {
 	// Снимаем адрес сетевого ядра
 	this->_ws2._core = nullptr;
-	// Выполняем установку сессии HTTP2
+	// Выполняем установку сессии HTTP/2
 	this->_ws2._nghttp2 = this->_nghttp2;
 	// Если многопоточность активированна
 	if(this->_ws2._thr.is())
 		// Выполняем завершение всех активных потоков
 		this->_ws2._thr.wait();
-	// Если многопоточность активированна
-	if(this->_ws2._ws1._thr.is())
-		// Выполняем завершение всех активных потоков
-		this->_ws2._ws1._thr.wait();
 }

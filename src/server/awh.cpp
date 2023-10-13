@@ -55,6 +55,33 @@ void awh::server::AWH::send(const uint64_t aid, const char * message, const size
 	this->_http.send(aid, message, size, text);
 }
 /**
+ * send Метод отправки тела сообщения на клиенту
+ * @param id     идентификатор потока HTTP
+ * @param aid    идентификатор адъютанта
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ * @param end    флаг последнего сообщения после которого поток закрывается
+ * @return       результат отправки данных указанному клиенту
+ */
+bool awh::server::AWH::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
+	// Выполняем отправку тела сообщения клиенту
+	return this->_http.send(id, aid, buffer, size, end);
+}
+/**
+ * send Метод отправки заголовков на клиенту
+ * @param id      идентификатор потока HTTP
+ * @param aid     идентификатор адъютанта
+ * @param code    код сообщения для адъютанта
+ * @param mess    отправляемое сообщение об ошибке
+ * @param headers заголовки отправляемые клиенту
+ * @param end     размер сообщения в байтах
+ * @return        идентификатор нового запроса
+ */
+int32_t awh::server::AWH::send(const int32_t id, const uint64_t aid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+	// Выполняем отправку заголовков сообщения клиенту
+	return this->_http.send(id, aid, code, mess, headers, end);
+}
+/**
  * send Метод отправки сообщения адъютанту
  * @param aid     идентификатор адъютанта
  * @param code    код сообщения для адъютанта
@@ -62,7 +89,7 @@ void awh::server::AWH::send(const uint64_t aid, const char * message, const size
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::server::AWH::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(aid, code, mess, entity, headers);
 }
@@ -351,6 +378,31 @@ void awh::server::AWH::keepAlive(const int cnt, const int idle, const int intvl)
 void awh::server::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_http.mode(flags);
+}
+/**
+ * setOrigin Метод установки списка разрешённых источников
+ * @param origins список разрешённых источников
+ */
+void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_http.setOrigin(origins);
+}
+/**
+ * sendOrigin Метод отправки списка разрешённых источников
+ * @param aid     идентификатор адъютанта
+ * @param origins список разрешённых источников
+ */
+void awh::server::AWH::sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept {
+	// Выполняем отправку списка разрешённых источников
+	this->_http.sendOrigin(aid, origins);
+}
+/**
+ * settings Модуль установки настроек протокола HTTP/2
+ * @param settings список настроек протокола HTTP/2
+ */
+void awh::server::AWH::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+	// Выполняем установку списка настроек протокола HTTP/2
+	this->_http.settings(settings);
 }
 /**
  * realm Метод установки название сервера

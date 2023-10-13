@@ -183,6 +183,8 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 						Stop:
 						// Если получение данных выполнено
 						if(completed){
+							// Выполняем очистку параметров HTTP запроса
+							this->_http.clear();
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выводим функцию обратного вызова
@@ -224,10 +226,21 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 void awh::client::Http1::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если агент является клиентом WebSocket
-		if(this->_agent == agent_t::WEBSOCKET)
-			// Выполняем переброс вызова записи на клиент WebSocket
-			this->_ws1.writeCallback(buffer, size, aid, sid, core);
+		// Определяем протокол клиента
+		switch(static_cast <uint8_t> (this->_agent)){
+			// Если агент является клиентом HTTP
+			case static_cast <uint8_t> (agent_t::HTTP): {
+				// Если установлена функция отлова завершения запроса
+				if(this->_stopped && this->_callback.is("end"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::SEND);
+			} break;
+			// Если агент является клиентом WebSocket
+			case static_cast <uint8_t> (agent_t::WEBSOCKET):
+				// Выполняем переброс вызова записи на клиент WebSocket
+				this->_ws1.writeCallback(buffer, size, aid, sid, core);
+			break;
+		}
 	}
 }
 /**
@@ -1131,14 +1144,14 @@ void awh::client::Http1::ident(const string & id, const string & name, const str
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::Http1::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::client::Http1::multiThreads(const int16_t count, const bool mode) noexcept {
 	// Если необходимо активировать мультипоточность
 	if(mode)
 		// Выполняем установку количества ядер мультипоточности
-		this->_threads = static_cast <ssize_t> (threads);
+		this->_threads = count;
 	// Если необходимо отключить мультипоточность
 	else this->_threads = -1;
 }

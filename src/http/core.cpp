@@ -269,6 +269,8 @@ void awh::Http::clear() noexcept {
 	this->_web.clear();
 	// Выполняем сброс чёрного списка HTTP заголовков
 	this->_black.clear();
+	// Выполняем сброс флага формирования чанков
+	this->_chunking = false;
 }
 /**
  * reset Метод сброса параметров запроса
@@ -427,6 +429,8 @@ const vector <char> awh::Http::payload() const noexcept {
  * clearBody Метод очистки данных тела
  */
 void awh::Http::clearBody() const noexcept {
+	// Выполняем сброс флага формирования чанков
+	this->_chunking = false;
 	// Выполняем очистку данных тела
 	this->_web.clearBody();
 }
@@ -434,6 +438,8 @@ void awh::Http::clearBody() const noexcept {
  * clearHeaders Метод очистки списка заголовков
  */
 void awh::Http::clearHeaders() const noexcept {
+	// Выполняем сброс флага формирования чанков
+	this->_chunking = false;
 	// Выполняем очистку списка заголовков
 	this->_web.clearHeaders();
 }

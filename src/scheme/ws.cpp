@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <scheme/wsock.hpp>
+#include <scheme/ws.hpp>
 
 /**
  * clear Метод очистки

@@ -283,12 +283,12 @@ const vector <vector <string>> & awh::server::WebSocket::extensions(const uint64
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::server::WebSocket::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::server::WebSocket::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Выполняем активацию многопоточности
-	this->_ws.multiThreads(threads, mode);
+	this->_ws.multiThreads(count, mode);
 }
 /**
  * total Метод установки максимального количества одновременных подключений

@@ -428,10 +428,10 @@ namespace awh {
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера

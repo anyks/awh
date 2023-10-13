@@ -105,7 +105,7 @@ namespace awh {
 				// Контрольная точка ответа на пинг
 				time_t _point;
 				// Количество активных ядер
-				size_t _threads;
+				uint16_t _threads;
 			private:
 				// Объект работы с WebSocket-клиентом HTTP/1.1
 				ws1_t _ws1;
@@ -455,10 +455,10 @@ namespace awh {
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * proxy Метод установки прокси-сервера

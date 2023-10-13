@@ -99,7 +99,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 		this->_hash.takeoverDecompress(this->_server.takeover);
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(aid, sid, core);
-		// Если флаг инициализации сессии HTTP2 установлен
+		// Если флаг инициализации сессии HTTP/2 установлен
 		if(this->_nghttp2.is()){
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
@@ -678,7 +678,7 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 	if(this->_callback.is("stream"))
 		// Выводим функцию обратного вызова
 		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
-	// Если флаг инициализации сессии HTTP2 установлен
+	// Если флаг инициализации сессии HTTP/2 установлен
 	if((error > 0x00) && this->_nghttp2.is()){
 		// Если закрытие подключения не выполнено
 		if(!this->_nghttp2.close()){
@@ -1860,14 +1860,14 @@ void awh::client::WebSocket2::ident(const string & id, const string & name, cons
 }
 /**
  * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::WebSocket2::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::client::WebSocket2::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Выполняем установку количества активных ядер
-		this->_threads = threads;
+		this->_threads = count;
 		// Если многопоточность ещё не активированна
 		if(!this->_thr.is())
 			// Выполняем инициализацию пула потоков

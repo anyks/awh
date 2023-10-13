@@ -48,16 +48,18 @@ namespace awh {
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
-					bool mode;                        // Флаг открытия подключения
-					bool crypt;                       // Флаг шифрования сообщений
-					bool alive;                       // Флаг долгоживущего подключения
-					bool close;                       // Флаг требования закрыть адъютанта
-					bool stopped;                     // Флаг принудительной остановки
-					size_t requests;                  // Количество выполненных запросов
-					time_t checkPoint;                // Контрольная точка ответа на пинг
-					http_t http;                      // Создаём объект для работы с HTTP
-					vector <char> buffer;             // Буфер бинарных необработанных данных
-					awh::http_t::compress_t compress; // Метод компрессии данных
+					bool mode;                   // Флаг открытия подключения
+					bool crypt;                  // Флаг шифрования сообщений
+					bool alive;                  // Флаг долгоживущего подключения
+					bool close;                  // Флаг требования закрыть адъютанта
+					bool stopped;                // Флаг принудительной остановки
+					int32_t sid;                 // Идентификатор потока
+					time_t point;                // Контрольная точка ответа на пинг
+					size_t requests;             // Количество выполненных запросов
+					http_t http;                 // Создаём объект для работы с HTTP
+					vector <char> buffer;        // Буфер бинарных необработанных данных
+					engine_t::proto_t proto;     // Активный прототип интернета
+					http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
@@ -65,8 +67,10 @@ namespace awh {
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
 					 mode(false), crypt(false), alive(false),
-					 close(false), stopped(false), requests(0), checkPoint(0),
-					 http(fmk, log), compress(awh::http_t::compress_t::NONE) {}
+					 close(false), stopped(false), sid(1),
+					 point(0), requests(0), http(fmk, log),
+					 proto(engine_t::proto_t::HTTP1_1),
+					 compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор
 					 */

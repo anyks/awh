@@ -298,12 +298,12 @@ void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int 
 }
 /**
  * multiThreads Метод активации многопоточности в WebSocket
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::WebSocket::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::client::WebSocket::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Выполняем активацию многопоточности при получения данных в WebSocket
-	this->_ws.multiThreads(threads, mode);
+	this->_ws.multiThreads(count, mode);
 }
 /**
  * setHeaders Метод установки списка заголовков

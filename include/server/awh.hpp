@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <server/web/http1.hpp>
+#include <server/web/http2.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -36,8 +36,8 @@ namespace awh {
 		 */
 		typedef class AWH {
 			private:
-				// Объект работы с протоколом HTTP/1.1
-				server::http1_t _http;
+				// Объект работы с протоколом HTTP/2
+				server::http2_t _http;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -64,6 +64,7 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const uint64_t aid, const ws::mess_t & mess) noexcept;
+			public:
 				/**
 				 * send Метод отправки сообщения клиенту
 				 * @param aid     идентификатор адъютанта
@@ -72,6 +73,29 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 */
 				void send(const uint64_t aid, const char * message, const size_t size, const bool text = true) noexcept;
+			public:
+				/**
+				 * send Метод отправки тела сообщения клиенту
+				 * @param id     идентификатор потока HTTP
+				 * @param aid    идентификатор адъютанта
+				 * @param buffer буфер бинарных данных передаваемых клиенту
+				 * @param size   размер сообщения в байтах
+				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @return       результат отправки данных указанному клиенту
+				 */
+				bool send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept;
+				/**
+				 * send Метод отправки заголовков клиенту
+				 * @param id      идентификатор потока HTTP
+				 * @param aid     идентификатор адъютанта
+				 * @param code    код сообщения для адъютанта
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param headers заголовки отправляемые клиенту
+				 * @param end     размер сообщения в байтах
+				 * @return        идентификатор нового запроса
+				 */
+				int32_t send(const int32_t id, const uint64_t aid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+			public:
 				/**
 				 * send Метод отправки сообщения адъютанту
 				 * @param aid     идентификатор адъютанта
@@ -80,7 +104,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -278,6 +302,24 @@ namespace awh {
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				void mode(const set <web_t::flag_t> & flags) noexcept;
+			public:
+				/**
+				 * setOrigin Метод установки списка разрешённых источников
+				 * @param origins список разрешённых источников
+				 */
+				void setOrigin(const vector <string> & origins) noexcept;
+				/**
+				 * sendOrigin Метод отправки списка разрешённых источников
+				 * @param aid     идентификатор адъютанта
+				 * @param origins список разрешённых источников
+				 */
+				void sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * settings Модуль установки настроек протокола HTTP/2
+				 * @param settings список настроек протокола HTTP/2
+				 */
+				void settings(const map <web2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера

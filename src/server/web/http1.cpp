@@ -180,7 +180,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								// Устанавливаем флаг закрытия подключения
 								adj->close = true;
 							// Получаем текущий штамп времени
-							else adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							else adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Выполняем сброс количества выполненных запросов
 						} else adj->requests = 0;
 						// Выполняем проверку авторизации
@@ -663,7 +663,7 @@ void awh::server::Http1::persistCallback(const uint64_t aid, const uint16_t sid,
 					// Получаем текущий штамп времени
 					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-					if((stamp - adj->checkPoint) >= this->_timeAlive)
+					if((stamp - adj->point) >= this->_timeAlive)
 						// Завершаем работу
 						dynamic_cast <server::core_t *> (core)->close(aid);
 				}
@@ -796,7 +796,7 @@ void awh::server::Http1::send(const uint64_t aid, const char * message, const si
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http1::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::server::Http1::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1147,6 +1147,32 @@ const vector <vector <string>> & awh::server::Http1::extensions(const uint64_t a
 	return this->_ws1.extensions(aid);
 }
 /**
+ * multiThreads Метод активации многопоточности
+ * @param count количество потоков для активации
+ * @param mode  флаг активации/деактивации мультипоточности
+ */
+void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noexcept {
+	// Если нужно активировать многопоточность
+	if(mode){
+		// Если многопоточность ещё не активированна
+		if(!this->_ws1._thr.is())
+			// Выполняем инициализацию пула потоков
+			this->_ws1._thr.init(count);
+		// Если многопоточность уже активированна
+		else {
+			// Выполняем завершение всех активных потоков
+			this->_ws1._thr.wait();
+			// Выполняем инициализацию нового тредпула
+			this->_ws1._thr.init(count);
+		}
+		// Если сетевое ядро установлено
+		if(this->_core != nullptr)
+			// Устанавливаем простое чтение базы событий
+			const_cast <server::core_t *> (this->_core)->easily(true);
+	// Выполняем завершение всех потоков
+	} else this->_ws1._thr.wait();
+}
+/**
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
@@ -1259,8 +1285,19 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 		// Устанавливаем функцию активации ядра сервера
 		const_cast <server::core_t *> (this->_core)->on(std::bind(&http1_t::eventsCallback, this, _1, _2));
+		// Если многопоточность активированна
+		if(this->_ws1._thr.is())
+			// Устанавливаем простое чтение базы событий
+			const_cast <server::core_t *> (this->_core)->easily(true);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
+		// Если многопоточность активированна
+		if(this->_ws1._thr.is()){
+			// Выполняем завершение всех активных потоков
+			this->_ws1._thr.wait();
+			// Снимаем режим простого чтения базы событий
+			const_cast <server::core_t *> (this->_core)->easily(false);
+		}
 		// Деактивируем персистентный запуск для работы пингов
 		const_cast <server::core_t *> (this->_core)->persistEnable(false);
 		// Удаляем схему сети из сетевого ядра

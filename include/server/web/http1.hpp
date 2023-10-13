@@ -47,7 +47,7 @@ namespace awh {
 				 */
 				friend class Http2;
 			private:
-				// Флаг разрешения использования клиента WebSocket
+				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
 			private:
 				// Объект работы с WebSocket-сервером
@@ -55,6 +55,9 @@ namespace awh {
 			private:
 				// Объект рабочего
 				web_scheme_t _scheme;
+			private:
+				// Список активных агентов
+				map <uint64_t, agent_t> _agents;
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
@@ -148,7 +151,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+				void send(const uint64_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -312,6 +315,13 @@ namespace awh {
 				 * @return    список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions(const uint64_t aid) const noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

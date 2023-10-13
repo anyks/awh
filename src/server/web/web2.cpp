@@ -51,7 +51,7 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param core объект сетевого ядра
  */
 void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если флаг инициализации сессии HTTP2 не активирован, но протокол HTTP/2 поддерживается сервером
+	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
 	if((this->_sessions.count(aid) == 0) && (dynamic_cast <server::core_t *> (core)->proto(aid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
@@ -159,23 +159,28 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
+ * @return       результат отправки данных указанному клиенту
  */
-void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
-	// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
+bool awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if(this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем поиск адъютанта в списке активных сессий
 		auto it = this->_sessions.find(aid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
+		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку тела запроса на сервер
-			if(!it->second->sendData(id, (const uint8_t *) buffer, size, end)){
+			if(!(result = it->second->sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(aid);
 				// Выходим из функции
-				return;
+				return result;
 			}
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * send Метод отправки заголовков на сервер
@@ -188,7 +193,7 @@ void awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 int32_t awh::server::Web2::send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
-	// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if(this->_core->working() && !headers.empty()){
 		// Выполняем поиск адъютанта в списке активных сессий
 		auto it = this->_sessions.find(aid);

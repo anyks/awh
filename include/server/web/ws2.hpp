@@ -1,5 +1,5 @@
 /**
- * @file: ws1.hpp
+ * @file: ws2.hpp
  * @date: 2023-10-03
  * @license: GPL-3.0
  *
@@ -20,7 +20,7 @@
  */
 #include <ws/frame.hpp>
 #include <ws/server.hpp>
-#include <scheme/wsock.hpp>
+#include <scheme/ws.hpp>
 #include <sys/threadpool.hpp>
 #include <server/web/ws1.hpp>
 #include <server/web/web.hpp>
@@ -51,7 +51,8 @@ namespace awh {
 				friend class Http2;
 			private:
 				// Количество активных ядер
-				size_t _threads;
+				uint16_t _threads;
+			private:
 				// Минимальный размер сегмента
 				size_t _frameSize;
 			private:
@@ -393,10 +394,10 @@ namespace awh {
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
+				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

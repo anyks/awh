@@ -264,7 +264,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 							this->_scheme.proxy.http.clear();
 							// Выполняем инициализацию сессии HTTP/2
 							this->implementation(aid, dynamic_cast <client::core_t *> (core));
-							// Если флаг инициализации сессии HTTP2 установлен
+							// Если флаг инициализации сессии HTTP/2 установлен
 							if(this->_nghttp2.is()){
 								// Создаём объек запроса
 								awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
@@ -366,7 +366,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
  * @param core объект сетевого ядра
  */
 void awh::client::Web2::implementation(const uint64_t aid, client::core_t * core) noexcept {
-	// Если флаг инициализации сессии HTTP2 не активирован, но протокол HTTP/2 поддерживается сервером
+	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
 	if(!this->_nghttp2.is() && (core->proto(aid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
@@ -444,30 +444,35 @@ bool awh::client::Web2::ping() noexcept {
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
+ * @return       результат отправки данных указанному клиенту
  */
-void awh::client::Web2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
-		// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
-		if(this->_core->working() && (buffer != nullptr) && (size > 0)){
+		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+		if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
-			if(!this->_nghttp2.sendData(id, (const uint8_t *) buffer, size, end)){
+			if(!(result = this->_nghttp2.sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
 				const_cast <client::core_t *> (this->_core)->close(this->_aid);
 				// Выходим из функции
-				return;
+				return result;
 			}
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * send Метод отправки заголовков на сервер
  * @param id      идентификатор потока HTTP/2
  * @param headers заголовки отправляемые на сервер
  * @param end     размер сообщения в байтах
- * @return        флаг последнего сообщения после которого поток закрывается
+ * @return        идентификатор нового запроса
  */
 int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
 	// Результат работы функции
@@ -476,7 +481,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
-		// Если флаг инициализации сессии HTTP2 установлен и подключение выполнено
+		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if(this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер
 			result = this->_nghttp2.sendHeaders(id, headers, end);
