@@ -480,7 +480,7 @@ void awh::server::Http2::send(const uint64_t aid, const u_int code, const string
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							adj->stopped = (!this->_service.alive && !adj->alive);
 						// Выполняем ответ подключившемуся клиенту
-						int32_t sid = web2_t::send(adj->sid, aid, headers, adj->stopped);
+						int32_t sid = web2_t::send(adj->sid, aid, headers, adj->http.body().empty());
 						// Если запрос не получилось отправить, выходим из функции
 						if(sid < 0) return;
 						// Если тело запроса существует
@@ -501,7 +501,7 @@ void awh::server::Http2::send(const uint64_t aid, const u_int code, const string
 									// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 									adj->stopped = (!this->_service.alive && !adj->alive);
 								// Выполняем отправку тела запроса на сервер
-								if(!web2_t::send(adj->sid, aid, entity.data(), entity.size(), adj->http.body().empty()))
+								if(!web2_t::send((adj->sid > -1 ? adj->sid : sid), aid, entity.data(), entity.size(), adj->http.body().empty()))
 									// Выходим из функции
 									return;
 							}
