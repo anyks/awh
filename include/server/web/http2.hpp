@@ -156,6 +156,14 @@ namespace awh {
 				int headerSignal(const int32_t sid, const uint64_t aid, const string & key, const string & val) noexcept;
 			private:
 				/**
+				 * prepare Метод выполнения препарирования полученных данных
+				 * @param sid  идентификатор потока
+				 * @param aid  идентификатор адъютанта
+				 * @param core объект сетевого ядра
+				 */
+				void prepare(const int32_t sid, const uint64_t aid, server::core_t * core) noexcept;
+			private:
+				/**
 				 * erase Метод удаления отключившихся адъютантов
 				 * @param aid идентификатор адъютанта
 				 */

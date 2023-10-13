@@ -267,7 +267,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 								if(!adj->http.body().empty() && this->_callback.is("entity"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());								
+									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, aid, request.method, request.url, adj->http.body());
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
@@ -299,12 +299,29 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								if(!response.empty()){
 									// Тело полезной нагрузки
 									vector <char> payload;
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										// Выводим параметры ответа
+										cout << string(response.begin(), response.end()) << endl << endl;
+									#endif
 									// Отправляем ответ адъютанту
 									dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), aid);
 									// Получаем данные тела запроса
-									while(!(payload = adj->http.payload()).empty())
+									while(!(payload = adj->http.payload()).empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение о выводе чанка полезной нагрузки
+											cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+										#endif
 										// Отправляем тело клиенту
 										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
+									}
 								// Выполняем отключение адъютанта
 								} else dynamic_cast <server::core_t *> (core)->close(aid);
 								// Если функция обратного вызова активности потока установлена
