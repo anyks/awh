@@ -85,6 +85,8 @@ void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 			// Выполняем переброс вызова коннекта на клиент WebSocket
 			this->_http1.connectCallback(aid, sid, core);
 		}
+		// Выполняем добавление агнета
+		this->_agents.emplace(aid, agent_t::HTTP);
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
@@ -731,8 +733,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, aid, agent_t::HTTP);
-				// Выполняем добавление агнета
-				this->_agents.emplace(aid, agent_t::HTTP);
 			} break;
 			// Если запрос неудачный
 			case static_cast <uint8_t> (http_t::stath_t::FAULT): {
