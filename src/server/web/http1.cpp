@@ -183,6 +183,10 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							else adj->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Выполняем сброс количества выполненных запросов
 						} else adj->requests = 0;
+						// Получаем флаг шифрованных данных
+						adj->crypt = adj->http.isCrypt();
+						// Получаем поддерживаемый метод компрессии
+						adj->compress = adj->http.compress();
 						// Выполняем проверку авторизации
 						switch(static_cast <uint8_t> (adj->http.getAuth())){
 							// Если запрос выполнен удачно
@@ -254,10 +258,6 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									// Завершаем обработку
 									goto Next;
 								}
-								// Получаем флаг шифрованных данных
-								adj->crypt = adj->http.isCrypt();
-								// Получаем поддерживаемый метод компрессии
-								adj->compress = adj->http.compress();
 								// Выполняем извлечение параметров запроса
 								const auto & request = adj->http.request();
 								// Если функция обратного вызова активности потока установлена

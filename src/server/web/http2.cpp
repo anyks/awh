@@ -703,6 +703,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				adj->close = true;
 		// Выполняем сброс количества выполненных запросов
 		} else adj->requests = 0;
+		// Получаем флаг шифрованных данных
+		adj->crypt = adj->http.isCrypt();
+		// Получаем поддерживаемый метод компрессии
+		adj->compress = adj->http.compress();
 		// Выполняем проверку авторизации
 		switch(static_cast <uint8_t> (adj->http.getAuth())){
 			// Если запрос выполнен удачно
@@ -714,10 +718,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 					// Завершаем обработку
 					return;
 				}
-				// Получаем флаг шифрованных данных
-				adj->crypt = adj->http.isCrypt();
-				// Получаем поддерживаемый метод компрессии
-				adj->compress = adj->http.compress();
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!adj->http.body().empty() && this->_callback.is("entity")){
 					// Выполняем извлечение параметров запроса
@@ -728,7 +728,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				// Выполняем сброс состояния HTTP парсера
 				adj->http.clear();
 				// Выполняем сброс состояния HTTP парсера
-				// adj->http.reset();
+				adj->http.reset();
 				// Если функция обратного вызова на получение удачного запроса установлена
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
@@ -782,6 +782,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 							#endif
+							
+							cout << " &&&&&&&&&&&&&& " << string(entity.begin(), entity.end()) << endl;
+
 							// Выполняем отправку тела запроса на сервер
 							if(!web2_t::send(adj->sid, aid, entity.data(), entity.size(), adj->http.body().empty()))
 								// Выходим из функции
