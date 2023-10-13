@@ -728,7 +728,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				// Выполняем сброс состояния HTTP парсера
 				adj->http.clear();
 				// Выполняем сброс состояния HTTP парсера
-				adj->http.reset();
+				// adj->http.reset();
 				// Если функция обратного вызова на получение удачного запроса установлена
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
