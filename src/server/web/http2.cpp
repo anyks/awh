@@ -459,9 +459,12 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
 										// Если заголовок WebSocket активирован
-										} else if(adj->http.identity() == awh::http_t::identity_t::WS)
+										} else if(adj->http.identity() == awh::http_t::identity_t::WS) {
+											// Выполняем коммит полученного результата
+											adj->http.commit();
 											// Выполняем обработку полученных данных
 											this->prepare(sid, aid, const_cast <server::core_t *> (this->_core));
+										}
 									}
 								} break;
 							}
@@ -717,11 +720,74 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 				// Если заголовок WebSocket активирован
 				if(adj->http.identity() == awh::http_t::identity_t::WS){
-					
-					cout << " +++++++++++++++++ " << this->_webSocket << endl;
-					
-					// Выполняем инициализацию WebSocket-сервера
-					// this->websocket(aid, sid, core);
+					// Если запрашиваемый протокол соответствует WebSocket
+					if(this->_webSocket){
+						
+						cout << " +++++++++++++++++ " << this->_webSocket << endl;
+						
+						// Выполняем инициализацию WebSocket-сервера
+						// this->websocket(aid, sid, core);
+					// Если протокол запрещён или не поддерживается
+					} else {
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.clear();
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.reset();
+						// Формируем ответ на запрос об авторизации
+						const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (500), "Requested protocol is not supported by this server");
+						// Получаем заголовки ответа удалённому клиенту
+						const auto & headers = adj->http.reject2(response);
+						// Если бинарные данные ответа получены
+						if(!headers.empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								{
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Получаем объект работы с HTTP-запросами
+									const http_t & http = reinterpret_cast <http_t &> (adj->http);
+									// Получаем бинарные данные REST-ответа
+									const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+									// Если бинарные данные ответа получены
+									if(!buffer.empty())
+										// Выводим параметры ответа
+										cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								}
+							#endif
+							// Выполняем заголовки запроса на сервер
+							const int32_t sid = web2_t::send(adj->sid, aid, headers, false);
+							// Если запрос не получилось отправить
+							if(sid < 0)
+								// Выходим из функции
+								return;
+							// Если тело запроса существует
+							if(!adj->http.body().empty()){
+								// Тело WEB запроса
+								vector <char> entity;
+								// Получаем данные тела запроса
+								while(!(entity = adj->http.payload()).empty()){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+									#endif
+									// Выполняем отправку тела запроса на сервер
+									if(!web2_t::send(adj->sid, aid, entity.data(), entity.size(), adj->http.body().empty()))
+										// Выходим из функции
+										return;
+								}
+							}
+						// Выполняем отключение адъютанта
+						} else dynamic_cast <server::core_t *> (core)->close(aid);
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
+					}
 					// Завершаем обработку
 					return;
 				}
