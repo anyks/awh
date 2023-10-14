@@ -195,17 +195,17 @@ void awh::server::Web::on(function <void (const uint64_t, const mode_t)> callbac
  * on Метод установки функции обратного вызова для извлечения пароля
  * @param callback функция обратного вызова
  */
-void awh::server::Web::on(function <string (const string &)> callback) noexcept {
+void awh::server::Web::on(function <string (const uint64_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <string (const string &)> ("extractPassword", callback);
+	this->_callback.set <string (const uint64_t, const string &)> ("extractPassword", callback);
 }
 /**
  * on Метод установки функции обратного вызова для обработки авторизации
  * @param callback функция обратного вызова
  */
-void awh::server::Web::on(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::Web::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <bool (const string &, const string &)> ("checkPassword", callback);
+	this->_callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", callback);
 }
 /**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра

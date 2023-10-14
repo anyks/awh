@@ -32,24 +32,26 @@ class Executor {
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
+		 * @param aid   идентификатор адъютанта (клиента)
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const string & login){
+		string password(const uint64_t aid, const string & login){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", aid);
 			// Выводим пароль
 			return "password";
 		}
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
+		 * @param aid      идентификатор адъютанта (клиента)
 		 * @param login    логин пользователя (от клиента)
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const string & login, const string & password){
+		bool auth(const uint64_t aid, const string & login, const string & password){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), aid);
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -232,9 +234,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
-	ws.on((function <string (const string &)>) std::bind(&Executor::password, &executor, _1));
+	ws.on((function <string (const uint64_t, const string &)>) std::bind(&Executor::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	// ws.on((function <bool (const string &, const string &)>) std::bind(&Executor::auth, &executor, _1, _2));
+	// ws.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Executor::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	ws.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере

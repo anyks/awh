@@ -104,7 +104,7 @@ void awh::server::AWH::on(function <void (const uint64_t, const web_t::mode_t)> 
  * on Метод установки функции обратного вызова для извлечения пароля
  * @param callback функция обратного вызова
  */
-void awh::server::AWH::on(function <string (const string &)> callback) noexcept {
+void awh::server::AWH::on(function <string (const uint64_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -112,7 +112,7 @@ void awh::server::AWH::on(function <string (const string &)> callback) noexcept 
  * on Метод установки функции обратного вызова для обработки авторизации
  * @param callback функция обратного вызова
  */
-void awh::server::AWH::on(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::AWH::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }

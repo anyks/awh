@@ -34,24 +34,26 @@ class WebServer {
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
+		 * @param aid   идентификатор адъютанта (клиента)
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const string & login){
+		string password(const uint64_t aid, const string & login){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", aid);
 			// Выводим пароль
 			return "password";
 		}
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
+		 * @param aid      идентификатор адъютанта (клиента)
 		 * @param login    логин пользователя (от клиента)
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const string & login, const string & password){
+		bool auth(const uint64_t aid, const string & login, const string & password){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), aid);
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -272,9 +274,9 @@ int main(int argc, char * argv[]){
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
-	awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
+	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	// awh.on((function <bool (const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2));
+	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок

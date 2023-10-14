@@ -88,7 +88,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callback.is("checkPassword"))
 								// Устанавливаем функцию проверки авторизации
-								adj->http.authCallback(this->_callback.get <bool (const string &, const string &)> ("checkPassword"));
+								adj->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), aid, _1, _2));
 						} break;
 						// Если тип авторизации Digest
 						case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -101,7 +101,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callback.is("extractPassword"))
 								// Устанавливаем функцию извлечения пароля
-								adj->http.extractPassCallback(this->_callback.get <string (const string &)> ("extractPassword"));
+								adj->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), aid, _1));
 						} break;
 					}
 				}
@@ -1412,7 +1412,7 @@ void awh::server::WebSocket2::on(function <void (const uint64_t, const mode_t)> 
  * on Метод установки функции обратного вызова для извлечения пароля
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket2::on(function <string (const string &)> callback) noexcept {
+void awh::server::WebSocket2::on(function <string (const uint64_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
@@ -1422,7 +1422,7 @@ void awh::server::WebSocket2::on(function <string (const string &)> callback) no
  * on Метод установки функции обратного вызова для обработки авторизации
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket2::on(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::WebSocket2::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера

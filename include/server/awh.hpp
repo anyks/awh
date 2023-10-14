@@ -113,12 +113,12 @@ namespace awh {
 				 * on Метод установки функции обратного вызова для извлечения пароля
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <string (const string &)> callback) noexcept;
+				void on(function <string (const uint64_t, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова для обработки авторизации
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const string &, const string &)> callback) noexcept;
+				void on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра

@@ -65,7 +65,7 @@ void awh::server::WebSocket::on(function <void (const uint64_t, const web_t::mod
  * on Метод установки функции обратного вызова для извлечения пароля
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(function <string (const string &)> callback) noexcept {
+void awh::server::WebSocket::on(function <string (const uint64_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_ws.on(callback);
 }
@@ -73,7 +73,7 @@ void awh::server::WebSocket::on(function <string (const string &)> callback) noe
  * on Метод установки функции обратного вызова для обработки авторизации
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::WebSocket::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_ws.on(callback);
 }
