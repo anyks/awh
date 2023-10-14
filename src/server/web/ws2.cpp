@@ -671,7 +671,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								cout << " ^^^^^^^^^^^^^^^^^^^^^^^ " << (u_short) compress << endl;
 
 								// Устанавливаем метод компрессии данных ответа
-								adj->http.compress(compress);
+								reinterpret_cast <http_t &> (adj->http).compress(compress);
 								// Получаем заголовки ответа удалённому клиенту
 								const auto & headers = adj->http.reject2(response);
 								// Если бинарные данные ответа получены
