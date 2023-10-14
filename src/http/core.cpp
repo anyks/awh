@@ -1593,32 +1593,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры REST-запроса переданы
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-				/**
-				 * Типы основных заголовков
-				 */
-				bool available[13] = {
-					false, // Host
-					false, // Accept
-					false, // Origin
-					false, // User-Agent
-					false, // Connection
-					false, // Proxy-Connection
-					false, // Content-Length
-					false, // Accept-Language
-					false, // Accept-Encoding
-					false, // Content-Encoding
-					false, // Transfer-Encoding
-					false, // X-AWH-Encryption
-					false  // Proxy-Authorization
-				};
-				// Размер тела сообщения
-				size_t length = 0;
 				// Данные REST-запроса
 				string request = "";
-				// Устанавливаем парарметры запроса
-				this->_web.request(req);
-				// Устанавливаем параметры REST-запроса
-				this->_auth.client.uri(this->_uri.url(req.url));
 				// Определяем метод запроса
 				switch(static_cast <uint8_t> (req.method)){
 					// Если метод запроса указан как GET
@@ -1667,273 +1643,304 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						request = this->_fmk->format("CONNECT %s HTTP/%.1f\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), req.version);
 					break;
 				}
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 13; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 0:  available[i] = this->_fmk->compare(header.first, "host");                  break;
-							case 1:  available[i] = this->_fmk->compare(header.first, "accept");                break;
-							case 2:  available[i] = this->_fmk->compare(header.first, "origin");                break;
-							case 3:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
-							case 4:  available[i] = this->_fmk->compare(header.first, "connection");            break;
-							case 5:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
-							case 7:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
-							case 8:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
-							case 9:  available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
-							case 10: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
-							case 11: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
-							case 12: available[i] = (this->_fmk->compare(header.first, "authorization") ||
-													 this->_fmk->compare(header.first, "proxy-authorization")); break;
-							case 6: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
+				// Определяем тип HTTP модуля
+				switch(static_cast <uint8_t> (this->_web.hid())){
+					// Если мы работаем с клиентом
+					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
+						/**
+						 * Типы основных заголовков
+						 */
+						bool available[13] = {
+							false, // Host
+							false, // Accept
+							false, // Origin
+							false, // User-Agent
+							false, // Connection
+							false, // Proxy-Connection
+							false, // Content-Length
+							false, // Accept-Language
+							false, // Accept-Encoding
+							false, // Content-Encoding
+							false, // Transfer-Encoding
+							false, // X-AWH-Encryption
+							false  // Proxy-Authorization
+						};
+						// Размер тела сообщения
+						size_t length = 0;
+						// Устанавливаем парарметры запроса
+						this->_web.request(req);
+						// Устанавливаем параметры REST-запроса
+						this->_auth.client.uri(this->_uri.url(req.url));
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Флаг разрешающий вывода заголовка
+							bool allow = !this->isBlack(header.first);
+							// Выполняем перебор всех обязательных заголовков
+							for(uint8_t i = 0; i < 13; i++){
+								// Если заголовок уже найден пропускаем его
+								if(available[i]) continue;
+								// Выполняем првоерку заголовка
+								switch(i){
+									case 0:  available[i] = this->_fmk->compare(header.first, "host");                  break;
+									case 1:  available[i] = this->_fmk->compare(header.first, "accept");                break;
+									case 2:  available[i] = this->_fmk->compare(header.first, "origin");                break;
+									case 3:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
+									case 4:  available[i] = this->_fmk->compare(header.first, "connection");            break;
+									case 5:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
+									case 7:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
+									case 8:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
+									case 9:  available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
+									case 10: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
+									case 11: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
+									case 12: available[i] = (this->_fmk->compare(header.first, "authorization") ||
+															 this->_fmk->compare(header.first, "proxy-authorization")); break;
+									case 6: {
+										// Запоминаем, что мы нашли заголовок размера тела
+										available[i] = this->_fmk->compare(header.first, "content-length");
+										// Устанавливаем размер тела сообщения
+										if(available[i]) length = static_cast <size_t> (::stoull(header.second));
+									} break;
+								}
+								// Если заголовок разрешён для вывода
+								if(allow){
+									// Выполняем првоерку заголовка
+									switch(i){
+										case 6:
+										case 9:
+										case 10:
+										case 11: allow = !available[i]; break;
+									}
+								}
+							}
+							// Если заголовок не является запрещённым, добавляем заголовок в запрос
+							if(allow)
+								// Формируем строку запроса
+								request.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
 						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 6:
-								case 9:
-								case 10:
-								case 11: allow = !available[i]; break;
+						// Устанавливаем Host если не передан
+						if(!available[0] && !this->isBlack("Host"))
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("Host: %s\r\n", req.url.host.c_str()));
+						// Устанавливаем Accept если не передан
+						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept"))
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
+						// Устанавливаем Connection если не передан
+						if(!available[4] && !this->isBlack("Connection"))
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+						// Устанавливаем Accept-Language если не передан
+						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Language"))
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
+						// Если нужно запросить компрессию в удобном нам виде
+						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
+							// Определяем метод сжатия который поддерживает клиент
+							switch(static_cast <uint8_t> (this->_compress)){
+								// Если клиент поддерживает методот сжатия BROTLI
+								case static_cast <uint8_t> (compress_t::BROTLI):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "br"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP
+								case static_cast <uint8_t> (compress_t::GZIP):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip"));
+								break;
+								// Если клиент поддерживает методот сжатия DEFLATE
+								case static_cast <uint8_t> (compress_t::DEFLATE):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "deflate"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP, BROTLI
+								case static_cast <uint8_t> (compress_t::GZIP_BROTLI):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, br"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP, DEFLATE
+								case static_cast <uint8_t> (compress_t::GZIP_DEFLATE):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate"));
+								break;
+								// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
+								case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "deflate, br"));
+								break;
+								// Если клиент поддерживает все методы сжатия
+								case static_cast <uint8_t> (compress_t::ALL_COMPRESS):
+									// Добавляем заголовок в запрос
+									request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate, br"));
+								break;
 							}
 						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в запрос
-					if(allow)
-						// Формируем строку запроса
-						request.append(
-							this->_fmk->format(
-								"%s: %s\r\n",
-								this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
-								header.second.c_str()
-							)
-						);
-				}
-				// Устанавливаем Host если не передан
-				if(!available[0] && !this->isBlack("Host"))
-					// Добавляем заголовок в запрос
-					request.append(this->_fmk->format("Host: %s\r\n", req.url.host.c_str()));
-				// Устанавливаем Accept если не передан
-				if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept"))
-					// Добавляем заголовок в запрос
-					request.append(this->_fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
-				// Устанавливаем Connection если не передан
-				if(!available[4] && !this->isBlack("Connection"))
-					// Добавляем заголовок в запрос
-					request.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
-				// Устанавливаем Accept-Language если не передан
-				if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Language"))
-					// Добавляем заголовок в запрос
-					request.append(this->_fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
-				// Если нужно запросить компрессию в удобном нам виде
-				if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
-					// Определяем метод сжатия который поддерживает клиент
-					switch(static_cast <uint8_t> (this->_compress)){
-						// Если клиент поддерживает методот сжатия BROTLI
-						case static_cast <uint8_t> (compress_t::BROTLI):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "br"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP
-						case static_cast <uint8_t> (compress_t::GZIP):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip"));
-						break;
-						// Если клиент поддерживает методот сжатия DEFLATE
-						case static_cast <uint8_t> (compress_t::DEFLATE):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "deflate"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP, BROTLI
-						case static_cast <uint8_t> (compress_t::GZIP_BROTLI):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, br"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP, DEFLATE
-						case static_cast <uint8_t> (compress_t::GZIP_DEFLATE):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate"));
-						break;
-						// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
-						case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "deflate, br"));
-						break;
-						// Если клиент поддерживает все методы сжатия
-						case static_cast <uint8_t> (compress_t::ALL_COMPRESS):
-							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate, br"));
-						break;
-					}
-				}
-				// Устанавливаем User-Agent если не передан
-				if(!available[3] && !this->isBlack("User-Agent")){
-					// Если User-Agent установлен стандартный
-					if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
-						// Название операционной системы
-						const char * os = nullptr;
-						// Определяем название операционной системы
-						switch(static_cast <uint8_t> (this->_fmk->os())){
-							// Если операционной системой является Unix
-							case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
-							// Если операционной системой является Linux
-							case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
-							// Если операционной системой является неизвестной
-							case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
-							// Если операционной системой является Windows
-							case static_cast <uint8_t> (fmk_t::os_t::WIND32):
-							case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
-							// Если операционной системой является MacOS X
-							case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
-							// Если операционной системой является FreeBSD
-							case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
-						}
-						// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
-						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
-					}
-					// Добавляем заголовок в запрос
-					request.append(this->_fmk->format("User-Agent: %s\r\n", this->_userAgent.c_str()));
-				}
-				// Если заголовок авторизации не передан
-				if(!available[12]){
-					// Метод HTTP запроса
-					string method = "";
-					// Определяем метод запроса
-					switch(static_cast <uint8_t> (req.method)){
-						// Если метод запроса указан как GET
-						case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
-						// Если метод запроса указан как PUT
-						case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
-						// Если метод запроса указан как POST
-						case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
-						// Если метод запроса указан как HEAD
-						case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
-						// Если метод запроса указан как DELETE
-						case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
-						// Если метод запроса указан как PATCH
-						case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
-						// Если метод запроса указан как TRACE
-						case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
-						// Если метод запроса указан как OPTIONS
-						case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
-						// Если метод запроса указан как CONNECT
-						case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
-					}
-					// Выполняем определения протокола модуля
-					switch(static_cast <uint8_t> (this->_identity)){
-						// Если протокол принадлежит прокси-серверу
-						case static_cast <uint8_t> (identity_t::PROXY): {
-							// Если заголовок авторизации на прокси-сервере не запрещён
-							if(!this->isBlack("Proxy-Authorization")){
-								// Получаем параметры авторизации
-								const string & auth = this->_auth.client.auth(method);
-								// Если данные авторизации получены
-								if(!auth.empty())
-									// Выполняем установку параметров авторизации
-									request.append(this->_fmk->format("Proxy-Authorization: %s\r\n", auth.c_str()));
+						// Устанавливаем User-Agent если не передан
+						if(!available[3] && !this->isBlack("User-Agent")){
+							// Если User-Agent установлен стандартный
+							if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
+								// Название операционной системы
+								const char * os = nullptr;
+								// Определяем название операционной системы
+								switch(static_cast <uint8_t> (this->_fmk->os())){
+									// Если операционной системой является Unix
+									case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
+									// Если операционной системой является Linux
+									case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
+									// Если операционной системой является неизвестной
+									case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
+									// Если операционной системой является Windows
+									case static_cast <uint8_t> (fmk_t::os_t::WIND32):
+									case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
+									// Если операционной системой является MacOS X
+									case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
+									// Если операционной системой является FreeBSD
+									case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
+								}
+								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
+								this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 							}
-						} break;
-						// Если протокол принадлежит к остальным сервисам
-						default: {
-							// Если заголовок авторизации на прокси-сервере не запрещён
-							if(!this->isBlack("Authorization")){
-								// Получаем параметры авторизации
-								const string & auth = this->_auth.client.auth(method);
-								// Если данные авторизации получены
-								if(!auth.empty())
-									// Выполняем установку параметров авторизации
-									request.append(this->_fmk->format("Authorization: %s\r\n", auth.c_str()));
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("User-Agent: %s\r\n", this->_userAgent.c_str()));
+						}
+						// Если заголовок авторизации не передан
+						if(!available[12]){
+							// Метод HTTP запроса
+							string method = "";
+							// Определяем метод запроса
+							switch(static_cast <uint8_t> (req.method)){
+								// Если метод запроса указан как GET
+								case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
+								// Если метод запроса указан как PUT
+								case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
+								// Если метод запроса указан как POST
+								case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
+								// Если метод запроса указан как HEAD
+								case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
+								// Если метод запроса указан как DELETE
+								case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+								// Если метод запроса указан как PATCH
+								case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+								// Если метод запроса указан как TRACE
+								case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
+								// Если метод запроса указан как OPTIONS
+								case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
+								// Если метод запроса указан как CONNECT
+								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
+							}
+							// Выполняем определения протокола модуля
+							switch(static_cast <uint8_t> (this->_identity)){
+								// Если протокол принадлежит прокси-серверу
+								case static_cast <uint8_t> (identity_t::PROXY): {
+									// Если заголовок авторизации на прокси-сервере не запрещён
+									if(!this->isBlack("Proxy-Authorization")){
+										// Получаем параметры авторизации
+										const string & auth = this->_auth.client.auth(method);
+										// Если данные авторизации получены
+										if(!auth.empty())
+											// Выполняем установку параметров авторизации
+											request.append(this->_fmk->format("Proxy-Authorization: %s\r\n", auth.c_str()));
+									}
+								} break;
+								// Если протокол принадлежит к остальным сервисам
+								default: {
+									// Если заголовок авторизации на прокси-сервере не запрещён
+									if(!this->isBlack("Authorization")){
+										// Получаем параметры авторизации
+										const string & auth = this->_auth.client.auth(method);
+										// Если данные авторизации получены
+										if(!auth.empty())
+											// Выполняем установку параметров авторизации
+											request.append(this->_fmk->format("Authorization: %s\r\n", auth.c_str()));
+									}
+								}
 							}
 						}
-					}
+						// Если запрос является PUT, POST, PATCH
+						if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
+							// Если заголовок не запрещён
+							if(!this->isBlack("Date"))
+								// Добавляем заголовок даты в запрос
+								request.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
+							// Если тело запроса существует
+							if(!this->_web.body().empty()){
+								// Выполняем шифрование полезной нагрузки
+								const_cast <http_t *> (this)->encrypt();
+								// Выполняем компрессию полезной нагрузки
+								const_cast <http_t *> (this)->inflate();
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+								// Заменяем размер тела данных
+								if(!this->_chunking)
+									// Устанавливаем размер тела сообщения
+									length = this->_web.body().size();
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypted)
+									// Устанавливаем X-AWH-Encryption
+									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_inflated)){
+									// Если нужно сжать тело методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+									break;
+									// Если нужно сжать тело методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+									break;
+									// Если нужно сжать тело методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+									break;
+								}
+							// Если тело запроса не существует
+							} else {
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypt)
+									// Устанавливаем X-AWH-Encryption
+									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+									break;
+								}
+							}
+							// Если данные необходимо разбивать на чанки
+							if(this->_chunking && !this->isBlack("Transfer-Encoding"))
+								// Устанавливаем заголовок Transfer-Encoding
+								request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+							// Если заголовок размера передаваемого тела, не запрещён
+							else if(!this->isBlack("Content-Length"))
+								// Устанавливаем размер передаваемого тела Content-Length
+								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+						// Очищаем тела сообщения
+						} else this->clearBody();
+					} break;
+					// Если мы работаем с сервером
+					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers())
+							// Формируем строку запроса
+							request.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
+					} break;
 				}
-				// Если запрос является PUT, POST, PATCH
-				if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
-					// Если заголовок не запрещён
-					if(!this->isBlack("Date"))
-						// Добавляем заголовок даты в запрос
-						request.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
-					// Если тело запроса существует
-					if(!this->_web.body().empty()){
-						// Выполняем шифрование полезной нагрузки
-						const_cast <http_t *> (this)->encrypt();
-						// Выполняем компрессию полезной нагрузки
-						const_cast <http_t *> (this)->inflate();
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
-						// Заменяем размер тела данных
-						if(!this->_chunking)
-							// Устанавливаем размер тела сообщения
-							length = this->_web.body().size();
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypted)
-							// Устанавливаем X-AWH-Encryption
-							request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_inflated)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					// Если тело запроса не существует
-					} else {
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypt)
-							// Устанавливаем X-AWH-Encryption
-							request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
-				// Очищаем тела сообщения
-				} else this->clearBody();
 				// Устанавливаем завершающий разделитель
 				request.append("\r\n");
 				// Формируем результат запроса
@@ -1944,203 +1951,216 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 		case static_cast <uint8_t> (process_t::RESPONSE): {
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = static_cast <const web_t::res_t &> (prov);
-			// Устанавливаем парарметры ответа
-			this->_web.response(res);
 			// Если текст сообщения не установлен
 			if(res.message.empty())
 				// Выполняем установку сообщения
 				const_cast <web_t::res_t &> (res).message = this->message(res.code);
 			// Если сообщение получено
 			if(!res.message.empty()){
-				/**
-				 * Типы основных заголовков
-				 */
-				bool available[12] = {
-					false, // Date
-					false, // Server
-					false, // Connection
-					false, // Proxy-Connection
-					false, // X-Powered-By
-					false, // Content-Type
-					false, // Content-Length
-					false, // Content-Encoding
-					false, // Transfer-Encoding
-					false, // X-AWH-Encryption
-					false, // WWW-Authenticate
-					false  // Proxy-Authenticate
-				};
-				// Размер тела сообщения
-				size_t length = 0;
-				// Данные REST ответа
+				// Данные REST-ответа
 				string response = this->_fmk->format("HTTP/%.1f %u %s\r\n", res.version, res.code, res.message.c_str());
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 12; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
-							case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
-							case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
-							case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
-							case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
-							case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
-							case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
-							case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
-							case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
-							case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
-							case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
-							case 6: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
+				// Определяем тип HTTP модуля
+				switch(static_cast <uint8_t> (this->_web.hid())){
+					// Если мы работаем с клиентом
+					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers())
+							// Формируем строку ответа
+							response.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
+					} break;
+					// Если мы работаем с сервером
+					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+						/**
+						 * Типы основных заголовков
+						 */
+						bool available[12] = {
+							false, // Date
+							false, // Server
+							false, // Connection
+							false, // Proxy-Connection
+							false, // X-Powered-By
+							false, // Content-Type
+							false, // Content-Length
+							false, // Content-Encoding
+							false, // Transfer-Encoding
+							false, // X-AWH-Encryption
+							false, // WWW-Authenticate
+							false  // Proxy-Authenticate
+						};
+						// Размер тела сообщения
+						size_t length = 0;
+						// Устанавливаем парарметры ответа
+						this->_web.response(res);
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Флаг разрешающий вывода заголовка
+							bool allow = !this->isBlack(header.first);
+							// Выполняем перебор всех обязательных заголовков
+							for(uint8_t i = 0; i < 12; i++){
+								// Если заголовок уже найден пропускаем его
+								if(available[i]) continue;
+								// Выполняем првоерку заголовка
+								switch(i){
+									case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
+									case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
+									case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
+									case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
+									case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
+									case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
+									case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
+									case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
+									case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
+									case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
+									case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
+									case 6: {
+										// Запоминаем, что мы нашли заголовок размера тела
+										available[i] = this->_fmk->compare(header.first, "content-length");
+										// Устанавливаем размер тела сообщения
+										if(available[i]) length = static_cast <size_t> (::stoull(header.second));
+									} break;
+								}
+								// Если заголовок разрешён для вывода
+								if(allow){
+									// Выполняем првоерку заголовка
+									switch(i){
+										case 6:
+										case 7:
+										case 8:
+										case 9: allow = !available[i]; break;
+									}
+								}
+							}
+							// Если заголовок не является запрещённым, добавляем заголовок в ответ
+							if(allow)
+								// Формируем строку ответа
+								response.append(
+									this->_fmk->format(
+										"%s: %s\r\n",
+										this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
+										header.second.c_str()
+									)
+								);
 						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 6:
-								case 7:
-								case 8:
-								case 9: allow = !available[i]; break;
+						// Если заголовок не запрещён
+						if(!available[0] && !this->isBlack("Date"))
+							// Добавляем заголовок даты в ответ
+							response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
+						// Если заголовок не запрещён
+						if(!available[1] && !this->isBlack("Server"))
+							// Добавляем название сервера в ответ
+							response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
+						// Устанавливаем Connection если не передан
+						if(!available[2] && !this->isBlack("Connection"))
+							// Добавляем заголовок в ответ
+							response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+						// Устанавливаем Content-Type если не передан
+						if(!available[5] && !this->isBlack("Content-Type"))
+							// Добавляем заголовок в ответ
+							response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
+						// Если заголовок не запрещён
+						if(!available[4] && !this->isBlack("X-Powered-By"))
+							// Добавляем название рабочей системы в ответ
+							response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_ident.id.c_str(), this->_ident.version.c_str()));
+						// Если заголовок авторизации не передан
+						if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
+							// Получаем параметры авторизации
+							const string & auth = this->_auth.server;
+							// Если параметры авторизации получены
+							if(!auth.empty()){
+								// Определяем код авторизации
+								switch(res.code){
+									// Если авторизация производится для Web-Сервера
+									case 401: {
+										// Если заголовок не запрещён
+										if(!this->isBlack("WWW-Authenticate"))
+											// Добавляем параметры авторизации
+											response.append(this->_fmk->format("WWW-Authenticate: %s\r\n", auth.c_str()));
+									} break;
+									// Если авторизация производится для Прокси-Сервера
+									case 407: {
+										// Если заголовок не запрещён
+										if(!this->isBlack("Proxy-Authenticate"))
+											// Добавляем параметры авторизации
+											response.append(this->_fmk->format("Proxy-Authenticate: %s\r\n", auth.c_str()));
+									} break;
+								}
 							}
 						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в ответ
-					if(allow)
-						// Формируем строку ответа
-						response.append(
-							this->_fmk->format(
-								"%s: %s\r\n",
-								this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
-								header.second.c_str()
-							)
-						);
+						// Если запрос должен содержать тело и тело ответа существует
+						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+							// Если тело запроса существует
+							if(!this->_web.body().empty()){
+								// Выполняем шифрование полезной нагрузки
+								const_cast <http_t *> (this)->encrypt();
+								// Выполняем компрессию полезной нагрузки
+								const_cast <http_t *> (this)->inflate();
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+								// Заменяем размер тела данных
+								if(!this->_chunking)
+									// Устанавливаем размер тела сообщения
+									length = this->_web.body().size();
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypted)
+									// Устанавливаем X-AWH-Encryption
+									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_inflated)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+									break;
+								}
+							// Если тело запроса не существует
+							} else {
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypt)
+									// Устанавливаем X-AWH-Encryption
+									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+									break;
+								}
+							}
+							// Если данные необходимо разбивать на чанки
+							if(this->_chunking && !this->isBlack("Transfer-Encoding"))
+								// Устанавливаем заголовок Transfer-Encoding
+								response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+							// Если заголовок размера передаваемого тела, не запрещён
+							else if(!this->isBlack("Content-Length"))
+								// Устанавливаем размер передаваемого тела Content-Length
+								response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+						// Очищаем тела сообщения
+						} else this->clearBody();
+					} break;
 				}
-				// Если заголовок не запрещён
-				if(!available[0] && !this->isBlack("Date"))
-					// Добавляем заголовок даты в ответ
-					response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
-				// Если заголовок не запрещён
-				if(!available[1] && !this->isBlack("Server"))
-					// Добавляем название сервера в ответ
-					response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
-				// Устанавливаем Connection если не передан
-				if(!available[2] && !this->isBlack("Connection"))
-					// Добавляем заголовок в ответ
-					response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
-				// Устанавливаем Content-Type если не передан
-				if(!available[5] && !this->isBlack("Content-Type"))
-					// Добавляем заголовок в ответ
-					response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
-				// Если заголовок не запрещён
-				if(!available[4] && !this->isBlack("X-Powered-By"))
-					// Добавляем название рабочей системы в ответ
-					response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_ident.id.c_str(), this->_ident.version.c_str()));
-				// Если заголовок авторизации не передан
-				if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
-					// Получаем параметры авторизации
-					const string & auth = this->_auth.server;
-					// Если параметры авторизации получены
-					if(!auth.empty()){
-						// Определяем код авторизации
-						switch(res.code){
-							// Если авторизация производится для Web-Сервера
-							case 401: {
-								// Если заголовок не запрещён
-								if(!this->isBlack("WWW-Authenticate"))
-									// Добавляем параметры авторизации
-									response.append(this->_fmk->format("WWW-Authenticate: %s\r\n", auth.c_str()));
-							} break;
-							// Если авторизация производится для Прокси-Сервера
-							case 407: {
-								// Если заголовок не запрещён
-								if(!this->isBlack("Proxy-Authenticate"))
-									// Добавляем параметры авторизации
-									response.append(this->_fmk->format("Proxy-Authenticate: %s\r\n", auth.c_str()));
-							} break;
-						}
-					}
-				}
-				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
-					// Если тело запроса существует
-					if(!this->_web.body().empty()){
-						// Выполняем шифрование полезной нагрузки
-						const_cast <http_t *> (this)->encrypt();
-						// Выполняем компрессию полезной нагрузки
-						const_cast <http_t *> (this)->inflate();
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
-						// Заменяем размер тела данных
-						if(!this->_chunking)
-							// Устанавливаем размер тела сообщения
-							length = this->_web.body().size();
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypted)
-							// Устанавливаем X-AWH-Encryption
-							response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_inflated)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					// Если тело запроса не существует
-					} else {
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypt)
-							// Устанавливаем X-AWH-Encryption
-							response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
-				// Очищаем тела сообщения
-				} else this->clearBody();
 				// Устанавливаем завершающий разделитель
 				response.append("\r\n");
 				// Формируем результат ответа
@@ -2168,28 +2188,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-				/**
-				 * Типы основных заголовков
-				 */
-				bool available[13] = {
-					false, // Host
-					false, // Accept
-					false, // Origin
-					false, // User-Agent
-					false, // Connection
-					false, // Proxy-Connection
-					false, // Content-Length
-					false, // Accept-Language
-					false, // Accept-Encoding
-					false, // Content-Encoding
-					false, // Transfer-Encoding
-					false, // X-AWH-Encryption
-					false  // Proxy-Authorization
-				};
-				// Устанавливаем парарметры запроса
-				this->_web.request(req);
-				// Устанавливаем параметры REST-запроса
-				this->_auth.client.uri(this->_uri.url(req.url));
 				// Определяем метод запроса
 				switch(static_cast <uint8_t> (req.method)){
 					// Если метод запроса указан как GET
@@ -2255,278 +2253,297 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Формируем строку запроса
 						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 				}
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Если заголовок не является системным
-					if(header.first.front() != ':'){
-						// Флаг разрешающий вывода заголовка
-						bool allow = !this->isBlack(header.first);
-						// Выполняем перебор всех обязательных заголовков
-						for(uint8_t i = 0; i < 13; i++){
-							// Если заголовок уже найден пропускаем его
-							if(available[i]) continue;
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 0:  available[i] = this->_fmk->compare(header.first, "host");                  break;
-								case 1:  available[i] = this->_fmk->compare(header.first, "accept");                break;
-								case 2:  available[i] = this->_fmk->compare(header.first, "origin");                break;
-								case 3:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
-								case 4:  available[i] = this->_fmk->compare(header.first, "connection");            break;
-								case 5:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
-								case 6:  available[i] = this->_fmk->compare(header.first, "content-length");        break;
-								case 7:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
-								case 8:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
-								case 9:  available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
-								case 10: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
-								case 11: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
-								case 12: available[i] = (this->_fmk->compare(header.first, "authorization") ||
-														 this->_fmk->compare(header.first, "proxy-authorization")); break;
+				// Определяем тип HTTP модуля
+				switch(static_cast <uint8_t> (this->_web.hid())){
+					// Если мы работаем с клиентом
+					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
+						/**
+						 * Типы основных заголовков
+						 */
+						bool available[13] = {
+							false, // Host
+							false, // Accept
+							false, // Origin
+							false, // User-Agent
+							false, // Connection
+							false, // Proxy-Connection
+							false, // Content-Length
+							false, // Accept-Language
+							false, // Accept-Encoding
+							false, // Content-Encoding
+							false, // Transfer-Encoding
+							false, // X-AWH-Encryption
+							false  // Proxy-Authorization
+						};
+						// Устанавливаем парарметры запроса
+						this->_web.request(req);
+						// Устанавливаем параметры REST-запроса
+						this->_auth.client.uri(this->_uri.url(req.url));
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Если заголовок не является системным
+							if(header.first.front() != ':'){
+								// Флаг разрешающий вывода заголовка
+								bool allow = !this->isBlack(header.first);
+								// Выполняем перебор всех обязательных заголовков
+								for(uint8_t i = 0; i < 13; i++){
+									// Если заголовок уже найден пропускаем его
+									if(available[i]) continue;
+									// Выполняем првоерку заголовка
+									switch(i){
+										case 0:  available[i] = this->_fmk->compare(header.first, "host");                  break;
+										case 1:  available[i] = this->_fmk->compare(header.first, "accept");                break;
+										case 2:  available[i] = this->_fmk->compare(header.first, "origin");                break;
+										case 3:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
+										case 4:  available[i] = this->_fmk->compare(header.first, "connection");            break;
+										case 5:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
+										case 6:  available[i] = this->_fmk->compare(header.first, "content-length");        break;
+										case 7:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
+										case 8:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
+										case 9:  available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
+										case 10: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
+										case 11: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
+										case 12: available[i] = (this->_fmk->compare(header.first, "authorization") ||
+																 this->_fmk->compare(header.first, "proxy-authorization")); break;
+									}
+									// Если заголовок разрешён для вывода
+									if(allow){
+										// Выполняем првоерку заголовка
+										switch(i){
+											case 0:
+											case 6:
+											case 9:
+											case 10:
+											case 11: allow = !available[i]; break;
+											case 4:
+											case 5: {
+												// Если заголовок Connection определён
+												if(available[i])
+													// Выполняем определение разрешено ли выводить заголовок
+													allow = !this->_fmk->compare(header.second, "keep-alive");
+											} break;
+										}
+									}
+								}
+								// Если заголовок не является запрещённым, добавляем заголовок в запрос
+								if(allow)
+									// Формируем строку запроса
+									result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 							}
-							// Если заголовок разрешён для вывода
-							if(allow){
-								// Выполняем првоерку заголовка
-								switch(i){
-									case 0:
-									case 6:
-									case 9:
-									case 10:
-									case 11: allow = !available[i]; break;
-									case 4:
-									case 5: {
-										// Если заголовок Connection определён
-										if(available[i])
-											// Выполняем определение разрешено ли выводить заголовок
-											allow = !this->_fmk->compare(header.second, "keep-alive");
-									} break;
+						}
+						// Устанавливаем Accept если не передан
+						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
+							// Добавляем заголовок в запрос
+							result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
+						// Устанавливаем Accept-Language если не передан
+						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-language"))
+							// Добавляем заголовок в запрос
+							result.push_back(make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
+						// Если нужно запросить компрессию в удобном нам виде
+						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-encoding")){
+							// Определяем метод сжатия который поддерживает клиент
+							switch(static_cast <uint8_t> (this->_compress)){
+								// Если клиент поддерживает методот сжатия BROTLI
+								case static_cast <uint8_t> (compress_t::BROTLI):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "br"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP
+								case static_cast <uint8_t> (compress_t::GZIP):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "gzip"));
+								break;
+								// Если клиент поддерживает методот сжатия DEFLATE
+								case static_cast <uint8_t> (compress_t::DEFLATE):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "deflate"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP, BROTLI
+								case static_cast <uint8_t> (compress_t::GZIP_BROTLI):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "gzip, br"));
+								break;
+								// Если клиент поддерживает методот сжатия GZIP, DEFLATE
+								case static_cast <uint8_t> (compress_t::GZIP_DEFLATE):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "gzip, deflate"));
+								break;
+								// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
+								case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "deflate, br"));
+								break;
+								// Если клиент поддерживает все методы сжатия
+								case static_cast <uint8_t> (compress_t::ALL_COMPRESS):
+									// Добавляем заголовок в запрос
+									result.push_back(make_pair("accept-encoding", "gzip, deflate, br"));
+								break;
+							}
+						}
+						// Устанавливаем User-Agent если не передан
+						if(!available[3] && !this->isBlack("user-agent")){
+							// Если User-Agent установлен стандартный
+							if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
+								// Название операционной системы
+								const char * os = nullptr;
+								// Определяем название операционной системы
+								switch(static_cast <uint8_t> (this->_fmk->os())){
+									// Если операционной системой является Unix
+									case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
+									// Если операционной системой является Linux
+									case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
+									// Если операционной системой является неизвестной
+									case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
+									// Если операционной системой является Windows
+									case static_cast <uint8_t> (fmk_t::os_t::WIND32):
+									case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
+									// Если операционной системой является MacOS X
+									case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
+									// Если операционной системой является FreeBSD
+									case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
+								}
+								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
+								this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
+							}
+							// Добавляем заголовок в запрос
+							result.push_back(make_pair("user-agent", this->_userAgent));
+						}
+						// Если заголовок авторизации не передан
+						if(!available[12]){
+							// Метод HTTP запроса
+							string method = "";
+							// Определяем метод запроса
+							switch(static_cast <uint8_t> (req.method)){
+								// Если метод запроса указан как GET
+								case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
+								// Если метод запроса указан как PUT
+								case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
+								// Если метод запроса указан как POST
+								case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
+								// Если метод запроса указан как HEAD
+								case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
+								// Если метод запроса указан как DELETE
+								case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+								// Если метод запроса указан как PATCH
+								case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+								// Если метод запроса указан как TRACE
+								case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
+								// Если метод запроса указан как OPTIONS
+								case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
+								// Если метод запроса указан как CONNECT
+								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
+							}
+							// Выполняем определения протокола модуля
+							switch(static_cast <uint8_t> (this->_identity)){
+								// Если протокол принадлежит прокси-серверу
+								case static_cast <uint8_t> (identity_t::PROXY): {
+									// Если заголовок авторизации на прокси-сервере не запрещён
+									if(!this->isBlack("proxy-authorization")){
+										// Получаем параметры авторизации
+										const string & auth = this->_auth.client.auth(method);
+										// Если данные авторизации получены
+										if(!auth.empty())
+											// Выполняем установку заголовка
+											result.push_back(make_pair("proxy-authorization", auth));
+									}
+								} break;
+								// Если протокол принадлежит к остальным сервисам
+								default: {
+									// Если заголовок авторизации на прокси-сервере не запрещён
+									if(!this->isBlack("authorization")){
+										// Получаем параметры авторизации
+										const string & auth = this->_auth.client.auth(method);
+										// Если данные авторизации получены
+										if(!auth.empty())
+											// Выполняем установку заголовка
+											result.push_back(make_pair("authorization", auth));
+									}
 								}
 							}
 						}
-						// Если заголовок не является запрещённым, добавляем заголовок в запрос
-						if(allow)
-							// Формируем строку запроса
-							result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
-					}
-				}
-				// Устанавливаем Accept если не передан
-				if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
-					// Добавляем заголовок в запрос
-					result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
-				// Устанавливаем Accept-Language если не передан
-				if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-language"))
-					// Добавляем заголовок в запрос
-					result.push_back(make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
-				// Если нужно запросить компрессию в удобном нам виде
-				if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-encoding")){
-					// Определяем метод сжатия который поддерживает клиент
-					switch(static_cast <uint8_t> (this->_compress)){
-						// Если клиент поддерживает методот сжатия BROTLI
-						case static_cast <uint8_t> (compress_t::BROTLI):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "br"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP
-						case static_cast <uint8_t> (compress_t::GZIP):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "gzip"));
-						break;
-						// Если клиент поддерживает методот сжатия DEFLATE
-						case static_cast <uint8_t> (compress_t::DEFLATE):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "deflate"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP, BROTLI
-						case static_cast <uint8_t> (compress_t::GZIP_BROTLI):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "gzip, br"));
-						break;
-						// Если клиент поддерживает методот сжатия GZIP, DEFLATE
-						case static_cast <uint8_t> (compress_t::GZIP_DEFLATE):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "gzip, deflate"));
-						break;
-						// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
-						case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "deflate, br"));
-						break;
-						// Если клиент поддерживает все методы сжатия
-						case static_cast <uint8_t> (compress_t::ALL_COMPRESS):
-							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-encoding", "gzip, deflate, br"));
-						break;
-					}
-				}
-				// Устанавливаем User-Agent если не передан
-				if(!available[3] && !this->isBlack("user-agent")){
-					// Если User-Agent установлен стандартный
-					if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
-						// Название операционной системы
-						const char * os = nullptr;
-						// Определяем название операционной системы
-						switch(static_cast <uint8_t> (this->_fmk->os())){
-							// Если операционной системой является Unix
-							case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
-							// Если операционной системой является Linux
-							case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
-							// Если операционной системой является неизвестной
-							case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
-							// Если операционной системой является Windows
-							case static_cast <uint8_t> (fmk_t::os_t::WIND32):
-							case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
-							// Если операционной системой является MacOS X
-							case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
-							// Если операционной системой является FreeBSD
-							case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
-						}
-						// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
-						this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
-					}
-					// Добавляем заголовок в запрос
-					result.push_back(make_pair("user-agent", this->_userAgent));
-				}
-				// Если заголовок авторизации не передан
-				if(!available[12]){
-					// Метод HTTP запроса
-					string method = "";
-					// Определяем метод запроса
-					switch(static_cast <uint8_t> (req.method)){
-						// Если метод запроса указан как GET
-						case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
-						// Если метод запроса указан как PUT
-						case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
-						// Если метод запроса указан как POST
-						case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
-						// Если метод запроса указан как HEAD
-						case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
-						// Если метод запроса указан как DELETE
-						case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
-						// Если метод запроса указан как PATCH
-						case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
-						// Если метод запроса указан как TRACE
-						case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
-						// Если метод запроса указан как OPTIONS
-						case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
-						// Если метод запроса указан как CONNECT
-						case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
-					}
-					// Выполняем определения протокола модуля
-					switch(static_cast <uint8_t> (this->_identity)){
-						// Если протокол принадлежит прокси-серверу
-						case static_cast <uint8_t> (identity_t::PROXY): {
-							// Если заголовок авторизации на прокси-сервере не запрещён
-							if(!this->isBlack("proxy-authorization")){
-								// Получаем параметры авторизации
-								const string & auth = this->_auth.client.auth(method);
-								// Если данные авторизации получены
-								if(!auth.empty())
-									// Выполняем установку заголовка
-									result.push_back(make_pair("proxy-authorization", auth));
+						// Если запрос является PUT, POST, PATCH
+						if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
+							// Если заголовок не запрещён
+							if(!this->isBlack("date"))
+								// Добавляем заголовок даты в запрос
+								result.push_back(make_pair("date", this->date()));
+							// Если тело запроса существует
+							if(!this->_web.body().empty()){
+								// Выполняем шифрование полезной нагрузки
+								const_cast <http_t *> (this)->encrypt();
+								// Выполняем компрессию полезной нагрузки
+								const_cast <http_t *> (this)->inflate();
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypted)
+									// Устанавливаем X-AWH-Encryption
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_inflated)){
+									// Если нужно сжать тело методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "br"));
+									break;
+									// Если нужно сжать тело методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "gzip"));
+									break;
+									// Если нужно сжать тело методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "deflate"));
+									break;
+								}
+							// Если тело запроса не существует
+							} else {
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypt)
+									// Устанавливаем X-AWH-Encryption
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "deflate"));
+									break;
+								}
 							}
-						} break;
-						// Если протокол принадлежит к остальным сервисам
-						default: {
-							// Если заголовок авторизации на прокси-сервере не запрещён
-							if(!this->isBlack("authorization")){
-								// Получаем параметры авторизации
-								const string & auth = this->_auth.client.auth(method);
-								// Если данные авторизации получены
-								if(!auth.empty())
-									// Выполняем установку заголовка
-									result.push_back(make_pair("authorization", auth));
-							}
+						// Очищаем тела сообщения
+						} else this->clearBody();
+					} break;
+					// Если мы работаем с сервером
+					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Если заголовок не является системным
+							if(header.first.front() != ':')
+								// Формируем строку запроса
+								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
-					}
+					} break;
 				}
-				// Если запрос является PUT, POST, PATCH
-				if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
-					// Если заголовок не запрещён
-					if(!this->isBlack("date"))
-						// Добавляем заголовок даты в запрос
-						result.push_back(make_pair("date", this->date()));
-					// Если тело запроса существует
-					if(!this->_web.body().empty()){
-						// Выполняем шифрование полезной нагрузки
-						const_cast <http_t *> (this)->encrypt();
-						// Выполняем компрессию полезной нагрузки
-						const_cast <http_t *> (this)->inflate();
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypted)
-							// Устанавливаем X-AWH-Encryption
-							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_inflated)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					// Если тело запроса не существует
-					} else {
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypt)
-							// Устанавливаем X-AWH-Encryption
-							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					}
-				// Очищаем тела сообщения
-				} else this->clearBody();
 			}
 		} break;
 		// Если нужно сформировать данные ответа
 		case static_cast <uint8_t> (process_t::RESPONSE): {
-			/**
-			 * Типы основных заголовков
-			 */
-			bool available[12] = {
-				false, // Date
-				false, // Server
-				false, // Connection
-				false, // Proxy-Connection
-				false, // X-Powered-By
-				false, // Content-Type
-				false, // Content-Length
-				false, // Content-Encoding
-				false, // Transfer-Encoding
-				false, // X-AWH-Encryption
-				false, // WWW-Authenticate
-				false  // Proxy-Authenticate
-			};
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = static_cast <const web_t::res_t &> (prov);
-			// Устанавливаем параметры ответа
-			this->_web.response(res);
 			// Если текст сообщения не установлен
 			if(res.message.empty())
 				// Выполняем установку сообщения
@@ -2535,154 +2552,186 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			if(!res.message.empty()){
 				// Данные REST ответа
 				result.push_back(make_pair(":status", ::to_string(res.code)));
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 12; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
-							case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
-							case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
-							case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
-							case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
-							case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
-							case 6:  available[i] = this->_fmk->compare(header.first, "content-length");     break;
-							case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
-							case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
-							case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
-							case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
-							case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
+				// Определяем тип HTTP модуля
+				switch(static_cast <uint8_t> (this->_web.hid())){
+					// Если мы работаем с клиентом
+					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers())
+							// Формируем строку ответа
+							result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+					} break;
+					// Если мы работаем с сервером
+					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+						/**
+						 * Типы основных заголовков
+						 */
+						bool available[12] = {
+							false, // Date
+							false, // Server
+							false, // Connection
+							false, // Proxy-Connection
+							false, // X-Powered-By
+							false, // Content-Type
+							false, // Content-Length
+							false, // Content-Encoding
+							false, // Transfer-Encoding
+							false, // X-AWH-Encryption
+							false, // WWW-Authenticate
+							false  // Proxy-Authenticate
+						};
+						// Устанавливаем параметры ответа
+						this->_web.response(res);
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Флаг разрешающий вывода заголовка
+							bool allow = !this->isBlack(header.first);
+							// Выполняем перебор всех обязательных заголовков
+							for(uint8_t i = 0; i < 12; i++){
+								// Если заголовок уже найден пропускаем его
+								if(available[i]) continue;
+								// Выполняем првоерку заголовка
+								switch(i){
+									case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
+									case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
+									case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
+									case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
+									case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
+									case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
+									case 6:  available[i] = this->_fmk->compare(header.first, "content-length");     break;
+									case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
+									case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
+									case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
+									case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
+									case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
+								}
+								// Если заголовок разрешён для вывода
+								if(allow){
+									// Выполняем првоерку заголовка
+									switch(i){
+										case 6:
+										case 7:
+										case 8:
+										case 9: allow = !available[i]; break;
+										case 2:
+										case 3: {
+											// Если заголовок Connection определён
+											if(available[i])
+												// Выполняем определение разрешено ли выводить заголовок
+												allow = !this->_fmk->compare(header.second, "keep-alive");
+										} break;
+									}
+								}
+							}
+							// Если заголовок не является запрещённым, добавляем заголовок в ответ
+							if(allow)
+								// Формируем строку ответа
+								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 6:
-								case 7:
-								case 8:
-								case 9: allow = !available[i]; break;
-								case 2:
-								case 3: {
-									// Если заголовок Connection определён
-									if(available[i])
-										// Выполняем определение разрешено ли выводить заголовок
-										allow = !this->_fmk->compare(header.second, "keep-alive");
-								} break;
+						// Если заголовок не запрещён
+						if(!available[0] && !this->isBlack("date"))
+							// Добавляем заголовок даты в ответ
+							result.push_back(make_pair("date", this->date()));
+						// Если заголовок не запрещён
+						if(!available[1] && !this->isBlack("server"))
+							// Добавляем название сервера в ответ
+							result.push_back(make_pair("server", this->_ident.name));
+						// Устанавливаем Content-Type если не передан
+						if(!available[5] && !this->isBlack("content-type"))
+							// Добавляем заголовок в ответ
+							result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
+						// Если заголовок не запрещён
+						if(!available[4] && !this->isBlack("x-powered-by"))
+							// Добавляем название рабочей системы в ответ
+							result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
+						// Если заголовок авторизации не передан
+						if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
+							// Получаем параметры авторизации
+							const string & auth = this->_auth.server;
+							// Если параметры авторизации получены
+							if(!auth.empty()){
+								// Определяем код авторизации
+								switch(res.code){
+									// Если авторизация производится для Web-Сервера
+									case 401: {
+										// Если заголовок не запрещён
+										if(!this->isBlack("www-authenticate"))
+											// Добавляем параметры авторизации
+											result.push_back(make_pair("www-authenticate", auth));
+									} break;
+									// Если авторизация производится для Прокси-Сервера
+									case 407: {
+										// Если заголовок не запрещён
+										if(!this->isBlack("proxy-authenticate"))
+											// Добавляем параметры авторизации
+											result.push_back(make_pair("proxy-authenticate", auth));
+									} break;
+								}
 							}
 						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в ответ
-					if(allow)
-						// Формируем строку ответа
-						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+						// Если запрос должен содержать тело и тело ответа существует
+						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+							// Если тело запроса существует
+							if(!this->_web.body().empty()){
+								// Выполняем шифрование полезной нагрузки
+								const_cast <http_t *> (this)->encrypt();
+								// Выполняем компрессию полезной нагрузки
+								const_cast <http_t *> (this)->inflate();
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypted)
+									// Устанавливаем X-AWH-Encryption
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_inflated)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "deflate"));
+									break;
+								}
+							// Если тело запроса не существует
+							} else {
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+								// Если данные зашифрованы, устанавливаем соответствующие заголовки
+								if(this->_crypt)
+									// Устанавливаем X-AWH-Encryption
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "deflate"));
+									break;
+								}
+							}
+						// Очищаем тела сообщения
+						} else this->clearBody();
+					} break;
 				}
-				// Если заголовок не запрещён
-				if(!available[0] && !this->isBlack("date"))
-					// Добавляем заголовок даты в ответ
-					result.push_back(make_pair("date", this->date()));
-				// Если заголовок не запрещён
-				if(!available[1] && !this->isBlack("server"))
-					// Добавляем название сервера в ответ
-					result.push_back(make_pair("server", this->_ident.name));
-				// Устанавливаем Content-Type если не передан
-				if(!available[5] && !this->isBlack("content-type"))
-					// Добавляем заголовок в ответ
-					result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
-				// Если заголовок не запрещён
-				if(!available[4] && !this->isBlack("x-powered-by"))
-					// Добавляем название рабочей системы в ответ
-					result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
-				// Если заголовок авторизации не передан
-				if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
-					// Получаем параметры авторизации
-					const string & auth = this->_auth.server;
-					// Если параметры авторизации получены
-					if(!auth.empty()){
-						// Определяем код авторизации
-						switch(res.code){
-							// Если авторизация производится для Web-Сервера
-							case 401: {
-								// Если заголовок не запрещён
-								if(!this->isBlack("www-authenticate"))
-									// Добавляем параметры авторизации
-									result.push_back(make_pair("www-authenticate", auth));
-							} break;
-							// Если авторизация производится для Прокси-Сервера
-							case 407: {
-								// Если заголовок не запрещён
-								if(!this->isBlack("proxy-authenticate"))
-									// Добавляем параметры авторизации
-									result.push_back(make_pair("proxy-authenticate", auth));
-							} break;
-						}
-					}
-				}
-				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
-					// Если тело запроса существует
-					if(!this->_web.body().empty()){
-						// Выполняем шифрование полезной нагрузки
-						const_cast <http_t *> (this)->encrypt();
-						// Выполняем компрессию полезной нагрузки
-						const_cast <http_t *> (this)->inflate();
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypted)
-							// Устанавливаем X-AWH-Encryption
-							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_inflated)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					// Если тело запроса не существует
-					} else {
-						// Проверяем нужно ли передать тело разбив на чанки
-						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
-						// Если данные зашифрованы, устанавливаем соответствующие заголовки
-						if(this->_crypt)
-							// Устанавливаем X-AWH-Encryption
-							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-						// Определяем метод компрессии полезной нагрузки
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если полезная нагрузка сжата методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если полезная нагрузка сжата методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если полезная нагрузка сжата методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					}
-				// Очищаем тела сообщения
-				} else this->clearBody();
 			}
 		} break;
 	}

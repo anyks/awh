@@ -80,11 +80,11 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 					#if defined(DEBUG_MODE)
 						{
 							// Получаем данные ответа
-							const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, true);
+							const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, this->_scheme.proxy.http.response());
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl;
+								cout << string(response.begin(), response.end()) << endl << endl;
 						}
 					#endif
 					// Получаем параметры запроса

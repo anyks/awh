@@ -227,7 +227,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 						#if defined(DEBUG_MODE)
 							{
 								// Получаем данные ответа
-								const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, true);
+								const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, this->_scheme.proxy.http.response());
 								// Если параметры ответа получены
 								if(!response.empty()){
 									// Выводим заголовок ответа
@@ -237,7 +237,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 									// Если тело ответа существует
 									if(!this->_scheme.proxy.http.body().empty())
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
+										cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl << endl;
 								}
 							}
 						#endif
