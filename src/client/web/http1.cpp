@@ -134,7 +134,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 								#if defined(DEBUG_MODE)
 									{
 										// Получаем данные ответа
-										const auto & response = this->_http.process(http_t::process_t::RESPONSE, true);
+										const auto & response = this->_http.process(http_t::process_t::RESPONSE, this->_http.response());
 										// Если параметры ответа получены
 										if(!response.empty()){
 											// Выводим заголовок ответа

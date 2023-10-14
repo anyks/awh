@@ -334,6 +334,7 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 						if(adj->cli.isEnd()){
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
+								/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 								// Получаем данные ответа
 								const auto & response = adj->cli.process(http_t::process_t::RESPONSE, true);
 								// Если параметры ответа получены
@@ -349,9 +350,12 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 									// Иначе устанавливаем перенос строки
 									else cout << endl;
 								}
+								*/
 							#endif
 							// Выводим сообщение
 							if(this->_callback.message(it->second, event_t::RESPONSE, &adj->cli, this)){
+								
+								/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 								// Получаем данные ответа
 								const auto & response = adj->cli.process(http_t::process_t::RESPONSE);
 								// Если данные ответа получены
@@ -365,6 +369,7 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 										// Отправляем тело адъютанту
 										this->_core.server.write(entity.data(), entity.size(), it->second);
 								}
+								*/
 							}
 						}
 						// Если парсер обработал какое-то количество байт
@@ -609,6 +614,8 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 								if(this->_callback.message != nullptr){
 									// Выводим сообщение
 									if(this->_callback.message(aid, event_t::REQUEST, &adj->srv, this)){
+										
+										/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 										// Получаем данные запроса
 										const auto & request = adj->srv.process(http_t::process_t::REQUEST);
 										// Если данные запроса получены
@@ -627,9 +634,13 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 													this->_core.client.write(entity.data(), entity.size(), aid);
 											}
 										}
+										*/
+
 									}
 								// Если функция обратного вызова не установлена
 								} else {
+									
+									/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 									// Получаем идентификатор адъютанта
 									const size_t aid = adj->scheme.getAid();
 									// Отправляем запрос на внешний сервер
@@ -654,6 +665,8 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 												this->_core.client.write(entity.data(), entity.size(), aid);
 										}
 									}
+									*/
+
 								}
 							}
 							// Выполняем сброс состояния HTTP парсера

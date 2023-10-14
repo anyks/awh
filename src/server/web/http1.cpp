@@ -155,7 +155,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 						#if defined(DEBUG_MODE)
 							{
 								// Получаем данные запроса
-								const auto & request = adj->http.process(http_t::process_t::REQUEST, true);
+								const auto & request = adj->http.process(http_t::process_t::REQUEST, adj->http.request());
 								// Если параметры запроса получены
 								if(!request.empty()){
 									// Выводим заголовок запроса

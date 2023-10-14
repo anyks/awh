@@ -28,6 +28,195 @@ void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer
 		this->_callback.call <const uint64_t, const vector <char> &, const http_t *> ("chunking", id, buffer, this);
 }
 /**
+ * encrypt Метод выполнения шифрования полезной нагрузки
+ */
+void awh::Http::encrypt() noexcept {
+	// Если полезная нагрузка не зашифрована
+	if(!this->_crypted && this->_crypt){
+		// Получаем данные тела
+		const auto & body = this->_web.body();
+		// Если тело сообщения получено
+		if(!body.empty()){
+			// Выполняем шифрование полезной нагрузки
+			const auto & result = this->_hash.encrypt(body.data(), body.size());
+			// Если шифрование выполнено
+			if((this->_crypted = !result.empty())){
+				// Очищаем тело сообщения
+				this->clearBody();
+				// Формируем новое тело сообщения
+				this->_web.body(result);
+			// Если шифрование не выполнено
+			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
+		}
+	}
+}
+/**
+ * decrypt Метод выполнения дешифровани полезной нагрузки
+ */
+void awh::Http::decrypt() noexcept {
+	// Если полезная нагрузка зашифрованна
+	if(this->_crypted && this->_crypt){
+		// Получаем данные тела
+		const auto & body = this->_web.body();
+		// Если тело сообщения получено
+		if(!body.empty()){
+			// Выполняем дешифрование полезной нагрузки
+			const auto & result = this->_hash.decrypt(body.data(), body.size());
+			// Если дешифрование выполнено
+			if(!(this->_crypted = result.empty())){
+				// Очищаем тело сообщения
+				this->clearBody();
+				// Формируем новое тело сообщения
+				this->_web.body(result);
+			// Если дешифрование не выполнено
+			} else this->_log->print("Decryption module has failed", log_t::flag_t::WARNING);
+		}
+	}
+}
+/**
+ * deflate Метод выполнения декомпрессии полезной нагрузки
+ */
+void awh::Http::deflate() noexcept {
+	// Если полезную нагрузку необходимо извлечь
+	if(this->_inflated != compress_t::NONE){
+		// Получаем данные тела
+		const auto & body = this->_web.body();
+		// Если тело сообщения получено
+		if(!body.empty()){
+			// Определяем метод компрессии полезной нагрузки
+			switch(static_cast <uint8_t> (this->_inflated)){
+				// Если полезную нагрузку нужно извлечь методом BROTLI
+				case static_cast <uint8_t> (compress_t::BROTLI): {
+					// Выполняем декомпрессию данных
+					const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
+					// Если декомпрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Снимаем флаг компрессии
+						this->_inflated = compress_t::NONE;
+					}
+				} break;
+				// Если полезную нагрузку нужно извлечь методом GZIP
+				case static_cast <uint8_t> (compress_t::GZIP): {
+					// Выполняем декомпрессию полезной нагрузки
+					const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
+					// Если декомпрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Снимаем флаг компрессии
+						this->_inflated = compress_t::NONE;
+					}
+				} break;
+				// Если полезную нагрузку нужно извлечь методом DEFLATE
+				case static_cast <uint8_t> (compress_t::DEFLATE): {
+					// Получаем данные тела в бинарном виде
+					vector <char> buffer(body.begin(), body.end());
+					// Добавляем хвост в полученные данные
+					this->_hash.setTail(buffer);
+					// Выполняем декомпрессию полезной нагрузки
+					const auto & result = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+					// Если декомпрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Снимаем флаг компрессии
+						this->_inflated = compress_t::NONE;
+					}
+				} break;
+			}
+			// Определяем метод компрессии полезной нагрузки
+			switch(static_cast <uint8_t> (this->_inflated)){
+				// Если метод компрессии не изменился и остался BROTLI
+				case static_cast <uint8_t> (compress_t::BROTLI):
+					// Сообщаем, что переданное тело содержит ошибки
+					this->_log->print("BROTLI decompression module has failed", log_t::flag_t::WARNING);
+				break;
+				// Если метод компрессии не изменился и остался GZIP
+				case static_cast <uint8_t> (compress_t::GZIP):
+					// Сообщаем, что переданное тело содержит ошибки
+					this->_log->print("GZIP decompression module has failed", log_t::flag_t::WARNING);
+				break;
+				// Если метод компрессии не изменился и остался DEFLATE
+				case static_cast <uint8_t> (compress_t::DEFLATE):
+					// Сообщаем, что переданное тело содержит ошибки
+					this->_log->print("DEFLATE decompression module has failed", log_t::flag_t::WARNING);
+				break;
+			}
+		}
+	}
+}
+/**
+ * inflate Метод выполнения компрессии полезной нагрузки
+ */
+void awh::Http::inflate() noexcept {
+	// Если полезную нагрузку необходимо сжать
+	if(this->_inflated == compress_t::NONE){
+		// Получаем данные тела
+		const auto & body = this->_web.body();
+		// Если тело сообщения получено
+		if(!body.empty()){
+			// Определяем метод компрессии полезной нагрузки
+			switch(static_cast <uint8_t> (this->_compress)){
+				// Если полезную нагрузку необходимо сжать методом BROTLI
+				case static_cast <uint8_t> (compress_t::BROTLI): {
+					// Выполняем компрессию полезной нагрузки
+					const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::BROTLI);
+					// Если компрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Устанавливаем флаг компрессии
+						this->_inflated = compress_t::BROTLI;
+					// Если компрессия не выполнена
+					} else this->_log->print("BROTLI compression module has failed", log_t::flag_t::WARNING);
+				} break;
+				// Если полезную нагрузку необходимо сжать методом GZIP
+				case static_cast <uint8_t> (compress_t::GZIP): {
+					// Выполняем компрессию полезной нагрузки
+					const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::GZIP);
+					// Если компрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Устанавливаем флаг компрессии
+						this->_inflated = compress_t::GZIP;
+					// Если компрессия не выполнена
+					} else this->_log->print("GZIP compression module has failed", log_t::flag_t::WARNING);
+				} break;
+				// Если полезную нагрузку необходимо сжать методом DEFLATE
+				case static_cast <uint8_t> (compress_t::DEFLATE): {
+					// Выполняем компрессию полезной нагрузки
+					auto result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::DEFLATE);
+					// Если компрессия выполнена
+					if(!result.empty()){
+						// Очищаем тело сообщения
+						this->clearBody();
+						// Удаляем хвост в полученных данных
+						this->_hash.rmTail(result);
+						// Формируем новое тело сообщения
+						this->_web.body(result);
+						// Устанавливаем флаг компрессии
+						this->_inflated = compress_t::DEFLATE;
+					// Если компрессия не выполнена
+					} else this->_log->print("DEFLATE compression module has failed", log_t::flag_t::WARNING);
+				} break;
+			}
+		}
+	}
+}
+/**
  * commit Метод применения полученных результатов
  */
 void awh::Http::commit() noexcept {
@@ -39,16 +228,16 @@ void awh::Http::commit() noexcept {
 		this->_state = state_t::GOOD;
 	// Поменяем данные как бракованные
 	else this->_state = state_t::BROKEN;
-	// Получаем данные тела
-	const auto & body = this->_web.body();
 	// Если тело сообщения получено
-	if(!body.empty()){
+	if(!this->_web.body().empty()){
+		// Снимаем флаг зашифрованной полезной нагрузки
+		this->_crypted = false;
 		// Получаем заголовок шифрования
 		const string & encrypt = this->_web.header("x-awh-encryption");
 		// Если заголовок найден
 		if((this->_crypt = !encrypt.empty())){
 			// Определяем размер шифрования
-			switch(stoi(encrypt)){
+			switch(::stoi(encrypt)){
 				// Если шифрование произведено 128 битным ключём
 				case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
 				// Если шифрование произведено 192 битным ключём
@@ -56,67 +245,28 @@ void awh::Http::commit() noexcept {
 				// Если шифрование произведено 256 битным ключём
 				case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
 			}
-			// Выполняем дешифрование полученных данных
-			const auto & result = this->_hash.decrypt(body.data(), body.size());
-			// Заменяем полученное тело
-			if(!result.empty()){
-				// Очищаем тело сообщения
-				this->clearBody();
-				// Формируем новое тело сообщения
-				this->_web.body(result);
-			}
 		}
+		// Отключаем сжатие тела сообщения
+		this->_compress = compress_t::NONE;
 		// Проверяем пришли ли сжатые данные
 		const string & encoding = this->_web.header("content-encoding");
 		// Если данные пришли сжатые
 		if(!encoding.empty()){
 			// Если данные пришли сжатые методом Brotli
-			if(this->_fmk->compare(encoding, "br")){
-				// Устанавливаем требование выполнять декомпрессию тела сообщения
+			if(this->_fmk->compare(encoding, "br"))
+				// Устанавливаем тип компрессии полезной нагрузки
 				this->_compress = compress_t::BROTLI;
-				// Выполняем декомпрессию данных
-				const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
-				// Заменяем полученное тело
-				if(!result.empty()){
-					// Очищаем тело сообщения
-					this->clearBody();
-					// Формируем новое тело сообщения
-					this->_web.body(result);
-				}
 			// Если данные пришли сжатые методом GZip
-			} else if(this->_fmk->compare(encoding, "gzip")) {
-				// Устанавливаем требование выполнять декомпрессию тела сообщения
+			else if(this->_fmk->compare(encoding, "gzip"))
+				// Устанавливаем тип компрессии полезной нагрузки
 				this->_compress = compress_t::GZIP;
-				// Выполняем декомпрессию данных
-				const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
-				// Заменяем полученное тело
-				if(!result.empty()){
-					// Очищаем тело сообщения
-					this->clearBody();
-					// Формируем новое тело сообщения
-					this->_web.body(result);
-				}
 			// Если данные пришли сжатые методом Deflate
-			} else if(this->_fmk->compare(encoding, "deflate")) {
-				// Устанавливаем требование выполнять декомпрессию тела сообщения
+			else if(this->_fmk->compare(encoding, "deflate"))
+				// Устанавливаем тип компрессии полезной нагрузки
 				this->_compress = compress_t::DEFLATE;
-				// Получаем данные тела в бинарном виде
-				vector <char> buffer(body.begin(), body.end());
-				// Добавляем хвост в полученные данные
-				this->_hash.setTail(buffer);
-				// Выполняем декомпрессию данных
-				const auto & result = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
-				// Заменяем полученное тело
-				if(!result.empty()){
-					// Очищаем тело сообщения
-					this->clearBody();
-					// Формируем новое тело сообщения
-					this->_web.body(result);
-				}
-			// Отключаем сжатие тела сообщения
-			} else this->_compress = compress_t::NONE;
-		// Отключаем сжатие тела сообщения
-		} else this->_compress = compress_t::NONE;
+		}
+		// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
+		this->_inflated = this->_compress;
 	}
 	// Если мы работаем с HTTP сервером и метод компрессии установлен
 	if((this->_web.hid() == web_t::hid_t::SERVER) && (this->_compress != compress_t::NONE)){
@@ -269,8 +419,12 @@ void awh::Http::clear() noexcept {
 	this->_web.clear();
 	// Выполняем сброс чёрного списка HTTP заголовков
 	this->_black.clear();
+	// Снимаем флаг зашифрованной полезной нагрузки
+	this->_crypted = false;
 	// Выполняем сброс флага формирования чанков
 	this->_chunking = false;
+	// Снимаем флаг сжатой полезной нагрузки
+	this->_inflated = compress_t::NONE;
 }
 /**
  * reset Метод сброса параметров запроса
@@ -325,12 +479,16 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * payload Метод чтения чанка тела запроса
- * @return текущий чанк запроса
+ * payload Метод чтения чанка полезной нагрузки
+ * @return текущий чанк полезной нагрузки
  */
 const vector <char> awh::Http::payload() const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	// Выполняем шифрование полезной нагрузки
+	const_cast <http_t *> (this)->encrypt();
+	// Выполняем компрессию полезной нагрузки
+	const_cast <http_t *> (this)->inflate();
 	// Получаем собранные данные тела
 	vector <char> * body = const_cast <vector <char> *> (&this->_web.body());
 	// Если данные тела ещё существуют
@@ -419,11 +577,28 @@ const vector <char> awh::Http::payload() const noexcept {
 				result.assign(body->begin(), body->end());
 				// Очищаем данные тела
 				body->clear();
+				// Освобождаем память
+				vector <char> ().swap(* body);
 			}
 		}
 	}
+	// Если тело передаваемых данных уже пустое
+	if(body->empty()){
+		// Снимаем флаг зашифрованной полезной нагрузки
+		const_cast <http_t *> (this)->_crypted = false;
+		// Снимаем флаг сжатой полезной нагрузки
+		const_cast <http_t *> (this)->_inflated = compress_t::NONE;
+	}
 	// Выводим результат
 	return result;
+}
+/**
+ * payload Метод установки чанка полезной нагрузки
+ * @param payload буфер чанка полезной нагрузки
+ */
+void awh::Http::payload(const vector <char> & payload) noexcept {
+	// Устанавливаем данные телал сообщения
+	this->_web.body(payload);
 }
 /**
  * clearBody Метод очистки данных тела
@@ -431,6 +606,10 @@ const vector <char> awh::Http::payload() const noexcept {
 void awh::Http::clearBody() const noexcept {
 	// Выполняем очистку данных тела
 	this->_web.clearBody();
+	// Снимаем флаг зашифрованной полезной нагрузки
+	const_cast <http_t *> (this)->_crypted = false;
+	// Снимаем флаг сжатой полезной нагрузки
+	const_cast <http_t *> (this)->_inflated = compress_t::NONE;
 }
 /**
  * clearHeaders Метод очистки списка заголовков
@@ -446,6 +625,10 @@ void awh::Http::clearHeaders() const noexcept {
  * @return буфер данных тела запроса
  */
 const vector <char> & awh::Http::body() const noexcept {
+	// Выполняем дешифрование полезной нагрузки
+	const_cast <http_t *> (this)->decrypt();
+	// Выполняем декомпрессию полезной нагрузки
+	const_cast <http_t *> (this)->deflate();
 	// Выводим данные тела
 	return this->_web.body();
 }
@@ -454,6 +637,10 @@ const vector <char> & awh::Http::body() const noexcept {
  * @param body буфер тела для установки
  */
 void awh::Http::body(const vector <char> & body) noexcept {
+	// Выполняем дешифрование полезной нагрузки
+	this->decrypt();
+	// Выполняем декомпрессию полезной нагрузки
+	this->deflate();
 	// Устанавливаем данные телал сообщения
 	this->_web.body(body);
 }
@@ -816,14 +1003,18 @@ vector <char> awh::Http::dump() const noexcept {
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
+		// Устанавливаем метод компрессии хранимых данных
+		result.insert(result.end(), (const char *) &this->_inflated, (const char *) &this->_inflated + sizeof(this->_inflated));
 		// Устанавливаем метод компрессии отправляемых данных
 		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
 		// Устанавливаем стейт проверки авторизации
 		result.insert(result.end(), (const char *) &this->_stath, (const char *) &this->_stath + sizeof(this->_stath));
 		// Устанавливаем стейт текущего запроса
 		result.insert(result.end(), (const char *) &this->_state, (const char *) &this->_state + sizeof(this->_state));
-		// Устанавливаем флаг зашифрованных данных
+		// Устанавливаем флаг требования шифрования данных полезной нагрузки
 		result.insert(result.end(), (const char *) &this->_crypt, (const char *) &this->_crypt + sizeof(this->_crypt));
+		// Устанавливаем флаг зашифрованных данных полузной нагрузки
+		result.insert(result.end(), (const char *) &this->_crypted, (const char *) &this->_crypted + sizeof(this->_crypted));
 		// Устанавливаем флаг разрешающий передавать тело запроса чанками
 		result.insert(result.end(), (const char *) &this->_chunking, (const char *) &this->_chunking + sizeof(this->_chunking));
 		// Устанавливаем размер одного чанка
@@ -886,72 +1077,80 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
+		// Выполняем получение метода компрессии хранящихся данных полезной нагрузки
+		::memcpy((void *) &this->_inflated, data.data() + offset, sizeof(this->_inflated));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_inflated);
 		// Выполняем получение метода компрессии отправляемых данных
-		memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
+		::memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_compress);
 		// Выполняем получение стейта проверки авторизации
-		memcpy((void *) &this->_stath, data.data() + offset, sizeof(this->_stath));
+		::memcpy((void *) &this->_stath, data.data() + offset, sizeof(this->_stath));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_stath);
 		// Выполняем получение стейта текущего запроса
-		memcpy((void *) &this->_state, data.data() + offset, sizeof(this->_state));
+		::memcpy((void *) &this->_state, data.data() + offset, sizeof(this->_state));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_state);
 		// Выполняем получение флага зашифрованных данных
-		memcpy((void *) &this->_crypt, data.data() + offset, sizeof(this->_crypt));
+		::memcpy((void *) &this->_crypt, data.data() + offset, sizeof(this->_crypt));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_crypt);
+		// Выполняем получение флага зашифрованных хранимых данных полезной нагрузки
+		::memcpy((void *) &this->_crypted, data.data() + offset, sizeof(this->_crypted));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_crypted);
 		// Выполняем получение флага разрешающий передавать тело запроса чанками
-		memcpy((void *) &this->_chunking, data.data() + offset, sizeof(this->_chunking));
+		::memcpy((void *) &this->_chunking, data.data() + offset, sizeof(this->_chunking));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_chunking);
 		// Выполняем получение размера одного чанка
-		memcpy((void *) &this->_chunk, data.data() + offset, sizeof(this->_chunk));
+		::memcpy((void *) &this->_chunk, data.data() + offset, sizeof(this->_chunk));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_chunk);
 		// Выполняем получение размера идентификатора сервиса
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных идентификатора сервиса
 		this->_ident.id.resize(length, 0);
 		// Выполняем получение данных идентификатора сервиса
-		memcpy((void *) this->_ident.id.data(), data.data() + offset, length);
+		::memcpy((void *) this->_ident.id.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера версии модуля приложения
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных версии модуля приложения
 		this->_ident.version.resize(length, 0);
 		// Выполняем получение данных версии модуля приложения
-		memcpy((void *) this->_ident.version.data(), data.data() + offset, length);
+		::memcpy((void *) this->_ident.version.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера названия сервиса
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных названия сервиса
 		this->_ident.name.resize(length, 0);
 		// Выполняем получение данных названия сервиса
-		memcpy((void *) this->_ident.name.data(), data.data() + offset, length);
+		::memcpy((void *) this->_ident.name.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение размера User-Agent для HTTP запроса
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для данных User-Agent для HTTP запроса
 		this->_userAgent.resize(length, 0);
 		// Выполняем получение данных User-Agent для HTTP запроса
-		memcpy((void *) this->_userAgent.data(), data.data() + offset, length);
+		::memcpy((void *) this->_userAgent.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение количества записей чёрного списка
-		memcpy((void *) &count, data.data() + offset, sizeof(count));
+		::memcpy((void *) &count, data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс заголовков чёрного списка
@@ -959,13 +1158,13 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем последовательную загрузку всех заголовков
 		for(size_t i = 0; i < count; i++){
 			// Выполняем получение размера заголовка из чёрного списка
-			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			::memcpy((void *) &length, data.data() + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для заголовка чёрного списка
 			string header(length, 0);
 			// Выполняем получение заголовка чёрного списка
-			memcpy((void *) header.data(), data.data() + offset, length);
+			::memcpy((void *) header.data(), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если заголовок чёрного списка получен
@@ -974,13 +1173,13 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				this->_black.emplace(std::move(header));
 		}
 		// Выполняем получение размера дампа WEB данных
-		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy((void *) &length, data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выделяем память для дампа WEB данных
 		vector <char> buffer(length, 0);
 		// Выполняем получение дампа WEB данных
-		memcpy((void *) buffer.data(), data.data() + offset, length);
+		::memcpy((void *) buffer.data(), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Если дамп WEB данных получен, устанавливаем его
@@ -1113,7 +1312,7 @@ const string awh::Http::date(const time_t stamp) const noexcept {
 	// Извлекаем текущее время
 	struct tm tm = (* gmtime(&date));
 	// Зануляем буфер
-	memset(buffer, 0, sizeof(buffer));
+	::memset(buffer, 0, sizeof(buffer));
 	// Получаем формат времени
 	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	// Выводим результат
@@ -1140,120 +1339,6 @@ const string & awh::Http::message(const u_int code) const noexcept {
 	return result;
 }
 /**
- * decode Метод декодирования полученных чанков
- * @param buffer буфер данных для декодирования
- * @return       декодированный буфер данных
- */
-awh::Http::crypto_t awh::Http::decode(const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	crypto_t result;
-	// Если буфер для декодирования данных передан
-	if(!buffer.empty()){
-		// Устанавливаем данные буфера
-		result.data.assign(buffer.begin(), buffer.end());
-		// Получаем заголовок шифрования
-		const string & encrypt = this->_web.header("x-awh-encryption");
-		// Если заголовок найден
-		if(!encrypt.empty()){
-			// Определяем размер шифрования
-			switch(stoi(encrypt)){
-				// Если шифрование произведено 128 битным ключём
-				case 128: this->_dhash.cipher(hash_t::cipher_t::AES128); break;
-				// Если шифрование произведено 192 битным ключём
-				case 192: this->_dhash.cipher(hash_t::cipher_t::AES192); break;
-				// Если шифрование произведено 256 битным ключём
-				case 256: this->_dhash.cipher(hash_t::cipher_t::AES256); break;
-			}
-			// Выполняем дешифрование полученных данных
-			const auto & res = this->_dhash.decrypt(result.data.data(), result.data.size());
-			// Если данные расшифрованны, заменяем тело данных
-			if((result.encrypt = !res.empty())) result.data.assign(res.begin(), res.end());
-		}
-		// Проверяем пришли ли сжатые данные
-		const string & encoding = this->_web.header("content-encoding");
-		// Если данные пришли сжатые
-		if(!encoding.empty()){
-			// Если данные пришли сжатые методом Brotli
-			if(this->_fmk->compare(encoding, "br")){
-				// Выполняем декомпрессию данных
-				const auto & res = this->_dhash.decompress(result.data.data(), result.data.size(), hash_t::method_t::BROTLI);
-				// Заменяем полученное тело
-				if((result.compress = !res.empty())) result.data.assign(res.begin(), res.end());
-			// Если данные пришли сжатые методом GZip
-			} else if(this->_fmk->compare(encoding, "gzip")) {
-				// Выполняем декомпрессию данных
-				const auto & res = this->_dhash.decompress(result.data.data(), result.data.size(), hash_t::method_t::GZIP);
-				// Заменяем полученное тело
-				if((result.compress = !res.empty())) result.data.assign(res.begin(), res.end());
-			// Если данные пришли сжатые методом Deflate
-			} else if(this->_fmk->compare(encoding, "deflate")) {
-				// Получаем данные тела в бинарном виде
-				vector <char> buffer(result.data.begin(), result.data.end());
-				// Добавляем хвост в полученные данные
-				this->_dhash.setTail(buffer);
-				// Выполняем декомпрессию данных
-				const auto & res = this->_dhash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
-				// Заменяем полученное тело
-				if((result.compress = !res.empty())) result.data.assign(res.begin(), res.end());
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * encode Метод кодирования полученных чанков
- * @param buffer буфер данных для кодирования
- * @return       кодированный буфер данных
- */
-awh::Http::crypto_t awh::Http::encode(const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	crypto_t result;
-	// Если буфер для декодирования данных передан
-	if(!buffer.empty()){
-		// Устанавливаем данные буфера
-		result.data.assign(buffer.begin(), buffer.end());
-		// Если нужно производить шифрование
-		if(this->_crypt && !this->isBlack("X-AWH-Encryption")){
-			// Выполняем шифрование переданных данных
-			const auto & res = this->_hash.encrypt(result.data.data(), result.data.size());
-			// Если данные зашифрованы, заменяем тело данных
-			if((result.encrypt = !res.empty())) result.data.assign(res.begin(), res.end());
-		}
-		// Если заголовок не запрещён
-		if(!this->isBlack("Content-Encoding")){
-			// Определяем метод компрессии тела сообщения
-			switch(static_cast <uint8_t> (this->_compress)){
-				// Если нужно сжать тело методом BROTLI
-				case static_cast <uint8_t> (compress_t::BROTLI): {
-					// Выполняем сжатие тела сообщения
-					const auto & brotli = this->_hash.compress(result.data.data(), result.data.size(), hash_t::method_t::BROTLI);
-					// Если данные сжаты, заменяем тело данных
-					if((result.compress = !brotli.empty())) result.data.assign(brotli.begin(), brotli.end());
-				} break;
-				// Если нужно сжать тело методом GZIP
-				case static_cast <uint8_t> (compress_t::GZIP): {
-					// Выполняем сжатие тела сообщения
-					const auto & gzip = this->_hash.compress(result.data.data(), result.data.size(), hash_t::method_t::GZIP);
-					// Если данные сжаты, заменяем тело данных
-					if((result.compress = !gzip.empty())) result.data.assign(gzip.begin(), gzip.end());
-				} break;
-				// Если нужно сжать тело методом DEFLATE
-				case static_cast <uint8_t> (compress_t::DEFLATE): {
-					// Выполняем сжатие тела сообщения
-					auto deflate = this->_hash.compress(result.data.data(), result.data.size(), hash_t::method_t::DEFLATE);
-					// Удаляем хвост в полученных данных
-					this->_hash.rmTail(deflate);
-					// Если данные сжаты, заменяем тело данных
-					if((result.compress = !deflate.empty())) result.data.assign(deflate.begin(), deflate.end());
-				} break;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * mapping Метод маппинга полученных данных
  * @param flag флаг выполняемого процесса
  * @param http объект для маппинга
@@ -1271,6 +1356,10 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	http._stath = this->_stath;
 	// Устанавливаем флаг шифрования объекта
 	http._crypt = this->_crypt;
+	// Устанавливаем флаг зашифрованной полезной нагрузки
+	http._crypted = this->_crypted;
+	// Устанавливаем флаг компрессии полезной нагрузки
+	http._inflated = this->_inflated;
 	// Устанавливаем активный метод компрессии
 	http._compress = this->_compress;
 	// Извлекаем список заголовков
@@ -1427,7 +1516,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 				// Выполняем очистку тела сообщения
 				this->clearBody();
 				// Добавляем тело сообщения
-				this->_web.body(vector <char> (body.begin(), body.end()));
+				const_cast <http_t *> (this)->body(vector <char> (body.begin(), body.end()));
 			}
 			// Добавляем заголовок тела сообщения
 			this->_web.header("Content-Length", ::to_string(body.size()));
@@ -1476,7 +1565,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 				// Выполняем очистку тела сообщения
 				this->clearBody();
 				// Добавляем тело сообщения
-				this->_web.body(vector <char> (body.begin(), body.end()));
+				const_cast <http_t *> (this)->body(vector <char> (body.begin(), body.end()));
 			}
 		}
 		// Устанавливаем парарметр ответа
@@ -1486,638 +1575,6 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 	}
 	// Выводим результат
 	return vector <pair <string, string>> ();
-}
-/**
- * process Метод создания выполняемого процесса в бинарном виде
- * @param flag   флаг выполняемого процесса
- * @param nobody флаг запрета подготовки тела
- * @return       буфер данных в бинарном виде
- */
-vector <char> awh::Http::process(const process_t flag, const bool nobody) const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	/**
-	 * Типы основных заголовков
-	 */
-	bool available[4] = {
-		false, // Content-Length
-		false, // Content-Encoding
-		false, // Transfer-Encoding
-		false  // X-AWH-Encryption
-	};
-	// Определяем флаг выполняемого процесса
-	switch(static_cast <uint8_t> (flag)){
-		// Если нужно сформировать данные запроса
-		case static_cast <uint8_t> (process_t::REQUEST): {
-			// Получаем объект параметров запроса
-			const web_t::req_t & req = this->_web.request();
-			// Если параметры запроса получены
-			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-				// Размер тела сообщения
-				size_t length = 0;
-				// Данные REST-запроса
-				string request = "";
-				// Определяем метод запроса
-				switch(static_cast <uint8_t> (req.method)){
-					// Если метод запроса указан как GET
-					case static_cast <uint8_t> (web_t::method_t::GET):
-						// Формируем GET запрос
-						request = this->_fmk->format("GET %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как PUT
-					case static_cast <uint8_t> (web_t::method_t::PUT):
-						// Формируем PUT запрос
-						request = this->_fmk->format("PUT %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как POST
-					case static_cast <uint8_t> (web_t::method_t::POST):
-						// Формируем POST запрос
-						request = this->_fmk->format("POST %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как HEAD
-					case static_cast <uint8_t> (web_t::method_t::HEAD):
-						// Формируем HEAD запрос
-						request = this->_fmk->format("HEAD %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как PATCH
-					case static_cast <uint8_t> (web_t::method_t::PATCH):
-						// Формируем PATCH запрос
-						request = this->_fmk->format("PATCH %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как TRACE
-					case static_cast <uint8_t> (web_t::method_t::TRACE):
-						// Формируем TRACE запрос
-						request = this->_fmk->format("TRACE %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как DELETE
-					case static_cast <uint8_t> (web_t::method_t::DEL):
-						// Формируем DELETE запрос
-						request = this->_fmk->format("DELETE %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как OPTIONS
-					case static_cast <uint8_t> (web_t::method_t::OPTIONS):
-						// Формируем OPTIONS запрос
-						request = this->_fmk->format("OPTIONS %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
-					break;
-					// Если метод запроса указан как CONNECT
-					case static_cast <uint8_t> (web_t::method_t::CONNECT):
-						// Формируем CONNECT запрос
-						request = this->_fmk->format("CONNECT %s HTTP/%.1f\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), req.version);
-					break;
-				}
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 4; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 1: available[i] = this->_fmk->compare(header.first, "content-encoding");  break;
-							case 2: available[i] = this->_fmk->compare(header.first, "transfer-encoding"); break;
-							case 3: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");  break;
-							case 0: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
-						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 0:
-								case 1:
-								case 2:
-								case 3: allow = !available[i]; break;
-							}
-						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в запрос
-					if(allow)
-						// Формируем строку запроса
-						request.append(
-							this->_fmk->format(
-								"%s: %s\r\n",
-								this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
-								header.second.c_str()
-							)
-						);
-				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[0] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Если флаг запрета подготовки тела полезной нагрузки не установлен
-						if(!nobody){
-							// Выполняем очистку тела сообщения
-							this->clearBody();
-							// Заменяем тело данных
-							this->_web.body(crypto.data);
-							// Заменяем размер тела данных
-							if(!this->_chunking)
-								// Устанавливаем размер тела сообщения
-								length = body.size();
-						// Заменяем размер тела данных
-						} else if(!this->_chunking)
-							// Устанавливаем размер тела сообщения
-							length = crypto.data.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
-				// Очищаем тела сообщения
-				} else this->clearBody();
-				// Устанавливаем завершающий разделитель
-				request.append("\r\n");
-				// Формируем результат запроса
-				result.assign(request.begin(), request.end());
-			}
-		} break;
-		// Если нужно сформировать данные ответа
-		case static_cast <uint8_t> (process_t::RESPONSE): {
-			// Получаем объект параметров ответа
-			const web_t::res_t & res = this->_web.response();
-			// Если параметры запроса получены
-			if(res.code > 0){
-				// Размер тела сообщения
-				size_t length = 0;
-				// Если ответ не установлен, формируем по умолчанию
-				if(res.message.empty())
-					// Устанавливаем сообщение по умолчанию
-					const_cast <web_t::res_t &> (res).message = this->message(res.code);
-				// Данные REST ответа
-				string response = this->_fmk->format("HTTP/%.1f %u %s\r\n", res.version, res.code, res.message.c_str());
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 4; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 1: available[i] = this->_fmk->compare(header.first, "content-encoding");  break;
-							case 2: available[i] = this->_fmk->compare(header.first, "transfer-encoding"); break;
-							case 3: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");  break;
-							case 0: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
-						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 0:
-								case 1:
-								case 2:
-								case 3: allow = !available[i]; break;
-							}
-						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в ответ
-					if(allow)
-						// Формируем строку ответа
-						response.append(
-							this->_fmk->format(
-								"%s: %s\r\n",
-								this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
-								header.second.c_str()
-							)
-						);
-				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[0] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Если флаг запрета подготовки тела полезной нагрузки не установлен
-						if(!nobody){
-							// Выполняем очистку тела сообщения
-							this->clearBody();
-							// Заменяем тело данных
-							this->_web.body(crypto.data);
-							// Заменяем размер тела данных
-							if(!this->_chunking)
-								// Устанавливаем размер тела
-								length = body.size();
-						// Заменяем размер тела данных
-						} else if(!this->_chunking)
-							// Устанавливаем размер тела
-							length = crypto.data.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-							break;
-						}
-					}
-					// Если данные необходимо разбивать на чанки
-					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
-						// Устанавливаем заголовок Transfer-Encoding
-						response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-					// Если заголовок размера передаваемого тела, не запрещён
-					else if(!this->isBlack("Content-Length"))
-						// Устанавливаем размер передаваемого тела Content-Length
-						response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
-				// Очищаем тела сообщения
-				} else this->clearBody();
-				// Устанавливаем завершающий разделитель
-				response.append("\r\n");
-				// Формируем результат ответа
-				result.assign(response.begin(), response.end());
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
- * @param flag   флаг выполняемого процесса
- * @param nobody флаг запрета подготовки тела
- * @return       буфер данных в бинарном виде
- */
-vector <pair <string, string>> awh::Http::process2(const process_t flag, const bool nobody) const noexcept {
-	// Результат работы функции
-	vector <pair <string, string>> result;
-	/**
-	 * Типы основных заголовков
-	 */
-	bool available[7] = {
-		false, // Host
-		false, // Connection
-		false, // Proxy-Connection
-		false, // Content-Length
-		false, // Content-Encoding
-		false, // Transfer-Encoding
-		false  // X-AWH-Encryption
-	};
-	// Определяем флаг выполняемого процесса
-	switch(static_cast <uint8_t> (flag)){
-		// Если нужно сформировать данные запроса
-		case static_cast <uint8_t> (process_t::REQUEST): {
-			// Получаем объект параметров запроса
-			const web_t::req_t & req = this->_web.request();
-			// Если параметры запроса получены
-			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-				// Размер тела сообщения
-				size_t length = 0;
-				// Определяем метод запроса
-				switch(static_cast <uint8_t> (req.method)){
-					// Если метод запроса указан как GET
-					case static_cast <uint8_t> (web_t::method_t::GET):
-						// Формируем GET запрос
-						result.push_back(make_pair(":method", "GET"));
-					break;
-					// Если метод запроса указан как PUT
-					case static_cast <uint8_t> (web_t::method_t::PUT):
-						// Формируем PUT запрос
-						result.push_back(make_pair(":method", "PUT"));
-					break;
-					// Если метод запроса указан как POST
-					case static_cast <uint8_t> (web_t::method_t::POST):
-						// Формируем POST запрос
-						result.push_back(make_pair(":method", "POST"));
-					break;
-					// Если метод запроса указан как HEAD
-					case static_cast <uint8_t> (web_t::method_t::HEAD):
-						// Формируем HEAD запрос
-						result.push_back(make_pair(":method", "HEAD"));
-					break;
-					// Если метод запроса указан как PATCH
-					case static_cast <uint8_t> (web_t::method_t::PATCH):
-						// Формируем PATCH запрос
-						result.push_back(make_pair(":method", "PATCH"));
-					break;
-					// Если метод запроса указан как TRACE
-					case static_cast <uint8_t> (web_t::method_t::TRACE):
-						// Формируем TRACE запрос
-						result.push_back(make_pair(":method", "TRACE"));
-					break;
-					// Если метод запроса указан как DELETE
-					case static_cast <uint8_t> (web_t::method_t::DEL):
-						// Формируем DELETE запрос
-						result.push_back(make_pair(":method", "DELETE"));
-					break;
-					// Если метод запроса указан как OPTIONS
-					case static_cast <uint8_t> (web_t::method_t::OPTIONS):
-						// Формируем OPTIONS запрос
-						result.push_back(make_pair(":method", "OPTIONS"));
-					break;
-					// Если метод запроса указан как CONNECT
-					case static_cast <uint8_t> (web_t::method_t::CONNECT):
-						// Формируем CONNECT запрос
-						result.push_back(make_pair(":method", "CONNECT"));
-					break;
-				}
-				// Выполняем установку схемы протокола
-				result.push_back(make_pair(":scheme", "https"));
-				// Если метод подключения установлен как CONNECT
-				if(req.method == web_t::method_t::CONNECT)
-					// Формируем URI запроса
-					result.push_back(make_pair(":authority", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port)));
-				// Если метод подключения не является методом CONNECT
-				else {
-					// Выполняем установку хоста сервера
-					result.push_back(make_pair(":authority", req.url.host));
-					// Выполняем установку пути запроса
-					result.push_back(make_pair(":path", this->_uri.query(req.url)));
-				}
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Если заголовок является системным
-					if(header.first.front() == ':')
-						// Формируем строку запроса
-						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
-				}
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Если заголовок не является системным
-					if(header.first.front() != ':'){
-						// Флаг разрешающий вывода заголовка
-						bool allow = !this->isBlack(header.first);
-						// Выполняем перебор всех обязательных заголовков
-						for(uint8_t i = 0; i < 7; i++){
-							// Если заголовок уже найден пропускаем его
-							if(available[i]) continue;
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 0: available[i] = this->_fmk->compare(header.first, "host");              break;
-								case 1: available[i] = this->_fmk->compare(header.first, "connection");        break;
-								case 2: available[i] = this->_fmk->compare(header.first, "proxy-connection");  break;
-								case 4: available[i] = this->_fmk->compare(header.first, "content-encoding");  break;
-								case 5: available[i] = this->_fmk->compare(header.first, "transfer-encoding"); break;
-								case 6: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");  break;
-								case 3: {
-									// Запоминаем, что мы нашли заголовок размера тела
-									available[i] = this->_fmk->compare(header.first, "content-length");
-									// Устанавливаем размер тела сообщения
-									if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-								} break;
-							}
-							// Если заголовок разрешён для вывода
-							if(allow){
-								// Выполняем првоерку заголовка
-								switch(i){
-									case 0:
-									case 3:
-									case 4:
-									case 5:
-									case 6: allow = !available[i]; break;
-									case 1:
-									case 2: {
-										// Если заголовок Connection определён
-										if(available[i])
-											// Выполняем определение разрешено ли выводить заголовок
-											allow = !this->_fmk->compare(header.second, "keep-alive");
-									} break;
-								}
-							}
-						}
-						// Если заголовок не является запрещённым, добавляем заголовок в запрос
-						if(allow)
-							// Формируем строку запроса
-							result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
-					}
-				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[3] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Если флаг запрета подготовки тела полезной нагрузки не установлен
-						if(!nobody){
-							// Выполняем очистку тела сообщения
-							this->clearBody();
-							// Заменяем тело данных
-							this->_web.body(crypto.data);
-							// Заменяем размер тела данных
-							if(!this->_chunking)
-								// Устанавливаем размер тела сообщения
-								length = body.size();
-						// Заменяем размер тела данных
-						} else if(!this->_chunking)
-							// Устанавливаем размер тела сообщения
-							length = crypto.data.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					}
-				// Очищаем тела сообщения
-				} else this->clearBody();
-			}
-		} break;
-		// Если нужно сформировать данные ответа
-		case static_cast <uint8_t> (process_t::RESPONSE): {
-			// Получаем объект параметров ответа
-			const web_t::res_t & res = this->_web.response();
-			// Если параметры запроса получены
-			if(res.code > 0){
-				// Размер тела сообщения
-				size_t length = 0;
-				// Если ответ не установлен, формируем по умолчанию
-				if(res.message.empty())
-					// Устанавливаем сообщение по умолчанию
-					const_cast <web_t::res_t &> (res).message = this->message(res.code);
-				// Данные REST ответа
-				result.push_back(make_pair(":status", ::to_string(res.code)));
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Флаг разрешающий вывода заголовка
-					bool allow = !this->isBlack(header.first);
-					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 7; i++){
-						// Если заголовок уже найден пропускаем его
-						if(available[i]) continue;
-						// Выполняем првоерку заголовка
-						switch(i){
-							case 1: available[i] = this->_fmk->compare(header.first, "connection");        break;
-							case 2: available[i] = this->_fmk->compare(header.first, "proxy-connection");  break;
-							case 4: available[i] = this->_fmk->compare(header.first, "content-encoding");  break;
-							case 5: available[i] = this->_fmk->compare(header.first, "transfer-encoding"); break;
-							case 6: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");  break;
-							case 3: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
-						}
-						// Если заголовок разрешён для вывода
-						if(allow){
-							// Выполняем првоерку заголовка
-							switch(i){
-								case 3:
-								case 4:
-								case 5:
-								case 6: allow = !available[i]; break;
-								case 1:
-								case 2: {
-									// Если заголовок Connection определён
-									if(available[i])
-										// Выполняем определение разрешено ли выводить заголовок
-										allow = !this->_fmk->compare(header.second, "keep-alive");
-								} break;
-							}
-						}
-					}
-					// Если заголовок не является запрещённым, добавляем заголовок в ответ
-					if(allow)
-						// Формируем строку запроса
-						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
-				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[3] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Если флаг запрета подготовки тела полезной нагрузки не установлен
-						if(!nobody){
-							// Выполняем очистку тела сообщения
-							this->clearBody();
-							// Заменяем тело данных
-							this->_web.body(crypto.data);
-							// Заменяем размер тела данных
-							if(!this->_chunking)
-								// Устанавливаем размер тела
-								length = body.size();
-						// Заменяем размер тела данных
-						} else if(!this->_chunking)
-							// Устанавливаем размер тела
-							length = crypto.data.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
-							case static_cast <uint8_t> (compress_t::BROTLI):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "br"));
-							break;
-							// Если нужно сжать тело методом GZIP
-							case static_cast <uint8_t> (compress_t::GZIP):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "gzip"));
-							break;
-							// Если нужно сжать тело методом DEFLATE
-							case static_cast <uint8_t> (compress_t::DEFLATE):
-								// Устанавливаем Content-Encoding если не передан
-								result.push_back(make_pair("content-encoding", "deflate"));
-							break;
-						}
-					}
-				// Очищаем тела сообщения
-				} else this->clearBody();
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * process Метод создания выполняемого процесса в бинарном виде
@@ -2400,37 +1857,26 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 					}
 				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
+				// Если запрос не является GET, HEAD или TRACE
+				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE)){
 					// Если заголовок не запрещён
 					if(!this->isBlack("Date"))
 						// Добавляем заголовок даты в запрос
 						request.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[6] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Выполняем очистку тела сообщения
-						this->clearBody();
-						// Заменяем тело данных
-						this->_web.body(crypto.data);
+					// Если тело запроса существует
+					if(!this->body().empty()){
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
 						if(!this->_chunking)
 							// Устанавливаем размер тела сообщения
-							length = body.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
+							length = this->_web.body().size();
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypted)
+							// Устанавливаем X-AWH-Encryption
+							request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_inflated)){
 							// Если нужно сжать тело методом BROTLI
 							case static_cast <uint8_t> (compress_t::BROTLI):
 								// Устанавливаем Content-Encoding если не передан
@@ -2447,6 +1893,32 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
 							break;
 						}
+					// Если тело запроса не существует
+					} else {
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypt)
+							// Устанавливаем X-AWH-Encryption
+							request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если полезная нагрузка сжата методом BROTLI
+							case static_cast <uint8_t> (compress_t::BROTLI):
+								// Устанавливаем Content-Encoding если не передан
+								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+							break;
+							// Если полезная нагрузка сжата методом GZIP
+							case static_cast <uint8_t> (compress_t::GZIP):
+								// Устанавливаем Content-Encoding если не передан
+								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+							break;
+							// Если полезная нагрузка сжата методом DEFLATE
+							case static_cast <uint8_t> (compress_t::DEFLATE):
+								// Устанавливаем Content-Encoding если не передан
+								request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+							break;
+						}
 					}
 					// Если данные необходимо разбивать на чанки
 					if(this->_chunking && !this->isBlack("Transfer-Encoding"))
@@ -2457,7 +1929,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Устанавливаем размер передаваемого тела Content-Length
 						request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 				// Очищаем тела сообщения
-				} else this->_web.clearBody();
+				} else this->clearBody();
 				// Устанавливаем завершающий разделитель
 				request.append("\r\n");
 				// Формируем результат запроса
@@ -2586,44 +2058,59 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 					}
 				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
 				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[3] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Выполняем очистку тела сообщения
-						this->clearBody();
-						// Заменяем тело данных
-						this->_web.body(crypto.data);
+				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+					// Если тело запроса существует
+					if(!this->body().empty()){
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
 						if(!this->_chunking)
 							// Устанавливаем размер тела сообщения
-							length = body.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
+							length = this->_web.body().size();
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypted)
+							// Устанавливаем X-AWH-Encryption
+							response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_inflated)){
+							// Если полезная нагрузка сжата методом BROTLI
 							case static_cast <uint8_t> (compress_t::BROTLI):
 								// Устанавливаем Content-Encoding если не передан
 								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
 							break;
-							// Если нужно сжать тело методом GZIP
+							// Если полезная нагрузка сжата методом GZIP
 							case static_cast <uint8_t> (compress_t::GZIP):
 								// Устанавливаем Content-Encoding если не передан
 								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
 							break;
-							// Если нужно сжать тело методом DEFLATE
+							// Если полезная нагрузка сжата методом DEFLATE
+							case static_cast <uint8_t> (compress_t::DEFLATE):
+								// Устанавливаем Content-Encoding если не передан
+								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+							break;
+						}
+					// Если тело запроса не существует
+					} else {
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypt)
+							// Устанавливаем X-AWH-Encryption
+							response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если полезная нагрузка сжата методом BROTLI
+							case static_cast <uint8_t> (compress_t::BROTLI):
+								// Устанавливаем Content-Encoding если не передан
+								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+							break;
+							// Если полезная нагрузка сжата методом GZIP
+							case static_cast <uint8_t> (compress_t::GZIP):
+								// Устанавливаем Content-Encoding если не передан
+								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+							break;
+							// Если полезная нагрузка сжата методом DEFLATE
 							case static_cast <uint8_t> (compress_t::DEFLATE):
 								// Устанавливаем Content-Encoding если не передан
 								response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
@@ -2639,7 +2126,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Устанавливаем размер передаваемого тела Content-Length
 						response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 				// Очищаем тела сообщения
-				} else this->_web.clearBody();
+				} else this->clearBody();
 				// Устанавливаем завершающий разделитель
 				response.append("\r\n");
 				// Формируем результат ответа
@@ -2667,8 +2154,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-				// Размер тела сообщения
-				size_t length = 0;
 				/**
 				 * Типы основных заголовков
 				 */
@@ -2774,6 +2259,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								case 3:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
 								case 4:  available[i] = this->_fmk->compare(header.first, "connection");            break;
 								case 5:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
+								case 6:  available[i] = this->_fmk->compare(header.first, "content-length");        break;
 								case 7:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
 								case 8:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
 								case 9:  available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
@@ -2781,12 +2267,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								case 11: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
 								case 12: available[i] = (this->_fmk->compare(header.first, "authorization") ||
 														 this->_fmk->compare(header.first, "proxy-authorization")); break;
-								case 6: {
-									// Запоминаем, что мы нашли заголовок размера тела
-									available[i] = this->_fmk->compare(header.first, "content-length");
-									// Устанавливаем размер тела сообщения
-									if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-								} break;
 							}
 							// Если заголовок разрешён для вывода
 							if(allow){
@@ -2943,37 +2423,22 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 					}
 				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
-				// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
+				// Если запрос не является GET, HEAD или TRACE
+				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE)){
 					// Если заголовок не запрещён
 					if(!this->isBlack("date"))
 						// Добавляем заголовок даты в запрос
 						result.push_back(make_pair("date", this->date()));
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[6] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Выполняем очистку тела сообщения
-						this->clearBody();
-						// Заменяем тело данных
-						this->_web.body(crypto.data);
-						// Заменяем размер тела данных
-						if(!this->_chunking)
-							// Устанавливаем размер тела сообщения
-							length = body.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
+					// Если тело запроса существует
+					if(!this->body().empty()){
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypted)
+							// Устанавливаем X-AWH-Encryption
+							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_inflated)){
 							// Если нужно сжать тело методом BROTLI
 							case static_cast <uint8_t> (compress_t::BROTLI):
 								// Устанавливаем Content-Encoding если не передан
@@ -2990,15 +2455,39 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								result.push_back(make_pair("content-encoding", "deflate"));
 							break;
 						}
+					// Если тело запроса не существует
+					} else {
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypt)
+							// Устанавливаем X-AWH-Encryption
+							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если полезная нагрузка сжата методом BROTLI
+							case static_cast <uint8_t> (compress_t::BROTLI):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "br"));
+							break;
+							// Если полезная нагрузка сжата методом GZIP
+							case static_cast <uint8_t> (compress_t::GZIP):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "gzip"));
+							break;
+							// Если полезная нагрузка сжата методом DEFLATE
+							case static_cast <uint8_t> (compress_t::DEFLATE):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "deflate"));
+							break;
+						}
 					}
 				// Очищаем тела сообщения
-				} else this->_web.clearBody();
+				} else this->clearBody();
 			}
 		} break;
 		// Если нужно сформировать данные ответа
 		case static_cast <uint8_t> (process_t::RESPONSE): {
-			// Размер тела сообщения
-			size_t length = 0;
 			/**
 			 * Типы основных заголовков
 			 */
@@ -3042,17 +2531,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							case 0: available[i] = this->_fmk->compare(header.first, "connection");         break;
 							case 1: available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
 							case 2: available[i] = this->_fmk->compare(header.first, "content-type");       break;
+							case 3: available[i] = this->_fmk->compare(header.first, "content-length");     break;
 							case 4: available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
 							case 5: available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
 							case 6: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
 							case 7: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
 							case 8: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
-							case 3: {
-								// Запоминаем, что мы нашли заголовок размера тела
-								available[i] = this->_fmk->compare(header.first, "content-length");
-								// Устанавливаем размер тела сообщения
-								if(available[i]) length = static_cast <size_t> (::stoull(header.second));
-							} break;
 						}
 						// Если заголовок разрешён для вывода
 						if(allow){
@@ -3114,44 +2598,55 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 					}
 				}
-				// Получаем данные тела
-				const auto & body = this->_web.body();
 				// Если запрос должен содержать тело и тело ответа существует
-				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308) && !body.empty()){
-					// Выполняем кодирование данных
-					const auto & crypto = this->encode(body);
-					// Проверяем нужно ли передать тело разбив на чанки
-					this->_chunking = (!available[3] || ((length > 0) && (length != body.size())));
-					// Если данные были сжаты, либо зашифрованы
-					if(crypto.encrypt || crypto.compress){
-						// Выполняем очистку тела сообщения
-						this->clearBody();
-						// Заменяем тело данных
-						this->_web.body(crypto.data);
-						// Заменяем размер тела данных
-						if(!this->_chunking)
-							// Устанавливаем размера передаваемых данных
-							length = body.size();
-					}
-					// Если данные зашифрованы, устанавливаем соответствующие заголовки
-					if(crypto.encrypt)
-						// Устанавливаем X-AWH-Encryption
-						result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-					// Если данные сжаты, устанавливаем соответствующие заголовки
-					if(crypto.compress){
-						// Определяем метод компрессии тела сообщения
-						switch(static_cast <uint8_t> (this->_compress)){
-							// Если нужно сжать тело методом BROTLI
+				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+					// Если тело запроса существует
+					if(!this->body().empty()){
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypted)
+							// Устанавливаем X-AWH-Encryption
+							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_inflated)){
+							// Если полезная нагрузка сжата методом BROTLI
 							case static_cast <uint8_t> (compress_t::BROTLI):
 								// Устанавливаем Content-Encoding если не передан
 								result.push_back(make_pair("content-encoding", "br"));
 							break;
-							// Если нужно сжать тело методом GZIP
+							// Если полезная нагрузка сжата методом GZIP
 							case static_cast <uint8_t> (compress_t::GZIP):
 								// Устанавливаем Content-Encoding если не передан
 								result.push_back(make_pair("content-encoding", "gzip"));
 							break;
-							// Если нужно сжать тело методом DEFLATE
+							// Если полезная нагрузка сжата методом DEFLATE
+							case static_cast <uint8_t> (compress_t::DEFLATE):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "deflate"));
+							break;
+						}
+					// Если тело запроса не существует
+					} else {
+						// Проверяем нужно ли передать тело разбив на чанки
+						this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
+						// Если данные зашифрованы, устанавливаем соответствующие заголовки
+						if(this->_crypt)
+							// Устанавливаем X-AWH-Encryption
+							result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+						// Определяем метод компрессии полезной нагрузки
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если полезная нагрузка сжата методом BROTLI
+							case static_cast <uint8_t> (compress_t::BROTLI):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "br"));
+							break;
+							// Если полезная нагрузка сжата методом GZIP
+							case static_cast <uint8_t> (compress_t::GZIP):
+								// Устанавливаем Content-Encoding если не передан
+								result.push_back(make_pair("content-encoding", "gzip"));
+							break;
+							// Если полезная нагрузка сжата методом DEFLATE
 							case static_cast <uint8_t> (compress_t::DEFLATE):
 								// Устанавливаем Content-Encoding если не передан
 								result.push_back(make_pair("content-encoding", "deflate"));
@@ -3159,7 +2654,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 					}
 				// Очищаем тела сообщения
-				} else this->_web.clearBody();
+				} else this->clearBody();
 			}
 		} break;
 	}
@@ -3337,7 +2832,8 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _stath(stath_t::NONE), _state(state_t::NONE), _identity(identity_t::NONE),
  _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log), _dhash(log),
- _crypt(false), _chunking(false), _chunk(BUFFER_CHUNK), _compress(compress_t::NONE),
+ _crypt(false), _crypted(false), _chunking(false), _chunk(BUFFER_CHUNK),
+ _inflated(compress_t::NONE), _compress(compress_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта
 	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));

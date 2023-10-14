@@ -59,7 +59,7 @@ void awh::client::WebSocket2::send(const uint64_t aid, client::core_t * core) no
 		// Выводим заголовок запроса
 		cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty())
 			// Выводим параметры запроса
@@ -300,7 +300,7 @@ int awh::client::WebSocket2::chunkSignal(const int32_t sid, const uint8_t * buff
 				// Если рукопожатие не выполнено
 				if(!this->_shake)
 					// Добавляем полученный чанк в тело данных
-					this->_http.body(vector <char> (buffer, buffer + size));
+					this->_http.payload(vector <char> (buffer, buffer + size));
 				// Если рукопожатие выполнено
 				else if(this->_allow.receive)
 					// Добавляем полученные данные в буфер
@@ -451,7 +451,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 									// Получаем объект работы с HTTP-запросами
 									const http_t & http = reinterpret_cast <http_t &> (this->_http);
 									// Получаем данные ответа
-									const auto & response = http.process(http_t::process_t::RESPONSE, true);
+									const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
 									// Если параметры ответа получены
 									if(!response.empty())
 										// Выводим параметры ответа
@@ -1095,7 +1095,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 						// Запоминаем полученный опкод
 						this->_frame.opcode = head.optcode;
 						// Запоминаем, что данные пришли сжатыми
-						this->_deflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
+						this->_inflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
@@ -1209,7 +1209,7 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->_freeze && this->_callback.is("message")){
 		// Если данные пришли в сжатом виде
-		if(this->_deflate && (this->_compress != http_t::compress_t::NONE)){
+		if(this->_inflate && (this->_compress != http_t::compress_t::NONE)){
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
@@ -1927,7 +1927,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
@@ -1941,7 +1941,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web2_t(core, fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));

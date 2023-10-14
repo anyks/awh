@@ -305,7 +305,7 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t aid, const
 					// Если протокол соответствует HTTP-протоколу
 					case static_cast <uint8_t> (agent_t::HTTP):
 						// Добавляем полученный чанк в тело данных
-						adj->http.body(vector <char> (buffer, buffer + size));
+						adj->http.payload(vector <char> (buffer, buffer + size));
 					break;
 					// Если протокол соответствует протоколу WebSocket
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -756,7 +756,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 							// Получаем объект работы с HTTP-запросами
 							const http_t & http = reinterpret_cast <http_t &> (adj->http);
 							// Получаем бинарные данные REST-ответа
-							const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
+							const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 							// Если бинарные данные ответа получены
 							if(!buffer.empty())
 								// Выводим параметры ответа
@@ -1082,7 +1082,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t aid, const u_i
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 									// Получаем бинарные данные REST-ответа
-									const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, true);
+									const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
 									// Если бинарные данные ответа получены
 									if(!buffer.empty())
 										// Выводим параметры ответа
@@ -1151,7 +1151,7 @@ void awh::server::Http2::send(const uint64_t aid, const u_int code, const string
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Получаем бинарные данные REST-ответа
-										const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, true);
+										const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
 										// Если бинарные данные ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа

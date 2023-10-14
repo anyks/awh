@@ -565,7 +565,7 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 		// Смещение в буфере и длина полученной строки
 		size_t offset = 0, length = 0, count = 0;
 		// Выполняем сброс массива сепараторов
-		memset(this->_pos, -1, sizeof(this->_pos));
+		::memset(this->_pos, -1, sizeof(this->_pos));
 		// Переходим по всему буферу
 		for(size_t i = 0; i < size; i++){
 			// Получаем значение текущей буквы
@@ -599,7 +599,7 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 					// Выполняем сброс количество найденных сепараторов
 					count = 0;
 					// Выполняем сброс массива сепараторов
-					memset(this->_pos, -1, sizeof(this->_pos));
+					::memset(this->_pos, -1, sizeof(this->_pos));
 				}
 				// Выполняем смещение
 				offset = (i + 1);

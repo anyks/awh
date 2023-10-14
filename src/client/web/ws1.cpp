@@ -164,7 +164,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Получаем объект работы с HTTP-запросами
 							const http_t & http = reinterpret_cast <http_t &> (this->_http);
 							// Получаем данные ответа
-							const auto & response = http.process(http_t::process_t::RESPONSE, true);
+							const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
 							// Если параметры ответа получены
 							if(!response.empty()){
 								// Выводим заголовок ответа
@@ -678,7 +678,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Запоминаем полученный опкод
 						this->_frame.opcode = head.optcode;
 						// Запоминаем, что данные пришли сжатыми
-						this->_deflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
+						this->_inflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
@@ -810,7 +810,7 @@ void awh::client::WebSocket1::extraction(const vector <char> & buffer, const boo
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->_freeze && this->_callback.is("message")){
 		// Если данные пришли в сжатом виде
-		if(this->_deflate && (this->_compress != http_t::compress_t::NONE)){
+		if(this->_inflate && (this->_compress != http_t::compress_t::NONE)){
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
@@ -1458,7 +1458,7 @@ void awh::client::WebSocket1::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web_t(fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
@@ -1474,7 +1474,7 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _deflate(false),
+ web_t(core, fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));

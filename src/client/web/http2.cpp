@@ -226,7 +226,7 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 					// Если агент является клиентом HTTP
 					case static_cast <uint8_t> (agent_t::HTTP): {
 						// Добавляем полученный чанк в тело данных
-						it->second->http.body(vector <char> (buffer, buffer + size));
+						it->second->http.payload(vector <char> (buffer, buffer + size));
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(this->_callback.is("chunks"))
 							// Выводим функцию обратного вызова
@@ -358,7 +358,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 										#if defined(DEBUG_MODE)
 											{
 												// Получаем данные ответа
-												const auto & response = it->second->http.process(http_t::process_t::RESPONSE, true);
+												const auto & response = it->second->http.process(http_t::process_t::RESPONSE, it->second->http.response());
 												// Если параметры ответа получены
 												if(!response.empty())
 													// Выводим параметры ответа
@@ -1268,7 +1268,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Выводим заголовок запроса
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 								// Получаем бинарные данные WEB запроса
-								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
+								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
@@ -1513,7 +1513,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 						// Выводим заголовок запроса
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 						// Получаем бинарные данные WEB запроса
-						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
+						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif

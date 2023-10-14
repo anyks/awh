@@ -294,7 +294,7 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t aid, 
 			// Если рукопожатие не выполнено
 			if(!adj->shake)
 				// Добавляем полученный чанк в тело данных
-				adj->http.body(vector <char> (buffer, buffer + size));
+				adj->http.payload(vector <char> (buffer, buffer + size));
 			// Если рукопожатие выполнено
 			else if(adj->allow.receive)
 				// Добавляем полученные данные в буфер
@@ -422,7 +422,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 												// Запоминаем полученный опкод
 												adj->frame.opcode = head.optcode;
 												// Запоминаем, что данные пришли сжатыми
-												adj->deflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
+												adj->inflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
 												// Если сообщение не замаскированно
 												if(!head.mask){
 													// Создаём сообщение
@@ -547,12 +547,12 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									{
 										// Получаем объект работы с HTTP-запросами
 										const http_t & http = reinterpret_cast <http_t &> (adj->http);
-										// Получаем данные ответа
-										const auto & response = http.process(http_t::process_t::REQUEST, true);
+										// Получаем бинарные данные REST-ответа
+										const auto & buffer = http.process(http_t::process_t::REQUEST, response);
 										// Если параметры ответа получены
-										if(!response.empty())
+										if(!buffer.empty())
 											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl;
+											cout << string(buffer.begin(), buffer.end()) << endl;
 									}
 								#endif
 								// Выполняем проверку авторизации
@@ -610,7 +610,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 														// Получаем объект работы с HTTP-запросами
 														const http_t & http = reinterpret_cast <http_t &> (adj->http);
 														// Получаем бинарные данные REST-ответа
-														const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
+														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
 															// Выводим параметры ответа
@@ -681,7 +681,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Получаем объект работы с HTTP-запросами
 											const http_t & http = reinterpret_cast <http_t &> (adj->http);
 											// Получаем бинарные данные REST-ответа
-											const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
+											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
 												// Выводим параметры ответа
@@ -1015,7 +1015,7 @@ void awh::server::WebSocket2::extraction(const uint64_t aid, const vector <char>
 			// Выполняем блокировку потока	
 			const lock_guard <recursive_mutex> lock(adj->mtx);
 			// Если данные пришли в сжатом виде
-			if(adj->deflate && (adj->compress != http_t::compress_t::NONE)){
+			if(adj->inflate && (adj->compress != http_t::compress_t::NONE)){
 				// Декомпрессионные данные
 				vector <char> data;
 				// Определяем метод компрессии

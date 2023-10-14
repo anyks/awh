@@ -102,18 +102,6 @@ namespace awh {
 				 */
 				Ident() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
 			} ident_t;
-			/**
-			 * Crypto Структура крипто-данных
-			 */
-			typedef struct Crypto {
-				bool encrypt;       // Флаг шифрованных данных
-				bool compress;      // Флаг сжатых данных
-				vector <char> data; // Буфер бинарных данных
-				/**
-				 * Crypto Конструктор
-				 */
-				Crypto() noexcept : encrypt(false), compress(false) {}
-			} crypto_t;
 		protected:
 			/**
 			 * Auth Структура объекта авторизации
@@ -215,7 +203,9 @@ namespace awh {
 			mutable hash_t _dhash;
 		protected:
 			// Флаг зашифрованных данных
-			mutable bool _crypt;
+			bool _crypt;
+			// Флаг зашифрованной полезной нагрузки
+			bool _crypted;
 		private:
 			// Флаг разрешающий передавать тело чанками
 			mutable bool _chunking;
@@ -226,7 +216,9 @@ namespace awh {
 			// Идентификация сервиса
 			ident_t _ident;
 		private:
-			// Метод компрессии отправляемых данных
+			// Флаг компрессии полезной нагрузки
+			compress_t _inflated;
+			// Метод компрессии полезной нагрузки
 			compress_t _compress;
 		private:
 			// User-Agent для HTTP запроса
@@ -247,6 +239,24 @@ namespace awh {
 			 * @param web    объект HTTP парсера
 			 */
 			void chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
+		private:
+			/**
+			 * encrypt Метод выполнения шифрования полезной нагрузки
+			 */
+			void encrypt() noexcept;
+			/**
+			 * decrypt Метод выполнения дешифровани полезной нагрузки
+			 */
+			void decrypt() noexcept;
+		private:
+			/**
+			 * inflate Метод выполнения декомпрессии полезной нагрузки
+			 */
+			void inflate() noexcept;
+			/**
+			 * deflate Метод выполнения компрессии полезной нагрузки
+			 */
+			void deflate() noexcept;
 		public:
 			/**
 			 * commit Метод применения полученных результатов
@@ -288,10 +298,15 @@ namespace awh {
 			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * payload Метод чтения чанка тела запроса
-			 * @return текущий чанк запроса
+			 * payload Метод чтения чанка полезной нагрузки
+			 * @return текущий чанк полезной нагрузки
 			 */
 			const vector <char> payload() const noexcept;
+			/**
+			 * payload Метод установки чанка полезной нагрузки
+			 * @param payload буфер чанка полезной нагрузки
+			 */
+			void payload(const vector <char> & payload) noexcept;
 		public:
 			/**
 			 * clearBody Метод очистки данных тела
@@ -471,19 +486,6 @@ namespace awh {
 			const string & message(const u_int code) const noexcept;
 		public:
 			/**
-			 * decode Метод декодирования полученных чанков
-			 * @param buffer буфер данных для декодирования
-			 * @return       декодированный буфер данных
-			 */
-			crypto_t decode(const vector <char> & buffer) const noexcept;
-			/**
-			 * encode Метод кодирования полученных чанков
-			 * @param buffer буфер данных для кодирования
-			 * @return       кодированный буфер данных
-			 */
-			crypto_t encode(const vector <char> & buffer) const noexcept;
-		public:
-			/**
 			 * mapping Метод маппинга полученных данных
 			 * @param flag флаг выполняемого процесса
 			 * @param http объект для маппинга
@@ -515,21 +517,6 @@ namespace awh {
 			 * @return    буфер данных ответа в бинарном виде
 			 */
 			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
-		public:
-			/**
-			 * process Метод создания выполняемого процесса в бинарном виде
-			 * @param flag   флаг выполняемого процесса
-			 * @param nobody флаг запрета подготовки тела
-			 * @return       буфер данных в бинарном виде
-			 */
-			virtual vector <char> process(const process_t flag, const bool nobody = false) const noexcept;
-			/**
-			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
-			 * @param flag   флаг выполняемого процесса
-			 * @param nobody флаг запрета подготовки тела
-			 * @return       буфер данных в бинарном виде
-			 */
-			virtual vector <pair <string, string>> process2(const process_t flag, const bool nobody = false) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде

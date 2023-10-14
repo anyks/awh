@@ -187,7 +187,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Получаем объект работы с HTTP запросами
 								const http_t & http = reinterpret_cast <http_t &> (adj->http);
 								// Получаем данные запроса
-								const auto & request = http.process(http_t::process_t::REQUEST, true);
+								const auto & request = http.process(http_t::process_t::REQUEST, http.request());
 								// Если параметры запроса получены
 								if(!request.empty()){
 									// Выводим заголовок запроса
@@ -466,7 +466,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Запоминаем полученный опкод
 									adj->frame.opcode = head.optcode;
 									// Запоминаем, что данные пришли сжатыми
-									adj->deflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
+									adj->inflate = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
 									// Если сообщение не замаскированно
 									if(!head.mask){
 										// Создаём сообщение
@@ -663,7 +663,7 @@ void awh::server::WebSocket1::extraction(const uint64_t aid, const vector <char>
 			// Выполняем блокировку потока	
 			const lock_guard <recursive_mutex> lock(adj->mtx);
 			// Если данные пришли в сжатом виде
-			if(adj->deflate && (adj->compress != http_t::compress_t::NONE)){
+			if(adj->inflate && (adj->compress != http_t::compress_t::NONE)){
 				// Декомпрессионные данные
 				vector <char> data;
 				// Определяем метод компрессии
