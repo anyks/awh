@@ -81,14 +81,16 @@ namespace awh {
 			vector <vector <string>> _extensions;
 		private:
 			/**
-			 * applyExtensions Метод установки выбранных расширений
-			 */
-			void applyExtensions() noexcept;
-		private:
-			/**
 			 * init Метод инициализации
+			 * @param flag флаг направления передачи данных
 			 */
 			void init(const process_t flag) noexcept;
+		private:
+			/**
+			 * applyExtensions Метод установки выбранных расширений
+			 * @param flag флаг направления передачи данных
+			 */
+			void applyExtensions(const process_t flag) noexcept;
 		protected:
 			/**
 			 * key Метод генерации ключа

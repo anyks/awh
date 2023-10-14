@@ -16,9 +16,121 @@
 #include <ws/core.hpp>
 
 /**
- * applyExtensions Метод установки выбранных расширений
+ * init Метод инициализации
+ * @param flag флаг направления передачи данных
  */
-void awh::WCore::applyExtensions() noexcept {
+void awh::WCore::init(const process_t flag) noexcept {
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Удаляем заголовок Accept
+			this->rmHeader("Accept");
+			// Удаляем заголовок отключения кеширования
+			this->rmHeader("Pragma");
+			// Удаляем заголовок отключения кеширования
+			this->rmHeader("Cache-Control");
+			// Удаляем заголовок типа запроса
+			this->rmHeader("Sec-Fetch-Mode");
+			// Удаляем заголовок места назначения запроса
+			this->rmHeader("Sec-Fetch-Dest");
+			// Удаляем заголовок требования сжимать содержимое ответов
+			this->rmHeader("Accept-Encoding");
+			// Удаляем заголовок поддерживаемых языков
+			this->rmHeader("Accept-Language");
+			// Удаляем заголовок версии WebSocket
+			this->rmHeader("Sec-WebSocket-Version");
+			// Если список поддерживаемых сабпротоколов установлен
+			if(!this->_supportedProtocols.empty()){
+				// Если количество поддерживаемых сабпротоколов больше 5-ти
+				if(this->_supportedProtocols.size() > 5){
+					// Список поддерживаемых сабпротоколов
+					string subprotocols = "";
+					// Переходим по всему списку поддерживаемых сабпротоколов
+					for(auto & subprotocol : this->_supportedProtocols){
+						// Если сабпротокол уже не пустой
+						if(!subprotocols.empty())
+							// Добавляем разделитель
+							subprotocols.append(", ");
+						// Добавляем в список поддерживаемых сабпротоколов
+						subprotocols.append(subprotocol);
+					}
+					// Добавляем заголовок поддерживаемых сабпротоколов
+					this->header("Sec-WebSocket-Protocol", subprotocols);
+				// Если сабпротоколов слишком много
+				} else {
+					// Получаем список заголовков
+					const auto & headers = this->_web.headers();
+					// Переходим по всему списку поддерживаемых сабпротоколов
+					for(auto & subprotocol : this->_supportedProtocols)
+						// Добавляем полученный заголовок
+						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+				}
+			}
+			// Выполняем применение расширений
+			this->applyExtensions(flag);
+			// Добавляем заголовок Accept
+			this->header("Accept", "*/*");
+			// Добавляем заголовок отключения кеширования
+			this->header("Pragma", "No-Cache");
+			// Добавляем заголовок отключения кеширования
+			this->header("Cache-Control", "No-Cache");
+			// Добавляем заголовок типа запроса
+			this->header("Sec-Fetch-Mode", "WebSocket");
+			// Добавляем заголовок места назначения запроса
+			this->header("Sec-Fetch-Dest", "WebSocket");
+			// Добавляем заголовок требования сжимать содержимое ответов
+			this->header("Accept-Encoding", "gzip, deflate, br");
+			// Добавляем заголовок поддерживаемых языков
+			this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
+			// Добавляем заголовок версии WebSocket
+			this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE): {
+			// Добавляем в чёрный список заголовок Content-Type
+			this->addBlack("Content-Type");
+			// Получаем объект ответа клиенту
+			const web_t::res_t & res = this->_web.response();
+			// Если ответ сервера положительный
+			if(res.version >= 2.0f ? res.code == 200 : res.code == 101)
+				// Выполняем применение расширений
+				this->applyExtensions(flag);
+			// Если список выбранных сабпротоколов установлен
+			if(!this->_selectedProtocols.empty()){
+				// Если количество выбранных сабпротоколов больше 5-ти
+				if(this->_selectedProtocols.size() > 5){
+					// Список выбранных сабпротоколов
+					string subprotocols = "";
+					// Переходим по всему списку выбранных сабпротоколов
+					for(auto & subprotocol : this->_selectedProtocols){
+						// Если сабпротокол уже не пустой
+						if(!subprotocols.empty())
+							// Добавляем разделитель
+							subprotocols.append(", ");
+						// Добавляем в список выбранных сабпротоколов
+						subprotocols.append(subprotocol);
+					}
+					// Добавляем заголовок выбранных сабпротоколов
+					this->header("Sec-WebSocket-Protocol", subprotocols);
+				// Если сабпротоколов слишком много
+				} else {
+					// Получаем список заголовков
+					const auto & headers = this->_web.headers();
+					// Переходим по всему списку выбранных сабпротоколов
+					for(auto & subprotocol : this->_selectedProtocols)
+						// Добавляем полученный заголовок
+						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+				}
+			}
+		} break;
+	}
+}
+/**
+ * applyExtensions Метод установки выбранных расширений
+ * @param flag флаг направления передачи данных
+ */
+void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	// Список поддверживаемых расширений
 	vector <vector <string>> extensions;
 	// Удаляем заголовок сабпратоколов
@@ -122,116 +234,6 @@ void awh::WCore::applyExtensions() noexcept {
 		}
 		// Добавляем заголовок сабпротокола
 		this->header("Sec-WebSocket-Extensions", records);
-	}
-}
-/**
- * init Метод инициализации
- */
-void awh::WCore::init(const process_t flag) noexcept {
-	// Определяем флаг выполняемого процесса
-	switch(static_cast <uint8_t> (flag)){
-		// Если нужно сформировать данные запроса
-		case static_cast <uint8_t> (process_t::REQUEST): {
-			// Удаляем заголовок Accept
-			this->rmHeader("Accept");
-			// Удаляем заголовок отключения кеширования
-			this->rmHeader("Pragma");
-			// Удаляем заголовок отключения кеширования
-			this->rmHeader("Cache-Control");
-			// Удаляем заголовок типа запроса
-			this->rmHeader("Sec-Fetch-Mode");
-			// Удаляем заголовок места назначения запроса
-			this->rmHeader("Sec-Fetch-Dest");
-			// Удаляем заголовок требования сжимать содержимое ответов
-			this->rmHeader("Accept-Encoding");
-			// Удаляем заголовок поддерживаемых языков
-			this->rmHeader("Accept-Language");
-			// Удаляем заголовок версии WebSocket
-			this->rmHeader("Sec-WebSocket-Version");
-			// Если список поддерживаемых сабпротоколов установлен
-			if(!this->_supportedProtocols.empty()){
-				// Если количество поддерживаемых сабпротоколов больше 5-ти
-				if(this->_supportedProtocols.size() > 5){
-					// Список поддерживаемых сабпротоколов
-					string subprotocols = "";
-					// Переходим по всему списку поддерживаемых сабпротоколов
-					for(auto & subprotocol : this->_supportedProtocols){
-						// Если сабпротокол уже не пустой
-						if(!subprotocols.empty())
-							// Добавляем разделитель
-							subprotocols.append(", ");
-						// Добавляем в список поддерживаемых сабпротоколов
-						subprotocols.append(subprotocol);
-					}
-					// Добавляем заголовок поддерживаемых сабпротоколов
-					this->header("Sec-WebSocket-Protocol", subprotocols);
-				// Если сабпротоколов слишком много
-				} else {
-					// Получаем список заголовков
-					const auto & headers = this->_web.headers();
-					// Переходим по всему списку поддерживаемых сабпротоколов
-					for(auto & subprotocol : this->_supportedProtocols)
-						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
-				}
-			}
-			// Выполняем применение расширений
-			this->applyExtensions();
-			// Добавляем заголовок Accept
-			this->header("Accept", "*/*");
-			// Добавляем заголовок отключения кеширования
-			this->header("Pragma", "No-Cache");
-			// Добавляем заголовок отключения кеширования
-			this->header("Cache-Control", "No-Cache");
-			// Добавляем заголовок типа запроса
-			this->header("Sec-Fetch-Mode", "WebSocket");
-			// Добавляем заголовок места назначения запроса
-			this->header("Sec-Fetch-Dest", "WebSocket");
-			// Добавляем заголовок требования сжимать содержимое ответов
-			this->header("Accept-Encoding", "gzip, deflate, br");
-			// Добавляем заголовок поддерживаемых языков
-			this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
-			// Добавляем заголовок версии WebSocket
-			this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
-		} break;
-		// Если нужно сформировать данные ответа
-		case static_cast <uint8_t> (process_t::RESPONSE): {
-			// Добавляем в чёрный список заголовок Content-Type
-			this->addBlack("Content-Type");
-			// Получаем объект ответа клиенту
-			const web_t::res_t & res = this->_web.response();
-			// Если ответ сервера положительный
-			if(res.version >= 2.0f ? res.code == 200 : res.code == 101)
-				// Выполняем применение расширений
-				this->applyExtensions();
-			// Если список выбранных сабпротоколов установлен
-			if(!this->_selectedProtocols.empty()){
-				// Если количество выбранных сабпротоколов больше 5-ти
-				if(this->_selectedProtocols.size() > 5){
-					// Список выбранных сабпротоколов
-					string subprotocols = "";
-					// Переходим по всему списку выбранных сабпротоколов
-					for(auto & subprotocol : this->_selectedProtocols){
-						// Если сабпротокол уже не пустой
-						if(!subprotocols.empty())
-							// Добавляем разделитель
-							subprotocols.append(", ");
-						// Добавляем в список выбранных сабпротоколов
-						subprotocols.append(subprotocol);
-					}
-					// Добавляем заголовок выбранных сабпротоколов
-					this->header("Sec-WebSocket-Protocol", subprotocols);
-				// Если сабпротоколов слишком много
-				} else {
-					// Получаем список заголовков
-					const auto & headers = this->_web.headers();
-					// Переходим по всему списку выбранных сабпротоколов
-					for(auto & subprotocol : this->_selectedProtocols)
-						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
-				}
-			}
-		} break;
 	}
 }
 /**
