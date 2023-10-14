@@ -100,6 +100,8 @@ void awh::WCore::init(const process_t flag) noexcept {
 				this->applyExtensions(flag);
 				// Добавляем в чёрный список заголовок Content-Encoding
 				this->addBlack("Content-Encoding");
+				// Добавляем в чёрный список заголовок X-AWH-Encryption
+				this->addBlack("X-AWH-Encryption");
 			}
 			// Если список выбранных сабпротоколов установлен
 			if(!this->_selectedProtocols.empty()){

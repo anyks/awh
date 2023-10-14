@@ -1900,26 +1900,29 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypt)
+								if(this->_crypt && !this->isBlack("X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-								// Определяем метод компрессии полезной нагрузки
-								switch(static_cast <uint8_t> (this->_compress)){
-									// Если полезная нагрузка сжата методом BROTLI
-									case static_cast <uint8_t> (compress_t::BROTLI):
-										// Устанавливаем Content-Encoding если не передан
-										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-									break;
-									// Если полезная нагрузка сжата методом GZIP
-									case static_cast <uint8_t> (compress_t::GZIP):
-										// Устанавливаем Content-Encoding если не передан
-										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-									break;
-									// Если полезная нагрузка сжата методом DEFLATE
-									case static_cast <uint8_t> (compress_t::DEFLATE):
-										// Устанавливаем Content-Encoding если не передан
-										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-									break;
+								// Устанавливаем Content-Encoding если не передан
+								if(!this->isBlack("Content-Encoding")){
+									// Определяем метод компрессии полезной нагрузки
+									switch(static_cast <uint8_t> (this->_compress)){
+										// Если полезная нагрузка сжата методом BROTLI
+										case static_cast <uint8_t> (compress_t::BROTLI):
+											// Устанавливаем Content-Encoding если не передан
+											request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+										break;
+										// Если полезная нагрузка сжата методом GZIP
+										case static_cast <uint8_t> (compress_t::GZIP):
+											// Устанавливаем Content-Encoding если не передан
+											request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+										break;
+										// Если полезная нагрузка сжата методом DEFLATE
+										case static_cast <uint8_t> (compress_t::DEFLATE):
+											// Устанавливаем Content-Encoding если не передан
+											request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+										break;
+									}
 								}
 							}
 							// Если данные необходимо разбивать на чанки
@@ -2033,13 +2036,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
 							if(allow)
 								// Формируем строку ответа
-								response.append(
-									this->_fmk->format(
-										"%s: %s\r\n",
-										this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
-										header.second.c_str()
-									)
-								);
+								response.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
 						}
 						// Если заголовок не запрещён
 						if(!available[0] && !this->isBlack("Date"))
@@ -2127,26 +2124,29 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypt)
+								if(this->_crypt && !this->isBlack("X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
-								// Определяем метод компрессии полезной нагрузки
-								switch(static_cast <uint8_t> (this->_compress)){
-									// Если полезная нагрузка сжата методом BROTLI
-									case static_cast <uint8_t> (compress_t::BROTLI):
-										// Устанавливаем Content-Encoding если не передан
-										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
-									break;
-									// Если полезная нагрузка сжата методом GZIP
-									case static_cast <uint8_t> (compress_t::GZIP):
-										// Устанавливаем Content-Encoding если не передан
-										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
-									break;
-									// Если полезная нагрузка сжата методом DEFLATE
-									case static_cast <uint8_t> (compress_t::DEFLATE):
-										// Устанавливаем Content-Encoding если не передан
-										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
-									break;
+								// Устанавливаем Content-Encoding если не передан
+								if(!this->isBlack("Content-Encoding")){
+									// Определяем метод компрессии полезной нагрузки
+									switch(static_cast <uint8_t> (this->_compress)){
+										// Если полезная нагрузка сжата методом BROTLI
+										case static_cast <uint8_t> (compress_t::BROTLI):
+											// Устанавливаем Content-Encoding если не передан
+											response.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+										break;
+										// Если полезная нагрузка сжата методом GZIP
+										case static_cast <uint8_t> (compress_t::GZIP):
+											// Устанавливаем Content-Encoding если не передан
+											response.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+										break;
+										// Если полезная нагрузка сжата методом DEFLATE
+										case static_cast <uint8_t> (compress_t::DEFLATE):
+											// Устанавливаем Content-Encoding если не передан
+											response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+										break;
+									}
 								}
 							}
 							// Если данные необходимо разбивать на чанки
@@ -2502,26 +2502,29 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypt)
+								if(this->_crypt && !this->isBlack("x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-								// Определяем метод компрессии полезной нагрузки
-								switch(static_cast <uint8_t> (this->_compress)){
-									// Если полезная нагрузка сжата методом BROTLI
-									case static_cast <uint8_t> (compress_t::BROTLI):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "br"));
-									break;
-									// Если полезная нагрузка сжата методом GZIP
-									case static_cast <uint8_t> (compress_t::GZIP):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "gzip"));
-									break;
-									// Если полезная нагрузка сжата методом DEFLATE
-									case static_cast <uint8_t> (compress_t::DEFLATE):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "deflate"));
-									break;
+								// Устанавливаем Content-Encoding если не передан
+								if(!this->isBlack("content-encoding")){
+									// Определяем метод компрессии полезной нагрузки
+									switch(static_cast <uint8_t> (this->_compress)){
+										// Если полезная нагрузка сжата методом BROTLI
+										case static_cast <uint8_t> (compress_t::BROTLI):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "br"));
+										break;
+										// Если полезная нагрузка сжата методом GZIP
+										case static_cast <uint8_t> (compress_t::GZIP):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "gzip"));
+										break;
+										// Если полезная нагрузка сжата методом DEFLATE
+										case static_cast <uint8_t> (compress_t::DEFLATE):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "deflate"));
+										break;
+									}
 								}
 							}
 						// Очищаем тела сообщения
@@ -2706,26 +2709,29 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypt || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypt)
+								if(this->_crypt && !this->isBlack("x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
-								// Определяем метод компрессии полезной нагрузки
-								switch(static_cast <uint8_t> (this->_compress)){
-									// Если полезная нагрузка сжата методом BROTLI
-									case static_cast <uint8_t> (compress_t::BROTLI):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "br"));
-									break;
-									// Если полезная нагрузка сжата методом GZIP
-									case static_cast <uint8_t> (compress_t::GZIP):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "gzip"));
-									break;
-									// Если полезная нагрузка сжата методом DEFLATE
-									case static_cast <uint8_t> (compress_t::DEFLATE):
-										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "deflate"));
-									break;
+								// Устанавливаем Content-Encoding если не передан
+								if(!this->isBlack("content-encoding")){
+									// Определяем метод компрессии полезной нагрузки
+									switch(static_cast <uint8_t> (this->_compress)){
+										// Если полезная нагрузка сжата методом BROTLI
+										case static_cast <uint8_t> (compress_t::BROTLI):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "br"));
+										break;
+										// Если полезная нагрузка сжата методом GZIP
+										case static_cast <uint8_t> (compress_t::GZIP):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "gzip"));
+										break;
+										// Если полезная нагрузка сжата методом DEFLATE
+										case static_cast <uint8_t> (compress_t::DEFLATE):
+											// Устанавливаем Content-Encoding если не передан
+											result.push_back(make_pair("content-encoding", "deflate"));
+										break;
+									}
 								}
 							}
 						// Очищаем тела сообщения
