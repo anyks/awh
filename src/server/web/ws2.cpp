@@ -47,8 +47,12 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				}
 				// Выполняем установку идентификатора объекта
 				adj->http.id(aid);
+				// Устанавливаем размер чанка
+				adj->http.chunk(this->_chunkSize);
 				// Выполняем установку протокола подключения
 				adj->proto = engine_t::proto_t::HTTP2;
+				// Устанавливаем метод компрессии поддерживаемый сервером
+				adj->http.compress(this->_scheme.compress);
 				// Устанавливаем флаг перехвата контекста компрессии
 				adj->server.takeover = this->_server.takeover;
 				// Устанавливаем флаг перехвата контекста декомпрессии
@@ -75,8 +79,6 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				if(this->_frameSize > 0)
 					// Выполняем установку размера фрейма
 					adj->frame.size = this->_frameSize;
-				// Устанавливаем метод компрессии поддерживаемый сервером
-				adj->http.compress(this->_scheme.compress);
 				// Если сервер требует авторизацию
 				if(this->_service.type != auth_t::type_t::NONE){
 					// Определяем тип авторизации

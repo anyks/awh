@@ -41,6 +41,10 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 			}
 			// Выполняем установку идентификатора объекта
 			adj->http.id(aid);
+			// Устанавливаем размер чанка
+			adj->http.chunk(this->_chunkSize);
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			adj->http.compress(this->_scheme.compress);
 			// Устанавливаем флаг перехвата контекста компрессии
 			adj->server.takeover = this->_server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
@@ -67,8 +71,6 @@ void awh::server::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 			if(this->_frameSize > 0)
 				// Выполняем установку размера фрейма
 				adj->frame.size = this->_frameSize;
-			// Устанавливаем метод компрессии поддерживаемый сервером
-			adj->http.compress(this->_scheme.compress);
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков

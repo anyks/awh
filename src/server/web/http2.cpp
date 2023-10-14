@@ -147,7 +147,7 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 					// Если протокол соответствует HTTP-протоколу
 					case static_cast <uint8_t> (agent_t::HTTP): {
 						// Определяем протокола подключения
-						switch(static_cast <uint8_t> (adj->proto)){
+						switch(static_cast <uint8_t> (core->proto(aid))){
 							// Если протокол подключения соответствует HTTP/1.1
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
 								// Выполняем переброс вызова чтения клиенту HTTP
