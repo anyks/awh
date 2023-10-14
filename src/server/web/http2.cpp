@@ -728,7 +728,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				// Выполняем сброс состояния HTTP парсера
 				adj->http.clear();
 				// Выполняем сброс состояния HTTP парсера
-				adj->http.reset();
+				// adj->http.reset();
 				// Если функция обратного вызова на получение удачного запроса установлена
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
@@ -739,7 +739,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				// Выполняем сброс состояния HTTP парсера
 				adj->http.clear();
 				// Выполняем сброс состояния HTTP парсера
-				adj->http.reset();
+				// adj->http.reset();
 				// Формируем ответ на запрос об авторизации
 				const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
 				// Получаем заголовки ответа удалённому клиенту
