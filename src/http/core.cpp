@@ -1543,6 +1543,12 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 	if(!res.message.empty()){
 		// Выполняем очистку списка установленных заголовков
 		this->_web.clearHeaders();
+		// Если требуется ввод авторизационных данных
+		if((res.code == 401) || (res.code == 407))
+			// Добавляем заголовок закрытия подключения
+			this->_web.header("Connection", "Keep-Alive");
+		// Добавляем заголовок закрытия подключения
+		else this->_web.header("Connection", "Close");
 		// Добавляем заголовок тип контента
 		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
