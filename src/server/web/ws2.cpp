@@ -49,8 +49,6 @@ void awh::server::WebSocket2::connectCallback(const uint64_t aid, const uint16_t
 				adj->http.id(aid);
 				// Устанавливаем размер чанка
 				adj->http.chunk(this->_chunkSize);
-				// Выполняем установку протокола подключения
-				adj->proto = engine_t::proto_t::HTTP2;
 				// Устанавливаем метод компрессии поддерживаемый сервером
 				adj->http.compress(this->_scheme.compress);
 				// Устанавливаем флаг перехвата контекста компрессии
@@ -191,8 +189,10 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 				// Выходим из функции
 				return;
 			}
+			// Выполняем установку протокола подключения
+			adj->proto = core->proto(aid);
 			// Если протокол подключения является HTTP/2
-			if(core->proto(aid) == engine_t::proto_t::HTTP2){
+			if(adj->proto == engine_t::proto_t::HTTP2){
 				// Если получение данных не разрешено
 				if(!adj->allow.receive)
 					// Выходим из функции

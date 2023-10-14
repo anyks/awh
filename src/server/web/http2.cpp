@@ -44,8 +44,6 @@ void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 				adj->http.compress(this->_scheme.compress);
 				// Устанавливаем данные сервиса
 				adj->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
-				// Выполняем установку протокола подключения
-				adj->proto = engine_t::proto_t::HTTP2;
 				// Если требуется установить параметры шифрования
 				if(this->_crypto.mode)
 					// Устанавливаем параметры шифрования
@@ -142,12 +140,14 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 			auto it = this->_agents.find(aid);
 			// Если активный агент клиента установлен
 			if(it != this->_agents.end()){
+				// Выполняем установку протокола подключения
+				adj->proto = core->proto(aid);
 				// Определяем тип активного протокола
 				switch(static_cast <uint8_t> (it->second)){
 					// Если протокол соответствует HTTP-протоколу
 					case static_cast <uint8_t> (agent_t::HTTP): {
 						// Определяем протокола подключения
-						switch(static_cast <uint8_t> (core->proto(aid))){
+						switch(static_cast <uint8_t> (adj->proto)){
 							// Если протокол подключения соответствует HTTP/1.1
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
 								// Выполняем переброс вызова чтения клиенту HTTP
