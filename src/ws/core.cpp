@@ -20,6 +20,8 @@
  * @param flag флаг направления передачи данных
  */
 void awh::WCore::init(const process_t flag) noexcept {
+	// Удаляем заголовок сабпратоколов
+	this->rmHeader("Sec-WebSocket-Protocol");
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -93,9 +95,12 @@ void awh::WCore::init(const process_t flag) noexcept {
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = this->_web.response();
 			// Если ответ сервера положительный
-			if(res.version >= 2.0f ? res.code == 200 : res.code == 101)
+			if(res.version >= 2.0f ? res.code == 200 : res.code == 101){
 				// Выполняем применение расширений
 				this->applyExtensions(flag);
+				// Добавляем в чёрный список заголовок Content-Encoding
+				this->addBlack("Content-Encoding");
+			}
 			// Если список выбранных сабпротоколов установлен
 			if(!this->_selectedProtocols.empty()){
 				// Если количество выбранных сабпротоколов больше 5-ти
@@ -133,8 +138,6 @@ void awh::WCore::init(const process_t flag) noexcept {
 void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	// Список поддверживаемых расширений
 	vector <vector <string>> extensions;
-	// Удаляем заголовок сабпратоколов
-	this->rmHeader("Sec-WebSocket-Protocol");
 	// Удаляем заголовок расширений
 	this->rmHeader("Sec-WebSocket-Extensions");
 	// Определяем тип активной компрессии
