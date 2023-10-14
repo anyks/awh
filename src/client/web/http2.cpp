@@ -320,6 +320,8 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 										}
 										// Выполняем очистку параметров HTTP запроса
 										this->_http.clear();
+										// Выполняем очистку параметров HTTP-апроса у конкретного потока
+										it->second->http.clear();
 										// Если функция обратного вызова установлена, выводим сообщение
 										if(it->second->callback.is("entity"))
 											// Выполняем функцию обратного вызова дисконнекта

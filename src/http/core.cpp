@@ -1672,7 +1672,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Флаг разрешающий вывода заголовка
 					bool allow = !this->isBlack(header.first);
 					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 12; i++){
+					for(uint8_t i = 0; i < 13; i++){
 						// Если заголовок уже найден пропускаем его
 						if(available[i]) continue;
 						// Выполняем првоерку заголовка
@@ -1955,9 +1955,12 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				/**
 				 * Типы основных заголовков
 				 */
-				bool available[9] = {
+				bool available[12] = {
+					false, // Date
+					false, // Server
 					false, // Connection
 					false, // Proxy-Connection
+					false, // X-Powered-By
 					false, // Content-Type
 					false, // Content-Length
 					false, // Content-Encoding
@@ -1970,29 +1973,28 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				size_t length = 0;
 				// Данные REST ответа
 				string response = this->_fmk->format("HTTP/%.1f %u %s\r\n", res.version, res.code, res.message.c_str());
-				// Если заголовок не запрещён
-				if(!this->isBlack("Date"))
-					// Добавляем заголовок даты в ответ
-					response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 				// Переходим по всему списку заголовков
 				for(auto & header : this->_web.headers()){
 					// Флаг разрешающий вывода заголовка
 					bool allow = !this->isBlack(header.first);
 					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 8; i++){
+					for(uint8_t i = 0; i < 12; i++){
 						// Если заголовок уже найден пропускаем его
 						if(available[i]) continue;
 						// Выполняем првоерку заголовка
 						switch(i){
-							case 0: available[i] = this->_fmk->compare(header.first, "connection");         break;
-							case 1: available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
-							case 2: available[i] = this->_fmk->compare(header.first, "content-type");       break;
-							case 4: available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
-							case 5: available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
-							case 6: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
-							case 7: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
-							case 8: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
-							case 3: {
+							case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
+							case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
+							case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
+							case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
+							case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
+							case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
+							case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
+							case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
+							case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
+							case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
+							case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
+							case 6: {
 								// Запоминаем, что мы нашли заголовок размера тела
 								available[i] = this->_fmk->compare(header.first, "content-length");
 								// Устанавливаем размер тела сообщения
@@ -2003,10 +2005,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						if(allow){
 							// Выполняем првоерку заголовка
 							switch(i){
-								case 3:
-								case 4:
-								case 5:
-								case 6: allow = !available[i]; break;
+								case 6:
+								case 7:
+								case 8:
+								case 9: allow = !available[i]; break;
 							}
 						}
 					}
@@ -2021,24 +2023,28 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							)
 						);
 				}
+				// Если заголовок не запрещён
+				if(!available[0] && !this->isBlack("Date"))
+					// Добавляем заголовок даты в ответ
+					response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
+				// Если заголовок не запрещён
+				if(!available[1] && !this->isBlack("Server"))
+					// Добавляем название сервера в ответ
+					response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
 				// Устанавливаем Connection если не передан
-				if(!available[0] && !this->isBlack("Connection"))
+				if(!available[2] && !this->isBlack("Connection"))
 					// Добавляем заголовок в ответ
 					response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 				// Устанавливаем Content-Type если не передан
-				if(!available[2] && !this->isBlack("Content-Type"))
+				if(!available[5] && !this->isBlack("Content-Type"))
 					// Добавляем заголовок в ответ
 					response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 				// Если заголовок не запрещён
-				if(!this->isBlack("Server"))
-					// Добавляем название сервера в ответ
-					response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
-				// Если заголовок не запрещён
-				if(!this->isBlack("X-Powered-By"))
+				if(!available[4] && !this->isBlack("X-Powered-By"))
 					// Добавляем название рабочей системы в ответ
 					response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_ident.id.c_str(), this->_ident.version.c_str()));
 				// Если заголовок авторизации не передан
-				if(((res.code == 401) && !available[7]) || ((res.code == 407) && !available[8])){
+				if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
 					// Получаем параметры авторизации
 					const string & auth = this->_auth.server;
 					// Если параметры авторизации получены
@@ -2256,7 +2262,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Флаг разрешающий вывода заголовка
 						bool allow = !this->isBlack(header.first);
 						// Выполняем перебор всех обязательных заголовков
-						for(uint8_t i = 0; i < 12; i++){
+						for(uint8_t i = 0; i < 13; i++){
 							// Если заголовок уже найден пропускаем его
 							if(available[i]) continue;
 							// Выполняем првоерку заголовка
@@ -2503,9 +2509,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			/**
 			 * Типы основных заголовков
 			 */
-			bool available[9] = {
+			bool available[12] = {
+				false, // Date
+				false, // Server
 				false, // Connection
 				false, // Proxy-Connection
+				false, // X-Powered-By
 				false, // Content-Type
 				false, // Content-Length
 				false, // Content-Encoding
@@ -2526,40 +2535,39 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			if(!res.message.empty()){
 				// Данные REST ответа
 				result.push_back(make_pair(":status", ::to_string(res.code)));
-				// Если заголовок не запрещён
-				if(!this->isBlack("date"))
-					// Добавляем заголовок даты в ответ
-					result.push_back(make_pair("date", this->date()));
 				// Переходим по всему списку заголовков
 				for(auto & header : this->_web.headers()){
 					// Флаг разрешающий вывода заголовка
 					bool allow = !this->isBlack(header.first);
 					// Выполняем перебор всех обязательных заголовков
-					for(uint8_t i = 0; i < 8; i++){
+					for(uint8_t i = 0; i < 12; i++){
 						// Если заголовок уже найден пропускаем его
 						if(available[i]) continue;
 						// Выполняем првоерку заголовка
 						switch(i){
-							case 0: available[i] = this->_fmk->compare(header.first, "connection");         break;
-							case 1: available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
-							case 2: available[i] = this->_fmk->compare(header.first, "content-type");       break;
-							case 3: available[i] = this->_fmk->compare(header.first, "content-length");     break;
-							case 4: available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
-							case 5: available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
-							case 6: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
-							case 7: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
-							case 8: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
+							case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
+							case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
+							case 2:  available[i] = this->_fmk->compare(header.first, "connection");         break;
+							case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
+							case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
+							case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
+							case 6:  available[i] = this->_fmk->compare(header.first, "content-length");     break;
+							case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
+							case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
+							case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
+							case 10: available[i] = this->_fmk->compare(header.first, "www-authenticate");   break;
+							case 11: available[i] = this->_fmk->compare(header.first, "proxy-authenticate"); break;
 						}
 						// Если заголовок разрешён для вывода
 						if(allow){
 							// Выполняем првоерку заголовка
 							switch(i){
-								case 3:
-								case 4:
-								case 5:
-								case 6: allow = !available[i]; break;
-								case 0:
-								case 1: {
+								case 6:
+								case 7:
+								case 8:
+								case 9: allow = !available[i]; break;
+								case 2:
+								case 3: {
 									// Если заголовок Connection определён
 									if(available[i])
 										// Выполняем определение разрешено ли выводить заголовок
@@ -2573,20 +2581,24 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Формируем строку ответа
 						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 				}
+				// Если заголовок не запрещён
+				if(!available[0] && !this->isBlack("date"))
+					// Добавляем заголовок даты в ответ
+					result.push_back(make_pair("date", this->date()));
+				// Если заголовок не запрещён
+				if(!available[1] && !this->isBlack("server"))
+					// Добавляем название сервера в ответ
+					result.push_back(make_pair("server", this->_ident.name));
 				// Устанавливаем Content-Type если не передан
-				if(!available[2] && !this->isBlack("content-type"))
+				if(!available[5] && !this->isBlack("content-type"))
 					// Добавляем заголовок в ответ
 					result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 				// Если заголовок не запрещён
-				if(!this->isBlack("server"))
-					// Добавляем название сервера в ответ
-					result.push_back(make_pair("server", this->_ident.name));
-				// Если заголовок не запрещён
-				if(!this->isBlack("x-powered-by"))
+				if(!available[4] && !this->isBlack("x-powered-by"))
 					// Добавляем название рабочей системы в ответ
 					result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
 				// Если заголовок авторизации не передан
-				if(((res.code == 401) && !available[7]) || ((res.code == 407) && !available[8])){
+				if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
 					// Получаем параметры авторизации
 					const string & auth = this->_auth.server;
 					// Если параметры авторизации получены
