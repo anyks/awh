@@ -1866,9 +1866,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Если тело запроса существует
 					if(!this->_web.body().empty()){
 						// Выполняем шифрование полезной нагрузки
-						this->encrypt();
+						const_cast <http_t *> (this)->encrypt();
 						// Выполняем компрессию полезной нагрузки
-						this->inflate();
+						const_cast <http_t *> (this)->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
@@ -2067,9 +2067,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Если тело запроса существует
 					if(!this->_web.body().empty()){
 						// Выполняем шифрование полезной нагрузки
-						this->encrypt();
+						const_cast <http_t *> (this)->encrypt();
 						// Выполняем компрессию полезной нагрузки
-						this->inflate();
+						const_cast <http_t *> (this)->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
@@ -2440,9 +2440,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 					// Если тело запроса существует
 					if(!this->_web.body().empty()){
 						// Выполняем шифрование полезной нагрузки
-						this->encrypt();
+						const_cast <http_t *> (this)->encrypt();
 						// Выполняем компрессию полезной нагрузки
-						this->inflate();
+						const_cast <http_t *> (this)->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Если данные зашифрованы, устанавливаем соответствующие заголовки
@@ -2615,9 +2615,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 					// Если тело запроса существует
 					if(!this->_web.body().empty()){
 						// Выполняем шифрование полезной нагрузки
-						this->encrypt();
+						const_cast <http_t *> (this)->encrypt();
 						// Выполняем компрессию полезной нагрузки
-						this->inflate();
+						const_cast <http_t *> (this)->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Если данные зашифрованы, устанавливаем соответствующие заголовки
