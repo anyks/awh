@@ -1927,7 +1927,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Устанавливаем заголовок Transfer-Encoding
 								request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->isBlack("Content-Length"))
+							else if(!this->isBlack("Content-Length") && ((length > 0) || this->isHeader("Content-Length")))
 								// Устанавливаем размер передаваемого тела Content-Length
 								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Очищаем тела сообщения
@@ -2154,7 +2154,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Устанавливаем заголовок Transfer-Encoding
 								response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->isBlack("Content-Length"))
+							else if(!this->isBlack("Content-Length") && ((length > 0) || this->isHeader("Content-Length")))
 								// Устанавливаем размер передаваемого тела Content-Length
 								response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Очищаем тела сообщения
