@@ -103,6 +103,10 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Добавляем в чёрный список заголовок X-AWH-Encryption
 				this->addBlack("X-AWH-Encryption");
 			}
+			// Если ответ сервера отрицательный
+			if(res.version >= 2.0f ? res.code != 200 : res.code != 101)
+				// Добавляем в чёрный список заголовок Sec-WebSocket-Accept
+				this->addBlack("Sec-WebSocket-Accept");
 			// Если список выбранных сабпротоколов установлен
 			if(!this->_selectedProtocols.empty()){
 				// Если количество выбранных сабпротоколов больше 5-ти
