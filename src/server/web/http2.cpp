@@ -455,7 +455,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 											// Выполняем инициализацию WebSocket-сервера
 											// this->websocket(aid, sid, core);
 											// Завершаем обработку
-											return;
+											return 0;
 										}
 										
 										// Если мы получили неустановленный флаг или флаг завершения потока
