@@ -297,7 +297,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Результат работы функции
 	bool result = false;
 	
-	cout << " ^^^^^^^^^^^^^^^^^^^^^^ " << extension << endl;
+	cout << " ^^^^^^^^^^^^^^^^^^^^^^1 " << extension << endl;
 	
 	// Если заголовок передан
 	if(!extension.empty()){
@@ -337,14 +337,15 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 			this->_client.takeover = false;
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 		else if((result = this->_fmk->compare(extension, "permessage-deflate") || this->_fmk->compare(extension, "perframe-deflate"))) {
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^^^2 " << extension << endl;
+			
 			// Определяем флаг типа текущего модуля
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
 					this->_compress = compress_t::DEFLATE;
-
-					cout << " ********************* " << (u_short) this->_compress << endl;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -354,6 +355,8 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						this->_compress = compress_t::NONE;
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
 					else this->_compress = compress_t::DEFLATE;
+
+					cout << " ********************* " << (u_short) this->_compress << endl;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
