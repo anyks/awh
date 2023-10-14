@@ -710,7 +710,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 					#endif
 					// Выполняем отправку тела запроса на сервер
 					core->write(entity.data(), entity.size(), this->_aid);
@@ -853,7 +853,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = (end && this->_http.body().empty());

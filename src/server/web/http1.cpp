@@ -231,7 +231,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 												 */
 												#if defined(DEBUG_MODE)
 													// Выводим сообщение о выводе чанка полезной нагрузки
-													cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+													cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 												#endif
 												// Если тела данных для отправки больше не осталось
 												if(adj->http.body().empty())
@@ -317,7 +317,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка полезной нагрузки
-											cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+											cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 										#endif
 										// Отправляем тело клиенту
 										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), aid);
@@ -607,7 +607,7 @@ void awh::server::Http1::websocket(const uint64_t aid, const uint16_t sid, awh::
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+							cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						adj->stopped = (!web->http.isAlive() && web->http.body().empty());
@@ -844,7 +844,7 @@ bool awh::server::Http1::send(const uint64_t aid, const char * buffer, const siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					adj->stopped = (end && adj->http.body().empty());
@@ -968,7 +968,7 @@ void awh::server::Http1::send(const uint64_t aid, const u_int code, const string
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 					#endif
 					// Если тела данных для отправки больше не осталось
 					if(adj->http.body().empty())

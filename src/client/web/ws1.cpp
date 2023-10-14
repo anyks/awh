@@ -170,7 +170,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выводим заголовок ответа
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl;
+								cout << string(response.begin(), response.end()) << endl << endl;
 								// Если тело ответа существует
 								if(!http.body().empty())
 									// Выводим сообщение о выводе чанка тела

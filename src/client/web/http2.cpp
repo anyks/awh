@@ -1459,7 +1459,7 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 					#endif
 					// Выполняем отправку данных на удалённый сервер
 					result = web2_t::send(id, entity.data(), entity.size(), (end && this->_http.body().empty()));

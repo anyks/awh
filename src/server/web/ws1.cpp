@@ -364,7 +364,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим сообщение о выводе чанка полезной нагрузки
-									cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
+									cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 								#endif
 								// Устанавливаем флаг закрытия подключения
 								adj->stopped = (!http.isAlive() && http.body().empty());

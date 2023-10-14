@@ -548,11 +548,11 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										// Получаем объект работы с HTTP-запросами
 										const http_t & http = reinterpret_cast <http_t &> (adj->http);
 										// Получаем бинарные данные REST-ответа
-										const auto & buffer = http.process(http_t::process_t::REQUEST, response);
+										const auto & buffer = http.process(http_t::process_t::REQUEST, adj->http.request());
 										// Если параметры ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
-											cout << string(buffer.begin(), buffer.end()) << endl;
+											cout << string(buffer.begin(), buffer.end()) << endl << endl;
 									}
 								#endif
 								// Выполняем проверку авторизации
