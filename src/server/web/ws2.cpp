@@ -665,9 +665,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
-								
-								cout << " ==================== " << (u_short) compress << endl;
-								
 								// Устанавливаем метод компрессии данных ответа
 								adj->http.compress(compress);
 								// Получаем заголовки ответа удалённому клиенту

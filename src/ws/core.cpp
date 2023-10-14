@@ -340,6 +340,8 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
 					this->_compress = compress_t::DEFLATE;
+
+					cout << " ********************* " << (u_short) this->_compress << endl;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
