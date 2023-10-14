@@ -269,6 +269,8 @@ int main(int argc, char * argv[]){
 	// awh.crypto("PASS");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
+	// Разрешаем метод CONNECT для сервера
+	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
 	awh.on((function <string (const string &)>) std::bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
