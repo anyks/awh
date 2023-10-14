@@ -1268,7 +1268,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Выводим заголовок запроса
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 								// Получаем бинарные данные WEB запроса
-								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
@@ -1513,7 +1513,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 						// Выводим заголовок запроса
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 						// Получаем бинарные данные WEB запроса
-						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
 						// Выводим параметры запроса
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif

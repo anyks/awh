@@ -756,7 +756,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 							// Получаем объект работы с HTTP-запросами
 							const http_t & http = reinterpret_cast <http_t &> (adj->http);
 							// Получаем бинарные данные REST-ответа
-							const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+							const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
 							// Если бинарные данные ответа получены
 							if(!buffer.empty())
 								// Выводим параметры ответа
@@ -782,9 +782,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 							#endif
-							
-							cout << " &&&&&&&&&&&&&& " << string(entity.begin(), entity.end()) << endl;
-
 							// Выполняем отправку тела запроса на сервер
 							if(!web2_t::send(adj->sid, aid, entity.data(), entity.size(), adj->http.body().empty()))
 								// Выходим из функции
@@ -1085,7 +1082,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t aid, const u_i
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 									// Получаем бинарные данные REST-ответа
-									const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+									const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, true);
 									// Если бинарные данные ответа получены
 									if(!buffer.empty())
 										// Выводим параметры ответа
@@ -1154,7 +1151,7 @@ void awh::server::Http2::send(const uint64_t aid, const u_int code, const string
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Получаем бинарные данные REST-ответа
-										const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, response);
+										const auto & buffer = adj->http.process(http_t::process_t::RESPONSE, true);
 										// Если бинарные данные ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа

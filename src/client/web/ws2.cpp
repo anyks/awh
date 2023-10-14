@@ -59,7 +59,7 @@ void awh::client::WebSocket2::send(const uint64_t aid, client::core_t * core) no
 		// Выводим заголовок запроса
 		cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, true);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty())
 			// Выводим параметры запроса

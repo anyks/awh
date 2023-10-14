@@ -610,7 +610,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 														// Получаем объект работы с HTTP-запросами
 														const http_t & http = reinterpret_cast <http_t &> (adj->http);
 														// Получаем бинарные данные REST-ответа
-														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+														const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
 															// Выводим параметры ответа
@@ -681,7 +681,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 											// Получаем объект работы с HTTP-запросами
 											const http_t & http = reinterpret_cast <http_t &> (adj->http);
 											// Получаем бинарные данные REST-ответа
-											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+											const auto & buffer = http.process(http_t::process_t::RESPONSE, true);
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
 												// Выводим параметры ответа
