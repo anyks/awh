@@ -177,8 +177,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						http_t http(this->_fmk, this->_log);
 						// Устанавливаем правила закрытия подключения
 						http.header("Сonnection", "close");
-						// Метод компрессии данных
-						http_t::compress_t compress = http_t::compress_t::NONE;
+						// Устанавливаем метод компрессии данных ответа
+						http.compress(adj->http.compression());
 						/**
 						 * Если включён режим отладки
 						 */
@@ -209,8 +209,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 								// Если рукопожатие выполнено
 								if(adj->http.isHandshake(http_t::process_t::REQUEST)){
-									// Получаем метод компрессии HTML данных
-									compress = adj->http.compression();
 									// Проверяем версию протокола
 									if(!adj->http.checkVer()){
 										// Получаем бинарные данные REST ответа
@@ -349,8 +347,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выводим параметры ответа
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
-							// Устанавливаем метод компрессии данных ответа
-							http.compress(compress);
 							// Выполняем извлечение параметров запроса
 							const auto & request = adj->http.request();
 							// Получаем параметры ответа
