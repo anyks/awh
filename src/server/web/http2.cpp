@@ -446,18 +446,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 										if(this->_callback.is("headers"))
 											// Выводим функцию обратного вызова
 											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
-										
-										// Если заголовок WebSocket активирован
-										if(adj->http.identity() == awh::http_t::identity_t::WS){
-											
-											cout << " +++++++++++++++++1 " << endl;
-											
-											// Выполняем инициализацию WebSocket-сервера
-											// this->websocket(aid, sid, core);
-											// Завершаем обработку
-											return 0;
-										}
-										
 										// Если мы получили неустановленный флаг или флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
 											// Выполняем обработку полученных данных
@@ -470,7 +458,10 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", adj->sid, aid, direct_t::RECV);
-										}
+										// Если заголовок WebSocket активирован
+										} else if(adj->http.identity() == awh::http_t::identity_t::WS)
+											// Выполняем обработку полученных данных
+											this->prepare(sid, aid, const_cast <server::core_t *> (this->_core));
 									}
 								} break;
 							}
@@ -727,7 +718,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				// Если заголовок WebSocket активирован
 				if(adj->http.identity() == awh::http_t::identity_t::WS){
 					
-					cout << " +++++++++++++++++ " << endl;
+					cout << " +++++++++++++++++ " << this->_webSocket << endl;
 					
 					// Выполняем инициализацию WebSocket-сервера
 					// this->websocket(aid, sid, core);
