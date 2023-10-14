@@ -35,8 +35,26 @@ void awh::client::WS::commit() noexcept {
 	vector <string> extensions;
 	// Переходим по всему списку заголовков
 	for(auto & header : this->_web.headers()){
+		// Если заголовок получен с описанием методов компрессии
+		if(this->_fmk->compare(header.first, "content-encoding")){
+			// Если найден запрашиваемый метод компрессии BROTLI
+			if(this->_fmk->compare(header.second, "br"))
+				// Переключаем метод компрессии на BROTLI
+				http_t::_compress = compress_t::BROTLI;
+			// Если найден запрашиваемый метод компрессии GZip
+			else if(this->_fmk->compare(header.second, "gzip"))
+				// Переключаем метод компрессии на GZIP
+				http_t::_compress = compress_t::GZIP;
+			// Если найден запрашиваемый метод компрессии Deflate
+			else if(this->_fmk->compare(header.second, "deflate"))
+				// Переключаем метод компрессии на DEFLATE
+				http_t::_compress = compress_t::DEFLATE;
+			// Отключаем поддержку сжатия на сервере
+			else http_t::_compress = compress_t::NONE;
+			// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
+			http_t::_inflated = http_t::_compress;
 		// Если заголовок расширения найден
-		if(this->_fmk->compare(header.first, "sec-websocket-extensions")){
+		} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
 			// Запись названия расширения
 			string extension = "";
 			// Выполняем перебор записи расширения

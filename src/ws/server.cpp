@@ -38,24 +38,26 @@ void awh::server::WS::commit() noexcept {
 			// Если конкретный метод сжатия не запрашивается
 			if(this->_fmk->compare(header.second, "*"))
 				// Переключаем метод компрессии на BROTLI
-				http_t::compress(compress_t::BROTLI);
+				http_t::_compress = compress_t::BROTLI;
 			// Если запрашиваются конкретные методы сжатия
 			else {
 				// Если найден запрашиваемый метод компрессии BROTLI
 				if(this->_fmk->exists("br", header.second))
 					// Переключаем метод компрессии на BROTLI
-					http_t::compress(compress_t::BROTLI);
+					http_t::_compress = compress_t::BROTLI;
 				// Если найден запрашиваемый метод компрессии GZip
 				else if(this->_fmk->exists("gzip", header.second))
 					// Переключаем метод компрессии на GZIP
-					http_t::compress(compress_t::GZIP);
+					http_t::_compress = compress_t::GZIP;
 				// Если найден запрашиваемый метод компрессии Deflate
 				else if(this->_fmk->exists("deflate", header.second))
 					// Переключаем метод компрессии на DEFLATE
-					http_t::compress(compress_t::DEFLATE);
+					http_t::_compress = compress_t::DEFLATE;
 				// Отключаем поддержку сжатия на сервере
-				else http_t::compress(compress_t::NONE);
+				else http_t::_compress = compress_t::NONE;
 			}
+			// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
+			http_t::_inflated = http_t::_compress;
 		// Если заголовок сабпротокола найден
 		} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
 			// Проверяем, соответствует ли желаемый подпротокол нашему установленному

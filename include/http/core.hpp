@@ -215,7 +215,7 @@ namespace awh {
 		private:
 			// Идентификация сервиса
 			ident_t _ident;
-		private:
+		protected:
 			// Флаг компрессии полезной нагрузки
 			compress_t _inflated;
 			// Метод компрессии полезной нагрузки
