@@ -1543,12 +1543,6 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 	if(!res.message.empty()){
 		// Выполняем очистку списка установленных заголовков
 		this->_web.clearHeaders();
-		// Если требуется ввод авторизационных данных
-		if((res.code == 401) || (res.code == 407))
-			// Добавляем заголовок закрытия подключения
-			this->_web.header("Connection", "Keep-Alive");
-		// Добавляем заголовок закрытия подключения
-		else this->_web.header("Connection", "Close");
 		// Добавляем заголовок тип контента
 		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
@@ -2311,17 +2305,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										// Выполняем првоерку заголовка
 										switch(i){
 											case 0:
+											case 4:
+											case 5:
 											case 6:
 											case 9:
 											case 10:
 											case 11: allow = !available[i]; break;
-											case 4:
-											case 5: {
-												// Если заголовок Connection определён
-												if(available[i])
-													// Выполняем определение разрешено ли выводить заголовок
-													allow = !this->_fmk->compare(header.second, "keep-alive");
-											} break;
 										}
 									}
 								}
@@ -2612,17 +2601,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								if(allow){
 									// Выполняем првоерку заголовка
 									switch(i){
+										case 2:
+										case 3:
 										case 6:
 										case 7:
 										case 8:
 										case 9: allow = !available[i]; break;
-										case 2:
-										case 3: {
-											// Если заголовок Connection определён
-											if(available[i])
-												// Выполняем определение разрешено ли выводить заголовок
-												allow = !this->_fmk->compare(header.second, "keep-alive");
-										} break;
 									}
 								}
 							}
