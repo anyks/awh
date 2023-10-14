@@ -678,6 +678,10 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 	if(it != this->_workers.end()){
 		// Выполняем установку объекта воркера
 		auto ret = this->_workers.emplace(to, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
+		// Выполняем сброс состояния HTTP парсера
+		ret.first->second->http.reset();
+		// Выполняем очистку параметров HTTP запроса
+		ret.first->second->http.clear();
 		// Выполняем установку типа агента
 		ret.first->second->agent = it->second->agent;
 		// Выполняем установку активный прототип интернета

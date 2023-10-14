@@ -1857,8 +1857,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 					}
 				}
-				// Если запрос не является GET, HEAD или TRACE
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE)){
+				// Если запрос является PUT, POST, PATCH
+				if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 					// Если заголовок не запрещён
 					if(!this->isBlack("Date"))
 						// Добавляем заголовок даты в запрос
@@ -2431,8 +2431,8 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 					}
 				}
-				// Если запрос не является GET, HEAD или TRACE
-				if((req.method != web_t::method_t::GET) && (req.method != web_t::method_t::HEAD) && (req.method != web_t::method_t::TRACE)){
+				// Если запрос является PUT, POST, PATCH
+				if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 					// Если заголовок не запрещён
 					if(!this->isBlack("date"))
 						// Добавляем заголовок даты в запрос
