@@ -296,6 +296,9 @@ const string awh::WCore::sha1() const noexcept {
 bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Результат работы функции
 	bool result = false;
+	
+	cout << " ^^^^^^^^^^^^^^^^^^^^^^ " << extension << endl;
+	
 	// Если заголовок передан
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных

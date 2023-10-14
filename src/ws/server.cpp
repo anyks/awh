@@ -33,9 +33,6 @@ void awh::server::WS::commit() noexcept {
 	vector <string> extensions;
 	// Переходим по всему списку заголовков
 	for(auto & header : this->_web.headers()){
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^^^^ " << header.first << " === " << header.second << endl;
-		
 		// Если заголовок сабпротокола найден
 		if(this->_fmk->compare(header.first, "sec-websocket-protocol")){
 			// Проверяем, соответствует ли желаемый подпротокол нашему установленному
