@@ -739,10 +739,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 						const auto & headers = adj->http.reject2(response);
 						// Если бинарные данные ответа получены
 						if(!headers.empty()){
-							
-							for(auto & header : headers)
-								cout << " ******************** " << header.first << " === " << header.second << endl;
-							
 							/**
 							 * Если включён режим отладки
 							 */
