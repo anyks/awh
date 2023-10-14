@@ -694,31 +694,31 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 		adj->crypt = adj->http.isCrypt();
 		// Получаем поддерживаемый метод компрессии
 		adj->compress = adj->http.compress();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			{
+				// Получаем объект работы с HTTP-запросами
+				const http_t & http = reinterpret_cast <http_t &> (adj->http);
+				// Получаем бинарные данные REST-ответа
+				const auto & buffer = http.process(http_t::process_t::REQUEST, adj->http.request());
+				// Если параметры ответа получены
+				if(!buffer.empty())
+					// Выводим параметры ответа
+					cout << string(buffer.begin(), buffer.end()) << endl << endl;
+				// Если тело ответа существует
+				if(!adj->http.body().empty())
+					// Выводим сообщение о выводе чанка тела
+					cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
+				// Иначе устанавливаем перенос строки
+				else cout << endl;
+			}
+		#endif
 		// Выполняем проверку авторизации
 		switch(static_cast <uint8_t> (adj->http.getAuth())){
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					{
-						// Получаем объект работы с HTTP-запросами
-						const http_t & http = reinterpret_cast <http_t &> (adj->http);
-						// Получаем бинарные данные REST-ответа
-						const auto & buffer = http.process(http_t::process_t::REQUEST, adj->http.request());
-						// Если параметры ответа получены
-						if(!buffer.empty())
-							// Выводим параметры ответа
-							cout << string(buffer.begin(), buffer.end()) << endl << endl;
-						// Если тело ответа существует
-						if(!adj->http.body().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
-						// Иначе устанавливаем перенос строки
-						else cout << endl;
-					}
-				#endif
 				// Если заголовок WebSocket активирован
 				if(adj->http.identity() == awh::http_t::identity_t::WS){
 					// Выполняем инициализацию WebSocket-сервера
