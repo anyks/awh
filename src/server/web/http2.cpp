@@ -721,6 +721,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 				// Если заголовок WebSocket активирован
 				if(adj->http.identity() == awh::http_t::identity_t::WS){
+					
+					cout << " +++++++++++++++++ " << endl;
+					
 					// Выполняем инициализацию WebSocket-сервера
 					// this->websocket(aid, sid, core);
 					// Завершаем обработку
