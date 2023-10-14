@@ -81,6 +81,11 @@ namespace awh {
 			vector <vector <string>> _extensions;
 		private:
 			/**
+			 * applyExtensions Метод установки выбранных расширений
+			 */
+			void applyExtensions() noexcept;
+		private:
+			/**
 			 * init Метод инициализации
 			 */
 			void init(const process_t flag) noexcept;

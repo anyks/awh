@@ -16,9 +16,9 @@
 #include <ws/core.hpp>
 
 /**
- * init Метод инициализации
+ * applyExtensions Метод установки выбранных расширений
  */
-void awh::WCore::init(const process_t flag) noexcept {
+void awh::WCore::applyExtensions() noexcept {
 	// Список поддверживаемых расширений
 	vector <vector <string>> extensions;
 	// Удаляем заголовок сабпратоколов
@@ -123,6 +123,11 @@ void awh::WCore::init(const process_t flag) noexcept {
 		// Добавляем заголовок сабпротокола
 		this->header("Sec-WebSocket-Extensions", records);
 	}
+}
+/**
+ * init Метод инициализации
+ */
+void awh::WCore::init(const process_t flag) noexcept {
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -170,6 +175,8 @@ void awh::WCore::init(const process_t flag) noexcept {
 						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 				}
 			}
+			// Выполняем применение расширений
+			this->applyExtensions();
 			// Добавляем заголовок Accept
 			this->header("Accept", "*/*");
 			// Добавляем заголовок отключения кеширования
@@ -191,6 +198,12 @@ void awh::WCore::init(const process_t flag) noexcept {
 		case static_cast <uint8_t> (process_t::RESPONSE): {
 			// Добавляем в чёрный список заголовок Content-Type
 			this->addBlack("Content-Type");
+			// Получаем объект ответа клиенту
+			const web_t::res_t & res = this->_web.response();
+			// Если ответ сервера положительный
+			if(res.version >= 2.0f ? res.code == 200 : res.code == 101)
+				// Выполняем применение расширений
+				this->applyExtensions();
 			// Если список выбранных сабпротоколов установлен
 			if(!this->_selectedProtocols.empty()){
 				// Если количество выбранных сабпротоколов больше 5-ти
