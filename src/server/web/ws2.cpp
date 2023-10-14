@@ -536,8 +536,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", adj->sid, aid, request.method, request.url, adj->http.headers());
 							// Если рукопожатие не выполнено
 							if(!reinterpret_cast <http_t &> (adj->http).isHandshake()){
-								// Метод компрессии данных
-								http_t::compress_t compress = http_t::compress_t::NONE;
 								// Ответ клиенту по умолчанию успешный
 								awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
 								/**
@@ -561,8 +559,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 									case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 										// Если рукопожатие выполнено
 										if((adj->shake = adj->http.isHandshake(http_t::process_t::REQUEST))){
-											// Получаем метод компрессии HTML данных
-											compress = adj->http.compression();
 											// Проверяем версию протокола
 											if(!adj->http.checkVer()){
 												// Получаем бинарные данные REST запроса
@@ -654,12 +650,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
 									} break;
 									// Если запрос неудачный
-									case static_cast <uint8_t> (http_t::stath_t::FAULT): {
-										// Получаем метод компрессии HTML данных
-										compress = adj->http.compression();
+									case static_cast <uint8_t> (http_t::stath_t::FAULT):
 										// Формируем ответ на запрос об авторизации
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
-									} break;
+									break;
 									// Если результат определить не получилось
 									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500), "Unknown request");
 								}
@@ -667,11 +661,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
-
-								cout << " ^^^^^^^^^^^^^^^^^^^^^^^ " << (u_short) compress << endl;
-
-								// Устанавливаем метод компрессии данных ответа
-								reinterpret_cast <http_t *> (&adj->http)->compress(compress);
 								// Получаем заголовки ответа удалённому клиенту
 								const auto & headers = adj->http.reject2(response);
 								// Если бинарные данные ответа получены
