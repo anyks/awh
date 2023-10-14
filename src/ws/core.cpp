@@ -343,17 +343,12 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
-					
-					cout << " *********************1 " << (u_short) this->_compress << endl;
-					
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS))
 						// Выполняем сброс типа компрессии
 						this->_compress = compress_t::NONE;
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
 					else this->_compress = compress_t::DEFLATE;
-
-					cout << " *********************2 " << (u_short) this->_compress << endl;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip

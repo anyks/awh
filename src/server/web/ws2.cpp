@@ -654,10 +654,12 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
 									} break;
 									// Если запрос неудачный
-									case static_cast <uint8_t> (http_t::stath_t::FAULT):
+									case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+										// Получаем метод компрессии HTML данных
+										compress = adj->http.compression();
 										// Формируем ответ на запрос об авторизации
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
-									break;
+									} break;
 									// Если результат определить не получилось
 									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500), "Unknown request");
 								}
@@ -665,6 +667,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t aid, 
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
+
+								cout << " ^^^^^^^^^^^^^^^^^^^^^^^ " << (u_short) compress << endl;
+
 								// Устанавливаем метод компрессии данных ответа
 								adj->http.compress(compress);
 								// Получаем заголовки ответа удалённому клиенту
