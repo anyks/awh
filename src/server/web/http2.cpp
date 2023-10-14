@@ -623,26 +623,19 @@ int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t aid, cons
 				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", aid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_HTTP_1_1_REQUIRED, this->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
-	// Если функция обратного вызова активности потока установлена
-	if(this->_callback.is("stream"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, aid, mode_t::CLOSE);
 	// Если разрешено выполнить остановку
 	if(error > 0x00){
 		// Выполняем поиск адъютанта в списке активных сессий
 		auto it = this->_sessions.find(aid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
-			// Если закрытие подключения не выполнено
-			if(!it->second->close()){
-				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), aid));
-				// Выводим сообщение об ошибке
-				return NGHTTP2_ERR_CALLBACK_FAILURE;
+		if(it != this->_sessions.end())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			} else it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), aid));
-		}
+			it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), aid));
 	}
+	// Если функция обратного вызова активности потока установлена
+	if(this->_callback.is("stream"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, aid, mode_t::CLOSE);
 	// Выводим результат
 	return 0;
 }

@@ -674,21 +674,14 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_HTTP_1_1_REQUIRED, this->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
+	// Если флаг инициализации сессии HTTP/2 установлен
+	if((error > 0x00) && this->_nghttp2.is())
+		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+		this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callback.is("stream"))
 		// Выводим функцию обратного вызова
 		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
-	// Если флаг инициализации сессии HTTP/2 установлен
-	if((error > 0x00) && this->_nghttp2.is()){
-		// Если закрытие подключения не выполнено
-		if(!this->_nghttp2.close()){
-			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
-			// Выводим сообщение об ошибке
-			return NGHTTP2_ERR_CALLBACK_FAILURE;
-		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-		} else this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
-	}
 	// Выводим результат
 	return 0;
 }
