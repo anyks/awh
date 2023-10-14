@@ -1864,7 +1864,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Добавляем заголовок даты в запрос
 						request.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 					// Если тело запроса существует
-					if(!this->body().empty()){
+					if(!this->_web.body().empty()){
+						// Выполняем шифрование полезной нагрузки
+						this->encrypt();
+						// Выполняем компрессию полезной нагрузки
+						this->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
@@ -2061,7 +2065,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Если запрос должен содержать тело и тело ответа существует
 				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 					// Если тело запроса существует
-					if(!this->body().empty()){
+					if(!this->_web.body().empty()){
+						// Выполняем шифрование полезной нагрузки
+						this->encrypt();
+						// Выполняем компрессию полезной нагрузки
+						this->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Заменяем размер тела данных
@@ -2430,7 +2438,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Добавляем заголовок даты в запрос
 						result.push_back(make_pair("date", this->date()));
 					// Если тело запроса существует
-					if(!this->body().empty()){
+					if(!this->_web.body().empty()){
+						// Выполняем шифрование полезной нагрузки
+						this->encrypt();
+						// Выполняем компрессию полезной нагрузки
+						this->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Если данные зашифрованы, устанавливаем соответствующие заголовки
@@ -2601,7 +2613,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				// Если запрос должен содержать тело и тело ответа существует
 				if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 					// Если тело запроса существует
-					if(!this->body().empty()){
+					if(!this->_web.body().empty()){
+						// Выполняем шифрование полезной нагрузки
+						this->encrypt();
+						// Выполняем компрессию полезной нагрузки
+						this->inflate();
 						// Проверяем нужно ли передать тело разбив на чанки
 						this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 						// Если данные зашифрованы, устанавливаем соответствующие заголовки
