@@ -203,7 +203,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова активации шифрованного TLS канала установлена
 							if((shm->callback.is("tls")))
 								// Выполняем активацию шифрованного TLS канала
-								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
+								this->engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
 							// Выполняем активацию контекста подключения
 							this->engine.wrapClient(adj->ectx, &adj->addr, host);
 						// Если хост сервера не получен
@@ -233,7 +233,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если мы хотим работать в зашифрованном режиме
 					if(!shm->isProxy() && (this->settings.sonet == scheme_t::sonet_t::TLS)){
 						// Если сертификаты не приняты, выходим
-						if(!this->engine.tls(adj->ectx)){
+						if(!this->engine.encrypted(adj->ectx)){
 							// Разрешаем выполнение работы
 							shm->status.work = scheme_t::work_t::ALLOW;
 							// Устанавливаем статус подключения
@@ -748,16 +748,6 @@ void awh::client::Core::remove() noexcept {
 	}
 }
 /**
- * mode Метод активации асинхронного режима работы
- * @param flag флаг активации асинхронного режима работы
- */
-void awh::client::Core::mode(const mode_t flag) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем флаг активации асинхронного режима работы
-	this->_mode = flag;
-}
-/**
  * open Метод открытия подключения
  * @param sid идентификатор схемы сети
  */
@@ -1011,7 +1001,7 @@ void awh::client::Core::switchProxy(const uint64_t aid) noexcept {
 				// Если функция обратного вызова активации шифрованного TLS канала установлена
 				if((shm->callback.is("tls")))
 					// Выполняем активацию шифрованного TLS канала
-					this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
+					this->engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
 				// Выполняем получение контекста сертификата
 				this->engine.wrapClient(adj->ectx, adj->ectx, host);
 				// Если подключение не обёрнуто
@@ -1225,12 +1215,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 					if(size > 0){
 						// Количество полученных байт
 						int64_t bytes = -1;
+						// Переводим сокет в неблокирующий режим
+						adj->ectx.noblock();
 						// Создаём буфер входящих данных
 						unique_ptr <char []> buffer(new char [size]);
-						// Если нужно использовать асинхронный режим работы
-						// if(this->_mode == mode_t::ASYNC)
-							// Переводим сокет в неблокирующий режим
-							adj->ectx.noblock();
 						// Выполняем чтение данных с сокета
 						do {
 							// Если подключение выполнено
@@ -1283,27 +1271,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 									}
 								// Если данные не получены
 								} else {
-									
-									/*
-									// Если произошёл дисконнект
-									if(bytes == 0){
-										// Выполняем отключение клиента
-										this->close(aid);
-										// Выходим из функции
-										return;
-									// Если режим работы асинхронный
-									} else if(this->_mode == mode_t::ASYNC) {
-										// Если нужно повторить запись
-										if(bytes == -2){
-											// Если подключение ещё существует
-											if(this->method(aid) == engine_t::method_t::READ)
-												// Продолжаем попытку снова
-												continue;
-										}
-									}
-									*/
-									
-									
 									// Если произошёл дисконнект
 									if(bytes == 0){
 										// Выполняем отключение клиента
@@ -1317,9 +1284,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 											// Продолжаем попытку снова
 											continue;
 									}
-									
-
-
 									// Входим из цикла
 									break;
 								}
@@ -1338,10 +1302,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 				case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 					// Останавливаем работу таймера
 					adj->bev.timers.write.stop();
-					// Если нужно использовать асинхронный режим работы
-					// if(this->_mode == mode_t::ASYNC)
-						// Переводим сокет в неблокирующий режим
-						adj->ectx.noblock();
 					// Выполняем отправку всех данных
 					for(;;){
 						// Если данных достаточно для записи в сокет
@@ -1386,30 +1346,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 								else adj->bev.timers.write.stop();
 								// Если данные небыли записаны
 								if(bytes <= 0){
-									
-									/*
-									// Если режим работы асинхронный
-									if(this->_mode == mode_t::ASYNC){
-										// Если нужно повторить запись
-										if(bytes == -2)
-											// Продолжаем попытку снова
-											continue;
-										// Если запись не выполнена, входим
-										else break;
-									// Если режим работы синхронный
-									} else {
-										// Если произошёл дисконнект
-										if(bytes == 0){
-											// Выполняем отключение клиента
-											this->close(aid);
-											// Выходим из функции
-											return;
-										// Если запись не выполнена, входим
-										} else break;
-									}
-									*/
-									
-									
 									// Если произошёл дисконнект
 									if(bytes == 0){
 										// Выполняем отключение клиента
@@ -1422,8 +1358,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 										continue;
 									// Если запись не выполнена, входим
 									else break;
-									
-
 								}
 								// Увеличиваем смещение в буфере
 								offset += bytes;
@@ -1564,7 +1498,7 @@ void awh::client::Core::bandWidth(const uint64_t aid, const string & read, const
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet), _mode(mode_t::SYNC) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }

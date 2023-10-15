@@ -69,7 +69,7 @@ void awh::Engine::Address::client() noexcept {
 			// Буфер для получения IP адреса
 			char buffer[INET6_ADDRSTRLEN];
 			// Выполняем зануление буфера данных
-			memset(buffer, 0, sizeof(buffer));
+			::memset(buffer, 0, sizeof(buffer));
 			// Определяем тип протокола интернета
 			switch(this->_peer.client.ss_family){
 				// Если протокол интернета IPv4
@@ -176,11 +176,11 @@ bool awh::Engine::Address::clear() noexcept {
 		this->_bio = nullptr;
 	}
 	// Сбрасываем флаг инициализации
-	this->_tls = false;
+	this->_encrypted = false;
 	// Зануляем структуру клиента
-	memset(&this->_peer.client, 0, sizeof(this->_peer.client));
+	::memset(&this->_peer.client, 0, sizeof(this->_peer.client));
 	// Зануляем структуру сервера
-	memset(&this->_peer.server, 0, sizeof(this->_peer.server));
+	::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
 	// Закрываем основной сокет
 	return this->close();
 }
@@ -235,7 +235,7 @@ bool awh::Engine::Address::connect() noexcept {
 	// Если сокет установлен UDP
 	} else if(this->_type == SOCK_DGRAM) {
 		// Если подключение зашифрованно, значит мы должны использовать DTLS
-		if(this->_tls){
+		if(this->_encrypted){
 			// Определяем тип подключения
 			switch(this->_peer.server.ss_family){
 				// Для протокола IPv4
@@ -323,9 +323,9 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	// Устанавливаем разрешение на повторное использование сокета
 	this->_socket.reuseable(this->fd);
 	// Выполняем копирование объекта подключения клиента
-	memcpy(&this->_peer.client, &addr._peer.client, sizeof(struct sockaddr_storage));
+	::memcpy(&this->_peer.client, &addr._peer.client, sizeof(struct sockaddr_storage));
 	// Выполняем копирование объекта подключения сервера
-	memcpy(&this->_peer.server, &addr._peer.server, sizeof(struct sockaddr_storage));
+	::memcpy(&this->_peer.server, &addr._peer.server, sizeof(struct sockaddr_storage));
 	// Выполняем бинд на сокет
 	if((this->_peer.size > 0) && (::bind(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) < 0)){
 		// Хост подключённого клиента
@@ -364,7 +364,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Заполняем структуру клиента нулями
-	memset(&this->_peer.client, 0, sizeof(this->_peer.client));
+	::memset(&this->_peer.client, 0, sizeof(this->_peer.client));
 	// Определяем тип сокета
 	switch(this->_type){
 		// Если сокет установлен TCP/IP
@@ -376,26 +376,26 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 					// Создаём объект клиента
 					struct sockaddr_in client;
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Устанавливаем протокол интернета
 					client.sin_family = family;
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
 					// Создаём объект клиента
 					struct sockaddr_in6 client;
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Устанавливаем протокол интернета
 					client.sin6_family = family;
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 				} break;
 				/**
 				 * Если операционной системой не является Windows
@@ -406,13 +406,13 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 						// Создаём объект подключения для клиента
 						struct sockaddr_un client;
 						// Очищаем всю структуру для клиента
-						memset(&client, 0, sizeof(client));
+						::memset(&client, 0, sizeof(client));
 						// Устанавливаем протокол интернета
 						client.sun_family = family;
 						// Запоминаем размер структуры
 						this->_peer.size = sizeof(client);
 						// Выполняем копирование объект подключения клиента в сторейдж
-						memcpy(&this->_peer.client, &client, sizeof(client));
+						::memcpy(&this->_peer.client, &client, sizeof(client));
 					} break;
 				#endif
 			}
@@ -575,9 +575,9 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Создаём объект подключения для сервера
 			struct sockaddr_un server;
 			// Зануляем изначальную структуру данных клиента
-			memset(&client, 0, sizeof(client));
+			::memset(&client, 0, sizeof(client));
 			// Зануляем изначальную структуру данных сервера
-			memset(&server, 0, sizeof(server));
+			::memset(&server, 0, sizeof(server));
 			// Устанавливаем размер объекта подключения
 			this->_peer.size = sizeof(struct sockaddr_un);
 			// Определяем тип сокета
@@ -587,11 +587,11 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					// Устанавливаем протокол интернета
 					server.sun_family = AF_UNIX;
 					// Очищаем всю структуру для сервера
-					memset(&server.sun_path, 0, sizeof(server.sun_path));
+					::memset(&server.sun_path, 0, sizeof(server.sun_path));
 					// Копируем адрес сокета сервера
-					strncpy(server.sun_path, unixsocket.c_str(), sizeof(server.sun_path));
+					::strncpy(server.sun_path, unixsocket.c_str(), sizeof(server.sun_path));
 					// Выполняем копирование объект подключения сервера в сторейдж
-					memcpy(&this->_peer.server, &server, sizeof(server));
+					::memcpy(&this->_peer.server, &server, sizeof(server));
 				} break;
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
@@ -600,9 +600,9 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					// Устанавливаем протокол интернета для сервера
 					server.sun_family = AF_UNIX;
 					// Очищаем всю структуру для клиента
-					memset(&client.sun_path, 0, sizeof(client.sun_path));
+					::memset(&client.sun_path, 0, sizeof(client.sun_path));
 					// Очищаем всю структуру для сервера
-					memset(&server.sun_path, 0, sizeof(server.sun_path));
+					::memset(&server.sun_path, 0, sizeof(server.sun_path));
 					// Выполняем поиск последнего слеша разделителя
 					const size_t pos = unixsocket.rfind("/");
 					// Если разделитель найден
@@ -633,15 +633,15 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							} break;
 						}
 						// Копируем адрес сокета сервера
-						strncpy(server.sun_path, serverName.c_str(), sizeof(server.sun_path));
+						::strncpy(server.sun_path, serverName.c_str(), sizeof(server.sun_path));
 						// Выполняем копирование объект подключения сервера в сторейдж
-						memcpy(&this->_peer.server, &server, sizeof(server));
+						::memcpy(&this->_peer.server, &server, sizeof(server));
 						// Если приложение является клиентом
 						if(type == type_t::CLIENT){
 							// Копируем адрес сокета клиента
-							strncpy(client.sun_path, clientName.c_str(), sizeof(client.sun_path));
+							::strncpy(client.sun_path, clientName.c_str(), sizeof(client.sun_path));
 							// Выполняем копирование объект подключения клиента в сторейдж
-							memcpy(&this->_peer.client, &client, sizeof(client));
+							::memcpy(&this->_peer.client, &client, sizeof(client));
 							// Получаем размер объекта сокета
 							const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(client.sun_path));
 							// Выполняем бинд на сокет
@@ -694,7 +694,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							// Создаём объект клиента
 							struct sockaddr_in client;
 							// Очищаем всю структуру для клиента
-							memset(&client, 0, sizeof(client));
+							::memset(&client, 0, sizeof(client));
 							// Устанавливаем протокол интернета
 							client.sin_family = family;
 							// Устанавливаем произвольный порт для локального подключения
@@ -704,24 +704,24 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							// Запоминаем размер структуры
 							this->_peer.size = sizeof(client);
 							// Выполняем копирование объекта подключения клиента
-							memcpy(&this->_peer.client, &client, this->_peer.size);
+							::memcpy(&this->_peer.client, &client, this->_peer.size);
 						} break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER): {
 							// Создаём объект клиента
 							struct sockaddr_in client;
 							// Очищаем всю структуру для клиента
-							memset(&client, 0, sizeof(client));
+							::memset(&client, 0, sizeof(client));
 							// Устанавливаем протокол интернета
 							client.sin_family = family;
 							// Выполняем копирование объекта подключения клиента
-							memcpy(&this->_peer.client, &client, sizeof(client));
+							::memcpy(&this->_peer.client, &client, sizeof(client));
 						} break;
 					}
 					// Создаём объект сервера
 					struct sockaddr_in server;
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					server.sin_family = family;
 					// Устанавливаем порт для локального подключения
@@ -733,9 +733,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 						// Запоминаем размер структуры
 						this->_peer.size = sizeof(server);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
@@ -746,7 +746,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							// Создаём объект клиента
 							struct sockaddr_in6 client;
 							// Очищаем всю структуру для клиента
-							memset(&client, 0, sizeof(client));
+							::memset(&client, 0, sizeof(client));
 							// Устанавливаем протокол интернета
 							client.sin6_family = family;
 							// Устанавливаем произвольный порт для локального подключения
@@ -757,24 +757,24 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							// Запоминаем размер структуры
 							this->_peer.size = sizeof(client);
 							// Выполняем копирование объекта подключения клиента
-							memcpy(&this->_peer.client, &client, this->_peer.size);
+							::memcpy(&this->_peer.client, &client, this->_peer.size);
 						} break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER): {
 							// Создаём объект клиента
 							struct sockaddr_in6 client;
 							// Очищаем всю структуру для клиента
-							memset(&client, 0, sizeof(client));
+							::memset(&client, 0, sizeof(client));
 							// Устанавливаем протокол интернета
 							client.sin6_family = family;
 							// Выполняем копирование объекта подключения клиента
-							memcpy(&this->_peer.client, &client, sizeof(client));
+							::memcpy(&this->_peer.client, &client, sizeof(client));
 						} break;
 					}
 					// Создаём объект сервера
 					struct sockaddr_in6 server;
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					server.sin6_family = family;
 					// Устанавливаем порт для локального подключения
@@ -787,7 +787,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 						// Запоминаем размер структуры
 						this->_peer.size = sizeof(server);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 				} break;
 				// Если тип сети не определен
 				default: {
@@ -915,7 +915,7 @@ awh::Engine::Address::~Address() noexcept {
  */
 void awh::Engine::Context::error(const int status) const noexcept {
 	// Если защищённый режим работы разрешён
-	if(this->_tls){
+	if(this->_encrypted){
 		// Получаем данные описание ошибки
 		const int error = SSL_get_error(this->_ssl, status);
 		// Определяем тип ошибки
@@ -1028,12 +1028,12 @@ void awh::Engine::Context::clear() noexcept {
 	if(this->_addr != nullptr)
 		// Выполняем закрытие подключения
 		this->_addr->clear();
-	// Сбрасываем флаг инициализации
-	this->_tls = false;
 	// Сбрасываем флаг вывода подробной информации
 	this->_verb = false;
 	// Зануляем объект подключения
 	this->_addr = nullptr;
+	// Сбрасываем флаг инициализации
+	this->_encrypted = false;
 }
 /**
  * info Метод вывода информации о сертификате
@@ -1108,7 +1108,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
 	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
-		if(this->_tls && (this->_ssl != nullptr)){
+		if(this->_encrypted && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
 			// Если подключение ещё активно
@@ -1188,7 +1188,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Если произошёл системный сигнал попробовать ещё раз
 				if(errno == EINTR) return -2;
 				// Если защищённый режим работы разрешён
-				if(this->_tls && (this->_ssl != nullptr)){
+				if(this->_encrypted && (this->_ssl != nullptr)){
 					// Получаем данные описание ошибки
 					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
 						// Выполняем пропуск попытки
@@ -1217,7 +1217,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Создаём объект получения информационных событий
 					struct bio_dgram_sctp_rcvinfo info;
 					// Выполняем зануление объекта информационного события
-					memset(&info, 0, sizeof(info));
+					::memset(&info, 0, sizeof(info));
 					// Выполняем извлечение события
 					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
 					// Выводим в лог информационное сообщение
@@ -1242,7 +1242,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
 	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
-		if(this->_tls && (this->_ssl != nullptr)){
+		if(this->_encrypted && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
 			// Если подключение ещё активно
@@ -1258,7 +1258,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Создаём объект получения информационных событий
 							struct bio_dgram_sctp_sndinfo info;
 							// Выполняем зануление объекта информационного события
-							memset(&info, 0, sizeof(info));
+							::memset(&info, 0, sizeof(info));
 							// Выполняем установку события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
 						}
@@ -1279,8 +1279,13 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
+							
+							cout << " $$$$$$$$$$$$ WRITE1 " << size << endl;
+							
 							// Выполняем отправку сообщения через защищённый канал
 							result = SSL_write(this->_ssl, buffer, size);
+
+							cout << " $$$$$$$$$$$$ WRITE2 " << result << endl;
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
@@ -1360,7 +1365,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Если произошёл системный сигнал попробовать ещё раз
 				if(errno == EINTR) return -2;
 				// Если защищённый режим работы разрешён
-				if(this->_tls){
+				if(this->_encrypted){
 					// Получаем данные описание ошибки
 					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
 						// Выполняем пропуск попытки
@@ -1393,7 +1398,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Создаём объект получения информационных событий
 							struct bio_dgram_sctp_sndinfo info;
 							// Выполняем зануление объекта информационного события
-							memset(&info, 0, sizeof(info));
+							::memset(&info, 0, sizeof(info));
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
@@ -1404,7 +1409,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Создаём объект получения информационных событий
 							struct bio_dgram_sctp_rcvinfo info;
 							// Выполняем зануление объекта информационного события
-							memset(&info, 0, sizeof(info));
+							::memset(&info, 0, sizeof(info));
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
@@ -1430,7 +1435,7 @@ bool awh::Engine::Context::block() noexcept {
 			// Переводим сокет в блокирующий режим
 			this->_addr->_async = !this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::BLOCK);
 			// Если шифрование включено
-			if(this->_tls && (this->_ssl != nullptr)){
+			if(this->_encrypted && (this->_ssl != nullptr)){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
 				BIO_set_nbio(this->_bio, 0);
 				// Флаг необходимо установить только для неблокирующего сокета
@@ -1455,7 +1460,7 @@ bool awh::Engine::Context::noblock() noexcept {
 			// Переводим сокет в не блокирующий режим
 			this->_addr->_async = this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::NOBLOCK);
 			// Если шифрование включено
-			if(this->_tls && (this->_ssl != nullptr)){
+			if(this->_encrypted && (this->_ssl != nullptr)){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
 				BIO_set_nbio(this->_bio, 1);
 				// Флаг необходимо установить только для неблокирующего сокета
@@ -1753,7 +1758,7 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 					// Объект данных подключения
 					char buffer[INET6_ADDRSTRLEN];
 					// Выполняем зануление буфера данных
-					memset(buffer, 0, sizeof(buffer));
+					::memset(buffer, 0, sizeof(buffer));
 					// Создаём объединение адресов
 					union {
 						struct sockaddr_in s4;      // Объект IPv4
@@ -1888,7 +1893,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Буфер данных сертификатов из хранилища
 		char buffer[256];
 		// Заполняем структуру нулями
-		memset(buffer, 0, sizeof(buffer));
+		::memset(buffer, 0, sizeof(buffer));
 		// Ошибка проверки сертификата
 		string status = "X509VerifyCertFailed";
 		// Выполняем проверку сертификата
@@ -2097,16 +2102,16 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
+			::memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			::memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
@@ -2116,7 +2121,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 	// Очищаем ранее выделенную память
 	OPENSSL_free(buffer);
 	// Выполняем копирование полученного результата в буфер печенок
-	memcpy(cookie, result, length);
+	::memcpy(cookie, result, length);
 	// Устанавливаем размер буфера печенок
 	(* size) = length;
 	// Выводим положительный ответ
@@ -2177,16 +2182,16 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(u_short), &peer.s4.sin_addr, sizeof(struct in_addr));
+			::memcpy(buffer + sizeof(u_short), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			::memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
@@ -2492,24 +2497,6 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	return result;
 }
 /**
- * tls Метод проверки на активацию режима шифрования
- * @param ctx  контекст подключения
- * @return     результат проверки
- */
-bool awh::Engine::tls(ctx_t & ctx) const noexcept {
-	// Выводим результат проверки
-	return ctx._tls;
-}
-/**
- * tls Метод установки флага режима шифрования
- * @param mode флаг режима шифрования
- * @param ctx  контекст подключения
- */
-void awh::Engine::tls(const bool mode, ctx_t & ctx) noexcept {
-	// Устанавливаем флаг шифрования
-	ctx._tls = mode;
-}
-/**
  * wait Метод ожидания рукопожатия
  * @param target контекст назначения
  * @return       результат проверки
@@ -2525,13 +2512,31 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: {
 			// Выполняем зануление структуры подключения клиента
-			memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
+			::memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
 			// Выполняем ожидание подключения
 			return (DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) > 0);
 		} break;
 	}
 	// Сообщаем, что ничего не обработано
 	return false;
+}
+/**
+ * encrypted Метод проверки на активацию режима шифрования
+ * @param ctx  контекст подключения
+ * @return     результат проверки
+ */
+bool awh::Engine::encrypted(ctx_t & ctx) const noexcept {
+	// Выводим результат проверки
+	return ctx._encrypted;
+}
+/**
+ * encrypted Метод установки флага режима шифрования
+ * @param mode флаг режима шифрования
+ * @param ctx  контекст подключения
+ */
+void awh::Engine::encrypted(const bool mode, ctx_t & ctx) noexcept {
+	// Устанавливаем флаг шифрования
+	ctx._encrypted = mode;
 }
 /**
  * proto Метод извлечения активного протокола
@@ -2767,7 +2772,7 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
 		// Если тип подключения является клиент
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && target._tls){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && target._encrypted){
 			// Извлекаем BIO cthdthf
 			target._bio = SSL_get_rbio(target._ssl);
 			// Устанавливаем сокет клиента
@@ -3033,7 +3038,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
-			if(!(target._tls = (target._ssl != nullptr))){
+			if(!(target._encrypted = (target._ssl != nullptr))){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -3042,7 +3047,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				return;
 			}
 			// Устанавливаем флаг активации TLS
-			target._addr->_tls = target._tls;
+			target._addr->_encrypted = target._encrypted;
 			// Определяем тип сокета
 			switch(target._addr->_type){
 				// Если тип сокета - диграммы
@@ -3098,7 +3103,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
  */
 void awh::Engine::wrapServer(ctx_t & target, ctx_t & source) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!source._tls && (source._addr != nullptr))
+	if(!source._encrypted && (source._addr != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
 		this->wrapServer(target, source._addr);
 }
@@ -3312,7 +3317,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
-			if(!(target._tls = (target._ssl != nullptr))){
+			if(!(target._encrypted = (target._ssl != nullptr))){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -3335,7 +3340,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				}
 			}
 			// Устанавливаем флаг активации TLS
-			target._addr->_tls = target._tls;
+			target._addr->_encrypted = target._encrypted;
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3421,7 +3426,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
 		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) &&
-		  ((!this->_privkey.empty() && !this->_chain.empty()) || this->tls(target))){
+		  ((!this->_privkey.empty() && !this->_chain.empty()) || this->encrypted(target))){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3577,7 +3582,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
-			if(!(target._tls = (target._ssl != nullptr))){
+			if(!(target._encrypted = (target._ssl != nullptr))){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -3614,7 +3619,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				}
 			}
 			// Устанавливаем флаг активации TLS
-			target._addr->_tls = target._tls;
+			target._addr->_encrypted = target._encrypted;
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */

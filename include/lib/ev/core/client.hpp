@@ -92,9 +92,6 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
-				// Флаг режима работы
-				mode_t _mode;
-			private:
 				// Список блокированных объектов
 				set <uint64_t> _locking;
 				// Список таймеров
@@ -137,12 +134,6 @@ namespace awh {
 				 * remove Метод удаления всех схем сети
 				 */
 				void remove() noexcept;
-			public:
-				/**
-				 * mode Метод активации асинхронного режима работы
-				 * @param flag флаг активации асинхронного режима работы
-				 */
-				void mode(const mode_t flag) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения

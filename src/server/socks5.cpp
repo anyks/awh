@@ -128,8 +128,6 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readClientCallback, this, _1, _2, _3, _4, _5));
 			// Добавляем схему сети в сетевое ядро
 			this->_core.client.add(&adj->scheme);
-			// Активируем асинхронный режим работы
-			this->_core.client.mode(client::core_t::mode_t::ASYNC);
 			// Создаём пару клиента и сервера
 			this->_scheme.pairs.emplace(adj->scheme.sid, aid);
 			// Устанавливаем функцию проверки авторизации

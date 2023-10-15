@@ -123,8 +123,6 @@ void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint1
 	if(this->_callback.is("active"))
 		// Выводим функцию обратного вызова
 		this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
-	// Активируем асинхронный режим работы
-	dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::SYNC);
 }
 /**
  * readCallback Метод обратного вызова при чтении сообщения с сервера
@@ -535,8 +533,6 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					// Активируем асинхронный режим работы
-					dynamic_cast <client::core_t *> (core)->mode(client::core_t::mode_t::ASYNC);
 					// Разрешаем перехватывать контекст компрессии для клиента
 					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
 					// Разрешаем перехватывать контекст компрессии для сервера

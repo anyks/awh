@@ -176,10 +176,10 @@ namespace awh {
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					int _protocol;
 				private:
-					// Флаг инициализации шифрования TLS
-					bool _tls;
 					// Флаг асинхронного режима работы сокета
 					bool _async;
+					// Флаг инициализации шифрования
+					bool _encrypted;
 				public:
 					// Статус подключения
 					status_t status;
@@ -299,7 +299,7 @@ namespace awh {
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
 					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
-					 _tls(false), _async(false), status(status_t::DISCONNECTED),
+					 _async(false), _encrypted(false), status(status_t::DISCONNECTED),
 					 port(0), ip(""), mac(""), _fs(fmk, log), _ifnet(fmk, log),
 					 _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
@@ -332,10 +332,10 @@ namespace awh {
 					 */
 					friend class Engine;
 				private:
-					// Флаг инициализации шифрования TLS
-					bool _tls;
 					// Флаг вывода информации об OpenSSL
 					bool _verb;
+					// Флаг инициализации шифрования
+					bool _encrypted;
 				private:
 					// Тип активного приложения
 					type_t _type;
@@ -456,7 +456,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 _tls(false), _verb(false), _type(type_t::NONE),
+					 _verb(false), _encrypted(false), _type(type_t::NONE),
 					 _proto(proto_t::RAW), _bio(nullptr), _ssl(nullptr),
 					 _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {}
 					/**
@@ -672,24 +672,24 @@ namespace awh {
 			bool storeCA(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
-			 * tls Метод проверки на активацию режима шифрования
-			 * @param ctx контекст подключения
-			 * @return    результат проверки
-			 */
-			bool tls(ctx_t & ctx) const noexcept;
-			/**
-			 * tls Метод установки флага режима шифрования
-			 * @param mode флаг режима шифрования
-			 * @param ctx  контекст подключения
-			 */
-			void tls(const bool mode, ctx_t & ctx) noexcept;
-		public:
-			/**
 			 * wait Метод ожидания рукопожатия
 			 * @param target контекст назначения
 			 * @return       результат проверки
 			 */
 			bool wait(ctx_t & target) noexcept;
+		public:
+			/**
+			 * encrypted Метод проверки на активацию режима шифрования
+			 * @param ctx контекст подключения
+			 * @return    результат проверки
+			 */
+			bool encrypted(ctx_t & ctx) const noexcept;
+			/**
+			 * encrypted Метод установки флага режима шифрования
+			 * @param mode флаг режима шифрования
+			 * @param ctx  контекст подключения
+			 */
+			void encrypted(const bool mode, ctx_t & ctx) noexcept;
 		public:
 			/**
 			 * proto Метод извлечения активного протокола

@@ -519,7 +519,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если мы хотим работать в зашифрованном режиме
 							if(this->settings.sonet == scheme_t::sonet_t::TLS){
 								// Если сертификаты не приняты, выходим
-								if(!this->engine.tls(adj->ectx)){
+								if(!this->engine.encrypted(adj->ectx)){
 									// Выполняем очистку контекста двигателя
 									adj->ectx.clear();
 									// Выводим сообщение об ошибке
