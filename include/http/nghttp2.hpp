@@ -25,6 +25,8 @@
  * Методы только для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
+	// Подключаем библиотеку асинхронного ввода-вывода
+	#include <io.h>
 	// Разрешаем статическую сборку для NGTCP2
 	#define NGTCP2_STATICLIB
 	// Разрешаем статическую сборку для NGHTTP2
