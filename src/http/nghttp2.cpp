@@ -376,7 +376,7 @@ bool awh::NgHttp2::ping() noexcept {
 	// Если сессия HTTP/2 инициализированна
 	if(this->_session != nullptr){
 		// Выполняем пинг удалённого сервера
-		if((rv = nghttp2_submit_ping(this->_session, 0, nullptr)) != 0){
+		if((rv = nghttp2_submit_ping(this->_session, NGHTTP2_FLAG_ACK, nullptr)) != 0){
 			// Выводим сообщение об полученной ошибке
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 			// Если функция обратного вызова на на вывод ошибок установлена
