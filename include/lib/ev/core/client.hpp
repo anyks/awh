@@ -167,12 +167,20 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void connected(const uint64_t aid) noexcept;
+			public:
 				/**
-				 * transfer Метед передачи данных между клиентом и сервером
-				 * @param method метод режима работы
+				 * read Метод чтения данных для адъютанта
+				 * @param aid идентификатор адъютанта
+				 */
+				void read(const uint64_t aid) noexcept;
+				/**
+				 * write Метод записи буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
 				 * @param aid    идентификатор адъютанта
 				 */
-				void transfer(const engine_t::method_t method, const uint64_t aid) noexcept;
+				void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
+			private:
 				/**
 				 * resolving Метод получения IP адреса доменного имени
 				 * @param sid    идентификатор схемы сети

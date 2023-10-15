@@ -75,20 +75,20 @@ void awh::Engine::Address::client() noexcept {
 				// Если протокол интернета IPv4
 				case AF_INET: {
 					// Получаем порт клиента
-					this->port = ntohs(((struct sockaddr_in *) &this->_peer.client)->sin_port);
+					this->port = ntohs(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->_peer.client)->sin_addr, buffer, sizeof(buffer));
+					this->ip = inet_ntop(AF_INET, &reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr, buffer, sizeof(buffer));
 				} break;
 				// Если протокол интернета IPv6
 				case AF_INET6: {
 					// Получаем порт клиента
-					this->port = ntohs(((struct sockaddr_in6 *) &this->_peer.client)->sin6_port);
+					this->port = ntohs(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
+					this->ip = inet_ntop(AF_INET6, &reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
 				} break;
 			}
 			// Получаем данные подключившегося клиента
-			string ip = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
+			string ip = this->_ifnet.ip(reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.client.ss_family);
 			// Если IP адрес получен пустой
 			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
 				// Получаем IP адрес локального сервера
@@ -125,7 +125,6 @@ bool awh::Engine::Address::list() noexcept {
 		case SOCK_STREAM: {
 			// Выполняем слушать порт сервера
 			if(!(result = (::listen(this->fd, SOMAXCONN) == 0))){
-			// if(!(result = (::listen(this->fd, 5) == 0))){
 				// Выводим сообщени об активном сервисе
 				this->_log->print("Listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
 				// Выходим из функции
@@ -214,7 +213,7 @@ bool awh::Engine::Address::connect() noexcept {
 					// Получаем размер объекта сокета
 					this->_peer.size = (
 						offsetof(struct sockaddr_un, sun_path) +
-						strlen(((struct sockaddr_un *) (&this->_peer.server))->sun_path)
+						strlen(reinterpret_cast <struct sockaddr_un *> (&this->_peer.server)->sun_path)
 					);
 				break;
 			#endif
@@ -229,7 +228,7 @@ bool awh::Engine::Address::connect() noexcept {
 				this->_socket.eventsSCTP(this->fd);
 		#endif
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-		if((this->_peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) == 0))
+		if((this->_peer.size > 0) && (::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
 	// Если сокет установлен UDP
@@ -250,7 +249,7 @@ bool awh::Engine::Address::connect() noexcept {
 				break;
 			}
 			// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-			if((this->_peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) == 0))
+			if((this->_peer.size > 0) && (::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
 				// Устанавливаем статус подключения
 				this->status = status_t::CONNECTED;
 		// Устанавливаем статус подключения
@@ -327,16 +326,16 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	// Выполняем копирование объекта подключения сервера
 	::memcpy(&this->_peer.server, &addr._peer.server, sizeof(struct sockaddr_storage));
 	// Выполняем бинд на сокет
-	if((this->_peer.size > 0) && (::bind(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) < 0)){
+	if((this->_peer.size > 0) && (::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)){
 		// Хост подключённого клиента
-		const string & client = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
+		const string & client = this->_ifnet.ip(reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.client.ss_family);
 		// Выводим в лог сообщение
 		this->_log->print("Bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
 		// Выходим
 		return false;
 	}
 	// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-	if(::connect(this->fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) == 0){
+	if(::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) == 0){
 		// Выполняем извлечение данных клиента
 		this->client();
 		// Устанавливаем статус подключения
@@ -417,9 +416,11 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				#endif
 			}
 			// Определяем разрешено ли подключение к прокси серверу
-			this->fd = ::accept(fd, (struct sockaddr *) (&this->_peer.client), &this->_peer.size);
+			this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), &this->_peer.size);
 			// Если сокет не создан тогда выходим
-			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)) return false;
+			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS))
+				// Выходим из функции
+				return false;
 		} break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: this->fd = fd; break;
@@ -645,7 +646,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							// Получаем размер объекта сокета
 							const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(client.sun_path));
 							// Выполняем бинд на сокет
-							if(::bind(this->fd, (struct sockaddr *) &this->_peer.client, size) < 0){
+							if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), size) < 0){
 								// Выводим в лог сообщение
 								this->_log->print("Bind local network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
 								// Выходим
@@ -660,7 +661,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Получаем размер объекта сокета
 				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(server.sun_path));
 				// Выполняем бинд на сокет
-				if(::bind(this->fd, (struct sockaddr *) &this->_peer.server, size) < 0)
+				if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), size) < 0)
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
 			}
@@ -735,7 +736,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&reinterpret_cast <struct sockaddr_in *> (&this->_peer.server)->sin_zero, 0, sizeof(server.sin_zero));
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
@@ -887,14 +888,14 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				case static_cast <uint8_t> (type_t::SERVER): {
 					// Выполняем бинд на сокет
-					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) < 0)
+					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)
 						// Выводим в лог сообщение
 						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
 				// Если приложение является клиентом
 				case static_cast <uint8_t> (type_t::CLIENT): {
 					// Выполняем бинд на сокет
-					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 						// Выводим в лог сообщение
 						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
@@ -1157,12 +1158,12 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Если статус установлен как подключение клиентом
 					case static_cast <uint8_t> (addr_t::status_t::CONNECTED):
 						// Запоминаем полученную структуру
-						addr = (struct sockaddr *) (&this->_addr->_peer.server);
+						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.server);
 					break;
 					// Если статус установлен как разрешение подключения к серверу
 					case static_cast <uint8_t> (addr_t::status_t::ACCEPTED):
 						// Запоминаем полученную структуру
-						addr = (struct sockaddr *) (&this->_addr->_peer.client);
+						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.client);
 					break;
 				}
 				// Метка повторного получения данных
@@ -1186,7 +1187,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			// Если произошла ошибка
 			else if((result < 0) && !status) {
 				// Если произошёл системный сигнал попробовать ещё раз
-				if(errno == EINTR) return -2;
+				if(errno == EINTR)
+					// Пробуем повторно получить данные
+					return -2;
 				// Если защищённый режим работы разрешён
 				if(this->_encrypted && (this->_ssl != nullptr)){
 					// Получаем данные описание ошибки
@@ -1196,7 +1199,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Иначе выводим сообщение об ошибке
 					else this->error(result);
 				// Если защищённый режим работы запрещён
-				} else if(errno == EAGAIN) return -1;
+				} else if(errno == EAGAIN)
+					// Выполняем пропуск попытки
+					return -1;
 				// Иначе просто закрываем подключение
 				result = 0;
 			}
@@ -1205,7 +1210,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
-			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
+			if(result == 0)
+				// Устанавливаем статус отключён
+				this->_addr->status = addr_t::status_t::DISCONNECTED;
 		// Если данные получены удачно
 		} else {
 			/**
@@ -1279,13 +1286,8 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
-							
-							cout << " $$$$$$$$$$$$ WRITE1 " << size << endl;
-							
 							// Выполняем отправку сообщения через защищённый канал
 							result = SSL_write(this->_ssl, buffer, size);
-
-							cout << " $$$$$$$$$$$$ WRITE2 " << result << endl;
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
@@ -1310,7 +1312,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					// Если статус установлен как подключение клиентом
 					case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
 						// Запоминаем полученную структуру
-						addr = (struct sockaddr *) (&this->_addr->_peer.server);
+						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.server);
 						/**
 						 * Если операционной системой не является Windows
 						 */
@@ -1320,14 +1322,14 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 								// Получаем размер объекта сокета
 								this->_addr->_peer.size = (
 									offsetof(struct sockaddr_un, sun_path) +
-									strlen(((struct sockaddr_un *) (&this->_addr->_peer.server))->sun_path)
+									strlen(reinterpret_cast <struct sockaddr_un *> (&this->_addr->_peer.server)->sun_path)
 								);
 						#endif
 					} break;
 					// Если статус установлен как разрешение подключения к серверу
 					case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
 						// Запоминаем полученную структуру
-						addr = (struct sockaddr *) (&this->_addr->_peer.client);
+						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.client);
 						/**
 						 * Если операционной системой не является Windows
 						 */
@@ -1337,7 +1339,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 								// Получаем размер объекта сокета
 								this->_addr->_peer.size = (
 									offsetof(struct sockaddr_un, sun_path) +
-									strlen(((struct sockaddr_un *) (&this->_addr->_peer.client))->sun_path)
+									strlen(reinterpret_cast <struct sockaddr_un *> (&this->_addr->_peer.client)->sun_path)
 								);
 						#endif
 					} break;
@@ -1363,7 +1365,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			// Если произошла ошибка
 			else if((result < 0) && !status) {
 				// Если произошёл системный сигнал попробовать ещё раз
-				if(errno == EINTR) return -2;
+				if(errno == EINTR)
+					// Пробуем повторно получить данные
+					return -2;
 				// Если защищённый режим работы разрешён
 				if(this->_encrypted){
 					// Получаем данные описание ошибки
@@ -1373,7 +1377,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					// Иначе выводим сообщение об ошибке
 					else this->error(result);
 				// Если защищённый режим работы запрещён
-				} else if(errno == EAGAIN) return -1;
+				} else if(errno == EAGAIN)
+					// Выполняем пропуск попытки
+					return -1;
 				// Иначе просто закрываем подключение
 				result = 0;
 			}
@@ -1382,7 +1388,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
-			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
+			if(result == 0)
+				// Устанавливаем статус отключён
+				this->_addr->status = addr_t::status_t::DISCONNECTED;
 		// Если данные отправлены удачно
 		} else {
 			/**
@@ -1601,7 +1609,7 @@ bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_
 			// Выполняем установку размеров исходящего буфера
 			(* outSize) = in[i];
 			// Выполняем установку полученных данных в исходящий буфер
-			(* out) = (u_char *) &in[i + 1];
+			(* out) = const_cast <u_char *> (&in[i + 1]);
 			// Выходим из функции
 			return true;
 		}
@@ -1691,11 +1699,15 @@ bool awh::Engine::hostmatch(const string & host, const string & patt) const noex
 			// Обрезаем строку хоста
 			const string & h = hostLabel.replace(0, hostLabelEnd, "");
 			// Выполняем сравнение
-			if(!this->rawEqual(p, h)) return false;
+			if(!this->rawEqual(p, h))
+				// Выходим из функции
+				return false;
 		// Выходим
 		} else return false;
 		// Если диапазоны точки в шаблоне и хосте отличаются тогда выходим
-		if(hostLabelEnd < pattLabelEnd) return false;
+		if(hostLabelEnd < pattLabelEnd)
+			// Выходим из функции
+			return false;
 		// Получаем размер префикса и суфикса
 		const size_t prefixlen = pattWildcard;
 		const size_t suffixlen = (pattLabelEnd - (pattWildcard + 1));
@@ -2022,13 +2034,13 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			// Если протокол переключить получилось на HTTP/2
-			if(context->selectProto((u_char **) out, outSize, in, inSize, "\x2h2", 2))
+			if(context->selectProto(const_cast <u_char **> (out), outSize, in, inSize, "\x2h2", 2))
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			// Если протокол переключить не получилось
 			else {
 				// Выполняем переключение протокола обратно на HTTP/1.1
-				context->selectProto((u_char **) out, outSize, in, inSize, "\x8http/1.1", 8);
+				context->selectProto(const_cast <u_char **> (out), outSize, in, inSize, "\x8http/1.1", 8);
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
@@ -2068,7 +2080,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		}
 	}
 	// Выполняем чтение из подключения информации
-	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
+	BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
 	// Выполняем определение протокола интернета
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
@@ -2087,7 +2099,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 	// Увеличиваем смещение на размер буфера входящих данных
 	offset += sizeof(u_short);
 	// Выполняем выделение память для буфера данных
-	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
+	u_char * buffer = reinterpret_cast <u_char *> (OPENSSL_malloc(offset));
 	// Если память для буфера данных не выделена
 	if(buffer == nullptr){
 		// Создаём объект фреймворка
@@ -2117,7 +2129,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		default: OPENSSL_assert(0);
 	}
 	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-	HMAC(EVP_sha1(), (const void *) _cookies, sizeof(_cookies), (const u_char *) buffer, offset, result, &length);
+	HMAC(EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
 	// Очищаем ранее выделенную память
 	OPENSSL_free(buffer);
 	// Выполняем копирование полученного результата в буфер печенок
@@ -2146,9 +2158,11 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		struct sockaddr_storage ss; // Объект хранилища
 	} peer;
 	// Если печенки не проинициализированы, значит куки не валидные
-	if(!_cookieInit) return 0;
+	if(!_cookieInit)
+		// Выходим из функции
+		return 0;
 	// Выполняем чтение из подключения информации
-	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
+	BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
 	// Выполняем определение протокола интернета
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
@@ -2167,7 +2181,7 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 	// Увеличиваем смещение на размер буфера входящих данных
 	offset += sizeof(u_short);
 	// Выполняем выделение память для буфера данных
-	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
+	u_char * buffer = reinterpret_cast <u_char *> (OPENSSL_malloc(offset));
 	// Если память для буфера данных не выделена
 	if(buffer == nullptr){
 		// Создаём объект фреймворка
@@ -2197,7 +2211,7 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		default: OPENSSL_assert(0);
 	}
 	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-	HMAC(EVP_sha1(), (const void *) _cookies, sizeof(_cookies), (const u_char *) buffer, offset, result, &length);
+	HMAC(EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
 	// Очищаем ранее выделенную память
 	OPENSSL_free(buffer);
 	// Выполняем проверку печенок, если печенки совпадают, значит всё хорошо
@@ -2247,23 +2261,33 @@ awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, cons
 	// Если данные переданы
 	if(!host.empty() && (cert != nullptr)){
 		// Получаем индекс имени по NID
-		const int cnl = X509_NAME_get_index_by_NID(X509_get_subject_name((X509 *) cert), NID_commonName, -1);
+		const int cnl = X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (cert)), NID_commonName, -1);
 		// Если индекс не получен тогда выходим
-		if(cnl < 0) return validate_t::Error;
+		if(cnl < 0)
+			// Выводим сформированную ошибку
+			return validate_t::Error;
 		// Извлекаем поле CN
-		X509_NAME_ENTRY * cne = X509_NAME_get_entry(X509_get_subject_name((X509 *) cert), cnl);
+		X509_NAME_ENTRY * cne = X509_NAME_get_entry(X509_get_subject_name(const_cast <X509 *> (cert)), cnl);
 		// Если поле не получено тогда выходим
-		if(cne == nullptr) return validate_t::Error;
+		if(cne == nullptr)
+			// Выводим сформированную ошибку
+			return validate_t::Error;
 		// Конвертируем CN поле в C строку
 		ASN1_STRING * cna = X509_NAME_ENTRY_get_data(cne);
 		// Если строка не сконвертирована тогда выходим
-		if(cna == nullptr) return validate_t::Error;
+		if(cna == nullptr)
+			// Выводим сформированную ошибку
+			return validate_t::Error;
 		// Извлекаем название в виде строки
-		const string cn((char *) ASN1_STRING_get0_data(cna), ASN1_STRING_length(cna));
+		const string cn(reinterpret_cast <char *> (const_cast <u_char *> (ASN1_STRING_get0_data(cna))), ASN1_STRING_length(cna));
 		// Сравниваем размеры полученных строк
-		if(size_t(ASN1_STRING_length(cna)) != cn.length()) return validate_t::MalformedCertificate;
+		if((size_t) ASN1_STRING_length(cna) != cn.length())
+			// Выводим сформированную ошибку
+			return validate_t::MalformedCertificate;
 		// Выполняем рукопожатие
-		if(this->certHostcheck(host, cn)) return validate_t::MatchFound;
+		if(this->certHostcheck(host, cn))
+			// Выводим сформированную ошибку
+			return validate_t::MatchFound;
 	}
 	// Выводим результат
 	return result;
@@ -2280,9 +2304,11 @@ awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const
 	// Если данные переданы
 	if(!host.empty() && (cert != nullptr)){
 		// Получаем имена
-		STACK_OF(GENERAL_NAME) * sn = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i((X509 *) cert, NID_subject_alt_name, nullptr, nullptr));
+		STACK_OF(GENERAL_NAME) * sn = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i(const_cast <X509 *> (cert), NID_subject_alt_name, nullptr, nullptr));
 		// Если имена не получены тогда выходим
-		if(sn == nullptr) return validate_t::NoSANPresent;
+		if(sn == nullptr)
+			// Выполняем формирвоание ошибки
+			return validate_t::NoSANPresent;
 		// Получаем количество имен
 		const int sanNamesNb = sk_GENERAL_NAME_num(sn);
 		// Переходим по всему списку
@@ -2292,9 +2318,9 @@ awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const
 			// Проверяем тип имени
 			if(cn->type == GEN_DNS){
 				// Получаем dns имя
-				const string dns((char *) ASN1_STRING_get0_data(cn->d.dNSName), ASN1_STRING_length(cn->d.dNSName));
+				const string dns(reinterpret_cast <char *> (const_cast <u_char *> (ASN1_STRING_get0_data(cn->d.dNSName))), ASN1_STRING_length(cn->d.dNSName));
 				// Если размер имени не совпадает
-				if(size_t(ASN1_STRING_length(cn->d.dNSName)) != dns.length()){
+				if((size_t) ASN1_STRING_length(cn->d.dNSName) != dns.length()){
 					// Запоминаем результат
 					result = validate_t::MalformedCertificate;
 					// Выходим из цикла
@@ -2473,7 +2499,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Если сертификат создан
 							} else if(cert != nullptr) {
 								// Добавляем сертификат в стор
-								X509_STORE_add_cert(store, d2i_X509(&cert, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded));
+								X509_STORE_add_cert(store, d2i_X509(&cert, reinterpret_cast <const u_char **> (&ctx->pbCertEncoded), ctx->cbCertEncoded));
 								// Очищаем выделенную память
 								X509_free(cert);
 							}
@@ -2481,11 +2507,13 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Закрываем системный стор
 						CertCloseStore(sys, 0);
 					}
-					// Выходим
+					// Выводим сформированный результат
 					return result;
 				};
 				// Проверяем существует ли путь
-				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
+				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0))
+					// Выводим сформированный результат
+					return result;
 			#endif
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(!(result = (X509_STORE_set_default_paths(store) == 1)))
@@ -2514,7 +2542,7 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 			// Выполняем зануление структуры подключения клиента
 			::memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
 			// Выполняем ожидание подключения
-			return (DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) > 0);
+			return (DTLSv1_listen(target._ssl, reinterpret_cast <BIO_ADDR *> (&target._addr->_peer.client)) > 0);
 		} break;
 	}
 	// Сообщаем, что ничего не обработано
@@ -2778,7 +2806,7 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 			// Устанавливаем сокет клиента
 			BIO_set_fd(target._bio, target._addr->fd, BIO_NOCLOSE);
 			// Выполняем установку объекта подключения в BIO
-			BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target._addr->_peer.client);
+			BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.client));
 		}
 	}
 }
@@ -2910,7 +2938,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					break;
 				}
 				// Выполняем установку идентификатора сессии
-				if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
+				if(SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const u_char *> (&pid), sizeof(pid)) < 1){
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
@@ -3072,7 +3100,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если тип сокета - диграммы
 						if(target._addr->_type == SOCK_DGRAM)
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target._addr->_peer.server);
+							BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
 					} break;
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER): {
@@ -3129,8 +3157,10 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если семейство протоколов другое, выходим
 			default: return;
 		}
-		// Если тип сокетов установлен не как потоковые, выходим
-		if(target._addr->_type != SOCK_STREAM) return;
+		// Если тип сокетов установлен не как потоковые
+		if(target._addr->_type != SOCK_STREAM)
+			// Выходим из функции
+			return;
 		// Если объект фреймворка существует
 		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_privkey.empty() && !this->_chain.empty()){
 			/**
@@ -3232,7 +3262,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				break;
 			}
 			// Выполняем установку идентификатора сессии
-			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
+			if(SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const u_char *> (&pid), sizeof(pid)) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение

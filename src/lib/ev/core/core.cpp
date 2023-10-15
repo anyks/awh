@@ -28,38 +28,8 @@ void awh::scheme_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 	// Если разрешено выполнять чтения данных из сокета
 	if(!this->bev.locked.read)
 		// Выполняем передачу данных
-		core->transfer(engine_t::method_t::READ, this->aid);
+		core->read(this->aid);
 	// Если выполнять чтение данных запрещено
-	else {
-		// Если запрещено выполнять чтение данных из сокета
-		if(this->bev.locked.read)
-			// Останавливаем чтение данных
-			core->disabled(engine_t::method_t::READ, this->aid);
-		// Если запрещено выполнять запись данных в сокет
-		if(this->bev.locked.write)
-			// Останавливаем запись данных
-			core->disabled(engine_t::method_t::WRITE, this->aid);
-		// Если запрещено и читать и записывать в сокет
-		if(this->bev.locked.read && this->bev.locked.write)
-			// Выполняем отключение от сервера
-			core->close(this->aid);
-	}
-}
-/**
- * write Метод вызова при записи данных в сокет
- * @param watcher объект события записи
- * @param revents идентификатор события
- */
-void awh::scheme_t::adj_t::write(ev::io & watcher, int revents) noexcept {
-	// Получаем объект подключения
-	scheme_t * shm = const_cast <scheme_t *> (this->parent);
-	// Получаем объект ядра клиента
-	core_t * core = const_cast <core_t *> (shm->core);
-	// Если разрешено выполнять запись данных в сокет
-	if(!this->bev.locked.write)
-		// Выполняем передачу данных
-		core->transfer(engine_t::method_t::WRITE, this->aid);
-	// Если выполнять запись данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
 		if(this->bev.locked.read)
@@ -814,14 +784,24 @@ void awh::Core::connected(const uint64_t aid) noexcept {
 	(void) aid;
 }
 /**
- * transfer Метед передачи данных между клиентом и сервером
- * @param method метод режима работы
- * @param aid    идентификатор адъютанта
+ * read Метод чтения данных для адъютанта
+ * @param aid идентификатор адъютанта
  */
-void awh::Core::transfer(const engine_t::method_t method, const uint64_t aid) noexcept {
+void awh::Core::read(const uint64_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
-	(void) method;
+}
+/**
+ * write Метод записи буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param aid    идентификатор адъютанта
+ */
+void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
+	// Экранируем ошибку неиспользуемых переменных
+	(void) aid;
+	(void) size;
+	(void) buffer;
 }
 /**
  * bandWidth Метод установки пропускной способности сети
@@ -1004,22 +984,10 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 					} break;
 					// Если событием является запись
 					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-						// Разрешаем запись данных в сокет
-						adj->bev.locked.write = false;
 						// Устанавливаем размер детектируемых байт на запись
 						adj->marker.write = shm->marker.write;
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.write = shm->timeouts.write;
-						// Устанавливаем приоритет выполнения для события на запись
-						ev_set_priority(&adj->bev.event.write, -2);
-						// Устанавливаем базу событий
-						adj->bev.event.write.set(this->dispatch.base);
-						// Устанавливаем сокет для записи
-						adj->bev.event.write.set(adj->addr.fd, ev::WRITE);
-						// Устанавливаем событие на запись данных подключения
-						adj->bev.event.write.set <awh::scheme_t::adj_t, &awh::scheme_t::adj_t::write> (adj);
-						// Запускаем запись данных
-						adj->bev.event.write.start();
 						// Если флаг ожидания исходящих сообщений, активирован
 						if((adj->timeouts.write > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем приоритет выполнения для таймаута на запись
@@ -1095,12 +1063,8 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 					} break;
 					// Если событием является запись
 					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-						// Запрещаем запись данных в сокет
-						adj->bev.locked.write = true;
 						// Останавливаем ожидание записи данных
 						adj->bev.timer.write.stop();
-						// Останавливаем запись данных
-						adj->bev.event.write.stop();
 					} break;
 					// Если событием является подключение
 					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
@@ -1115,80 +1079,6 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 		}
 	}
 }
-
-/**
- * write Метод записи буфера данных в сокет
- * @param buffer буфер для записи данных
- * @param size   размер записываемых данных
- * @param aid    идентификатор адъютанта
- */
-void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) buffer;
-	(void) size;
-	(void) aid;
-}
-
-/**
- * write Метод записи буфера данных в сокет
- * @param buffer буфер для записи данных
- * @param size   размер записываемых данных
- * @param aid    идентификатор адъютанта
- */
-/*
-void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
-	// Если данные переданы
-	if(this->working() && (buffer != nullptr) && (size > 0)){
-		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->adjutants.end()){
-			// Получаем объект адъютанта
-			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
-			// Если сокет подключения активен
-			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
-				// Добавляем буфер данных для записи
-				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
-				// Если запись в сокет заблокирована
-				if(adj->bev.locked.write){
-					///
-					 * Если операционной системой является Nix-подобная
-					 //
-					#if !defined(_WIN32) && !defined(_WIN64)
-						// Определяем протокол подключения
-						switch(static_cast <uint8_t> (this->settings.sonet)){
-							// Если протокол подключения UDP
-							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-							// Если протокол подключения DTLS
-							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
-								// Разрешаем запись данных в сокет
-								adj->bev.locked.write = false;
-								// Выполняем передачу данных
-								this->transfer(engine_t::method_t::WRITE, it->first);
-							} break;
-							// Для всех остальных сокетов
-							default:
-								// Разрешаем выполнение записи в сокет
-								this->enabled(engine_t::method_t::WRITE, it->first);
-						}
-					//
-					 * Если операционной системой является MS Windows
-					 ///
-					#else
-						// Разрешаем запись данных в сокет
-						adj->bev.locked.write = false;
-						// Выполняем передачу данных
-						this->transfer(engine_t::method_t::WRITE, it->first);
-					#endif
-				}
-			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->addr.fd > 65535)
-				// Удаляем из памяти объект адъютанта
-				this->adjutants.erase(it);
-		}
-	}
-}
-*/
 /**
  * lockMethod Метод блокировки метода режима работы
  * @param method метод режима работы

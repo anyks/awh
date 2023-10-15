@@ -246,9 +246,6 @@ namespace awh {
 				private:
 					// Метод выполняемой операции
 					engine_t::method_t method;
-				private:
-					// Бинарный буфер для записи данных в сокет
-					vector <char> buffer;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk;
@@ -263,12 +260,6 @@ namespace awh {
 					 * @param event произошедшее событие
 					 */
 					void read(const evutil_socket_t fd, const short event) noexcept;
-					/**
-					 * write Метод вызова при записи данных в сокет
-					 * @param fd    файловый дескриптор (сокет)
-					 * @param event произошедшее событие
-					 */
-					void write(const evutil_socket_t fd, const short event) noexcept;
 					/**
 					 * connect Метод вызова при подключении к серверу
 					 * @param fd    файловый дескриптор (сокет)
@@ -289,7 +280,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), port(0), bev(log), ectx(fmk, log), addr(fmk, log),
+					 aid(0), ip{""}, mac{""}, port(0), bev(log), ectx(fmk, log), addr(fmk, log),
 					 method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
@@ -370,7 +361,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Scheme(const fmk_t * fmk, const log_t * log) noexcept : sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
+			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+			 sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

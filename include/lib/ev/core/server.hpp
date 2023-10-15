@@ -142,18 +142,25 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const uint64_t aid) noexcept;
+			public:
+				/**
+				 * read Метод чтения данных для адъютанта
+				 * @param aid идентификатор адъютанта
+				 */
+				void read(const uint64_t aid) noexcept;
+				/**
+				 * write Метод записи буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
+				 * @param aid    идентификатор адъютанта
+				 */
+				void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
 				 * @param aid идентификатор адъютанта
 				 */
 				void timeout(const uint64_t aid) noexcept;
-				/**
-				 * transfer Метед передачи данных между клиентом и сервером
-				 * @param method метод режима работы
-				 * @param aid    идентификатор адъютанта
-				 */
-				void transfer(const engine_t::method_t method, const uint64_t aid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
 				 * @param sid    идентификатор схемы сети
