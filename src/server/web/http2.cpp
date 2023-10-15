@@ -249,7 +249,7 @@ void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 							// Если протокол подключения соответствует HTTP/2
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 								
-								/*
+								
 								cout << " ^^^^^^^^^^^^^^^^^^^ SEND PING " << aid << endl;
 								
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
@@ -264,7 +264,7 @@ void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
 								}
-								*/
+								
 
 							} break;
 						}
