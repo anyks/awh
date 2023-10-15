@@ -903,9 +903,6 @@ void awh::server::Http2::erase(const uint64_t aid) noexcept {
 								this->_http1.erase(aid);
 							// Выполняем удаление созданной ранее сессии HTTP/2
 							else this->_sessions.erase(aid);
-
-							cout << " +++++++++++++++++ DELETE " << aid << endl;
-
 						} break;
 						// Если протокол соответствует протоколу WebSocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
