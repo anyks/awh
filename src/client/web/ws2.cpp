@@ -268,7 +268,7 @@ void awh::client::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 				// Отправляем запрос адъютанту
 				else this->ping(to_string(aid));
 			// Если рукопожатие уже выполнено и пинг не прошёл
-			} else if(!this->ping())
+			} else if(!web2_t::ping())
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));
 		}
