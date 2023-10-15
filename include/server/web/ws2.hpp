@@ -184,14 +184,14 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @param      message сообщение для отправки
 				 */
-				void pong(const uint64_t aid, awh::core_t * core, const string & message = "") noexcept;
+				void pong(const uint64_t aid, awh::core_t * core, const string & message) noexcept;
 				/**
 				 * ping Метод проверки доступности сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param core объект сетевого ядра
 				 * @param      message сообщение для отправки
 				 */
-				void ping(const uint64_t aid, awh::core_t * core, const string & message = "") noexcept;
+				void ping(const uint64_t aid, awh::core_t * core, const string & message) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся адъютантов

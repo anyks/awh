@@ -266,7 +266,7 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 					// Отправляем запрос адъютанту
 					else this->ping(aid, core, ::to_string(aid));
 				// Если рукопожатие не выполнено и пинг не прошёл
-				} else if(!this->ping(aid)) {
+				} else if(!web2_t::ping(aid)) {
 					// Выполняем поиск адъютанта в списке активных сессий
 					auto it = this->_sessions.find(aid);
 					// Если активная сессия найдена
