@@ -77,14 +77,14 @@ void awh::Engine::Address::client() noexcept {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET, &reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr, buffer, sizeof(buffer));
+					this->ip = inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr), buffer, sizeof(buffer));
 				} break;
 				// Если протокол интернета IPv6
 				case AF_INET6: {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET6, &reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
+					this->ip = inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr), buffer, sizeof(buffer));
 				} break;
 			}
 			// Получаем данные подключившегося клиента
@@ -736,7 +736,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					::memset(&reinterpret_cast <struct sockaddr_in *> (&this->_peer.server)->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server)->sin_zero), 0, sizeof(server.sin_zero));
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
@@ -2499,7 +2499,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Если сертификат создан
 							} else if(cert != nullptr) {
 								// Добавляем сертификат в стор
-								X509_STORE_add_cert(store, d2i_X509(&cert, &(reinterpret_cast <u_char *> (ctx->pbCertEncoded)), ctx->cbCertEncoded));
+								X509_STORE_add_cert(store, d2i_X509(&cert, reinterpret_cast <const u_char **> (&(reinterpret_cast <u_char *> (ctx->pbCertEncoded))), ctx->cbCertEncoded));
 								// Очищаем выделенную память
 								X509_free(cert);
 							}
