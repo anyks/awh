@@ -1228,7 +1228,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 						// Создаём буфер входящих данных
 						unique_ptr <char []> buffer(new char [size]);
 						// Если нужно использовать асинхронный режим работы
-						if(this->_mode == mode_t::ASYNC)
+						// if(this->_mode == mode_t::ASYNC)
 							// Переводим сокет в неблокирующий режим
 							adj->ectx.noblock();
 						// Выполняем чтение данных с сокета
@@ -1284,7 +1284,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 								// Если данные не получены
 								} else {
 									
-									
+									/*
 									// Если произошёл дисконнект
 									if(bytes == 0){
 										// Выполняем отключение клиента
@@ -1301,8 +1301,9 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 												continue;
 										}
 									}
+									*/
 									
-									/*
+									
 									// Если произошёл дисконнект
 									if(bytes == 0){
 										// Выполняем отключение клиента
@@ -1316,7 +1317,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 											// Продолжаем попытку снова
 											continue;
 									}
-									*/
+									
 
 
 									// Входим из цикла
@@ -1338,7 +1339,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 					// Останавливаем работу таймера
 					adj->bev.timers.write.stop();
 					// Если нужно использовать асинхронный режим работы
-					if(this->_mode == mode_t::ASYNC)
+					// if(this->_mode == mode_t::ASYNC)
 						// Переводим сокет в неблокирующий режим
 						adj->ectx.noblock();
 					// Выполняем отправку всех данных
@@ -1383,7 +1384,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 								// Если данные небыли записаны
 								if(bytes <= 0){
 									
-									
+									/*
 									// Если режим работы асинхронный
 									if(this->_mode == mode_t::ASYNC){
 										// Если нужно повторить запись
@@ -1403,8 +1404,9 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 										// Если запись не выполнена, входим
 										} else break;
 									}
+									*/
 									
-									/*
+									
 									// Если произошёл дисконнект
 									if(bytes == 0){
 										// Выполняем отключение клиента
@@ -1417,7 +1419,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 										continue;
 									// Если запись не выполнена, входим
 									else break;
-									*/
+									
 
 								}
 								// Увеличиваем смещение в буфере
