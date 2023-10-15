@@ -248,8 +248,14 @@ void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 							break;
 							// Если протокол подключения соответствует HTTP/2
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+								
+								cout << " ^^^^^^^^^^^^^^^^^^^ SEND PING " << aid << endl;
+								
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 								if(!this->ping(aid)){
+									
+									cout << " ^^^^^^^^^^^^^^^^^^^ NOT PING " << aid << endl;
+
 									// Выполняем поиск адъютанта в списке активных сессий
 									auto it = this->_sessions.find(aid);
 									// Если активная сессия найдена
