@@ -362,6 +362,10 @@ void awh::NgHttp2::completed(const event_t event) noexcept {
 			// Выполняем удаление функции триггера
 			this->_callback.rm("trigger");
 		}
+		// Если есть требование закрыть подключение
+		if(this->_close)
+			// Выполняем закрытие подключения
+			this->close();
 	}
 }
 /**
@@ -423,14 +427,8 @@ bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	if((buffer != nullptr) && (size > 0)){
 		// Если сессия HTTP/2 инициализированна
 		if(this->_session != nullptr){
-			
-			cout << " ********************* FRAME1 " << endl;
-			
 			// Выполняем извлечение полученного чанка данных из сокета
 			ssize_t bytes = nghttp2_session_mem_recv(this->_session, buffer, size);
-			
-			cout << " ********************* FRAME2 " << bytes << endl;
-			
 			// Если данные не прочитаны, выводим ошибку и выходим
 			if(bytes < 0){
 				// Выводим сообщение об полученной ошибке
@@ -754,36 +752,27 @@ void awh::NgHttp2::free() noexcept {
 }
 /**
  * close Метод закрытия подключения
- * @return результат закрытия подключения
  */
-bool awh::NgHttp2::close() noexcept {
-	// Результат работы функции
-	bool result = false;
-	
-	cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE1 " << endl;
-	
-	// Если сессия HTTP/2 создана удачно
-	if(this->_session != nullptr){
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE2 " << endl;
-		
-		// Выполняем остановку активной сессии
-		result = (nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR) == 0);
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE3 " << endl;
-		
-		// Выполняем удаление сессии
-		nghttp2_session_del(this->_session);
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE4 " << endl;
-		
-		// Выполняем обнуление активной сессии
-		this->_session = nullptr;
-		
-		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE4 " << endl;
+void awh::NgHttp2::close() noexcept {
+	// Если активное событие не установлено
+	if(!(this->_close = (this->_event != event_t::NONE))){
+		// Если сессия HTTP/2 создана удачно
+		if(this->_session != nullptr){
+			// Результат завершения сессии
+			int rv = 0;
+			// Выполняем остановку активной сессии
+			if((rv = nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR)) != 0){
+				// Выводим сообщение об ошибке
+				this->_log->print("Could not terminate session: %s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, this->_fmk->format("Could not terminate session: %s", nghttp2_strerror(rv)));
+			}
+			// Выполняем удаление созданную ранее сессию
+			this->free();
+		}
 	}
-	// Выводим результат по умолчанию
-	return result;
 }
 /**
  * is Метод проверки инициализации модуля

@@ -88,6 +88,9 @@ namespace awh {
 				SEND_HEADERS = 0x05  // Событие отправки заголовков
 			};
 		private:
+			// Флаг требования закрыть подключение
+			bool _close;
+		private:
 			// Флаг идентификации сервиса
 			mode_t _mode;
 			// Флаг активного последнего события
@@ -241,9 +244,8 @@ namespace awh {
 			void free() noexcept;
 			/**
 			 * close Метод закрытия подключения
-			 * @return результат закрытия подключения
 			 */
-			bool close() noexcept;
+			void close() noexcept;
 		public:
 			/**
 			 * is Метод проверки инициализации модуля
@@ -313,7 +315,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			NgHttp2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(mode_t::NONE), _event(event_t::NONE),
+			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
 			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~NgHttp2 Деструктор
