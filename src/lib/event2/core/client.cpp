@@ -1375,6 +1375,9 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 								actual = (size >= max ? max : size);
 								// Выполняем отправку сообщения клиенту
 								bytes = adj->ectx.write(buffer.data() + offset, actual);
+								
+								cout << " ^^^^^^^^^^^^^^^^^^^^^^ WRITE " << bytes << " === " << actual << endl;
+								
 								// Если время ожидания записи данных установлено
 								if(adj->timeouts.write > 0)
 									// Запускаем работу таймера
