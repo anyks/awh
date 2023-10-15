@@ -332,7 +332,7 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие подключения
-			_close(source->fd);
+			::_close(source->fd);
 		/**
 		 * Для всех остальных операционных систем
 		 */
@@ -568,9 +568,9 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
-				_close(fds[0]);
+				::_close(fds[0]);
 				// Выполняем закрытие сокета для записи
-				_close(fds[1]);
+				::_close(fds[1]);
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -609,7 +609,7 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие подключения
-			_close(fds[1]);
+			::_close(fds[1]);
 		/**
 		 * Для всех остальных операционных систем
 		 */
