@@ -1090,6 +1090,9 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
 			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
+				
+				cout << " ************** WRITE " << size << endl;
+				
 				// Добавляем буфер данных для записи
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Если запись в сокет заблокирована
@@ -1107,9 +1110,6 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 						} break;
 						// Для всех остальных сокетов
 						default:
-
-							cout << " ************** WRITE " << size << endl;
-
 							// Разрешаем выполнение записи в сокет
 							this->enabled(engine_t::method_t::WRITE, it->first);
 					}
