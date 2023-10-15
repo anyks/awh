@@ -245,12 +245,12 @@ namespace awh {
 				 * ping Метод проверки доступности сервера
 				 * @param message сообщение для отправки
 				 */
-				void ping(const string & message = "") noexcept;
+				void ping(const string & message) noexcept;
 				/**
 				 * pong Метод ответа на проверку о доступности сервера
 				 * @param message сообщение для отправки
 				 */
-				void pong(const string & message = "") noexcept;
+				void pong(const string & message) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
