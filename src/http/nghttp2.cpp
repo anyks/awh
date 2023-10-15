@@ -423,8 +423,14 @@ bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	if((buffer != nullptr) && (size > 0)){
 		// Если сессия HTTP/2 инициализированна
 		if(this->_session != nullptr){
+			
+			cout << " ********************* FRAME1 " << endl;
+			
 			// Выполняем извлечение полученного чанка данных из сокета
 			ssize_t bytes = nghttp2_session_mem_recv(this->_session, buffer, size);
+			
+			cout << " ********************* FRAME2 " << bytes << endl;
+			
 			// Если данные не прочитаны, выводим ошибку и выходим
 			if(bytes < 0){
 				// Выводим сообщение об полученной ошибке
@@ -753,16 +759,28 @@ void awh::NgHttp2::free() noexcept {
 bool awh::NgHttp2::close() noexcept {
 	// Результат работы функции
 	bool result = false;
+	
+	cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE1 " << endl;
+	
 	// Если сессия HTTP/2 создана удачно
 	if(this->_session != nullptr){
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE2 " << endl;
+		
 		// Выполняем остановку активной сессии
 		result = (nghttp2_session_terminate_session(this->_session, NGHTTP2_NO_ERROR) == 0);
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE3 " << endl;
+		
 		// Выполняем удаление сессии
 		nghttp2_session_del(this->_session);
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE4 " << endl;
+		
 		// Выполняем обнуление активной сессии
 		this->_session = nullptr;
-		// Выводим результат
-		return result;
+		
+		cout << " ^^^^^^^^^^^^^^^^^^^ CLOSE4 " << endl;
 	}
 	// Выводим результат по умолчанию
 	return result;
