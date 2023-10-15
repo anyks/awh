@@ -1185,6 +1185,113 @@ void awh::client::Core::connected(const uint64_t aid) noexcept {
 		this->close(it->first);
 	}
 }
+
+/**
+ * write Метод записи буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param aid    идентификатор адъютанта
+ */
+void awh::client::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
+	// Если данные переданы
+	if(this->working() && (buffer != nullptr) && (size > 0)){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+			// Если сокет подключения активен
+			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
+				// Получаем объект подключения
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
+				// Если подключение установлено
+				if((shm->acquisition = (shm->status.real == scheme_t::mode_t::CONNECT))){
+					// Переводим сокет в неблокирующий режим
+					adj->ectx.noblock();
+					// Останавливаем работу таймера
+					adj->bev.timers.write.stop();
+					// Если данных достаточно для записи в сокет
+					if(size >= adj->marker.write.min){
+						// Количество полученных байт
+						int64_t bytes = -1;
+						// Cмещение в буфере и отправляемый размер данных
+						size_t offset = 0, actual = 0, left = 0;
+						// Получаем максимальный размер буфера
+						int64_t max = adj->ectx.buffer(engine_t::method_t::WRITE);
+						// Если максимальное установленное значение больше размеров буфера для записи, корректируем
+						max = ((max > 0) && (adj->marker.write.max > max) ? max : adj->marker.write.max);
+						// Если тип сокета установлен как UDP или DTLS
+						if((this->settings.sonet == scheme_t::sonet_t::UDP) || (this->settings.sonet == scheme_t::sonet_t::DTLS)){
+							// Если флаг ожидания входящих сообщений, активирован
+							if(adj->timeouts.read > 0)
+								// Выполняем установку таймаута ожидания
+								adj->ectx.timeout(adj->timeouts.read * 1000, engine_t::method_t::READ);
+							// Если флаг ожидания исходящих сообщений, активирован
+							if(adj->timeouts.write > 0)
+								// Выполняем установку таймаута ожидания
+								adj->ectx.timeout(adj->timeouts.write * 1000, engine_t::method_t::WRITE);
+						}
+						// Выполняем отправку данных пока всё не отправим
+						// while(!adj->bev.locked.write && ((size - offset) > 0)){
+						while((size - offset) > 0){
+							// Получаем общий размер буфера данных
+							left = (size - offset);
+							// Определяем размер отправляемых данных
+							actual = (left >= max ? max : left);
+							// Выполняем отправку сообщения клиенту
+							bytes = adj->ectx.write(buffer + offset, actual);
+							
+							cout << " ^^^^^^^^^^^^^^^^^^^^^^ WRITE " << bytes << " === " << actual << endl;
+							
+							// Если время ожидания записи данных установлено
+							if(adj->timeouts.write > 0)
+								// Запускаем работу таймера
+								adj->bev.timers.write.start(adj->timeouts.write * 1000);
+							// Останавливаем таймаут ожидания на запись в сокет
+							else adj->bev.timers.write.stop();
+							// Если данные небыли записаны
+							if(bytes <= 0){
+								// Если произошёл дисконнект
+								if(bytes == 0){
+									// Выполняем отключение клиента
+									this->close(aid);
+									// Выходим из функции
+									return;
+								// Если запись не выполнена, входим
+								} else if(bytes == -2)
+									// Продолжаем попытку снова
+									continue;
+								// Если запись не выполнена, входим
+								else break;
+							}
+							// Увеличиваем смещение в буфере
+							offset += bytes;
+						}
+						// Если функция обратного вызова на запись данных установлена
+						if(shm->callback.is("write"))
+							// Выводим функцию обратного вызова
+							shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", buffer, offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+					// Если данных недостаточно для записи в сокет
+					} else {
+						// Если функция обратного вызова на запись данных установлена
+						if(shm->callback.is("write"))
+							// Выводим функцию обратного вызова
+							shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+					}
+					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
+					if((this->settings.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+						// Запускаем чтение данных с клиента
+						adj->bev.events.read.start();
+				}
+			// Если файловый дескриптор сломан, значит с памятью что-то не то
+			} else if(adj->addr.fd > 65535)
+				// Удаляем из памяти объект адъютанта
+				this->adjutants.erase(it);
+		}
+	}
+}
+
 /**
  * transfer Метед передачи данных между клиентом и сервером
  * @param method метод режима работы
@@ -1300,6 +1407,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 				} break;
 				// Если производится запись данных
 				case static_cast <uint8_t> (engine_t::method_t::WRITE): {
+					// Переводим сокет в неблокирующий режим
+					adj->ectx.noblock();
 					// Останавливаем работу таймера
 					adj->bev.timers.write.stop();
 					// Выполняем отправку всех данных
@@ -1335,9 +1444,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const uint64_t
 								actual = (size >= max ? max : size);
 								// Выполняем отправку сообщения клиенту
 								bytes = adj->ectx.write(buffer.data() + offset, actual);
-								
-								cout << " ^^^^^^^^^^^^^^^^^^^^^^ WRITE " << bytes << " === " << actual << endl;
-								
 								// Если время ожидания записи данных установлено
 								if(adj->timeouts.write > 0)
 									// Запускаем работу таймера

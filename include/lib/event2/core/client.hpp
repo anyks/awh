@@ -167,6 +167,15 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void connected(const uint64_t aid) noexcept;
+			public:
+				/**
+				 * write Метод записи буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
+				 * @param aid    идентификатор адъютанта
+				 */
+				void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
+			private:
 				/**
 				 * transfer Метед передачи данных между клиентом и сервером
 				 * @param method метод режима работы

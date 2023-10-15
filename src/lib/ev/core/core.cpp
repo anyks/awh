@@ -1115,12 +1115,27 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 		}
 	}
 }
+
 /**
  * write Метод записи буфера данных в сокет
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param aid    идентификатор адъютанта
  */
+void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) buffer;
+	(void) size;
+	(void) aid;
+}
+
+/**
+ * write Метод записи буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param aid    идентификатор адъютанта
+ */
+/*
 void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
 	// Если данные переданы
 	if(this->working() && (buffer != nullptr) && (size > 0)){
@@ -1136,9 +1151,9 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Если запись в сокет заблокирована
 				if(adj->bev.locked.write){
-					/**
+					///
 					 * Если операционной системой является Nix-подобная
-					 */
+					 //
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Определяем протокол подключения
 						switch(static_cast <uint8_t> (this->settings.sonet)){
@@ -1156,9 +1171,9 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 								// Разрешаем выполнение записи в сокет
 								this->enabled(engine_t::method_t::WRITE, it->first);
 						}
-					/**
+					//
 					 * Если операционной системой является MS Windows
-					 */
+					 ///
 					#else
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
@@ -1173,6 +1188,7 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 		}
 	}
 }
+*/
 /**
  * lockMethod Метод блокировки метода режима работы
  * @param method метод режима работы

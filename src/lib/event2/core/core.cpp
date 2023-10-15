@@ -1073,12 +1073,27 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 		}
 	}
 }
+
 /**
  * write Метод записи буфера данных в сокет
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param aid    идентификатор адъютанта
  */
+void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) buffer;
+	(void) size;
+	(void) aid;
+}
+
+/**
+ * write Метод записи буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param aid    идентификатор адъютанта
+ */
+/*
 void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
 	// Если данные переданы
 	if(this->working() && (buffer != nullptr) && (size > 0)){
@@ -1121,6 +1136,7 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 		}
 	}
 }
+*/
 /**
  * lockMethod Метод блокировки метода режима работы
  * @param method метод режима работы

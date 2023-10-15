@@ -495,7 +495,7 @@ namespace awh {
 			 * @param size   размер записываемых данных
 			 * @param aid    идентификатор адъютанта
 			 */
-			void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
+			virtual void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
 		public:
 			/**
 			 * lockMethod Метод блокировки метода режима работы
