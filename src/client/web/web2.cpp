@@ -432,7 +432,7 @@ bool awh::client::Web2::ping() noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND))
+	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND))
 		// Выполняем пинг удалённого сервера
 		return this->_nghttp2.ping();
 	// Выводим результат
