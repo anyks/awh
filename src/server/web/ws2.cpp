@@ -254,15 +254,26 @@ void awh::server::WebSocket2::persistCallback(const uint64_t aid, const uint16_t
 				// Выполняем переброс персистентного вызова
 				this->_ws1.persistCallback(aid, sid, core);
 			// Если переключение протокола на HTTP/2 выполнено
-			else {
-				// Получаем текущий штамп времени
-				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if(adj->close || ((stamp - adj->point) >= (PERSIST_INTERVAL * 5)))
-					// Завершаем работу
-					dynamic_cast <server::core_t *> (core)->close(aid);
-				// Отправляем запрос адъютанту
-				else this->ping(aid, core, ::to_string(aid));
+			else if(adj->allow.receive) {
+				// Если рукопожатие выполнено
+				if(adj->shake){
+					// Получаем текущий штамп времени
+					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+					if(adj->close || ((stamp - adj->point) >= (PERSIST_INTERVAL * 5)))
+						// Завершаем работу
+						dynamic_cast <server::core_t *> (core)->close(aid);
+					// Отправляем запрос адъютанту
+					else this->ping(aid, core, ::to_string(aid));
+				// Если рукопожатие не выполнено и пинг не прошёл
+				} else if(!this->ping(aid)) {
+					// Выполняем поиск адъютанта в списке активных сессий
+					auto it = this->_sessions.find(aid);
+					// Если активная сессия найдена
+					if(it != this->_sessions.end())
+						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
+				}
 			}
 		}
 	}
