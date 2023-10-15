@@ -723,7 +723,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 					// Если запрашиваемый протокол соответствует WebSocket
 					if(this->_webSocket){
 						
-						cout << " +++++++++++++++++ " << this->_webSocket << endl;
+						cout << " +++++++++++++++++ WebSocket " << this->_webSocket << " == " << aid << endl;
 						
 						// Выполняем инициализацию WebSocket-сервера
 						// this->websocket(aid, sid, core);
@@ -819,6 +819,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				const auto & headers = adj->http.reject2(response);
 				// Если бинарные данные ответа получены
 				if(!headers.empty()){
+					
+					cout << " +++++++++++++++++ Auth " << aid << endl;
+					
 					/**
 					 * Если включён режим отладки
 					 */
@@ -903,6 +906,9 @@ void awh::server::Http2::erase(const uint64_t aid) noexcept {
 								this->_http1.erase(aid);
 							// Выполняем удаление созданной ранее сессии HTTP/2
 							else this->_sessions.erase(aid);
+
+							cout << " +++++++++++++++++ DELETE " << aid << endl;
+
 						} break;
 						// Если протокол соответствует протоколу WebSocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
