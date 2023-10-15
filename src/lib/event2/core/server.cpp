@@ -916,12 +916,21 @@ void awh::server::Core::close(const uint64_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::Core::read(const uint64_t aid) noexcept {
+	
+	cout << " ^^^^^^^^^^^^1 " << aid << endl;
+	
 	// Если данные переданы
 	if(this->working() && (aid > 0)){
+		
+		cout << " ^^^^^^^^^^^^2 " << aid << endl;
+		
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
 		if(it != this->adjutants.end()){
+			
+			cout << " ^^^^^^^^^^^^3 " << aid << endl;
+			
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
@@ -934,16 +943,25 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Получаем максимальный размер буфера
 				const int64_t size = adj->ectx.buffer(engine_t::method_t::READ);
+				
+				cout << " ^^^^^^^^^^^^4 " << aid << endl;
+				
 				// Если размер буфера получен
 				if(size > 0){
 					// Количество полученных байт
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
+					
+					cout << " ^^^^^^^^^^^^5 " << aid << endl;
+					
 					// Выполняем чтение данных с сокета
 					do {
 						// Если подключение выполнено и чтение данных разрешено
 						if(!adj->bev.locked.read){
+							
+							cout << " ^^^^^^^^^^^^6 " << aid << endl;
+							
 							// Если тип сокета установлен как UDP или DTLS
 							if((this->settings.sonet == scheme_t::sonet_t::UDP) || (this->settings.sonet == scheme_t::sonet_t::DTLS)){
 								// Если флаг ожидания входящих сообщений, активирован
@@ -959,6 +977,9 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 							::memset(buffer.get(), 0, size);
 							// Выполняем получение сообщения от клиента
 							bytes = adj->ectx.read(buffer.get(), size);
+							
+							cout << " ^^^^^^^^^^^^7 " << aid << " == " << bytes << endl;
+							
 							// Если время ожидания чтения данных установлено
 							if(shm->wait && (adj->timeouts.read > 0))
 								// Запускаем работу таймера
