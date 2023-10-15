@@ -1107,6 +1107,9 @@ void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid
 						} break;
 						// Для всех остальных сокетов
 						default:
+
+							cout << " ************** WRITE " << size << endl;
+
 							// Разрешаем выполнение записи в сокет
 							this->enabled(engine_t::method_t::WRITE, it->first);
 					}
