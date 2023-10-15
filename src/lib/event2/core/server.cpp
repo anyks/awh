@@ -1001,7 +1001,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const uint64_t
 									adj->ectx.timeout(adj->timeouts.write * 1000, engine_t::method_t::WRITE);
 							}
 							// Выполняем обнуление буфера данных
-							memset(buffer.get(), 0, size);
+							::memset(buffer.get(), 0, size);
 							// Выполняем получение сообщения от клиента
 							bytes = adj->ectx.read(buffer.get(), size);
 							// Если время ожидания чтения данных установлено

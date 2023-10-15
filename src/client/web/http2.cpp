@@ -1409,7 +1409,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
-			if(!this->_nghttp2.is() && (result != sid) && (sid > 0)){
+			if(((result > 0) && (sid > 0) && (result != sid)) && !this->_nghttp2.is()){
 				// Выполняем удаление указанного воркера
 				this->_workers.erase(sid);
 				// Выполняем удаление параметра запроса
@@ -1968,8 +1968,6 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
-	// Активируем персистентный запуск для работы пингов
-	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2));
 	// Выполняем установку функции обратного вызова для WebSocket-клиента

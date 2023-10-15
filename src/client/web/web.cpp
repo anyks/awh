@@ -751,6 +751,8 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
  _unbind(true), _active(false), _stopped(false), _redirects(false),
  _attempt(0), _attempts(15), _compress(awh::http_t::compress_t::NONE),
  _fmk(fmk), _log(log), _core(core) {
+	// Активируем персистентный запуск для работы пингов
+	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2, _3));
 	// Устанавливаем событие на запуск системы

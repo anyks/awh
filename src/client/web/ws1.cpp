@@ -1460,12 +1460,12 @@ void awh::client::WebSocket1::crypto(const string & pass, const string & salt, c
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
-	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 }
 /**
  * WebSocket1 Конструктор
@@ -1476,14 +1476,12 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
-	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
-	// Активируем персистентный запуск для работы пингов
-	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 }
 /**
  * ~WebSocket1 Деструктор

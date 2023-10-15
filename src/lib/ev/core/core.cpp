@@ -420,6 +420,8 @@ void awh::Core::launching() noexcept {
 		this->log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 	if(this->persist){
+		// Выполняем остановку работы таймера
+		this->_timer.io.stop();
 		// Устанавливаем приоритет выполнения
 		ev_set_priority(&this->_timer.io, 2);
 		// Устанавливаем базу событий

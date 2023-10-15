@@ -432,9 +432,13 @@ bool awh::client::Web2::ping() noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND))
+	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
+		
+		cout << " ^^^^^^^^^^^^^^^^^ PING " << endl;
+
 		// Выполняем пинг удалённого сервера
 		return this->_nghttp2.ping();
+	}
 	// Выводим результат
 	return false;
 }
@@ -567,8 +571,6 @@ void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	this->_proxy.connect = (flags.count(flag_t::PROXY_NOCONNECT) == 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
 		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
 		// Выполняем установку флага проверки домена

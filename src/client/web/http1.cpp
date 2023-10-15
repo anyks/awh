@@ -502,7 +502,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
-						const bool schema = (this->_fmk->compare(url.schema, it->second.url.schema));
+						const bool schema = (
+							(this->_fmk->compare(url.host, it->second.url.host)) &&
+							(this->_fmk->compare(url.schema, it->second.url.schema))
+						);
 						// Если соединение является постоянным
 						if(schema && this->_http.isAlive()){
 							// Выполняем сброс параметров запроса
@@ -1323,8 +1326,6 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
  web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
-	// Активируем персистентный запуск для работы пингов
-	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Устанавливаем функцию персистентного вызова
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
