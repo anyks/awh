@@ -248,15 +248,8 @@ void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 							break;
 							// Если протокол подключения соответствует HTTP/2
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-								
-								
-								cout << " ^^^^^^^^^^^^^^^^^^^ SEND PING " << aid << endl;
-								
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 								if(!this->ping(aid)){
-									
-									cout << " ^^^^^^^^^^^^^^^^^^^ NOT PING " << aid << endl;
-
 									// Выполняем поиск адъютанта в списке активных сессий
 									auto it = this->_sessions.find(aid);
 									// Если активная сессия найдена
@@ -264,8 +257,6 @@ void awh::server::Http2::persistCallback(const uint64_t aid, const uint16_t sid,
 										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), aid));
 								}
-								
-
 							} break;
 						}
 					} break;
@@ -348,14 +339,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
-			
-			// Если мы получили пинг-запрос
-			if(type == NGHTTP2_PING){
-
-				cout << " --------------------- SEND FRAME PING " << (flags & NGHTTP2_FLAG_ACK) << endl;
-			
-			}
-			
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
 				// Получаем параметры подключения адъютанта
@@ -427,12 +410,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t aid, const
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Выполняем определение типа фрейма
 							switch(type){
-								// Если мы получили пинг-запрос
-								case NGHTTP2_PING: {
-
-									cout << " --------------------- RECV FRAME PING " << (flags & NGHTTP2_FLAG_ACK) << endl;
-								
-								} break;
 								// Если мы получили входящие данные тела ответа
 								case NGHTTP2_DATA: {
 									// Если мы получили неустановленный флаг или флаг завершения потока
@@ -842,9 +819,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t aid, server::
 				const auto & headers = adj->http.reject2(response);
 				// Если бинарные данные ответа получены
 				if(!headers.empty()){
-					
-					cout << " +++++++++++++++++ Auth " << aid << endl;
-					
 					/**
 					 * Если включён режим отладки
 					 */
