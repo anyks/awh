@@ -63,20 +63,20 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 				// Если все данные получены
 				} else {
 					// Получаем адрес подключения клиента
-					adj->ip = adj->_addr.ip;
+					adj->_ip = adj->_addr.ip;
 					// Получаем аппаратный адрес клиента
 					adj->_mac = adj->_addr.mac;
 					// Получаем порт подключения клиента
 					adj->_port = adj->_addr.port;
 					// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->ip, adj->_mac, adj->_port, shm->sid, this->core)){
+					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this->core)){
 						// Если порт установлен
 						if(adj->_port > 0){
 							// Выводим сообщение об ошибке
 							this->core->_log->print(
 								"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
-								adj->ip.c_str(),
+								adj->_ip.c_str(),
 								adj->_port,
 								adj->_mac.c_str(),
 								adj->_addr.fd,
@@ -91,7 +91,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 									error_t::ACCEPT,
 									this->core->_fmk->format(
 										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-										adj->ip.c_str(),
+										adj->_ip.c_str(),
 										adj->_port,
 										adj->_mac.c_str(),
 										adj->_addr.fd,
@@ -104,7 +104,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 							this->core->_log->print(
 								"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
-								adj->ip.c_str(),
+								adj->_ip.c_str(),
 								adj->_mac.c_str(),
 								adj->_addr.fd,
 								getpid()
@@ -118,7 +118,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 									error_t::ACCEPT,
 									this->core->_fmk->format(
 										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-										adj->ip.c_str(),
+										adj->_ip.c_str(),
 										adj->_mac.c_str(),
 										adj->_addr.fd,
 										getpid()
@@ -142,7 +142,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 							this->core->_log->print(
 								"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
-								adj->ip.c_str(),
+								adj->_ip.c_str(),
 								adj->_port,
 								adj->_mac.c_str(),
 								adj->_addr.fd, getpid()
@@ -153,7 +153,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 							this->core->_log->print(
 								"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
-								adj->ip.c_str(),
+								adj->_ip.c_str(),
 								adj->_mac.c_str(),
 								adj->_addr.fd, getpid()
 							);
@@ -289,7 +289,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Выполняем разрешение подключения
 					if(adj->_addr.accept(adj->_addr.fd, 0)){
 						// Получаем адрес подключения клиента
-						adj->ip = adj->_addr.ip;
+						adj->_ip = adj->_addr.ip;
 						// Получаем аппаратный адрес клиента
 						adj->_mac = adj->_addr.mac;
 						// Получаем порт подключения клиента
@@ -434,20 +434,20 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если все данные получены
 						} else {
 							// Получаем адрес подключения клиента
-							adj->ip = adj->_addr.ip;
+							adj->_ip = adj->_addr.ip;
 							// Получаем аппаратный адрес клиента
 							adj->_mac = adj->_addr.mac;
 							// Получаем порт подключения клиента
 							adj->_port = adj->_addr.port;
 							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->ip, adj->_mac, adj->_port, shm->sid, this)){
+							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
 								// Если порт установлен
 								if(adj->_port > 0){
 									// Выводим сообщение об ошибке
 									this->_log->print(
 										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
-										adj->ip.c_str(),
+										adj->_ip.c_str(),
 										adj->_port,
 										adj->_mac.c_str(),
 										adj->_addr.fd,
@@ -462,7 +462,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											error_t::ACCEPT,
 											this->_fmk->format(
 												"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-												adj->ip.c_str(),
+												adj->_ip.c_str(),
 												adj->_port,
 												adj->_mac.c_str(),
 												adj->_addr.fd,
@@ -475,7 +475,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									this->_log->print(
 										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
-										adj->ip.c_str(),
+										adj->_ip.c_str(),
 										adj->_mac.c_str(),
 										adj->_addr.fd,
 										getpid()
@@ -489,7 +489,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											error_t::ACCEPT,
 											this->_fmk->format(
 												"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-												adj->ip.c_str(),
+												adj->_ip.c_str(),
 												adj->_mac.c_str(),
 												adj->_addr.fd,
 												getpid()
@@ -554,7 +554,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									this->_log->print(
 										"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
-										ret.first->second->ip.c_str(),
+										ret.first->second->_ip.c_str(),
 										ret.first->second->_port,
 										ret.first->second->_mac.c_str(),
 										ret.first->second->_addr.fd, getpid()
@@ -565,7 +565,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									this->_log->print(
 										"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
-										ret.first->second->ip.c_str(),
+										ret.first->second->_ip.c_str(),
 										ret.first->second->_mac.c_str(),
 										ret.first->second->_addr.fd, getpid()
 									);
@@ -1104,11 +1104,11 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 			// Если тип протокола подключения IPv6
 			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->_log->print("Timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->_mac.c_str());
+				this->_log->print("Timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->_ip.c_str(), adj->_mac.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host = %s, mac = %s", adj->ip.c_str(), adj->_mac.c_str()));
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host = %s, mac = %s", adj->_ip.c_str(), adj->_mac.c_str()));
 			} break;
 			// Если тип протокола подключения unix-сокет
 			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
