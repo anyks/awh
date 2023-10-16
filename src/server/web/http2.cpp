@@ -26,21 +26,12 @@ void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём адъютанта
 		this->_scheme.set(aid);
-		
-		cout << " ^^^^^^^^^^^^^^ connectCallback1 " << aid << endl;
-		
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectCallback(aid, sid, core);
-		
-		cout << " ^^^^^^^^^^^^^^ connectCallback2 " << aid << endl;
-		
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(aid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
-			
-			cout << " ^^^^^^^^^^^^^^ connectCallback3 " << aid << endl;
-			
 			// Получаем параметры подключения адъютанта
 			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены

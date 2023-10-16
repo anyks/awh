@@ -51,8 +51,11 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param core объект сетевого ядра
  */
 void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ******************* connectCallback " << (this->_sessions.count(aid) == 0) << " == " << (core->proto(aid) == engine_t::proto_t::HTTP2) << endl;
+	
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if((this->_sessions.count(aid) == 0) && (dynamic_cast <server::core_t *> (core)->proto(aid) == engine_t::proto_t::HTTP2)){
+	if((this->_sessions.count(aid) == 0) && (core->proto(aid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём параметры сессии подключения с HTTP/2 сервером
