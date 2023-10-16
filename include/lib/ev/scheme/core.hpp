@@ -267,7 +267,7 @@ namespace awh {
 					 * ~Broker Деструктор
 					 */
 					~Broker() noexcept {}
-			} adj_t;
+			} broker_t;
 		public:
 			// Идентификатор родительской схемы
 			uint16_t sid;
