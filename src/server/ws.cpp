@@ -36,22 +36,22 @@ void awh::server::WebSocket::init(const u_int port, const string & host, const h
 }
 /**
  * sendError Метод отправки сообщения об ошибке
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::WebSocket::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
+void awh::server::WebSocket::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообщения об ошибке
-	this->_ws.sendError(aid, mess);
+	this->_ws.sendError(bid, mess);
 }
 /**
  * sendMessage Метод отправки сообщения клиенту
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::WebSocket::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
+void awh::server::WebSocket::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_ws.sendMessage(aid, message, text);
+	this->_ws.sendMessage(bid, message, text);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -94,7 +94,7 @@ void awh::server::WebSocket::on(function <void (const uint64_t, const vector <ch
 	this->_ws.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
+ * on Метод установки функции обратного вызова на событие активации брокера на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
@@ -190,31 +190,31 @@ void awh::server::WebSocket::on(function <void (const int32_t, const uint64_t, c
 	this->_ws.on(callback);
 }
 /**
- * port Метод получения порта подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return    порт подключения адъютанта
+ * port Метод получения порта подключения брокера
+ * @param bid идентификатор брокера
+ * @return    порт подключения брокера
  */
-u_int awh::server::WebSocket::port(const uint64_t aid) const noexcept {
-	// Выполняем извлечение порта адъютанта
-	return this->_ws.port(aid);
+u_int awh::server::WebSocket::port(const uint64_t bid) const noexcept {
+	// Выполняем извлечение порта брокера
+	return this->_ws.port(bid);
 }
 /**
- * ip Метод получения IP-адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес интернет подключения адъютанта
+ * ip Метод получения IP-адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес интернет подключения брокера
  */
-const string & awh::server::WebSocket::ip(const uint64_t aid) const noexcept {
-	// Выполняем извлечение IP-адреса адъютанта
-	return this->_ws.ip(aid);
+const string & awh::server::WebSocket::ip(const uint64_t bid) const noexcept {
+	// Выполняем извлечение IP-адреса брокера
+	return this->_ws.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес устройства адъютанта
+ * mac Метод получения MAC-адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес устройства брокера
  */
-const string & awh::server::WebSocket::mac(const uint64_t aid) const noexcept {
-	// Выполняем извлечение MAC-адреса адъютанта
-	return this->_ws.mac(aid);
+const string & awh::server::WebSocket::mac(const uint64_t bid) const noexcept {
+	// Выполняем извлечение MAC-адреса брокера
+	return this->_ws.mac(bid);
 }
 /**
  * stop Метод остановки сервера
@@ -231,12 +231,12 @@ void awh::server::WebSocket::start() noexcept {
 	this->_ws.start();
 }
 /**
- * close Метод закрытия подключения адъютанта
- * @param aid идентификатор адъютанта
+ * close Метод закрытия подключения брокера
+ * @param bid идентификатор брокера
  */
-void awh::server::WebSocket::close(const uint64_t aid) noexcept {
-	// Выполняем закрытие подключения адъютанта
-	this->_ws.close(aid);
+void awh::server::WebSocket::close(const uint64_t bid) noexcept {
+	// Выполняем закрытие подключения брокера
+	this->_ws.close(bid);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -256,12 +256,12 @@ void awh::server::WebSocket::subprotocols(const set <string> & subprotocols) noe
 }
 /**
  * subprotocol Метод получения списка выбранных сабпротоколов
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::WebSocket::subprotocols(const uint64_t aid) const noexcept {
+const set <string> & awh::server::WebSocket::subprotocols(const uint64_t bid) const noexcept {
 	// Выводим извлечение списка выбранных сабпротоколов
-	return this->_ws.subprotocols(aid);
+	return this->_ws.subprotocols(bid);
 }
 /**
  * extensions Метод установки списка расширений
@@ -273,12 +273,12 @@ void awh::server::WebSocket::extensions(const vector <vector <string>> & extensi
 }
 /**
  * extensions Метод извлечения списка расширений
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::server::WebSocket::extensions(const uint64_t aid) const noexcept {
+const vector <vector <string>> & awh::server::WebSocket::extensions(const uint64_t bid) const noexcept {
 	// Выполняем извлечение списка расширений
-	return this->_ws.extensions(aid);
+	return this->_ws.extensions(bid);
 }
 /**
  * multiThreads Метод активации многопоточности
@@ -423,12 +423,12 @@ void awh::server::WebSocket::setOrigin(const vector <string> & origins) noexcept
 }
 /**
  * sendOrigin Метод отправки списка разрешенных источников
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param origins список разрешённых источников
  */
-void awh::server::WebSocket::sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept {
+void awh::server::WebSocket::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
 	// Выполняем отправку списка разрешенных источников
-	this->_ws.sendOrigin(aid, origins);
+	this->_ws.sendOrigin(bid, origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

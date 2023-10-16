@@ -19,85 +19,85 @@
  * clear Метод очистки
  */
 void awh::Scheme::clear() noexcept {
-	// Выполняем очистку списка адъютантов
-	this->adjutants.clear();
+	// Выполняем очистку списка брокеров
+	this->_brokers.clear();
 }
 /**
- * getSocket Метод извлечения сокета адъютанта
- * @param aid идентификатор адъютанта
- * @return    активный сокет адъютанта
+ * socket Метод извлечения сокета брокера
+ * @param bid идентификатор брокера
+ * @return    активный сокет брокера
  */
-SOCKET awh::Scheme::getSocket(const uint64_t aid) const noexcept {
+SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	SOCKET result = -1;
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Выполняем поиск адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим
-		if(it != this->adjutants.end())
+	// Если идентификатор брокера передан
+	if(bid > 0){
+		// Выполняем поиск брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер найден, выводим
+		if(it != this->_brokers.end())
 			// Выводим полученный сокет
-			return it->second->addr.fd;
+			return it->second->_addr.fd;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * getPort Метод получения порта подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return   порт подключения адъютанта
+ * port Метод получения порта подключения брокера
+ * @param bid идентификатор брокера
+ * @return   порт подключения брокера
  */
-u_int awh::Scheme::getPort(const uint64_t aid) const noexcept {
+u_int awh::Scheme::port(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	u_int result = 0;
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Выполняем поиск адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим
-		if(it != this->adjutants.end())
+	// Если идентификатор брокера передан
+	if(bid > 0){
+		// Выполняем поиск брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер найден, выводим
+		if(it != this->_brokers.end())
 			// Выводим полученный порт
-			return it->second->port;
+			return it->second->_port;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * getIp Метод получения IP адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес интернет подключения адъютанта
+ * ip Метод получения IP адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес интернет подключения брокера
  */
-const string & awh::Scheme::getIp(const uint64_t aid) const noexcept {
+const string & awh::Scheme::ip(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Выполняем поиск адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим
-		if(it != this->adjutants.end())
+	// Если идентификатор брокера передан
+	if(bid > 0){
+		// Выполняем поиск брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер найден, выводим
+		if(it != this->_brokers.end())
 			// Выводим полученный IP-адрес
-			return it->second->ip;
+			return it->second->_ip;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * getMac Метод получения MAC адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес устройства адъютанта
+ * mac Метод получения MAC адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес устройства брокера
  */
-const string & awh::Scheme::getMac(const uint64_t aid) const noexcept {
+const string & awh::Scheme::mac(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Выполняем поиск адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим MAC адрес
-		if(it != this->adjutants.end())
+	// Если идентификатор брокера передан
+	if(bid > 0){
+		// Выполняем поиск брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер найден, выводим MAC адрес
+		if(it != this->_brokers.end())
 			// Выводим полученный MAC-адрес
-			return it->second->mac;
+			return it->second->_mac;
 	}
 	// Выводим результат
 	return result;

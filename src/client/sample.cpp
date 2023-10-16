@@ -47,19 +47,19 @@ void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Sample::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::OPEN, event_t::READ}, event_t::CONNECT)){
-			// Запоминаем идентификатор адъютанта
-			this->_aid = aid;
+			// Запоминаем идентификатор брокера
+			this->_bid = bid;
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
 			// Если функция обратного вызова существует
@@ -71,11 +71,11 @@ void awh::client::Sample::connectCallback(const uint64_t aid, const uint16_t sid
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Sample::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
 		// Если подключение не является постоянным
@@ -99,13 +99,13 @@ void awh::client::Sample::disconnectCallback(const uint64_t aid, const uint16_t 
  * readCallback Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Sample::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -149,10 +149,10 @@ void awh::client::Sample::close() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working())
 		// Завершаем работу, если разрешено остановить
-		const_cast <client::core_t *> (this->_core)->close(this->_aid);
+		const_cast <client::core_t *> (this->_core)->close(this->_bid);
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации Rest брокера
  * @param socket unix-сокет для биндинга
  */
 void awh::client::Sample::init(const string & socket) noexcept {
@@ -172,7 +172,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 	}
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации Rest брокера
  * @param port порт сервера
  * @param host хост сервера
  */
@@ -239,7 +239,7 @@ void awh::client::Sample::on(function <void (const awh::core_t::status_t, awh::c
 	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
 }
 /**
- * response Метод отправки сообщения адъютанту
+ * response Метод отправки сообщения брокеру
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
@@ -258,7 +258,7 @@ void awh::client::Sample::send(const char * buffer, const size_t size) noexcept 
 				cout << string(buffer, size) << endl;
 			#endif
 			// Отправляем тело на сервер
-			((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_aid);
+			((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_bid);
 		}
 	}
 }
@@ -332,7 +332,7 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _callback(log), _scheme(fmk, log), _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
+ _callback(log), _scheme(fmk, log), _bid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения

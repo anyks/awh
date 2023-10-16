@@ -23,57 +23,57 @@ void awh::server::SchemeProxy::clear() noexcept {
 	scheme_t::clear();
 	// Очищаем список пар клиентов
 	this->pairs.clear();
-	// Очищаем список параметров адъютантов
-	this->_coffers.clear();
+	// Очищаем список параметров активных клиентов
+	this->_options.clear();
 	// Освобождаем выделенную память
-	map <uint64_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
+	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 }
 /**
- * set Метод создания параметров адъютанта
- * @param aid идентификатор адъютанта
+ * set Метод создания параметров активного клиента
+ * @param bid идентификатор брокера
  */
-void awh::server::SchemeProxy::set(const uint64_t aid) noexcept {
-	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->_coffers.count(aid) < 1)){
-		// Добавляем адъютанта в список адъютантов
-		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log)));
+void awh::server::SchemeProxy::set(const uint64_t bid) noexcept {
+	// Если идентификатор брокера передан
+	if((bid > 0) && (this->_options.count(bid) < 1)){
+		// Создаём объект параметров активного клиента
+		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
 		// Устанавливаем метод сжатия
 		ret.first->second->cli.compress(this->compress);
 		ret.first->second->srv.compress(this->compress);
 	}
 }
 /**
- * rm Метод удаления параметров подключения адъютанта
- * @param aid идентификатор адъютанта
+ * rm Метод удаления параметров активного клиента
+ * @param bid идентификатор брокера
  */
-void awh::server::SchemeProxy::rm(const uint64_t aid) noexcept {	
-	// Если идентификатор адъютанта передан
-	if((aid > 0) && !this->_coffers.empty()){
-		// Выполняем поиск адъютанта
-		auto it = this->_coffers.find(aid);
-		// Если адъютант найден, удаляем его
-		if(it != this->_coffers.end())
-			// Выполняем удаление адъютантов
-			this->_coffers.erase(it);
+void awh::server::SchemeProxy::rm(const uint64_t bid) noexcept {	
+	// Если идентификатор брокера передан
+	if((bid > 0) && !this->_options.empty()){
+		// Выполняем поиск брокера
+		auto it = this->_options.find(bid);
+		// Если брокер найден, удаляем его
+		if(it != this->_options.end())
+			// Выполняем удаление брокеров
+			this->_options.erase(it);
 	}
 }
 /**
- * get Метод получения параметров подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return    параметры подключения адъютанта
+ * get Метод получения параметров активного клиента
+ * @param bid идентификатор брокера
+ * @return    параметры активного клиента
  */
-const awh::server::SchemeProxy::coffer_t * awh::server::SchemeProxy::get(const uint64_t aid) const noexcept {
+const awh::server::SchemeProxy::options_t * awh::server::SchemeProxy::get(const uint64_t bid) const noexcept {
 	// Результат работы функции
-	coffer_t * result = nullptr;
-	// Если идентификатор адъютанта передан
-	if((aid > 0) && !this->_coffers.empty()){
-		// Выполняем поиск адъютанта
-		auto it = this->_coffers.find(aid);
-		// Если адъютант найден, выводим его параметры
-		if(it != this->_coffers.end())
-			// Выводим параметры подключения адъютанта
+	options_t * result = nullptr;
+	// Если идентификатор брокера передан
+	if((bid > 0) && !this->_options.empty()){
+		// Выполняем поиск брокера
+		auto it = this->_options.find(bid);
+		// Если брокер найден, выводим его параметры
+		if(it != this->_options.end())
+			// Выводим параметры подключения брокера
 			result = it->second.get();
 	}
 	// Выводим результат

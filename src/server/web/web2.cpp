@@ -17,13 +17,13 @@
 
 /**
  * sendSignal Метод обратного вызова при отправки данных HTTP/2
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных
  * @param size   размер буфера данных для отправки
  */
-void awh::server::Web2::sendSignal(const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept {
+void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем отправку заголовков запроса клиенту
-	const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, aid);
+	const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
 }
 /**
  * eventsCallback Функция обратного вызова при активации ядра сервера
@@ -46,13 +46,13 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if((this->_sessions.count(aid) == 0) && (core->proto(aid) == engine_t::proto_t::HTTP2)){
+	if((this->_sessions.count(bid) == 0) && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём параметры сессии подключения с HTTP/2 сервером
@@ -94,23 +94,23 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 				}
 			}
 			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(aid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
+			auto ret = this->_sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова начала открытии потока
-			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, aid));
+			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
-			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, aid, _1, _2));
+			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, aid, _2));
+			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, aid, _2, _3));
+			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, aid, _2, _3));
+			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const nghttp2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, aid, _2, _3, _4));
+			ret.first->second->on((function <int (const int32_t, const nghttp2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
-				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), aid, _1, _2, _3));
+				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
 			// Если инициализация модуля NgHttp2 не выполнена
 			if(!ret.first->second->init(nghttp2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
@@ -118,18 +118,18 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 			// Если инициализация модуля NgHttp2 прошла успешно и список ресурсов с которым должен работать сервер установлен
 			else if(!this->_origins.empty())
 				// Выполняем установку список ресурсов с которым должен работать сервер
-				this->sendOrigin(aid, this->_origins);
+				this->sendOrigin(bid, this->_origins);
 		}
 	}
 }
 /**
  * ping Метод выполнения пинга клиента
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    результат работы пинга
  */
-bool awh::server::Web2::ping(const uint64_t aid) noexcept {
-	// Выполняем поиск адъютанта в списке активных сессий
-	auto it = this->_sessions.find(aid);
+bool awh::server::Web2::ping(const uint64_t bid) noexcept {
+	// Выполняем поиск брокера в списке активных сессий
+	auto it = this->_sessions.find(bid);
 	// Если активная сессия найдена
 	if(it != this->_sessions.end())
 		// Выполняем пинг удалённого сервера
@@ -140,25 +140,25 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 /**
  * send Метод отправки сообщения клиенту
  * @param id     идентификатор потока HTTP/2
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if(this->_core->working() && (buffer != nullptr) && (size > 0)){
-		// Выполняем поиск адъютанта в списке активных сессий
-		auto it = this->_sessions.find(aid);
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку тела запроса на сервер
 			if(!(result = it->second->sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(aid);
+				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
 				return result;
 			}
@@ -170,18 +170,18 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t aid, const char * 
 /**
  * send Метод отправки заголовков на сервер
  * @param id      идентификатор потока HTTP/2
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые на сервер
  * @param end     размер сообщения в байтах
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept {
+int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if(this->_core->working() && !headers.empty()){
-		// Выполняем поиск адъютанта в списке активных сессий
-		auto it = this->_sessions.find(aid);
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
 			// Выполняем отправку заголовков запроса на сервер
@@ -189,7 +189,7 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t aid, const vect
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(aid);
+				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
 				return result;
 			}
@@ -208,18 +208,18 @@ void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
 }
 /**
  * sendOrigin Метод отправки списка разрешённых источников
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param origins список разрешённых источников
  */
-void awh::server::Web2::sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept {
-	// Выполняем поиск адъютанта в списке активных сессий
-	auto it = this->_sessions.find(aid);
+void awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
+	// Выполняем поиск брокера в списке активных сессий
+	auto it = this->_sessions.find(bid);
 	// Если активная сессия найдена
 	if(it != this->_sessions.end()){
 		// Если список разрешённых источников отправить не удалось
 		if(!it->second->sendOrigin(origins)){
 			// Выполняем закрытие подключения
-			const_cast <server::core_t *> (this->_core)->close(aid);
+			const_cast <server::core_t *> (this->_core)->close(bid);
 			// Выходим из функции
 			return;
 		}

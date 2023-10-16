@@ -43,7 +43,7 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				// Устанавливаем таймаут времени на удаление мусорных брокеров раз в 10 секунд
 				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::garbage, this, _1, _2));
 			} break;
 			// Если система остановлена
@@ -60,133 +60,133 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh
 }
 /**
  * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Sample::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::Sample::persistCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && ((!adj->alive && !this->_alive) || adj->close)){
-			// Если адъютант давно должен был быть отключён, отключаем его
-			if(adj->close)
-				// Выполняем закрытие подключение адъютанта
-				reinterpret_cast <server::core_t *> (core)->close(aid);
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if((options != nullptr) && ((!options->alive && !this->_alive) || options->close)){
+			// Если брокер давно должен был быть отключён, отключаем его
+			if(options->close)
+				// Выполняем закрытие подключение брокера
+				reinterpret_cast <server::core_t *> (core)->close(bid);
 		}
 	}
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Sample::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::Sample::connectCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Создаём адъютанта
-		this->_scheme.set(aid);
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Создаём брокера
+		this->_scheme.set(bid);
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Устанавливаем экшен выполнения
-			adj->action = sample_scheme_t::action_t::CONNECT;
+			options->action = sample_scheme_t::action_t::CONNECT;
 			// Выполняем запуск обработчика событий
-			this->handler(aid);
+			this->handler(bid);
 		}
 	}
 }
 /**
  * disconnectCallback Функция обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Sample::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::Sample::disconnectCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Устанавливаем экшен выполнения
-			adj->action = sample_scheme_t::action_t::DISCONNECT;
+			options->action = sample_scheme_t::action_t::DISCONNECT;
 			// Выполняем запуск обработчика событий
-			this->handler(aid);
+			this->handler(bid);
 		}
 	}
 }
 /**
- * readCallback Функция обратного вызова при чтении сообщения с адъютанта
+ * readCallback Функция обратного вызова при чтении сообщения с брокера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Sample::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::Sample::readCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Если дисконнекта ещё не произошло
-			if((adj->action == sample_scheme_t::action_t::NONE) || (adj->action == sample_scheme_t::action_t::READ)){
+			if((options->action == sample_scheme_t::action_t::NONE) || (options->action == sample_scheme_t::action_t::READ)){
 				// Выполняем сброс закрытия подключения
-				adj->close = false;
+				options->close = false;
 				// Если разрешено получение данных
-				if(adj->allow.receive){
+				if(options->allow.receive){
 					// Устанавливаем экшен выполнения
-					adj->action = sample_scheme_t::action_t::READ;
+					options->action = sample_scheme_t::action_t::READ;
 					// Добавляем полученные данные в буфер
-					adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+					options->buffer.insert(options->buffer.end(), buffer, buffer + size);
 					// Выполняем запуск обработчика событий
-					this->handler(aid);
+					this->handler(bid);
 				}
 			}
 		}
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщение адъютанту
+ * writeCallback Функция обратного вызова при записи сообщение брокеру
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Sample::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::Sample::writeCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Если необходимо выполнить закрыть подключение
-			if(!adj->close && adj->stopped){
+			if(!options->close && options->stopped){
 				// Выполняем очистку оставшихся данных
-				adj->buffer.clear();
+				options->buffer.clear();
 				// Устанавливаем флаг закрытия подключения
-				adj->close = !adj->close;
+				options->close = !options->close;
 				// Принудительно выполняем отключение лкиента
-				core->close(aid);
+				core->close(bid);
 			}
 		}
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения адъютанта
- * @param ip   адрес интернет подключения адъютанта
- * @param mac  мак-адрес подключившегося адъютанта
- * @param port порт подключившегося адъютанта
+ * acceptCallback Функция обратного вызова при проверке подключения брокера
+ * @param ip   адрес интернет подключения брокера
+ * @param mac  мак-адрес подключившегося брокера
+ * @param port порт подключившегося брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
- * @return     результат разрешения к подключению адъютанта
+ * @return     результат разрешения к подключению брокера
  */
 bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
@@ -198,146 +198,146 @@ bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, 
 			// Выполняем проверку на разрешение подключения
 			result = this->_callback.accept(ip, mac, port, this);
 	}
-	// Разрешаем подключение адъютанту
+	// Разрешаем подключение брокеру
 	return result;
 }
 /**
  * handler Метод управления входящими методами
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::server::Sample::handler(const size_t aid) noexcept {
-	// Получаем параметры подключения адъютанта
-	sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены
-	if(adj != nullptr){
+void awh::server::Sample::handler(const size_t bid) noexcept {
+	// Получаем параметры активного клиента
+	sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
 		// Если управляющий блокировщик не заблокирован
-		if(!adj->locker.mode){
+		if(!options->locker.mode){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(adj->locker.mtx);
+			const lock_guard <recursive_mutex> lock(options->locker.mtx);
 			// Флаг разрешающий циклический перебор экшенов
 			bool loop = true;
 			// Выполняем блокировку обработчика
-			adj->locker.mode = true;
+			options->locker.mode = true;
 			// Выполняем обработку всех экшенов
-			while(loop && (adj->action != sample_scheme_t::action_t::NONE)){
+			while(loop && (options->action != sample_scheme_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
-				switch(static_cast <uint8_t> (adj->action)){
+				switch(static_cast <uint8_t> (options->action)){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
-					case static_cast <uint8_t> (sample_scheme_t::action_t::READ): this->actionRead(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::READ): this->actionRead(bid); break;
 					// Если необходимо запустить экшен обработки подключения к серверу
-					case static_cast <uint8_t> (sample_scheme_t::action_t::CONNECT): this->actionConnect(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::CONNECT): this->actionConnect(bid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
-					case static_cast <uint8_t> (sample_scheme_t::action_t::DISCONNECT): this->actionDisconnect(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::DISCONNECT): this->actionDisconnect(bid); break;
 					// Если сработал неизвестный экшен, выходим
 					default: loop = false;
 				}
 			}
 			// Выполняем разблокировку обработчика
-			adj->locker.mode = false;
+			options->locker.mode = false;
 		}
 	}
 }
 /**
  * actionRead Метод обработки экшена чтения с сервера
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::server::Sample::actionRead(const size_t aid) noexcept {
+void awh::server::Sample::actionRead(const size_t bid) noexcept {
 	// Если данные существуют
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if(bid > 0){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == sample_scheme_t::action_t::READ)
+			if(options->action == sample_scheme_t::action_t::READ)
 				// Выполняем сброс экшена
-				adj->action = sample_scheme_t::action_t::NONE;
+				options->action = sample_scheme_t::action_t::NONE;
 			// Если функция обратного вызова, установлена
 			if(this->_callback.message != nullptr)
 				// Отправляем полученный результат
-				this->_callback.message(aid, adj->buffer, const_cast <Sample *> (this));
+				this->_callback.message(bid, options->buffer, const_cast <Sample *> (this));
 		}
 	}
 }
 /**
  * actionConnect Метод обработки экшена подключения к серверу
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::server::Sample::actionConnect(const size_t aid) noexcept {
+void awh::server::Sample::actionConnect(const size_t bid) noexcept {
 	// Если данные существуют
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if(bid > 0){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == sample_scheme_t::action_t::CONNECT)
+			if(options->action == sample_scheme_t::action_t::CONNECT)
 				// Выполняем сброс экшена
-				adj->action = sample_scheme_t::action_t::NONE;
+				options->action = sample_scheme_t::action_t::NONE;
 			// Если функция обратного вызова установлена
 			if(this->_callback.active != nullptr)
 				// Выполняем функцию обратного вызова
-				this->_callback.active(aid, mode_t::CONNECT, this);
+				this->_callback.active(bid, mode_t::CONNECT, this);
 		}
 	}
 }
 /**
  * actionDisconnect Метод обработки экшена отключения от сервера
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::server::Sample::actionDisconnect(const size_t aid) noexcept {
-	// Если идентификатор адъютанта существует
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
+void awh::server::Sample::actionDisconnect(const size_t bid) noexcept {
+	// Если идентификатор брокера существует
+	if(bid > 0){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если экшен соответствует, выполняем его сброс
-		if(adj->action == sample_scheme_t::action_t::DISCONNECT)
+		if(options->action == sample_scheme_t::action_t::DISCONNECT)
 			// Выполняем сброс экшена
-			adj->action = sample_scheme_t::action_t::NONE;
-		// Добавляем в очередь список мусорных адъютантов
-		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+			options->action = sample_scheme_t::action_t::NONE;
+		// Добавляем в очередь список мусорных брокеров
+		this->_garbage.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 		// Если функция обратного вызова установлена, выполняем
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
-			this->_callback.active(aid, mode_t::DISCONNECT, this);
+			this->_callback.active(bid, mode_t::DISCONNECT, this);
 	}
 }
 /**
- * garbage Метод удаления мусорных адъютантов
+ * garbage Метод удаления мусорных брокеров
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
 void awh::server::Sample::garbage(const u_short tid, awh::core_t * core) noexcept {
-	// Если список мусорных адъютантов не пустой
+	// Если список мусорных брокеров не пустой
 	if(!this->_garbage.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку мусорных адъютантов
+		// Выполняем переход по всему списку мусорных брокеров
 		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
-			// Если адъютант уже давно удалился
+			// Если брокер уже давно удалился
 			if((date - it->second) >= 10000){
-				// Получаем параметры подключения адъютанта
-				sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(it->first));
-				// Если параметры подключения адъютанта получены
-				if(adj != nullptr){
+				// Получаем параметры активного клиента
+				sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(it->first));
+				// Если параметры активного клиента получены
+				if(options != nullptr){
 					// Устанавливаем флаг отключения
-					adj->close = true;
+					options->close = true;
 					// Выполняем очистку оставшихся данных
-					adj->buffer.clear();
+					options->buffer.clear();
 				}
-				// Выполняем удаление параметров адъютанта
+				// Выполняем удаление параметров брокера
 				this->_scheme.rm(it->first);
-				// Выполняем удаление объекта адъютантов из списка мусора
+				// Выполняем удаление объекта брокеров из списка мусора
 				it = this->_garbage.erase(it);
-			// Выполняем пропуск адъютанта
+			// Выполняем пропуск брокера
 			} else ++it;
 		}
 	}
-	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	// Устанавливаем таймаут времени на удаление мусорных брокеров раз в 10 секунд
 	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::garbage, this, _1, _2));
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации Rest брокера
  * @param socket unix-сокет для биндинга
  */
 void awh::server::Sample::init(const string & socket) noexcept {
@@ -350,7 +350,7 @@ void awh::server::Sample::init(const string & socket) noexcept {
 	#endif
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации Rest брокера
  * @param port порт сервера
  * @param host хост сервера
  */
@@ -392,7 +392,7 @@ void awh::server::Sample::on(function <void (const awh::core_t::status_t status,
 	this->_callback.events = callback;
 }
 /**
- * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
+ * on Метод установки функции обратного вызова на событие активации брокера на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::Sample::on(function <bool (const string &, const string &, const u_int, Sample *)> callback) noexcept {
@@ -400,18 +400,18 @@ void awh::server::Sample::on(function <bool (const string &, const string &, con
 	this->_callback.accept = callback;
 }
 /**
- * response Метод отправки сообщения адъютанту
- * @param aid    идентификатор адъютанта
+ * response Метод отправки сообщения брокеру
+ * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
-void awh::server::Sample::send(const size_t aid, const char * buffer, const size_t size) const noexcept {
+void awh::server::Sample::send(const size_t bid, const char * buffer, const size_t size) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+		// Получаем параметры активного клиента
+		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -420,38 +420,38 @@ void awh::server::Sample::send(const size_t aid, const char * buffer, const size
 				cout << string(buffer, size) << endl;
 			#endif
 			// Устанавливаем флаг завершения работы
-			adj->stopped = true;
+			options->stopped = true;
 			// Отправляем тело на сервер
-			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(buffer, size, aid);
+			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(buffer, size, bid);
 		}
 	}
 }
 /**
- * port Метод получения порта подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return    порт подключения адъютанта
+ * port Метод получения порта подключения брокера
+ * @param bid идентификатор брокера
+ * @return    порт подключения брокера
  */
-u_int awh::server::Sample::port(const size_t aid) const noexcept {
+u_int awh::server::Sample::port(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getPort(aid);
+	return this->_scheme.port(bid);
 }
 /**
- * ip Метод получения IP адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес интернет подключения адъютанта
+ * ip Метод получения IP адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес интернет подключения брокера
  */
-const string & awh::server::Sample::ip(const size_t aid) const noexcept {
+const string & awh::server::Sample::ip(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getIp(aid);
+	return this->_scheme.ip(bid);
 }
 /**
- * mac Метод получения MAC адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес устройства адъютанта
+ * mac Метод получения MAC адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес устройства брокера
  */
-const string & awh::server::Sample::mac(const size_t aid) const noexcept {
+const string & awh::server::Sample::mac(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getMac(aid);
+	return this->_scheme.mac(bid);
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -463,14 +463,14 @@ void awh::server::Sample::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки долгоживущего подключения
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::Sample::alive(const size_t aid, const bool mode) noexcept {
-	// Получаем параметры подключения адъютанта
-	sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
-	if(adj != nullptr) adj->alive = mode;
+void awh::server::Sample::alive(const size_t bid, const bool mode) noexcept {
+	// Получаем параметры активного клиента
+	sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены, устанавливаем флаг пдолгоживущего подключения
+	if(options != nullptr) options->alive = mode;
 }
 /**
  * stop Метод остановки сервера
@@ -491,18 +491,18 @@ void awh::server::Sample::start() noexcept {
 		const_cast <server::core_t *> (this->_core)->start();
 }
 /**
- * close Метод закрытия подключения адъютанта
- * @param aid идентификатор адъютанта
+ * close Метод закрытия подключения брокера
+ * @param bid идентификатор брокера
  */
-void awh::server::Sample::close(const size_t aid) noexcept {
-	// Получаем параметры подключения адъютанта
-	sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-	if(adj != nullptr){
-		// Устанавливаем флаг закрытия подключения адъютанта
-		adj->close = true;
-		// Выполняем отключение адъютанта
-		const_cast <server::core_t *> (this->_core)->close(aid);
+void awh::server::Sample::close(const size_t bid) noexcept {
+	// Получаем параметры активного клиента
+	sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
+	if(options != nullptr){
+		// Устанавливаем флаг закрытия подключения брокера
+		options->close = true;
+		// Выполняем отключение брокера
+		const_cast <server::core_t *> (this->_core)->close(bid);
 	}
 }
 /**
@@ -598,7 +598,7 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&sample_t::writeCallback, this, _1, _2, _3, _4, _5));
-	// Добавляем событие аццепта адъютанта
+	// Добавляем событие аццепта брокера
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);

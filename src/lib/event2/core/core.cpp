@@ -20,29 +20,29 @@
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::scheme_t::adj_t::read(const evutil_socket_t fd, const short event) noexcept {
+void awh::scheme_t::broker_t::read(const evutil_socket_t fd, const short event) noexcept {
 	// Получаем объект подключения
 	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
-	core_t * core = const_cast <core_t *> (shm->core);
+	core_t * core = const_cast <core_t *> (shm->_core);
 	// Если разрешено выполнять чтения данных из сокета
-	if(!this->bev.locked.read)
+	if(!this->_bev.locked.read)
 		// Выполняем передачу данных
-		core->read(this->aid);
+		core->read(this->_bid);
 	// Если выполнять чтение данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
-		if(this->bev.locked.read)
+		if(this->_bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(engine_t::method_t::READ, this->aid);
+			core->disabled(engine_t::method_t::READ, this->_bid);
 		// Если запрещено выполнять запись данных в сокет
-		if(this->bev.locked.write)
+		if(this->_bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(engine_t::method_t::WRITE, this->aid);
+			core->disabled(engine_t::method_t::WRITE, this->_bid);
 		// Если запрещено и читать и записывать в сокет
-		if(this->bev.locked.read && this->bev.locked.write)
+		if(this->_bev.locked.read && this->_bev.locked.write)
 			// Выполняем отключение от сервера
-			core->close(this->aid);
+			core->close(this->_bid);
 	}
 }
 /**
@@ -50,36 +50,36 @@ void awh::scheme_t::adj_t::read(const evutil_socket_t fd, const short event) noe
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::scheme_t::adj_t::connect(const evutil_socket_t fd, const short event) noexcept {
+void awh::scheme_t::broker_t::connect(const evutil_socket_t fd, const short event) noexcept {
 	// Удаляем событие коннекта
-	this->bev.events.connect.stop();
+	this->_bev.events.connect.stop();
 	// Получаем объект подключения
 	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
-	core_t * core = const_cast <core_t *> (shm->core);
+	core_t * core = const_cast <core_t *> (shm->_core);
 	// Останавливаем подключение
-	core->disabled(engine_t::method_t::CONNECT, this->aid);
+	core->disabled(engine_t::method_t::CONNECT, this->_bid);
 	// Выполняем передачу данных об удачном подключении к серверу
-	core->connected(this->aid);
+	core->connected(this->_bid);
 }
 /**
  * timeout Метод вызова при срабатывании таймаута
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::scheme_t::adj_t::timeout(const evutil_socket_t fd, const short event) noexcept {
+void awh::scheme_t::broker_t::timeout(const evutil_socket_t fd, const short event) noexcept {
 	// Останавливаем событие таймера чтения данных
-	this->bev.timers.read.stop();
+	this->_bev.timers.read.stop();
 	// Останавливаем событие таймера записи данных
-	this->bev.timers.write.stop();
+	this->_bev.timers.write.stop();
 	// Останавливаем событие таймера коннекта
-	this->bev.timers.connect.stop();
+	this->_bev.timers.connect.stop();
 	// Получаем объект подключения
 	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
-	core_t * core = const_cast <core_t *> (shm->core);
+	core_t * core = const_cast <core_t *> (shm->_core);
 	// Выполняем передачу данных
-	core->timeout(this->aid);
+	core->timeout(this->_bid);
 }
 /**
  * callback Метод обратного вызова
@@ -361,7 +361,7 @@ void awh::Core::closedown() noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Устанавливаем статус сетевого ядра
 	this->_status = status_t::STOP;
-	// Выполняем отключение всех адъютантов
+	// Выполняем отключение всех брокеров
 	this->close();
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("status"))
@@ -427,15 +427,15 @@ void awh::Core::signal(const int signal) noexcept {
 }
 /**
  * clean Метод буфера событий
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::Core::clean(const uint64_t aid) const noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->_adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->_adjutants.end()){
-		// Получаем объект адъютанта
-		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+void awh::Core::clean(const uint64_t bid) const noexcept {
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
+		// Получаем объект брокера
+		awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 		// Получаем объект сетевого ядра
 		core_t * core = const_cast <core_t *> (this);
 		// Останавливаем чтение данных
@@ -445,7 +445,7 @@ void awh::Core::clean(const uint64_t aid) const noexcept {
 		// Останавливаем выполнения подключением
 		core->disabled(engine_t::method_t::CONNECT, it->first);
 		// Выполняем блокировку на чтение/запись данных
-		adj->bev.locked = scheme_t::locked_t();
+		adj->_bev.locked = scheme_t::locked_t();
 	}
 }
 /**
@@ -622,7 +622,7 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 		// Получаем идентификатор схемы сети
 		result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Устанавливаем родительский объект
-		shm->core = this;
+		shm->_core = this;
 		// Устанавливаем идентификатор схемы сети
 		shm->sid = result;
 		// Добавляем схему сети в список
@@ -632,7 +632,7 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 	return result;
 }
 /**
- * close Метод отключения всех адъютантов
+ * close Метод отключения всех брокеров
  */
 void awh::Core::close() noexcept {
 	/** Реализация метода не требуется **/
@@ -644,12 +644,12 @@ void awh::Core::remove() noexcept {
 	/** Реализация метода не требуется **/
 }
 /**
- * close Метод закрытия подключения адъютанта
- * @param aid идентификатор адъютанта
+ * close Метод закрытия подключения брокера
+ * @param bid идентификатор брокера
  */
-void awh::Core::close(const uint64_t aid) noexcept {
+void awh::Core::close(const uint64_t bid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
+	(void) bid;
 }
 /**
  * remove Метод удаления схемы сети
@@ -670,49 +670,49 @@ void awh::Core::remove(const uint16_t sid) noexcept {
 }
 /**
  * timeout Метод вызова при срабатывании таймаута
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::Core::timeout(const uint64_t aid) noexcept {
+void awh::Core::timeout(const uint64_t bid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
+	(void) bid;
 }
 /**
  * connected Метод вызова при удачном подключении к серверу
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::Core::connected(const uint64_t aid) noexcept {
+void awh::Core::connected(const uint64_t bid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
+	(void) bid;
 }
 /**
- * read Метод чтения данных для адъютанта
- * @param aid идентификатор адъютанта
+ * read Метод чтения данных для брокера
+ * @param bid идентификатор брокера
  */
-void awh::Core::read(const uint64_t aid) noexcept {
+void awh::Core::read(const uint64_t bid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
+	(void) bid;
 }
 /**
  * write Метод записи буфера данных в сокет
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  */
-void awh::Core::write(const char * buffer, const size_t size, const uint64_t aid) noexcept {
+void awh::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
 	// Экранируем ошибку неиспользуемых переменных
-	(void) aid;
+	(void) bid;
 	(void) size;
 	(void) buffer;
 }
 /**
  * bandWidth Метод установки пропускной способности сети
- * @param aid   идентификатор адъютанта
+ * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::Core::bandWidth(const uint64_t aid, const string & read, const string & write) noexcept {
+void awh::Core::bandWidth(const uint64_t bid, const string & read, const string & write) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
+	(void) bid;
 	(void) read;
 	(void) write;
 }
@@ -802,30 +802,30 @@ void awh::Core::rebase() noexcept {
 }
 /**
  * method Метод получения текущего метода работы
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    результат работы функции
  */
-awh::engine_t::method_t awh::Core::method(const uint64_t aid) const noexcept {
+awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	engine_t::method_t result = engine_t::method_t::DISCONNECT;
-	// Выполняем извлечение адъютанта
-	auto it = this->_adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->_adjutants.end()){
-		// Получаем объект адъютанта
-		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
+		// Получаем объект брокера
+		awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 		// Если подключение только установлено
-		if(adj->method == engine_t::method_t::CONNECT)
+		if(adj->_method == engine_t::method_t::CONNECT)
 			// Устанавливаем результат работы функции
-			result = adj->method;
+			result = adj->_method;
 		// Если производится запись или чтение
-		else if((adj->method == engine_t::method_t::READ) || (adj->method == engine_t::method_t::WRITE)) {
+		else if((adj->_method == engine_t::method_t::READ) || (adj->_method == engine_t::method_t::WRITE)) {
 			// Устанавливаем результат работы функции
 			result = engine_t::method_t::CONNECT;
 			// Если производится чтение или запись данных
-			if(((adj->method == engine_t::method_t::READ) && !adj->bev.locked.read && adj->bev.locked.write) || ((adj->method == engine_t::method_t::WRITE) && !adj->bev.locked.write))
+			if(((adj->_method == engine_t::method_t::READ) && !adj->_bev.locked.read && adj->_bev.locked.write) || ((adj->_method == engine_t::method_t::WRITE) && !adj->_bev.locked.write))
 				// Устанавливаем результат работы функции
-				result = adj->method;
+				result = adj->_method;
 		}
 	}
 	// Выводим результат
@@ -834,19 +834,19 @@ awh::engine_t::method_t awh::Core::method(const uint64_t aid) const noexcept {
 /**
  * enabled Метод активации метода события сокета
  * @param method метод события сокета
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  */
-void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noexcept {
+void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
-		// Выполняем извлечение адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->_adjutants.end()){
-			// Получаем объект адъютанта
-			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+		// Выполняем извлечение брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер получен
+		if(it != this->_brokers.end()){
+			// Получаем объект брокера
+			awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 			// Если сокет подключения активен
-			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
+			if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
 				// Получаем объект подключения
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Определяем метод события сокета
@@ -854,123 +854,123 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 					// Если событием является чтение
 					case static_cast <uint8_t> (engine_t::method_t::READ): {
 						// Разрешаем чтение данных из сокета
-						adj->bev.locked.read = false;
+						adj->_bev.locked.read = false;
 						// Устанавливаем размер детектируемых байт на чтение
-						adj->marker.read = shm->marker.read;
+						adj->_marker.read = shm->marker.read;
 						// Устанавливаем время ожидания чтения данных
-						adj->timeouts.read = shm->timeouts.read;
+						adj->_timeouts.read = shm->timeouts.read;
 						// Устанавливаем тип события
-						adj->bev.events.read.set(adj->addr.fd, EV_READ);
+						adj->_bev.events.read.set(adj->_addr.fd, EV_READ);
 						// Устанавливаем базу данных событий
-						adj->bev.events.read.set(this->_dispatch.base);
+						adj->_bev.events.read.set(this->_dispatch.base);
 						// Устанавливаем функцию обратного вызова
-						adj->bev.events.read.set(std::bind(&awh::scheme_t::adj_t::read, adj, _1, _2));
+						adj->_bev.events.read.set(std::bind(&awh::scheme_t::broker_t::read, adj, _1, _2));
 						// Выполняем запуск работы события
-						adj->bev.events.read.start();
+						adj->_bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if((adj->timeouts.read > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
+						if((adj->_timeouts.read > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
-							adj->bev.timers.read.set(-1, EV_TIMEOUT);
+							adj->_bev.timers.read.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.read.set(this->_dispatch.base);
+							adj->_bev.timers.read.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
-							adj->bev.timers.read.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							adj->_bev.timers.read.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
-							adj->bev.timers.read.start(adj->timeouts.read * 1000);
+							adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
 						}
 					} break;
 					// Если событием является запись
 					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 						// Устанавливаем размер детектируемых байт на запись
-						adj->marker.write = shm->marker.write;
+						adj->_marker.write = shm->marker.write;
 						// Устанавливаем время ожидания записи данных
-						adj->timeouts.write = shm->timeouts.write;
+						adj->_timeouts.write = shm->timeouts.write;
 						// Если флаг ожидания исходящих сообщений, активирован
-						if((adj->timeouts.write > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
+						if((adj->_timeouts.write > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
-							adj->bev.timers.write.set(-1, EV_TIMEOUT);
+							adj->_bev.timers.write.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.write.set(this->_dispatch.base);
+							adj->_bev.timers.write.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
-							adj->bev.timers.write.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							adj->_bev.timers.write.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
-							adj->bev.timers.write.start(adj->timeouts.write * 1000);
+							adj->_bev.timers.write.start(adj->_timeouts.write * 1000);
 						}
 					} break;
 					// Если событием является подключение
 					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
 						// Устанавливаем время ожидания записи данных
-						adj->timeouts.connect = shm->timeouts.connect;
+						adj->_timeouts.connect = shm->timeouts.connect;
 						// Устанавливаем тип события
-						adj->bev.events.connect.set(adj->addr.fd, EV_WRITE);
+						adj->_bev.events.connect.set(adj->_addr.fd, EV_WRITE);
 						// Устанавливаем базу данных событий
-						adj->bev.events.connect.set(this->_dispatch.base);
+						adj->_bev.events.connect.set(this->_dispatch.base);
 						// Устанавливаем функцию обратного вызова
-						adj->bev.events.connect.set(std::bind(&awh::scheme_t::adj_t::connect, adj, _1, _2));
+						adj->_bev.events.connect.set(std::bind(&awh::scheme_t::broker_t::connect, adj, _1, _2));
 						// Выполняем запуск работы события
-						adj->bev.events.connect.start();
+						adj->_bev.events.connect.start();
 						// Если время ожидания записи данных установлено
-						if(adj->timeouts.connect > 0){
+						if(adj->_timeouts.connect > 0){
 							// Устанавливаем тип таймера
-							adj->bev.timers.connect.set(-1, EV_TIMEOUT);
+							adj->_bev.timers.connect.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.connect.set(this->_dispatch.base);
+							adj->_bev.timers.connect.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
-							adj->bev.timers.connect.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							adj->_bev.timers.connect.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
-							adj->bev.timers.connect.start(adj->timeouts.connect * 1000);
+							adj->_bev.timers.connect.start(adj->_timeouts.connect * 1000);
 						}
 					} break;
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->addr.fd > 65535)
-				// Удаляем из памяти объект адъютанта
-				this->_adjutants.erase(it);
+			} else if(adj->_addr.fd > 65535)
+				// Удаляем из памяти объект брокера
+				this->_brokers.erase(it);
 		}
 	}
 }
 /**
  * disabled Метод деактивации метода события сокета
  * @param method метод события сокета
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  */
-void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) noexcept {
+void awh::Core::disabled(const engine_t::method_t method, const uint64_t bid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
-		// Выполняем извлечение адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->_adjutants.end()){
-			// Получаем объект адъютанта
-			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+		// Выполняем извлечение брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер получен
+		if(it != this->_brokers.end()){
+			// Получаем объект брокера
+			awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 			// Если сокет подключения активен
-			if(adj->addr.fd < 65535){
+			if(adj->_addr.fd < 65535){
 				// Определяем метод события сокета
 				switch(static_cast <uint8_t> (method)){
 					// Если событием является чтение
 					case static_cast <uint8_t> (engine_t::method_t::READ): {
 						// Запрещаем чтение данных из сокета
-						adj->bev.locked.read = true;
+						adj->_bev.locked.read = true;
 						// Останавливаем работу таймера
-						adj->bev.timers.read.stop();
+						adj->_bev.timers.read.stop();
 						// Останавливаем работу события
-						adj->bev.events.read.stop();
+						adj->_bev.events.read.stop();
 					} break;
 					// Если событием является запись
 					case static_cast <uint8_t> (engine_t::method_t::WRITE):
 						// Останавливаем работу таймера
-						adj->bev.timers.write.stop();
+						adj->_bev.timers.write.stop();
 					break;
 					// Если событием является подключение
 					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
 						// Останавливаем работу таймера
-						adj->bev.timers.connect.stop();
+						adj->_bev.timers.connect.stop();
 						// Останавливаем работу события
-						adj->bev.events.connect.stop();
+						adj->_bev.events.connect.stop();
 					} break;
 				}
-			// Если файловый дескриптор сломан, значит с памятью что-то не то, удаляем из памяти объект адъютанта
-			} else this->_adjutants.erase(it);
+			// Если файловый дескриптор сломан, значит с памятью что-то не то, удаляем из памяти объект брокера
+			} else this->_brokers.erase(it);
 		}
 	}
 }
@@ -978,24 +978,24 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
  * lockMethod Метод блокировки метода режима работы
  * @param method метод режима работы
  * @param mode   флаг блокировки метода
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  */
-void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const uint64_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->_adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->_adjutants.end()){
+void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept {
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
 			case static_cast <uint8_t> (engine_t::method_t::READ):
 				// Выполняем установку разрешения на получение данных
-				const_cast <scheme_t::adj_t *> (it->second)->bev.locked.read = mode;
+				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.read = mode;
 			break;
 			// Режим работы ЗАПИСЬ
 			case static_cast <uint8_t> (engine_t::method_t::WRITE):
 				// Выполняем установку разрешения на передачу данных
-				const_cast <scheme_t::adj_t *> (it->second)->bev.locked.write = mode;
+				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.write = mode;
 			break;
 		}
 	}
@@ -1004,29 +1004,29 @@ void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, con
  * dataTimeout Метод установки таймаута ожидания появления данных
  * @param method  метод режима работы
  * @param seconds время ожидания в секундах
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  */
-void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->_adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->_adjutants.end()){
+void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t bid) noexcept {
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
 			case static_cast <uint8_t> (engine_t::method_t::READ):
 				// Устанавливаем время ожидания на входящие данные
-				const_cast <scheme_t::adj_t *> (it->second)->timeouts.read = seconds;
+				const_cast <scheme_t::broker_t *> (it->second)->_timeouts.read = seconds;
 			break;
 			// Режим работы ЗАПИСЬ
 			case static_cast <uint8_t> (engine_t::method_t::WRITE):
 				// Устанавливаем время ожидания на исходящие данные
-				const_cast <scheme_t::adj_t *> (it->second)->timeouts.write = seconds;
+				const_cast <scheme_t::broker_t *> (it->second)->_timeouts.write = seconds;
 			break;
 			// Режим работы ПОДКЛЮЧЕНИЕ
 			case static_cast <uint8_t> (engine_t::method_t::CONNECT):
 				// Устанавливаем время ожидания на исходящие данные
-				const_cast <scheme_t::adj_t *> (it->second)->timeouts.connect = seconds;
+				const_cast <scheme_t::broker_t *> (it->second)->_timeouts.connect = seconds;
 			break;
 		}
 	}
@@ -1036,36 +1036,36 @@ void awh::Core::dataTimeout(const engine_t::method_t method, const time_t second
  * @param method метод режима работы
  * @param min    минимальный размер детектируемых байт
  * @param min    максимальный размер детектируемых байт
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  */
-void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->_adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->_adjutants.end()){
+void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t bid) noexcept {
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
 			case static_cast <uint8_t> (engine_t::method_t::READ): {
 				// Устанавливаем минимальный размер байт
-				const_cast <scheme_t::adj_t *> (it->second)->marker.read.min = min;
+				const_cast <scheme_t::broker_t *> (it->second)->_marker.read.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <scheme_t::adj_t *> (it->second)->marker.read.max = max;
+				const_cast <scheme_t::broker_t *> (it->second)->_marker.read.max = max;
 				// Если минимальный размер данных для чтения, не установлен
-				if(it->second->marker.read.min == 0)
+				if(it->second->_marker.read.min == 0)
 					// Устанавливаем размер минимальных для чтения данных по умолчанию
-					const_cast <scheme_t::adj_t *> (it->second)->marker.read.min = BUFFER_READ_MIN;
+					const_cast <scheme_t::broker_t *> (it->second)->_marker.read.min = BUFFER_READ_MIN;
 			} break;
 			// Режим работы ЗАПИСЬ
 			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 				// Устанавливаем минимальный размер байт
-				const_cast <scheme_t::adj_t *> (it->second)->marker.write.min = min;
+				const_cast <scheme_t::broker_t *> (it->second)->_marker.write.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <scheme_t::adj_t *> (it->second)->marker.write.max = max;
+				const_cast <scheme_t::broker_t *> (it->second)->_marker.write.max = max;
 				// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-				if(it->second->marker.write.max == 0)
+				if(it->second->_marker.write.max == 0)
 					// Устанавливаем размер максимальных записываемых данных по умолчанию
-					const_cast <scheme_t::adj_t *> (it->second)->marker.write.max = BUFFER_WRITE_MAX;
+					const_cast <scheme_t::broker_t *> (it->second)->_marker.write.max = BUFFER_WRITE_MAX;
 			} break;
 		}
 	}
@@ -1278,20 +1278,20 @@ awh::engine_t::proto_t awh::Core::proto() const noexcept {
 }
 /**
  * proto Метод извлечения активного протокола подключения
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
-awh::engine_t::proto_t awh::Core::proto(const uint64_t aid) const noexcept {
+awh::engine_t::proto_t awh::Core::proto(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	engine_t::proto_t result = engine_t::proto_t::NONE;
 	// Если данные переданы верные
-	if(this->working() && (aid > 0)){
-		// Выполняем извлечение адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->_adjutants.end())
+	if(this->working() && (bid > 0)){
+		// Выполняем извлечение брокера
+		auto it = this->_brokers.find(bid);
+		// Если брокер получен
+		if(it != this->_brokers.end())
 			// Выполняем извлечение активного протокола подключения
-			result = this->_engine.proto(const_cast <awh::scheme_t::adj_t *> (it->second)->ectx);
+			result = this->_engine.proto(const_cast <awh::scheme_t::broker_t *> (it->second)->_ectx);
 	}
 	// Выводим результат
 	return result;
@@ -1754,8 +1754,8 @@ awh::Core::~Core() noexcept {
 	this->_timers.clear();
 	// Выполняем удаление списка активных схем сети
 	this->_schemes.clear();
-	// Выполняем удаление активных адъютантов
-	this->_adjutants.clear();
+	// Выполняем удаление активных брокеров
+	this->_brokers.clear();
 	// Устанавливаем статус сетевого ядра
 	this->_status = status_t::STOP;
 	// Если требуется использовать unix-сокет и ядро является сервером

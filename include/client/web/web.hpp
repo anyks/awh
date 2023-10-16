@@ -144,7 +144,7 @@ namespace awh {
 				};
 			protected:
 				// Идентификатор подключения
-				uint64_t _aid;
+				uint64_t _bid;
 			protected:
 				// Объект работы с URI ссылками
 				uri_t _uri;
@@ -203,62 +203,62 @@ namespace awh {
 			protected:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * enableTLSCallback Метод активации зашифрованного канала TLS
 				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 * @return     результат активации зашифрованного канала TLS
 				 */
-				bool enableTLSCallback(const uri_t::url_t & url, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				bool enableTLSCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -275,11 +275,11 @@ namespace awh {
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
 				 * @param id   идентификатор запроса
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				virtual status_t prepare(const int32_t id, const uint64_t aid, client::core_t * core) noexcept = 0;
+				virtual status_t prepare(const int32_t id, const uint64_t bid, client::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB клиента
@@ -649,35 +649,35 @@ namespace awh {
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * implementation Метод выполнения активации сессии HTTP/2
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param core объект сетевого ядра
 				 */
-				void implementation(const uint64_t aid, client::core_t * core) noexcept;
+				void implementation(const uint64_t bid, client::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга сервера

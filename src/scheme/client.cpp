@@ -53,17 +53,17 @@ bool awh::client::Scheme::isProxy() const noexcept {
 	return (this->_connect == connect_t::PROXY);
 }
 /**
- * getAid Метод получения идентификатора адъютанта
- * @return идентификатор адъютанта
+ * bid Метод получения идентификатора брокера
+ * @return идентификатор брокера
  */
-uint64_t awh::client::Scheme::getAid() const noexcept {
+uint64_t awh::client::Scheme::bid() const noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
-	// Если список адъютантов получен
-	if(!this->adjutants.empty()){
-		// Получаем первого адъютанта из списка
-		auto it = this->adjutants.begin();
-		// Получаем идентификатор адъютанта
+	// Если список брокеров получен
+	if(!this->_brokers.empty()){
+		// Получаем первого брокера из списка
+		auto it = this->_brokers.begin();
+		// Получаем идентификатор брокера
 		result = it->first;
 	}
 	// Выводим результат

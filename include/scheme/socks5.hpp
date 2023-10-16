@@ -69,9 +69,9 @@ namespace awh {
 				} allow_t;
 			public:
 				/**
-				 * Coffer Структура сундука параметров
+				 * Options Структура параметров активного клиента
 				 */
-				typedef struct Coffer {
+				typedef struct Options {
 					bool locked;             // Флаг блокировки обработки запроса
 					bool connect;            // Флаг выполненного подключения
 					bool stopped;            // Флаг принудительной остановки
@@ -80,23 +80,23 @@ namespace awh {
 					client::scheme_t scheme; // Объект схемы сети клиента
 					server::socks5_t socks5; // Объект для работы с Socks5
 					/**
-					 * Coffer Конструктор
+					 * Options Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
+					Options(const fmk_t * fmk, const log_t * log) noexcept :
 					 locked(false), connect(false), stopped(false), scheme(fmk, log), socks5(log) {}
 					/**
-					 * ~Coffer Деструктор
+					 * ~Options Деструктор
 					 */
-					~Coffer() noexcept {}
-				} coffer_t;
+					~Options() noexcept {}
+				} options_t;
 			public:
 				// Список пар клиентов
 				map <uint64_t, uint64_t> pairs;
 			private:
-				// Параметры подключения адъютантов
-				map <uint64_t, unique_ptr <coffer_t>> _coffers;
+				// Список параметров активных клиентов
+				map <uint64_t, unique_ptr <options_t>> _options;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -109,21 +109,21 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * set Метод создания параметров адъютанта
-				 * @param aid идентификатор адъютанта
+				 * set Метод создания параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void set(const uint64_t aid) noexcept;
+				void set(const uint64_t bid) noexcept;
 				/**
-				 * rm Метод удаления параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * rm Метод удаления параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void rm(const uint64_t aid) noexcept;
+				void rm(const uint64_t bid) noexcept;
 				/**
-				 * get Метод получения параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    параметры подключения адъютанта
+				 * get Метод получения параметров активного клиента
+				 * @param bid идентификатор брокера
+				 * @return    параметры активного клиента
 				 */
-				const coffer_t * get(const uint64_t aid) const noexcept;
+				const options_t * get(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * SchemeSocks5 Конструктор

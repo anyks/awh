@@ -47,20 +47,20 @@ namespace awh {
 				friend class awh::Core;
 			protected:
 				// Событие подключения к серверу
-				ev::io io;
+				ev::io _io;
 			protected:
 				// Контекст двигателя для работы с передачей данных
-				engine_t::ctx_t ectx;
+				engine_t::ctx_t _ectx;
 				// Объект подключения
-				engine_t::addr_t addr;
+				engine_t::addr_t _addr;
 			protected:
 				// Максимальное количество одновременных подключений
-				u_int total;
+				u_int _total;
 			protected:
 				// Порт сервера
-				u_int port;
+				u_int _port;
 				// Хост сервера
-				string host;
+				string _host;
 			public:
 				/**
 				 * clear Метод очистки
@@ -80,8 +80,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), ectx(fmk, log), addr(fmk, log),
-				 total(SERVER_TOTAL_CONNECT), port(SERVER_PORT), host(SERVER_HOST) {}
+				 awh::scheme_t(fmk, log), _ectx(fmk, log), _addr(fmk, log),
+				 _total(SERVER_TOTAL_CONNECT), _port(SERVER_PORT), _host{SERVER_HOST} {}
 				/**
 				 * ~Scheme Деструктор
 				 */

@@ -22,9 +22,9 @@ void awh::server::Scheme::clear() noexcept {
 	// Очищаем данные вокера
 	awh::scheme_t::clear();
 	// Восстанавливаем порт сервера
-	this->port = SERVER_PORT;
+	this->_port = SERVER_PORT;
 	// Восстанавливаем хост сервера
-	this->host = SERVER_HOST;
+	this->_host = SERVER_HOST;
 	// Восстанавливаем максимальное количество одновременных подключений
-	this->total = SERVER_TOTAL_CONNECT;
+	this->_total = SERVER_TOTAL_CONNECT;
 }

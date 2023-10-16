@@ -22,7 +22,7 @@
  */
 void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем отправку заголовков запроса на сервер
-	const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_aid);
+	const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_bid);
 }
 /**
  * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
@@ -67,7 +67,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_callback.call <const int32_t, const u_int, const string, const vector <char>> ("entity", sid, response.code, response.message, this->_scheme.proxy.http.body());
 					// Завершаем работу
-					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -113,9 +113,9 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 										// Увеличиваем количество попыток
 										this->_attempt++;
 										// Устанавливаем новый экшен выполнения
-										this->proxyConnectCallback(this->_aid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
+										this->proxyConnectCallback(this->_bid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
 									// Если соединение должно быть закрыто
-									} else const_cast <client::core_t *> (this->_core)->close(this->_aid);
+									} else const_cast <client::core_t *> (this->_core)->close(this->_bid);
 									// Завершаем работу
 									return 0;
 								}
@@ -126,7 +126,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
-							this->connectCallback(this->_aid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
+							this->connectCallback(this->_bid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
 							// Завершаем работу
 							return 0;
 						} break;
@@ -145,7 +145,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 						// Выводим функцию обратного вызова
 						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Завершаем работу
-					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
 			} break;
 		}
@@ -214,27 +214,27 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::CONNECT}, event_t::CONNECT))
 		// Выполняем инициализацию сессии HTTP/2
-		this->implementation(aid, dynamic_cast <client::core_t *> (core));
+		this->implementation(bid, dynamic_cast <client::core_t *> (core));
 }
 /**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -246,14 +246,14 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5):
 					// Выполняем передачу сигнала родительскому модулю
-					web_t::proxyConnectCallback(aid, sid, core);
+					web_t::proxyConnectCallback(bid, sid, core);
 				break;
 				// Если прокси-сервер является HTTP/2
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Если протокол подключения является HTTP/2
-					if(core->proto(aid) == engine_t::proto_t::HTTP2){
-						// Запоминаем идентификатор адъютанта
-						this->_aid = aid;
+					if(core->proto(bid) == engine_t::proto_t::HTTP2){
+						// Запоминаем идентификатор брокера
+						this->_bid = bid;
 						// Если протокол активирован HTTPS или WSS защищённый поверх TLS
 						if(this->_proxy.connect){
 							// Выполняем сброс состояния HTTP парсера
@@ -261,7 +261,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 							// Выполняем очистку параметров HTTP запроса
 							this->_scheme.proxy.http.clear();
 							// Выполняем инициализацию сессии HTTP/2
-							this->implementation(aid, dynamic_cast <client::core_t *> (core));
+							this->implementation(bid, dynamic_cast <client::core_t *> (core));
 							// Если флаг инициализации сессии HTTP/2 установлен
 							if(this->_nghttp2.is()){
 								// Создаём объек запроса
@@ -284,7 +284,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 								// Если запрос не получилось отправить
 								if(this->_proxy.sid < 0){
 									// Выполняем закрытие подключения
-									dynamic_cast <client::core_t *> (core)->close(aid);
+									dynamic_cast <client::core_t *> (core)->close(bid);
 									// Выходим из функции
 									return;
 								}
@@ -297,7 +297,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 									// Выводим функцию обратного вызова
 									this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::PROXY_HTTP2_NO_INIT, "Proxy server does not support the HTTP/2 protocol");
 								// Выполняем закрытие подключения
-								dynamic_cast <client::core_t *> (core)->close(aid);
+								dynamic_cast <client::core_t *> (core)->close(bid);
 								// Выполняем завершение работы приложения
 								return;
 							}
@@ -306,13 +306,13 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
-							this->connectCallback(aid, sid, core);
+							this->connectCallback(bid, sid, core);
 						}
 					// Выполняем передачу сигнала родительскому модулю
-					} else web_t::proxyConnectCallback(aid, sid, core);
+					} else web_t::proxyConnectCallback(bid, sid, core);
 				} break;
 				// Иначе завершаем работу
-				default: dynamic_cast <client::core_t *> (core)->close(aid);
+				default: dynamic_cast <client::core_t *> (core)->close(bid);
 			}
 		}
 	}
@@ -321,13 +321,13 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t aid, const uint16_t 
  * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -339,33 +339,33 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5):
 					// Выполняем передачу сигнала родительскому модулю
-					web_t::proxyReadCallback(buffer, size, aid, sid, core);
+					web_t::proxyReadCallback(buffer, size, bid, sid, core);
 				break;
 				// Если прокси-сервер является HTTP/2
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Если протокол подключения является HTTP/2
-					if(core->proto(aid) == engine_t::proto_t::HTTP2){
+					if(core->proto(bid) == engine_t::proto_t::HTTP2){
 						// Если прочитать данные фрейма не удалось, выходим из функции
 						if(!this->_nghttp2.frame((const uint8_t *) buffer, size))
 							// Выходим из функции
 							return;
 					// Если активирован режим работы с HTTP/1.1 протоколом
-					} else web_t::proxyReadCallback(buffer, size, aid, sid, core);
+					} else web_t::proxyReadCallback(buffer, size, bid, sid, core);
 				} break;
 				// Иначе завершаем работу
-				default: dynamic_cast <client::core_t *> (core)->close(aid);
+				default: dynamic_cast <client::core_t *> (core)->close(bid);
 			}
 		}
 	}
 }
 /**
  * implementation Метод выполнения активации сессии HTTP/2
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::implementation(const uint64_t aid, client::core_t * core) noexcept {
+void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if(!this->_nghttp2.is() && (core->proto(aid) == engine_t::proto_t::HTTP2)){
+	if(!this->_nghttp2.is() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём параметры сессии подключения с HTTP/2 сервером
@@ -456,7 +456,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 			// Выполняем отправку тела запроса на сервер
 			if(!(result = this->_nghttp2.sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
-				const_cast <client::core_t *> (this->_core)->close(this->_aid);
+				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Выходим из функции
 				return result;
 			}
@@ -486,7 +486,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выполняем закрытие подключения
-				const_cast <client::core_t *> (this->_core)->close(this->_aid);
+				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Выходим из функции
 				return result;
 			}

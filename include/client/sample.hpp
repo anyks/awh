@@ -88,7 +88,7 @@ namespace awh {
 				stack <event_t> _events;
 			private:
 				// Идентификатор подключения
-				uint64_t _aid;
+				uint64_t _bid;
 			private:
 				// Выполнять анбиндинг после завершения запроса
 				bool _unbind;
@@ -114,27 +114,27 @@ namespace awh {
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -151,12 +151,12 @@ namespace awh {
 				void close() noexcept;
 			public:
 				/**
-				 * init Метод инициализации Rest адъютанта
+				 * init Метод инициализации Rest брокера
 				 * @param socket unix-сокет для биндинга
 				 */
 				void init(const string & socket) noexcept;
 				/**
-				 * init Метод инициализации Rest адъютанта
+				 * init Метод инициализации Rest брокера
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
@@ -179,7 +179,7 @@ namespace awh {
 				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
-				 * response Метод отправки сообщения адъютанту
+				 * response Метод отправки сообщения брокеру
 				 * @param buffer буфер бинарных данных для отправки
 				 * @param size   размер бинарных данных для отправки
 				 */

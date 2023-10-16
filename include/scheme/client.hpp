@@ -137,7 +137,7 @@ namespace awh {
 				} status_t;
 			public:
 				// Флаг получения данных
-				bool acquisition;
+				bool receiving;
 			public:
 				// Параметры прокси-сервера
 				proxy_t proxy;
@@ -164,10 +164,10 @@ namespace awh {
 				 */
 				bool isProxy() const noexcept;
 				/**
-				 * getAid Метод получения идентификатора адъютанта
-				 * @return идентификатор адъютанта
+				 * bid Метод получения идентификатора брокера
+				 * @return идентификатор брокера
 				 */
-				uint64_t getAid() const noexcept;
+				uint64_t bid() const noexcept;
 			public:
 				/**
 				 * Scheme Конструктор
@@ -175,7 +175,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), acquisition(false),
+				 awh::scheme_t(fmk, log), receiving(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
 				 * ~Scheme Деструктор

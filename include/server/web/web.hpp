@@ -161,7 +161,7 @@ namespace awh {
 				// Максимальное количество запросов
 				size_t _maxRequests;
 			protected:
-				// Список мусорных адъютантов
+				// Список мусорных брокеров
 				map <uint64_t, time_t> _disconected;
 			protected:
 				// Создаём объект фреймворка
@@ -186,68 +186,68 @@ namespace awh {
 			protected:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении клиента
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщение адъютанту
+				 * writeCallback Функция обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
-				 * acceptCallback Функция обратного вызова при проверке подключения адъютанта
-				 * @param ip   адрес интернет подключения адъютанта
-				 * @param mac  мак-адрес подключившегося адъютанта
-				 * @param port порт подключившегося адъютанта
+				 * acceptCallback Функция обратного вызова при проверке подключения брокера
+				 * @param ip   адрес интернет подключения брокера
+				 * @param mac  мак-адрес подключившегося брокера
+				 * @param port порт подключившегося брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
-				 * @return     результат разрешения к подключению адъютанта
+				 * @return     результат разрешения к подключению брокера
 				 */
 				bool acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				virtual void chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
-				 * erase Метод удаления отключившихся адъютантов
-				 * @param aid идентификатор адъютанта
+				 * erase Метод удаления отключившихся брокеров
+				 * @param bid идентификатор брокера
 				 */
-				virtual void erase(const uint64_t aid = 0) noexcept;
+				virtual void erase(const uint64_t bid = 0) noexcept;
 				/**
-				 * disconnect Метод отключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * disconnect Метод отключения брокера
+				 * @param bid идентификатор брокера
 				 */
-				virtual void disconnect(const uint64_t aid) noexcept;
+				virtual void disconnect(const uint64_t bid) noexcept;
 				/**
-				 * disconected Метод удаления отключившихся адъютантов
+				 * disconected Метод удаления отключившихся брокеров
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
@@ -261,13 +261,13 @@ namespace awh {
 				virtual void pinging(const uint16_t tid, awh::core_t * core) noexcept = 0;
 			public:
 				/**
-				 * init Метод инициализации WEB адъютанта
+				 * init Метод инициализации WEB брокера
 				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
 				virtual void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 				/**
-				 * init Метод инициализации WEB адъютанта
+				 * init Метод инициализации WEB брокера
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
@@ -303,7 +303,7 @@ namespace awh {
 				virtual void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
+				 * on Метод установки функции обратного вызова на событие активации брокера на сервере
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
@@ -358,29 +358,29 @@ namespace awh {
 				virtual void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
-				 * port Метод получения порта подключения адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    порт подключения адъютанта
+				 * port Метод получения порта подключения брокера
+				 * @param bid идентификатор брокера
+				 * @return    порт подключения брокера
 				 */
-				virtual u_int port(const uint64_t aid) const noexcept = 0;
+				virtual u_int port(const uint64_t bid) const noexcept = 0;
 				/**
 				 * agent Метод извлечения агента клиента
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 * @return    агент к которому относится подключённый клиент
 				 */
-				virtual agent_t agent(const uint64_t aid) const noexcept = 0;
+				virtual agent_t agent(const uint64_t bid) const noexcept = 0;
 				/**
-				 * ip Метод получения IP адреса адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    адрес интернет подключения адъютанта
+				 * ip Метод получения IP адреса брокера
+				 * @param bid идентификатор брокера
+				 * @return    адрес интернет подключения брокера
 				 */
-				virtual const string & ip(const uint64_t aid) const noexcept = 0;
+				virtual const string & ip(const uint64_t bid) const noexcept = 0;
 				/**
-				 * mac Метод получения MAC адреса адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    адрес устройства адъютанта
+				 * mac Метод получения MAC адреса брокера
+				 * @param bid идентификатор брокера
+				 * @return    адрес устройства брокера
 				 */
-				virtual const string & mac(const uint64_t aid) const noexcept = 0;
+				virtual const string & mac(const uint64_t bid) const noexcept = 0;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -409,10 +409,10 @@ namespace awh {
 				virtual void start() noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * close Метод закрытия подключения брокера
+				 * @param bid идентификатор брокера
 				 */
-				virtual void close(const uint64_t aid) noexcept = 0;
+				virtual void close(const uint64_t bid) noexcept = 0;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
@@ -559,59 +559,59 @@ namespace awh {
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера данных для отправки
 				 */
-				void sendSignal(const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept;
+				void sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int chunkSignal(const int32_t sid, const uint64_t aid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
 				 * @param sid идентификатор потока
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 * @return    статус полученных данных
 				 */
-				virtual int beginSignal(const int32_t sid, const uint64_t aid) noexcept = 0;
+				virtual int beginSignal(const int32_t sid, const uint64_t bid) noexcept = 0;
 			protected:
 				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param error флаг ошибки HTTP/2 если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const uint64_t aid, const uint32_t error) noexcept = 0;
+				virtual int closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept = 0;
 			protected:
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор потока
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const uint64_t aid, const string & key, const string & val) noexcept = 0;
+				virtual int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
 				 * @param sid    идентификатор потока
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint64_t aid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const uint64_t bid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
@@ -621,38 +621,38 @@ namespace awh {
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга клиента
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 * @return    результат работы пинга
 				 */
-				bool ping(const uint64_t aid) noexcept;
+				bool ping(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения клиенту
 				 * @param id     идентификатор потока HTTP/2
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				virtual bool send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept;
+				virtual bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
 				 * send Метод отправки заголовков на сервер
 				 * @param id      идентификатор потока HTTP/2
-				 * @param aid     идентификатор адъютанта
+				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые на сервер
 				 * @param end     размер сообщения в байтах
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				virtual int32_t send(const int32_t id, const uint64_t aid, const vector <pair <string, string>> & headers, const bool end) noexcept;
+				virtual int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешённых источников
@@ -661,10 +661,10 @@ namespace awh {
 				void setOrigin(const vector <string> & origins) noexcept;
 				/**
 				 * sendOrigin Метод отправки списка разрешённых источников
-				 * @param aid     идентификатор адъютанта
+				 * @param bid     идентификатор брокера
 				 * @param origins список разрешённых источников
 				 */
-				void sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept;
+				void sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

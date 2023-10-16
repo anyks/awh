@@ -36,61 +36,61 @@ void awh::server::AWH::init(const u_int port, const string & host, const http_t:
 }
 /**
  * sendError Метод отправки сообщения об ошибке
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::AWH::sendError(const uint64_t aid, const ws::mess_t & mess) noexcept {
+void awh::server::AWH::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообещния об ошибке клиенту
-	this->_http.sendError(aid, mess);
+	this->_http.sendError(bid, mess);
 }
 /**
  * sendMessage Метод отправки сообщения клиенту
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::AWH::sendMessage(const uint64_t aid, const vector <char> & message, const bool text) noexcept {
+void awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_http.sendMessage(aid, message, text);
+	this->_http.sendMessage(bid, message, text);
 }
 /**
  * send Метод отправки тела сообщения на клиенту
  * @param id     идентификатор потока HTTP
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send(const int32_t id, const uint64_t aid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::AWH::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Выполняем отправку тела сообщения клиенту
-	return this->_http.send(id, aid, buffer, size, end);
+	return this->_http.send(id, bid, buffer, size, end);
 }
 /**
  * send Метод отправки заголовков на клиенту
  * @param id      идентификатор потока HTTP
- * @param aid     идентификатор адъютанта
- * @param code    код сообщения для адъютанта
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
  * @param headers заголовки отправляемые клиенту
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::AWH::send(const int32_t id, const uint64_t aid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::AWH::send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков сообщения клиенту
-	return this->_http.send(id, aid, code, mess, headers, end);
+	return this->_http.send(id, bid, code, mess, headers, end);
 }
 /**
- * send Метод отправки сообщения адъютанту
- * @param aid     идентификатор адъютанта
- * @param code    код сообщения для адъютанта
+ * send Метод отправки сообщения брокеру
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const uint64_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_http.send(aid, code, mess, entity, headers);
+	this->_http.send(bid, code, mess, entity, headers);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -133,7 +133,7 @@ void awh::server::AWH::on(function <void (const uint64_t, const vector <char> &,
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
+ * on Метод установки функции обратного вызова на событие активации брокера на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::AWH::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
@@ -229,40 +229,40 @@ void awh::server::AWH::on(function <void (const int32_t, const uint64_t, const a
 	this->_http.on(callback);
 }
 /**
- * port Метод получения порта подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return    порт подключения адъютанта
+ * port Метод получения порта подключения брокера
+ * @param bid идентификатор брокера
+ * @return    порт подключения брокера
  */
-u_int awh::server::AWH::port(const uint64_t aid) const noexcept {
-	// Выполняем извлечение порта адъютанта
-	return this->_http.port(aid);
+u_int awh::server::AWH::port(const uint64_t bid) const noexcept {
+	// Выполняем извлечение порта брокера
+	return this->_http.port(bid);
 }
 /**
  * agent Метод извлечения агента клиента
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t aid) const noexcept {
+awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t bid) const noexcept {
 	// Выводим идентификатор агента к которому относится клиент
-	return this->_http.agent(aid);
+	return this->_http.agent(bid);
 }
 /**
- * ip Метод получения IP-адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес интернет подключения адъютанта
+ * ip Метод получения IP-адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес интернет подключения брокера
  */
-const string & awh::server::AWH::ip(const uint64_t aid) const noexcept {
-	// Выполняем извлечение IP-адреса адъютанта
-	return this->_http.ip(aid);
+const string & awh::server::AWH::ip(const uint64_t bid) const noexcept {
+	// Выполняем извлечение IP-адреса брокера
+	return this->_http.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес устройства адъютанта
+ * mac Метод получения MAC-адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес устройства брокера
  */
-const string & awh::server::AWH::mac(const uint64_t aid) const noexcept {
-	// Выполняем извлечение MAC-адреса адъютанта
-	return this->_http.mac(aid);
+const string & awh::server::AWH::mac(const uint64_t bid) const noexcept {
+	// Выполняем извлечение MAC-адреса брокера
+	return this->_http.mac(bid);
 }
 /**
  * stop Метод остановки сервера
@@ -279,12 +279,12 @@ void awh::server::AWH::start() noexcept {
 	this->_http.start();
 }
 /**
- * close Метод закрытия подключения адъютанта
- * @param aid идентификатор адъютанта
+ * close Метод закрытия подключения брокера
+ * @param bid идентификатор брокера
  */
-void awh::server::AWH::close(const uint64_t aid) noexcept {
-	// Выполняем закрытие подключения адъютанта
-	this->_http.close(aid);
+void awh::server::AWH::close(const uint64_t bid) noexcept {
+	// Выполняем закрытие подключения брокера
+	this->_http.close(bid);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -304,12 +304,12 @@ void awh::server::AWH::subprotocols(const set <string> & subprotocols) noexcept 
 }
 /**
  * subprotocol Метод получения списка выбранных сабпротоколов
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::AWH::subprotocols(const uint64_t aid) const noexcept {
+const set <string> & awh::server::AWH::subprotocols(const uint64_t bid) const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
-	return this->_http.subprotocols(aid);
+	return this->_http.subprotocols(bid);
 }
 /**
  * extensions Метод установки списка расширений
@@ -321,12 +321,12 @@ void awh::server::AWH::extensions(const vector <vector <string>> & extensions) n
 }
 /**
  * extensions Метод извлечения списка поддерживаемых расширений
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t aid) const noexcept {
+const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t bid) const noexcept {
 	// Выполняем извлечение списка поддерживаемых расширений
-	return this->_http.extensions(aid);
+	return this->_http.extensions(bid);
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -388,12 +388,12 @@ void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
 }
 /**
  * sendOrigin Метод отправки списка разрешённых источников
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param origins список разрешённых источников
  */
-void awh::server::AWH::sendOrigin(const uint64_t aid, const vector <string> & origins) noexcept {
+void awh::server::AWH::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
 	// Выполняем отправку списка разрешённых источников
-	this->_http.sendOrigin(aid, origins);
+	this->_http.sendOrigin(bid, origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2
@@ -453,12 +453,12 @@ void awh::server::AWH::alive(const time_t time) noexcept {
 }
 /**
  * alive Метод установки долгоживущего подключения
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::AWH::alive(const uint64_t aid, const bool mode) noexcept {
+void awh::server::AWH::alive(const uint64_t bid, const bool mode) noexcept {
 	// Выполняем установку долгоживущего подключения
-	this->_http.alive(aid, mode);
+	this->_http.alive(bid, mode);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

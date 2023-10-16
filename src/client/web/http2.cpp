@@ -17,34 +17,34 @@
 
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
-		// Запоминаем идентификатор адъютанта
-		this->_aid = aid;
+		// Запоминаем идентификатор брокера
+		this->_bid = bid;
 		// Выполняем установку идентификатора объекта
-		this->_http.id(aid);
+		this->_http.id(bid);
 		// Выполняем инициализацию сессии HTTP/2
-		web2_t::connectCallback(aid, sid, core);
+		web2_t::connectCallback(bid, sid, core);
 		// Если флаг инициализации сессии HTTP/2 не установлен
 		if(!this->_nghttp2.is()){
-			// Запоминаем идентификатор адъютанта
-			this->_http1._aid = this->_aid;
+			// Запоминаем идентификатор брокера
+			this->_http1._bid = this->_bid;
 			// Выполняем установку идентификатора объекта
-			this->_http1._http.id(this->_aid);
+			this->_http1._http.id(this->_bid);
 			// Выполняем установку сетевого ядра
 			this->_http1._core = this->_core;
 			// Выполняем установку данных URL-адреса
 			this->_http1._scheme.url = this->_scheme.url;
 		}
 		// Выполняем установку идентификатора объекта
-		this->_ws2._http.id(aid);
+		this->_ws2._http.id(bid);
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = this->_core;
 		// Выполняем установку сессии HTTP/2
@@ -67,17 +67,17 @@ void awh::client::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http2::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем удаление подключения
 	this->_nghttp2.close();
 	// Выполняем установку сессии HTTP/2
 	this->_ws2._nghttp2 = this->_nghttp2;
 	// Выполняем редирект, если редирект выполнен
-	if(this->redirect(aid, sid, core))
+	if(this->redirect(bid, sid, core))
 		// Выходим из функции
 		return;
 	// Выполняем очистку списка воркеров
@@ -85,15 +85,15 @@ void awh::client::Http2::disconnectCallback(const uint64_t aid, const uint16_t s
 	// Выполняем очистку списка запросов
 	this->_requests.clear();
 	// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
-	this->_ws2.disconnectCallback(aid, sid, core);
+	this->_ws2.disconnectCallback(bid, sid, core);
 	// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-	this->_http1.disconnectCallback(aid, sid, core);
+	this->_http1.disconnectCallback(bid, sid, core);
 	// Если подключение не является постоянным
 	if(!this->_scheme.alive){
 		// Выполняем сброс параметров запроса
 		this->flush();
-		// Выполняем зануление идентификатора адъютанта
-		this->_aid = 0;
+		// Выполняем зануление идентификатора брокера
+		this->_bid = 0;
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
@@ -110,30 +110,30 @@ void awh::client::Http2::disconnectCallback(const uint64_t aid, const uint16_t s
  * readCallback Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Если протокол подключения является HTTP/2
-		if(core->proto(aid) == engine_t::proto_t::HTTP2){
+		if(core->proto(bid) == engine_t::proto_t::HTTP2){
 			// Если прочитать данные фрейма не удалось, выходим из функции
 			if(!this->_nghttp2.frame((const uint8_t *) buffer, size)){
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));
+				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
 				// Выходим из функции
 				return;
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
 			// Если активирован WebSocket-клиент
-			if(this->_ws2._aid > 0)
+			if(this->_ws2._bid > 0)
 				// Выполняем переброс вызова чтения на клиент WebSocket
-				this->_ws2.readCallback(buffer, size, aid, sid, core);
+				this->_ws2.readCallback(buffer, size, bid, sid, core);
 			// Выполняем переброс вызова чтения на клиент HTTP/1.1
-			else this->_http1.readCallback(buffer, size, aid, sid, core);
+			else this->_http1.readCallback(buffer, size, bid, sid, core);
 		}
 	}
 }
@@ -141,13 +141,13 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
  * writeCallback Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Выполняем перебор всех доступных воркеров
 		for(auto & worker : this->_workers){
 			// Определяем протокол клиента
@@ -157,12 +157,12 @@ void awh::client::Http2::writeCallback(const char * buffer, const size_t size, c
 					// Если переключение протокола на HTTP/2 не выполнено
 					if(worker.second->proto != engine_t::proto_t::HTTP2)
 						// Выполняем переброс вызова записи на клиент HTTP/1.1
-						this->_http1.writeCallback(buffer, size, aid, sid, core);
+						this->_http1.writeCallback(buffer, size, bid, sid, core);
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем переброс вызова записи на клиент WebSocket
-					this->_ws2.writeCallback(buffer, size, aid, sid, core);
+					this->_ws2.writeCallback(buffer, size, bid, sid, core);
 				break;
 			}
 		}
@@ -283,7 +283,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 											}
 										#endif
 										// Выполняем препарирование полученных данных
-										switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
+										switch(static_cast <uint8_t> (this->prepare(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
 											// Если необходимо выполнить пропуск обработки данных
 											case static_cast <uint8_t> (status_t::SKIP):
 												// Завершаем работу
@@ -351,7 +351,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 										// Если мы получили флаг завершения потока
 										if(flags & NGHTTP2_FLAG_END_STREAM){
 											// Выполняем препарирование полученных данных
-											switch(static_cast <uint8_t> (this->prepare(sid, this->_aid, const_cast <client::core_t *> (this->_core)))){
+											switch(static_cast <uint8_t> (this->prepare(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
 												// Если необходимо выполнить пропуск обработки данных
 												case static_cast <uint8_t> (status_t::SKIP):
 													// Завершаем работу
@@ -557,7 +557,7 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 		// Если флаг инициализации сессии HTTP/2 установлен
 		if((error > 0x0) && this->_nghttp2.is())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_aid));
+			this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 		// Если функция обратного вызова активности потока установлена
 		if(this->_callback.is("stream"))
 			// Выводим функцию обратного вызова
@@ -662,12 +662,12 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 }
 /**
  * redirect Метод выполнения редиректа если требуется
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  * @return     результат выполнения редиректа
  */
-bool awh::client::Http2::redirect(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если список ответов получен
@@ -747,7 +747,7 @@ bool awh::client::Http2::redirect(const uint64_t aid, const uint16_t sid, awh::c
 					// Если активирован режим работы с HTTP/1.1 протоколом
 					} else {
 						// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-						this->_http1.disconnectCallback(aid, sid, core);
+						this->_http1.disconnectCallback(bid, sid, core);
 						// Если список ответов получен
 						if((result = it->second->update = !this->_http1._stopped)){
 							// Получаем параметры запроса
@@ -820,7 +820,7 @@ bool awh::client::Http2::redirect(const uint64_t aid, const uint16_t sid, awh::c
 					// Выполняем установку сессии HTTP/2
 					this->_ws2._nghttp2 = this->_nghttp2;
 					// Выполняем переброс вызова дисконнекта на клиент WebSocket
-					this->_ws2.disconnectCallback(aid, sid, core);
+					this->_ws2.disconnectCallback(bid, sid, core);
 					// Если список ответов получен
 					if((result = it->second->update = !this->_ws2._stopped)){
 						// Получаем параметры запроса
@@ -903,7 +903,7 @@ void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 					if(!this->ping())
 						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_aid));
+						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_bid));
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -967,11 +967,11 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 /**
  * prepare Метод выполнения препарирования полученных данных
  * @param sid  идентификатор запроса
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param core объект сетевого ядра
  * @return     результат препарирования
  */
-awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept {
+awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept {
 	// Выполняем поиск текущего воркера
 	auto it = this->_workers.find(sid);
 	// Если искомый воркер найден
@@ -1024,7 +1024,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								return status_t::SKIP;
 							}
 							// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-							this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, aid));
+							this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 							// Завершаем работу
 							return status_t::SKIP;
 						// Если URL-адрес запроса не получен
@@ -1039,7 +1039,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								return status_t::SKIP;
 							}
 							// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-							this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, aid));
+							this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -1057,7 +1057,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Устанавливаем размер стопбайт
 				if(!it->second->http.isAlive()){
 					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-					this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, aid));
+					this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 					// Выполняем удаление параметров запроса
 					this->_requests.erase(sid);
 					// Выполняем завершение работы
@@ -1094,7 +1094,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 			// Устанавливаем полученную функцию обратного вызова
 			it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-		this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, aid));
+		this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 		// Выполняем удаление параметров запроса
 		this->_requests.erase(sid);
 	}
@@ -1179,7 +1179,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если подключение выполнено
-		if(this->_aid > 0){
+		if(this->_bid > 0){
 			// Идентификатор предыдущего потока
 			int32_t sid = -1;
 			// Агент воркера выполнения запроса
@@ -1335,7 +1335,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Устанавливаем новый адрес запроса
 					this->_uri.combine(this->_ws2._scheme.url, request.url);
 					// Выполняем установку подключения с WebSocket-сервером
-					this->_ws2.connectCallback(this->_aid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+					this->_ws2.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения
 					result = this->_ws2._sid;
 				} break;
@@ -1367,7 +1367,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Выполняем очистку параметров HTTP запроса
 					ret.first->second->http.clear();
 					// Выполняем установку идентификатора объекта
-					ret.first->second->http.id(this->_aid);
+					ret.first->second->http.id(this->_bid);
 					// Если сервер требует авторизацию
 					if(this->_service.type != auth_t::type_t::NONE){
 						// Устанавливаем параметры авторизации для клиента

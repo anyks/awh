@@ -64,7 +64,7 @@ namespace awh {
 				 */
 				typedef class DTLS {
 					public:
-						uint64_t aid;  // Идентификатор адъютанта
+						uint64_t bid;  // Идентификатор брокера
 						Core * core;   // Объект ядра клиента
 						event_t event; // Объект события таймера
 					public:
@@ -79,7 +79,7 @@ namespace awh {
 						 * DTLS Конструктор
 						 * @param log объект для работы с логами
 						 */
-						DTLS(const log_t * log) noexcept : aid(0), core(nullptr), event(event_t::type_t::TIMER, log) {}
+						DTLS(const log_t * log) noexcept : bid(0), core(nullptr), event(event_t::type_t::TIMER, log) {}
 						/**
 						 * ~DTLS Деструктор
 						 */
@@ -123,7 +123,7 @@ namespace awh {
 				void accept(const int fd, const uint16_t sid) noexcept;
 			public:
 				/**
-				 * close Метод отключения всех адъютантов
+				 * close Метод отключения всех брокеров
 				 */
 				void close() noexcept;
 				/**
@@ -143,29 +143,29 @@ namespace awh {
 				void remove(const uint16_t sid) noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * close Метод закрытия подключения брокера
+				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t aid) noexcept;
+				void close(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * read Метод чтения данных для адъютанта
-				 * @param aid идентификатор адъютанта
+				 * read Метод чтения данных для брокера
+				 * @param bid идентификатор брокера
 				 */
-				void read(const uint64_t aid) noexcept;
+				void read(const uint64_t bid) noexcept;
 				/**
 				 * write Метод записи буфера данных в сокет
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 */
-				void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
+				void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void timeout(const uint64_t aid) noexcept;
+				void timeout(const uint64_t bid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
 				 * @param sid    идентификатор схемы сети
@@ -176,11 +176,11 @@ namespace awh {
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const uint64_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * clusterSize Метод установки количества процессов кластера

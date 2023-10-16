@@ -85,7 +85,7 @@ namespace awh {
 					function <void (const size_t, const mode_t, ProxySocks5 *)> active;
 					// Функция получения событий запуска и остановки сетевого ядра
 					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
-					// Функция разрешения подключения адъютанта на сервере
+					// Функция разрешения подключения брокера на сервере
 					function <bool (const string &, const string &, const u_int, ProxySocks5 *)> accept;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <bool (const size_t, const event_t, const char *, const size_t, ProxySocks5 *)> message;
@@ -111,7 +111,7 @@ namespace awh {
 				// Объект рабочего для сервера
 				socks5_scheme_t _scheme;
 			private:
-				// Список мусорных адъютантов
+				// Список мусорных брокеров
 				map <time_t, size_t> _garbage;
 			private:
 				// Создаём объект фреймворка
@@ -133,37 +133,37 @@ namespace awh {
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectClientCallback Функция обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void connectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectServerCallback Функция обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void connectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectClientCallback Функция обратного вызова при отключении от сервера
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectServerCallback Функция обратного вызова при отключении от сервера
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * acceptServerCallback Функция обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
 				 * @param mac  мак-адрес подключившегося клиента
-				 * @param port порт подключившегося адъютанта
+				 * @param port порт подключившегося брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению клиента
@@ -173,39 +173,39 @@ namespace awh {
 				 * readClientCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void readClientCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readServerCallback Функция обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void readServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				void writeServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * garbage Метод удаления мусорных адъютантов
+				 * garbage Метод удаления мусорных брокеров
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
 				void garbage(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
-				 * init Метод инициализации WebSocket адъютанта
+				 * init Метод инициализации WebSocket брокера
 				 * @param socket unix-сокет для биндинга
 				 */
 				void init(const string & socket) noexcept;
@@ -244,23 +244,23 @@ namespace awh {
 				void on(function <bool (const string &, const string &, const u_int, ProxySocks5 *)> callback) noexcept;
 			public:
 				/**
-				 * port Метод получения порта подключения адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    порт подключения адъютанта
+				 * port Метод получения порта подключения брокера
+				 * @param bid идентификатор брокера
+				 * @return    порт подключения брокера
 				 */
-				u_int port(const size_t aid) const noexcept;
+				u_int port(const size_t bid) const noexcept;
 				/**
-				 * ip Метод получения IP адреса адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    адрес интернет подключения адъютанта
+				 * ip Метод получения IP адреса брокера
+				 * @param bid идентификатор брокера
+				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const size_t aid) const noexcept;
+				const string & ip(const size_t bid) const noexcept;
 				/**
-				 * mac Метод получения MAC адреса адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    адрес устройства адъютанта
+				 * mac Метод получения MAC адреса брокера
+				 * @param bid идентификатор брокера
+				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const size_t aid) const noexcept;
+				const string & mac(const size_t bid) const noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -273,9 +273,9 @@ namespace awh {
 			public:
 				/**
 				 * close Метод закрытия подключения клиента
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void close(const size_t aid) noexcept;
+				void close(const size_t bid) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -330,11 +330,11 @@ namespace awh {
 				void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 				/**
 				 * bandWidth Метод установки пропускной способности сети
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const size_t bid, const string & read, const string & write) noexcept;
 				/**
 				 * network Метод установки параметров сети
 				 * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет

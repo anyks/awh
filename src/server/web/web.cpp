@@ -43,7 +43,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-				// Устанавливаем интервал времени на удаление мусорных адъютантов раз в 5 секунд
+				// Устанавливаем интервал времени на удаление мусорных брокеров раз в 5 секунд
 				this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1, _2));
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1, _2));
@@ -63,13 +63,13 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения адъютанта
- * @param ip   адрес интернет подключения адъютанта
- * @param mac  мак-адрес подключившегося адъютанта
- * @param port порт подключившегося адъютанта
+ * acceptCallback Функция обратного вызова при проверке подключения брокера
+ * @param ip   адрес интернет подключения брокера
+ * @param mac  мак-адрес подключившегося брокера
+ * @param port порт подключившегося брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
- * @return     результат разрешения к подключению адъютанта
+ * @return     результат разрешения к подключению брокера
  */
 bool awh::server::Web::acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
@@ -84,16 +84,16 @@ bool awh::server::Web::acceptCallback(const string & ip, const string & mac, con
 			// Выводим функцию обратного вызова
 			return this->_callback.apply <bool, const string &, const string &, const u_int> ("accept", ip, mac, port);
 	}
-	// Разрешаем подключение адъютанту
+	// Разрешаем подключение брокеру
 	return result;
 }
 /**
  * chunking Метод обработки получения чанков
- * @param aid   идентификатор адъютанта
+ * @param bid   идентификатор брокера
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::server::Web::chunking(const uint64_t aid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
 		// Выполняем добавление полученного чанка в тело ответа
@@ -101,59 +101,59 @@ void awh::server::Web::chunking(const uint64_t aid, const vector <char> & chunk,
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", 1, aid, chunk);
+			this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", 1, bid, chunk);
 	}
 }
 /**
- * erase Метод удаления отключившихся адъютантов
- * @param aid идентификатор адъютанта
+ * erase Метод удаления отключившихся брокеров
+ * @param bid идентификатор брокера
  */
-void awh::server::Web::erase(const uint64_t aid) noexcept {
-	// Если список мусорных адъютантов не пустой
+void awh::server::Web::erase(const uint64_t bid) noexcept {
+	// Если список мусорных брокеров не пустой
 	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Если идентификатор адъютанта передан
-		if(aid > 0){
-			// Выполняем поиск указанного адъютанта
-			auto it = this->_disconected.find(aid);
-			// Если данные отключившегося адъютанта найдены
+		// Если идентификатор брокера передан
+		if(bid > 0){
+			// Выполняем поиск указанного брокера
+			auto it = this->_disconected.find(bid);
+			// Если данные отключившегося брокера найдены
 			if((it != this->_disconected.end()) && ((date - it->second) >= 10000))
-				// Выполняем удаление адъютанта
+				// Выполняем удаление брокера
 				this->_disconected.erase(it);
-		// Если идентификатор адъютанта не передан
+		// Если идентификатор брокера не передан
 		} else {
-			// Выполняем переход по всему списку отключившихся адъютантов
+			// Выполняем переход по всему списку отключившихся брокеров
 			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
-				// Если адъютант уже давно отключился
+				// Если брокер уже давно отключился
 				if((date - it->second) >= 10000)
-					// Выполняем удаление объекта адъютантов из списка отключившихся
+					// Выполняем удаление объекта брокеров из списка отключившихся
 					it = this->_disconected.erase(it);
-				// Выполняем пропуск адъютанта
+				// Выполняем пропуск брокера
 				else ++it;
 			}
 		}
 	}
 }
 /**
- * disconnect Метод отключения адъютанта
- * @param aid идентификатор адъютанта
+ * disconnect Метод отключения брокера
+ * @param bid идентификатор брокера
  */
-void awh::server::Web::disconnect(const uint64_t aid) noexcept {
-	// Добавляем в очередь список мусорных адъютантов
-	this->_disconected.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+void awh::server::Web::disconnect(const uint64_t bid) noexcept {
+	// Добавляем в очередь список мусорных брокеров
+	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 }
 /**
- * disconected Метод удаления отключившихся адъютантов
+ * disconected Метод удаления отключившихся брокеров
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
 void awh::server::Web::disconected(const uint16_t tid, awh::core_t * core) noexcept {
-	// Выполняем удаление отключившихся адъютантов
+	// Выполняем удаление отключившихся брокеров
 	this->erase();
 }
 /**
- * init Метод инициализации WEB адъютанта
+ * init Метод инициализации WEB брокера
  * @param socket   unix-сокет для биндинга
  * @param compress метод сжатия передаваемых сообщений
  */
@@ -167,7 +167,7 @@ void awh::server::Web::init(const string & socket, const http_t::compress_t comp
 	#endif
 }
 /**
- * init Метод инициализации WEB адъютанта
+ * init Метод инициализации WEB брокера
  * @param port     порт сервера
  * @param host     хост сервера
  * @param compress метод сжатия передаваемых сообщений
@@ -226,7 +226,7 @@ void awh::server::Web::on(function <void (const uint64_t, const vector <char> &,
 	this->_callback.set <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
- * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
+ * on Метод установки функции обратного вызова на событие активации брокера на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::Web::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {

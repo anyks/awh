@@ -69,12 +69,12 @@ namespace awh {
 				} allow_t;
 			public:
 				/**
-				 * Coffer Структура сундука параметров
+				 * Options Структура параметров активного клиента
 				 */
-				typedef struct Coffer {
+				typedef struct Options {
 					bool crypt;                       // Флаг шифрования сообщений
 					bool alive;                       // Флаг долгоживущего подключения
-					bool close;                       // Флаг требования закрыть адъютанта
+					bool close;                       // Флаг требования закрыть брокера
 					bool locked;                      // Флаг блокировки обработки запроса
 					bool connect;                     // Флаг выполненного подключения
 					bool stopped;                     // Флаг принудительной остановки
@@ -90,27 +90,27 @@ namespace awh {
 					web_t::method_t method;           // Метод HTTP выполняемого запроса
 					awh::http_t::compress_t compress; // Метод компрессии данных
 					/**
-					 * Coffer Конструктор
+					 * Options Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
+					Options(const fmk_t * fmk, const log_t * log) noexcept :
 					 crypt(false), alive(false), close(false), locked(false),
 					 connect(false), stopped(false), requests(0), checkPoint(0),
 					 srv(fmk, log), cli(fmk, log), scheme(fmk, log),
 					 method(web_t::method_t::NONE),
 					 compress(awh::http_t::compress_t::NONE) {}
 					/**
-					 * ~Coffer Деструктор
+					 * ~Options Деструктор
 					 */
-					~Coffer() noexcept {}
-				} coffer_t;
+					~Options() noexcept {}
+				} options_t;
 			public:
 				// Список пар клиентов
 				map <uint64_t, uint64_t> pairs;
 			private:
-				// Параметры подключения адъютантов
-				map <uint64_t, unique_ptr <coffer_t>> _coffers;
+				// Список параметров активных клиентов
+				map <uint64_t, unique_ptr <options_t>> _options;
 			public:
 				// Флаги работы с сжатыми данными
 				awh::http_t::compress_t compress;
@@ -126,21 +126,21 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * set Метод создания параметров адъютанта
-				 * @param aid идентификатор адъютанта
+				 * set Метод создания параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void set(const uint64_t aid) noexcept;
+				void set(const uint64_t bid) noexcept;
 				/**
-				 * rm Метод удаления параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * rm Метод удаления параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void rm(const uint64_t aid) noexcept;
+				void rm(const uint64_t bid) noexcept;
 				/**
-				 * get Метод получения параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    параметры подключения адъютанта
+				 * get Метод получения параметров активного клиента
+				 * @param bid идентификатор брокера
+				 * @return    параметры активного клиента
 				 */
-				const coffer_t * get(const uint64_t aid) const noexcept;
+				const options_t * get(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * SchemeProxy Конструктор

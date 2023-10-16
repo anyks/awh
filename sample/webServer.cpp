@@ -34,26 +34,26 @@ class WebServer {
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
-		 * @param aid   идентификатор адъютанта (клиента)
+		 * @param bid   идентификатор брокера (клиента)
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const uint64_t aid, const string & login){
+		string password(const uint64_t bid, const string & login){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", aid);
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
 			// Выводим пароль
 			return "password";
 		}
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
-		 * @param aid      идентификатор адъютанта (клиента)
+		 * @param bid      идентификатор брокера (клиента)
 		 * @param login    логин пользователя (от клиента)
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const uint64_t aid, const string & login, const string & password){
+		bool auth(const uint64_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), aid);
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -73,36 +73,36 @@ class WebServer {
 		}
 		/**
 		 * active Метод идентификации активности на Web сервере
-		 * @param aid  идентификатор адъютанта (клиента)
+		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode режим события подключения
 		 */
-		void active(const uint64_t aid, const server::web_t::mode_t mode){
+		void active(const uint64_t bid, const server::web_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * error Метод вывода ошибок WebSocket сервера
-		 * @param aid  идентификатор адъютанта (клиента)
+		 * @param bid  идентификатор брокера (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const uint64_t aid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const u_int code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
 		 * message Метод получения сообщений
-		 * @param aid    идентификатор адъютанта (клиента)
+		 * @param bid    идентификатор брокера (клиента)
 		 * @param buffer бинарный буфер сообщения
 		 * @param text   тип буфера сообщения
 		 */
-		void message(const uint64_t aid, const vector <char> & buffer, const bool text){
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
 				string subprotocol = "";
 				// Получаем список выбранных сабпротоколов
-				const auto subprotocols = this->_awh->subprotocols(aid);
+				const auto subprotocols = this->_awh->subprotocols(bid);
 				// Если список выбранных сабпротоколов получен
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
@@ -110,16 +110,16 @@ class WebServer {
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
-				this->_awh->sendMessage(aid, buffer, text);
+				this->_awh->sendMessage(bid, buffer, text);
 			}
 		}
 		/**
 		 * handshake Метод получения удачного запроса
 		 * @param sid   идентификатор потока
-		 * @param aid   идентификатор адъютанта
+		 * @param bid   идентификатор брокера
 		 * @param agent идентификатор агента клиента
 		 */
-		void handshake(const int32_t sid, const uint64_t aid, const server::web_t::agent_t agent){
+		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent){
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Формируем тело ответа
@@ -133,33 +133,33 @@ class WebServer {
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
 				// Отправляем сообщение клиенту
-				this->_awh->send(aid, 200, "OK", vector <char> (body.begin(), body.end()));
+				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
 		}
 		/**
 		 * request Метод запроса клиента
 		 * @param sid    идентификатор потока
-		 * @param aid    идентификатор адъютанта
+		 * @param bid    идентификатор брокера
 		 * @param method метод запроса
 		 * @param url    url-адрес запроса
 		 */
-		void request(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url){
+		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url){
 			// Запоминаем метод запроса
 			this->_method = method;
 			// Если пришёл запрос на фавиконку
 			if(!url.empty() && (!url.path.empty() && url.path.back().compare("favicon.ico") == 0))
 				// Выполняем реджект
-				this->_awh->send(aid, 404);
+				this->_awh->send(bid, 404);
 		}
 		/**
 		 * headers Метод получения заголовков запроса
 		 * @param sid     идентификатор потока
-		 * @param aid     идентификатор адъютанта
+		 * @param bid     идентификатор брокера
 		 * @param method  метод запроса
 		 * @param url     url-адрес запроса
 		 * @param headers заголовки запроса
 		 */
-		void headers(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -168,16 +168,16 @@ class WebServer {
 		/**
 		 * entity Метод получения тела запроса
 		 * @param sid    идентификатор потока
-		 * @param aid    идентификатор адъютанта
+		 * @param bid    идентификатор брокера
 		 * @param method метод запроса
 		 * @param url    url-адрес запроса
 		 * @param entity тело запроса
 		 */
-		void entity(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
 			// Выводим информацию о входящих данных
 			cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
 			// Отправляем сообщение клиенту
-			this->_awh->send(aid, 200, "OK", entity, {{"Connection", "close"}});
+			this->_awh->send(bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
 	public:
 		/**

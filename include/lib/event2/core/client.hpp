@@ -117,9 +117,9 @@ namespace awh {
 			public:
 				/**
 				 * sendTimeout Метод отправки принудительного таймаута
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void sendTimeout(const uint64_t aid) noexcept;
+				void sendTimeout(const uint64_t bid) noexcept;
 				/**
 				 * clearTimeout Метод удаления установленного таймаута
 				 * @param sid идентификатор схемы сети
@@ -127,7 +127,7 @@ namespace awh {
 				void clearTimeout(const uint16_t sid) noexcept;
 			public:
 				/**
-				 * close Метод отключения всех адъютантов
+				 * close Метод отключения всех брокеров
 				 */
 				void close() noexcept;
 				/**
@@ -148,38 +148,38 @@ namespace awh {
 			public:
 				/**
 				 * close Метод закрытия подключения
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t aid) noexcept;
+				void close(const uint64_t bid) noexcept;
 				/**
 				 * switchProxy Метод переключения с прокси-сервера
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void switchProxy(const uint64_t aid) noexcept;
+				void switchProxy(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void timeout(const uint64_t aid) noexcept;
+				void timeout(const uint64_t bid) noexcept;
 				/**
 				 * connected Метод вызова при удачном подключении к серверу
-				 * @param aid идентификатор адъютанта
+				 * @param bid идентификатор брокера
 				 */
-				void connected(const uint64_t aid) noexcept;
+				void connected(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * read Метод чтения данных для адъютанта
-				 * @param aid идентификатор адъютанта
+				 * read Метод чтения данных для брокера
+				 * @param bid идентификатор брокера
 				 */
-				void read(const uint64_t aid) noexcept;
+				void read(const uint64_t bid) noexcept;
 				/**
 				 * write Метод записи буфера данных в сокет
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 */
-				void write(const char * buffer, const size_t size, const uint64_t aid) noexcept;
+				void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * resolving Метод получения IP адреса доменного имени
@@ -191,11 +191,11 @@ namespace awh {
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети
-				 * @param aid   идентификатор адъютанта
+				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const uint64_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * Core Конструктор

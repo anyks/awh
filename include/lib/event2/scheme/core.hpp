@@ -199,9 +199,9 @@ namespace awh {
 			} marker_t;
 		private:
 			/**
-			 * Adjutant Структура адъютанта
+			 * Broker Структура брокера
 			 */
-			typedef struct Adjutant {
+			typedef struct Broker {
 				private:
 					/**
 					 * Core Устанавливаем дружбу с классом ядра
@@ -220,32 +220,32 @@ namespace awh {
 					 */
 					friend class server::Core;
 				private:
-					// Идентификатор адъютанта
-					uint64_t aid;
+					// Идентификатор брокера
+					uint64_t _bid;
 				private:
 					// Адрес интернет-подключения клиента
-					string ip;
+					string _ip;
 					// Мак адрес подключившегося клиента
-					string mac;
+					string _mac;
 					// Порт интернет-подключения клиента
-					u_int port;
+					u_int _port;
 				private:
 					// Объект буфера событий
-					bev_t bev;
+					bev_t _bev;
 				private:
 					// Маркер размера детектируемых байт
-					marker_t marker;
+					marker_t _marker;
 				private:
 					// Объект таймаутов
-					timeouts_t timeouts;
+					timeouts_t _timeouts;
 				private:
 					// Контекст двигателя для работы с передачей данных
-					engine_t::ctx_t ectx;
+					engine_t::ctx_t _ectx;
 					// Создаём объект подключения клиента
-					engine_t::addr_t addr;
+					engine_t::addr_t _addr;
 				private:
 					// Метод выполняемой операции
-					engine_t::method_t method;
+					engine_t::method_t _method;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk;
@@ -274,19 +274,19 @@ namespace awh {
 					void timeout(const evutil_socket_t fd, const short event) noexcept;
 				public:
 					/**
-					 * Adjutant Конструктор
+					 * Broker Конструктор
 					 * @param parent объект родительской схемы сети
 					 * @param fmk    объект фреймворка
 					 * @param log    объект для работы с логами
 					 */
-					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip{""}, mac{""}, port(0), bev(log), ectx(fmk, log), addr(fmk, log),
-					 method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
+					Broker(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
+					 _bid(0), _ip{""}, _mac{""}, _port(0), _bev(log), _ectx(fmk, log), _addr(fmk, log),
+					 _method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
 					/**
-					 * ~Adjutant Деструктор
+					 * ~Broker Деструктор
 					 */
-					~Adjutant() noexcept {}
-			} adj_t;
+					~Broker() noexcept {}
+			} broker_t;
 		public:
 			// Идентификатор родительской схемы
 			uint16_t sid;
@@ -308,15 +308,15 @@ namespace awh {
 			// Время жизни подключения
 			engine_t::alive_t keepAlive;
 		protected:
-			// Список подключённых адъютантов
-			map <uint64_t, unique_ptr <adj_t>> adjutants;
+			// Список подключённых брокеров
+			map <uint64_t, unique_ptr <broker_t>> _brokers;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log;
+			const log_t * _log;
 			// Создаём объект фреймворка
-			const Core * core;
+			const Core * _core;
 		private:
 			/**
 			 * resolving Метод получения IP адреса доменного имени
@@ -331,30 +331,30 @@ namespace awh {
 			virtual void clear() noexcept;
 		public:
 			/**
-			 * getSocket Метод извлечения сокета адъютанта
-			 * @param aid идентификатор адъютанта
-			 * @return    активный сокет адъютанта
+			 * socket Метод извлечения сокета брокера
+			 * @param bid идентификатор брокера
+			 * @return    активный сокет брокера
 			 */
-			SOCKET getSocket(const uint64_t aid) const noexcept;
+			SOCKET socket(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * getPort Метод получения порта подключения адъютанта
-			 * @param aid идентификатор адъютанта
-			 * @return   порт подключения адъютанта
+			 * port Метод получения порта подключения брокера
+			 * @param bid идентификатор брокера
+			 * @return   порт подключения брокера
 			 */
-			u_int getPort(const uint64_t aid) const noexcept;
+			u_int port(const uint64_t bid) const noexcept;
 			/**
-			 * getIp Метод получения IP адреса адъютанта
-			 * @param aid идентификатор адъютанта
-			 * @return    адрес интернет подключения адъютанта
+			 * ip Метод получения IP адреса брокера
+			 * @param bid идентификатор брокера
+			 * @return    адрес интернет подключения брокера
 			 */
-			const string & getIp(const uint64_t aid) const noexcept;
+			const string & ip(const uint64_t bid) const noexcept;
 			/**
-			 * getMac Метод получения MAC адреса адъютанта
-			 * @param aid идентификатор адъютанта
-			 * @return    адрес устройства адъютанта
+			 * mac Метод получения MAC адреса брокера
+			 * @param bid идентификатор брокера
+			 * @return    адрес устройства брокера
 			 */
-			const string & getMac(const uint64_t aid) const noexcept;
+			const string & mac(const uint64_t bid) const noexcept;
 		public:
 			/**
 			 * Scheme Конструктор
@@ -362,7 +362,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-			 sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
+			 sid(0), wait(false), alive(false), callback(log), _fmk(fmk), _log(log), _core(nullptr) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

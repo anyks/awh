@@ -45,7 +45,7 @@ void awh::server::ProxySocks5::eventsCallback(const awh::core_t::status_t status
 				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.timer));
 				// Выполняем биндинг базы событий для клиента
 				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				// Устанавливаем таймаут времени на удаление мусорных брокеров раз в 10 секунд
 				this->_core.timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&proxy_socks5_t::garbage, this, _1, _2));
 			} break;
 			// Если система остановлена
@@ -64,29 +64,29 @@ void awh::server::ProxySocks5::eventsCallback(const awh::core_t::status_t status
 }
 /**
  * connectClientCallback Функция обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::connectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Ищем идентификатор адъютанта пары
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Ищем идентификатор брокера пары
 		auto it = this->_scheme.pairs.find(sid);
-		// Если адъютант получен
+		// Если брокер получен
 		if(it != this->_scheme.pairs.end()){
-			// Получаем параметры подключения адъютанта
-			socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(it->second));
+			// Получаем параметры активного клиента
+			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(it->second));
 			// Если подключение не выполнено
-			if((adj != nullptr) && !adj->connect){
+			if((options != nullptr) && !options->connect){
 				// Разрешаем обработки данных
-				adj->locked = false;
+				options->locked = false;
 				// Запоминаем, что подключение выполнено
-				adj->connect = true;
+				options->connect = true;
 				// Устанавливаем флаг разрешающий подключение
-				adj->socks5.resCmd(socks5_t::rep_t::SUCCESS);
+				options->socks5.resCmd(socks5_t::rep_t::SUCCESS);
 				// Получаем данные запроса
-				const auto & socks5 = adj->socks5.get();
+				const auto & socks5 = options->socks5.get();
 				// Если данные получены
 				if(!socks5.empty()) this->_core.server.write(socks5.data(), socks5.size(), it->second);
 			}
@@ -95,49 +95,49 @@ void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const siz
 }
 /**
  * connectServerCallback Функция обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::connectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Создаём адъютанта
-		this->_scheme.set(aid);
-		// Получаем параметры подключения адъютанта
-		socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		// Создаём брокера
+		this->_scheme.set(bid);
+		// Получаем параметры активного клиента
+		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
 			// Устанавливаем количество секунд на чтение
-			adj->scheme.timeouts.read = 30;
+			options->scheme.timeouts.read = 30;
 			// Устанавливаем количество секунд на запись
-			adj->scheme.timeouts.write = 10;
+			options->scheme.timeouts.write = 10;
 			// Устанавливаем флаг ожидания входящих сообщений
-			adj->scheme.wait = this->_scheme.wait;
+			options->scheme.wait = this->_scheme.wait;
 			// Выполняем установку максимального количества попыток
-			adj->scheme.keepAlive.cnt = this->_scheme.keepAlive.cnt;
+			options->scheme.keepAlive.cnt = this->_scheme.keepAlive.cnt;
 			// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-			adj->scheme.keepAlive.idle = this->_scheme.keepAlive.idle;
+			options->scheme.keepAlive.idle = this->_scheme.keepAlive.idle;
 			// Выполняем установку интервала времени в секундах между попытками
-			adj->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
+			options->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
 			// Устанавливаем событие подключения
-			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectClientCallback, this, _1, _2, _3));
+			options->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectClientCallback, this, _1, _2, _3));
 			// Устанавливаем событие отключения
-			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectClientCallback, this, _1, _2, _3));
+			options->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectClientCallback, this, _1, _2, _3));
 			// Устанавливаем функцию чтения данных
-			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readClientCallback, this, _1, _2, _3, _4, _5));
+			options->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readClientCallback, this, _1, _2, _3, _4, _5));
 			// Добавляем схему сети в сетевое ядро
-			this->_core.client.add(&adj->scheme);
+			this->_core.client.add(&options->scheme);
 			// Создаём пару клиента и сервера
-			this->_scheme.pairs.emplace(adj->scheme.sid, aid);
+			this->_scheme.pairs.emplace(options->scheme.sid, bid);
 			// Устанавливаем функцию проверки авторизации
-			adj->socks5.authCallback(this->_callback.checkAuth);
+			options->socks5.authCallback(this->_callback.checkAuth);
 			// Если unix-сокет установлен
 			if(!this->_usock.empty()){
 				// Устанавливаем хост сервера
-				adj->scheme.url.host = this->_usock;
+				options->scheme.url.host = this->_usock;
 				// Устанавливаем тип сети
-				adj->scheme.url.family = AF_UNIX;
+				options->scheme.url.family = AF_UNIX;
 			// Если сервер слушает порт
 			} else {
 				// Определяем тип хоста сервера
@@ -145,89 +145,89 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 					// Если хост является адресом IPv4
 					case static_cast <uint8_t> (net_t::type_t::IPV4): {
 						// Устанавливаем хост сервера
-						adj->scheme.url.ip = this->_host;
+						options->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
-						adj->scheme.url.family = AF_INET;
+						options->scheme.url.family = AF_INET;
 					} break;
 					// Если хост является адресом IPv6
 					case static_cast <uint8_t> (net_t::type_t::IPV6): {
 						// Устанавливаем хост сервера
-						adj->scheme.url.ip = this->_host;
+						options->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
-						adj->scheme.url.family = AF_INET6;
+						options->scheme.url.family = AF_INET6;
 					} break;
 					// Если хост является доменным именем
 					case static_cast <uint8_t> (net_t::type_t::DOMN):
 						// Устанавливаем хост сервера
-						adj->scheme.url.domain = this->_host;
+						options->scheme.url.domain = this->_host;
 					break;
 				}
 				// Устанавливаем порт сервера
-				adj->scheme.url.port = this->_port;
+				options->scheme.url.port = this->_port;
 			}
 			// Устанавливаем URL адрес запроса
-			adj->socks5.url(adj->scheme.url);
+			options->socks5.url(options->scheme.url);
 			// Если функция обратного вызова установлена
 			if(this->_callback.active != nullptr)
 				// Выполняем функцию обратного вызова
-				this->_callback.active(aid, mode_t::CONNECT, this);
+				this->_callback.active(bid, mode_t::CONNECT, this);
 		}
 	}
 }
 /**
  * disconnectClientCallback Функция обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::ProxySocks5::disconnectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::disconnectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((sid > 0) && (core != nullptr)){
-		// Ищем идентификатор адъютанта пары
+		// Ищем идентификатор брокера пары
 		auto it = this->_scheme.pairs.find(sid);
-		// Если адъютант получен
+		// Если брокер получен
 		if(it != this->_scheme.pairs.end()){
-			// Получаем идентификатор адъютанта
-			const size_t aid = it->second;
+			// Получаем идентификатор брокера
+			const size_t bid = it->second;
 			// Удаляем пару клиента и сервера
 			this->_scheme.pairs.erase(it);
-			// Получаем параметры подключения адъютанта
-			socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			// Получаем параметры активного клиента
+			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если подключение не выполнено, отправляем ответ клиенту
-			if((adj != nullptr) && !adj->connect){
+			if((options != nullptr) && !options->connect){
 				// Устанавливаем флаг запрещающий подключение
-				adj->socks5.resCmd(socks5_t::rep_t::DENIED);
+				options->socks5.resCmd(socks5_t::rep_t::DENIED);
 				// Получаем данные запроса
-				const auto & socks5 = adj->socks5.get();
+				const auto & socks5 = options->socks5.get();
 				// Если данные получены
-				if((adj->stopped = !socks5.empty()))
+				if((options->stopped = !socks5.empty()))
 					// Отправляем сообщение клиенту
-					this->_core.server.write(socks5.data(), socks5.size(), aid);
+					this->_core.server.write(socks5.data(), socks5.size(), bid);
 			}
 			// Выполняем отключение клиента
-			this->close(aid);
+			this->close(bid);
 			// Выходим из функции
 			return;
 		}
 		// Выполняем отключение клиента
-		this->_core.client.close(aid);
+		this->_core.client.close(bid);
 	}
 }
 /**
  * disconnectServerCallback Функция обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::ProxySocks5::disconnectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {	
+void awh::server::ProxySocks5::disconnectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept {	
 	// Принудительно выполняем отключение лкиента
-	if(aid > 0) this->close(aid);
+	if(bid > 0) this->close(bid);
 }
 /**
  * acceptServerCallback Функция обратного вызова при проверке подключения клиента
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
- * @param port порт подключившегося адъютанта
+ * @param port порт подключившегося брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  * @return     результат разрешения к подключению клиента
@@ -249,21 +249,21 @@ bool awh::server::ProxySocks5::acceptServerCallback(const string & ip, const str
  * readClientCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::ProxySocks5::readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::readClientCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (sid > 0) && (buffer != nullptr) && (core != nullptr)){
-		// Ищем идентификатор адъютанта пары
+	if((size > 0) && (bid > 0) && (sid > 0) && (buffer != nullptr) && (core != nullptr)){
+		// Ищем идентификатор брокера пары
 		auto it = this->_scheme.pairs.find(sid);
-		// Если адъютант получен
+		// Если брокер получен
 		if(it != this->_scheme.pairs.end()){
-			// Получаем параметры подключения адъютанта
-			socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(it->second));
+			// Получаем параметры активного клиента
+			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(it->second));
 			// Если подключение выполнено, отправляем ответ клиенту
-			if((adj != nullptr) && adj->connect){
+			if((options != nullptr) && options->connect){
 				// Если функция обратного вызова установлена, выполняем
 				if(this->_callback.message != nullptr){
 					// Выводим сообщение
@@ -280,41 +280,41 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
  * readServerCallback Функция обратного вызова при чтении сообщения с клиента
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::ProxySocks5::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::readServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Получаем параметры подключения адъютанта
-		socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && !adj->locked){			
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		// Получаем параметры активного клиента
+		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if((options != nullptr) && !options->locked){			
 			// Если данные не получены
-			if(!adj->connect && !adj->socks5.isEnd()){
+			if(!options->connect && !options->socks5.isEnd()){
 				// Выполняем парсинг входящих данных
-				adj->socks5.parse(buffer, size);
+				options->socks5.parse(buffer, size);
 				// Получаем данные запроса
-				const auto & socks5 = adj->socks5.get();
+				const auto & socks5 = options->socks5.get();
 				// Если данные получены
-				if(!socks5.empty()) this->_core.server.write(socks5.data(), socks5.size(), aid);
+				if(!socks5.empty()) this->_core.server.write(socks5.data(), socks5.size(), bid);
 				// Если данные все получены
-				else if(adj->socks5.isEnd()) {
+				else if(options->socks5.isEnd()) {
 					// Если рукопожатие выполнено
-					if((adj->locked = adj->socks5.isConnected())){
+					if((options->locked = options->socks5.isConnected())){
 						// Получаем данные запрашиваемого сервера
-						const auto & server = adj->socks5.server();
+						const auto & server = options->socks5.server();
 						// Устанавливаем порт сервера
-						adj->scheme.url.port = server.port;
+						options->scheme.url.port = server.port;
 						// Устанавливаем хост сервера
-						adj->scheme.url.host = server.host;
+						options->scheme.url.host = server.host;
 						// Определяем тип передаваемого сервера
 						switch(static_cast <uint8_t> (this->_net.host(server.host))){
 							// Если хост является доменом или IPv4 адресом
 							case static_cast <uint8_t> (net_t::type_t::IPV4):
 								// Устанавливаем IP адрес
-								adj->scheme.url.ip = server.host;
+								options->scheme.url.ip = server.host;
 							break;
 							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 							case static_cast <uint8_t> (net_t::type_t::IPV6): {
@@ -323,48 +323,48 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 								// Выполняем установку хоста
 								net = server.host;
 								// Устанавливаем IP адрес
-								adj->scheme.url.ip = net;
+								options->scheme.url.ip = net;
 							} break;
 							// Если хост является доменным именем
 							case static_cast <uint8_t> (net_t::type_t::DOMN): {
 								// Выполняем очистку IP адреса
-								adj->scheme.url.ip.clear();
+								options->scheme.url.ip.clear();
 								// Устанавливаем доменное имя
-								adj->scheme.url.domain = server.host;
+								options->scheme.url.domain = server.host;
 							} break;
 						}
 						// Выполняем запрос на сервер
-						this->_core.client.open(adj->scheme.sid);
+						this->_core.client.open(options->scheme.sid);
 						// Выходим из функции
 						return;
 					// Если рукопожатие не выполнено
 					} else {
 						// Устанавливаем флаг запрещающий подключение
-						adj->socks5.resCmd(awh::socks5_t::rep_t::FORBIDDEN);
+						options->socks5.resCmd(awh::socks5_t::rep_t::FORBIDDEN);
 						// Получаем данные запроса
-						const auto & socks5 = adj->socks5.get();
+						const auto & socks5 = options->socks5.get();
 						// Если данные получены
-						if((adj->stopped = !socks5.empty()))
+						if((options->stopped = !socks5.empty()))
 							// Отправляем сообщение клиенту
-							this->_core.server.write(socks5.data(), socks5.size(), aid);
+							this->_core.server.write(socks5.data(), socks5.size(), bid);
 						// Принудительно выполняем отключение лкиента
-						else this->close(aid);
+						else this->close(bid);
 					}
 				}
 			// Если подключение выполнено
 			} else {
-				// Получаем идентификатор адъютанта
-				const size_t aid = adj->scheme.getAid();
+				// Получаем идентификатор брокера
+				const size_t bid = options->scheme.bid();
 				// Отправляем запрос на внешний сервер
-				if(aid > 0){
+				if(bid > 0){
 					// Если функция обратного вызова установлена, выполняем
 					if(this->_callback.message != nullptr){
 						// Выводим сообщение
-						if(this->_callback.message(aid, event_t::REQUEST, buffer, size, this))
+						if(this->_callback.message(bid, event_t::REQUEST, buffer, size, this))
 							// Отправляем запрос на внешний сервер
-							this->_core.client.write(buffer, size, aid);
+							this->_core.client.write(buffer, size, bid);
 					// Отправляем запрос на внешний сервер
-					} else this->_core.client.write(buffer, size, aid);
+					} else this->_core.client.write(buffer, size, bid);
 				}
 			}
 		}
@@ -374,48 +374,48 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
  * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если объект адъютанта получен
-		if((adj != nullptr) && adj->stopped)
+	if((size > 0) && (bid > 0) && (sid > 0) && (core != nullptr)){
+		// Получаем параметры активного клиента
+		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если объект брокера получен
+		if((options != nullptr) && options->stopped)
 			// Выполняем закрытие подключения
-			this->close(aid);
+			this->close(bid);
 	}
 }
 /**
- * garbage Метод удаления мусорных адъютантов
+ * garbage Метод удаления мусорных брокеров
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
 void awh::server::ProxySocks5::garbage(const u_short tid, awh::core_t * core) noexcept {
-	// Если список мусорных адъютантов не пустой
+	// Если список мусорных брокеров не пустой
 	if(!this->_garbage.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку мусорных адъютантов
+		// Выполняем переход по всему списку мусорных брокеров
 		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
-			// Если адъютант уже давно удалился
+			// Если брокер уже давно удалился
 			if((date - it->second) >= 10000){
-				// Выполняем удаление параметров адъютанта
+				// Выполняем удаление параметров брокера
 				this->_scheme.rm(it->first);
-				// Выполняем удаление объекта адъютантов из списка мусора
+				// Выполняем удаление объекта брокеров из списка мусора
 				it = this->_garbage.erase(it);
-			// Выполняем пропуск адъютанта
+			// Выполняем пропуск брокера
 			} else ++it;
 		}
 	}
-	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	// Устанавливаем таймаут времени на удаление мусорных брокеров раз в 10 секунд
 	this->_core.timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&proxy_socks5_t::garbage, this, _1, _2));
 }
 /**
- * init Метод инициализации WebSocket адъютанта
+ * init Метод инициализации WebSocket брокера
  * @param socket unix-сокет для биндинга
  */
 void awh::server::ProxySocks5::init(const string & socket) noexcept {
@@ -492,31 +492,31 @@ void awh::server::ProxySocks5::on(function <bool (const string &, const string &
 	this->_callback.accept = callback;
 }
 /**
- * port Метод получения порта подключения адъютанта
- * @param aid идентификатор адъютанта
- * @return    порт подключения адъютанта
+ * port Метод получения порта подключения брокера
+ * @param bid идентификатор брокера
+ * @return    порт подключения брокера
  */
-u_int awh::server::ProxySocks5::port(const size_t aid) const noexcept {
+u_int awh::server::ProxySocks5::port(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getPort(aid);
+	return this->_scheme.port(bid);
 }
 /**
- * ip Метод получения IP адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес интернет подключения адъютанта
+ * ip Метод получения IP адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес интернет подключения брокера
  */
-const string & awh::server::ProxySocks5::ip(const size_t aid) const noexcept {
+const string & awh::server::ProxySocks5::ip(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getIp(aid);
+	return this->_scheme.ip(bid);
 }
 /**
- * mac Метод получения MAC адреса адъютанта
- * @param aid идентификатор адъютанта
- * @return    адрес устройства адъютанта
+ * mac Метод получения MAC адреса брокера
+ * @param bid идентификатор брокера
+ * @return    адрес устройства брокера
  */
-const string & awh::server::ProxySocks5::mac(const size_t aid) const noexcept {
+const string & awh::server::ProxySocks5::mac(const size_t bid) const noexcept {
 	// Выводим результат
-	return this->_scheme.getMac(aid);
+	return this->_scheme.mac(bid);
 }
 /**
  * stop Метод остановки клиента
@@ -538,28 +538,28 @@ void awh::server::ProxySocks5::start() noexcept {
 }
 /**
  * close Метод закрытия подключения клиента
- * @param aid идентификатор адъютанта
+ * @param bid идентификатор брокера
  */
-void awh::server::ProxySocks5::close(const size_t aid) noexcept {
-	// Если идентификатор адъютанта существует
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-		if(adj != nullptr){
+void awh::server::ProxySocks5::close(const size_t bid) noexcept {
+	// Если идентификатор брокера существует
+	if(bid > 0){
+		// Получаем параметры активного клиента
+		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
+		if(options != nullptr){
 			// Выполняем отключение всех дочерних клиентов
-			this->_core.client.close(adj->scheme.getAid());
+			this->_core.client.close(options->scheme.bid());
 			// Удаляем схему сети из сетевого ядра
-			this->_core.client.remove(adj->scheme.sid);
+			this->_core.client.remove(options->scheme.sid);
 		}
 		// Отключаем клиента от сервера
-		this->_core.server.close(aid);
-		// Добавляем в очередь список мусорных адъютантов
-		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		this->_core.server.close(bid);
+		// Добавляем в очередь список мусорных брокеров
+		this->_garbage.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 		// Если функция обратного вызова установлена
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
-			this->_callback.active(aid, mode_t::DISCONNECT, this);
+			this->_callback.active(bid, mode_t::DISCONNECT, this);
 	}
 }
 /**
@@ -658,13 +658,13 @@ void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept 
 }
 /**
  * bandWidth Метод установки пропускной способности сети
- * @param aid   идентификатор адъютанта
+ * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::server::ProxySocks5::bandWidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::server::ProxySocks5::bandWidth(const size_t bid, const string & read, const string & write) noexcept {
 	// Устанавливаем пропускную способность сети
-	this->_core.server.bandWidth(aid, read, write);
+	this->_core.server.bandWidth(bid, read, write);
 }
 /**
  * network Метод установки параметров сети
@@ -758,7 +758,7 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readServerCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&proxy_socks5_t::writeServerCallback, this, _1, _2, _3, _4, _5));
-	// Добавляем событие аццепта адъютанта
+	// Добавляем событие аццепта брокера
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> ("accept", std::bind(&proxy_socks5_t::acceptServerCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	this->_core.server.add(&this->_scheme);

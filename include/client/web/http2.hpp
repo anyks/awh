@@ -100,36 +100,36 @@ namespace awh {
 			private:
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param aid    идентификатор адъютанта
+				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
@@ -186,12 +186,12 @@ namespace awh {
 				void redirect(const int32_t from, const int32_t to) noexcept;
 				/**
 				 * redirect Метод выполнения редиректа если требуется
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 * @return     результат выполнения редиректа
 				 */
-				bool redirect(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
+				bool redirect(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -215,11 +215,11 @@ namespace awh {
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
 				 * @param sid  идентификатор потока
-				 * @param aid  идентификатор адъютанта
+				 * @param bid  идентификатор брокера
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				status_t prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept;
+				status_t prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept;
 			private:
 				/**
 				 * stream Метод вывода статус потока

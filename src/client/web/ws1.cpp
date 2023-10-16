@@ -17,25 +17,25 @@
 
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Выполняем сброс параметров запроса
 		this->flush();
-		// Запоминаем идентификатор адъютанта
-		this->_aid = aid;
+		// Запоминаем идентификатор брокера
+		this->_bid = bid;
 		// Выполняем сброс состояния HTTP парсера
 		this->_http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		this->_http.clear();
 		// Выполняем установку идентификатора объекта
-		this->_http.id(aid);
+		this->_http.id(bid);
 		// Выполняем очистку функций обратного вызова
 		this->_resultCallback.clear();
 		// Если HTTP-заголовки установлены
@@ -77,7 +77,7 @@ void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 				cout << string(buffer.begin(), buffer.end()) << endl << endl;
 			#endif
 			// Выполняем отправку сообщения на сервер
-			dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), aid);
+			dynamic_cast <client::core_t *> (core)->write(buffer.data(), buffer.size(), bid);
 		}
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
@@ -91,11 +91,11 @@ void awh::client::WebSocket1::connectCallback(const uint64_t aid, const uint16_t
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect())
 		// Выходим из функции
@@ -110,8 +110,8 @@ void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint1
 	} else {
 		// Выполняем сброс параметров запроса
 		this->flush();
-		// Выполняем зануление идентификатора адъютанта
-		this->_aid = 0;
+		// Выполняем зануление идентификатора брокера
+		this->_bid = 0;
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
@@ -128,17 +128,17 @@ void awh::client::WebSocket1::disconnectCallback(const uint64_t aid, const uint1
  * readCallback Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
+	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Если подключение закрыто
 		if(this->_close){
 			// Принудительно выполняем отключение лкиента
-			dynamic_cast <client::core_t *> (core)->close(aid);
+			dynamic_cast <client::core_t *> (core)->close(bid);
 			// Выходим из функции
 			return;
 		}
@@ -179,13 +179,13 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 						}
 					#endif
 					// Выполняем препарирование полученных данных
-					switch(static_cast <uint8_t> (this->prepare(1, aid, dynamic_cast <client::core_t *> (core)))){
+					switch(static_cast <uint8_t> (this->prepare(1, bid, dynamic_cast <client::core_t *> (core)))){
 						// Если необходимо выполнить остановку обработки
 						case static_cast <uint8_t> (status_t::STOP): {
 							// Выполняем сброс количества попыток
 							this->_attempt = 0;
 							// Завершаем работу
-							dynamic_cast <client::core_t *> (core)->close(aid);
+							dynamic_cast <client::core_t *> (core)->close(bid);
 							// Если установлена функция отлова завершения запроса
 							if(this->_callback.is("end"))
 								// Выводим функцию обратного вызова
@@ -220,7 +220,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 				// Добавляем полученные данные в буфер
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем препарирование полученных данных
-				switch(static_cast <uint8_t> (this->prepare(1, aid, dynamic_cast <client::core_t *> (core)))){
+				switch(static_cast <uint8_t> (this->prepare(1, bid, dynamic_cast <client::core_t *> (core)))){
 					// Если необходимо выполнить остановку обработки
 					case static_cast <uint8_t> (status_t::STOP):
 						// Выполняем завершение работы
@@ -254,19 +254,19 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
  * writeCallback Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param aid    идентификатор адъютанта
+ * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Если необходимо выполнить закрыть подключение
 		if(!this->_close && this->_stopped){
 			// Устанавливаем флаг закрытия подключения
 			this->_close = !this->_close;
 			// Принудительно выполняем отключение лкиента
-			dynamic_cast <client::core_t *> (core)->close(aid);
+			dynamic_cast <client::core_t *> (core)->close(bid);
 			// Если установлена функция отлова завершения запроса
 			if(this->_callback.is("end"))
 				// Выводим функцию обратного вызова
@@ -329,13 +329,13 @@ bool awh::client::WebSocket1::redirect() noexcept {
 }
 /**
  * response Метод получения ответа сервера
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::client::WebSocket1::response(const uint64_t aid, const u_int code, const string & message) noexcept {
+void awh::client::WebSocket1::response(const uint64_t bid, const u_int code, const string & message) noexcept {
 	// Выполняем неиспользуемую переменную
-	(void) aid;
+	(void) bid;
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 	if(this->_callback.is("response"))
 		// Выводим функцию обратного вызова
@@ -343,13 +343,13 @@ void awh::client::WebSocket1::response(const uint64_t aid, const u_int code, con
 }
 /**
  * header Метод получения заголовка
- * @param aid   идентификатор адъютанта
+ * @param bid   идентификатор брокера
  * @param key   ключ заголовка
  * @param value значение заголовка
  */
-void awh::client::WebSocket1::header(const uint64_t aid, const string & key, const string & value) noexcept {
+void awh::client::WebSocket1::header(const uint64_t bid, const string & key, const string & value) noexcept {
 	// Выполняем неиспользуемую переменную
-	(void) aid;
+	(void) bid;
 	// Если функция обратного вызова на полученного заголовка с сервера установлена
 	if(this->_callback.is("header"))
 		// Выводим функцию обратного вызова
@@ -357,14 +357,14 @@ void awh::client::WebSocket1::header(const uint64_t aid, const string & key, con
 }
 /**
  * headers Метод получения заголовков
- * @param aid     идентификатор адъютанта
+ * @param bid     идентификатор брокера
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::WebSocket1::headers(const uint64_t aid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::WebSocket1::headers(const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем неиспользуемую переменную
-	(void) aid;
+	(void) bid;
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(this->_callback.is("headers"))
 		// Выводим функцию обратного вызова
@@ -395,12 +395,12 @@ void awh::client::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) no
 	if((tid > 0) && (core != nullptr)){
 		// Получаем текущий штамп времени
 		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+		// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 		if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 			// Завершаем работу
-			dynamic_cast <client::core_t *> (core)->close(this->_aid);
-		// Отправляем запрос адъютанту
-		else this->ping(::to_string(this->_aid));
+			dynamic_cast <client::core_t *> (core)->close(this->_bid);
+		// Отправляем запрос брокеру
+		else this->ping(::to_string(this->_bid));
 	}
 }
 /**
@@ -411,13 +411,13 @@ void awh::client::WebSocket1::ping(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
+		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.ping(message, true);
 			// Если бинарный буфер получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения на сервер
-				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_bid);
 		}
 	}
 }
@@ -429,24 +429,24 @@ void awh::client::WebSocket1::pong(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
+		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.pong(message, true);
 			// Если бинарный буфер получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения на сервер
-				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+				const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_bid);
 		}
 	}
 }
 /**
  * prepare Метод выполнения препарирования полученных данных
  * @param sid  идентификатор запроса
- * @param aid  идентификатор адъютанта
+ * @param bid  идентификатор брокера
  * @param core объект сетевого ядра
  * @return     результат препарирования
  */
-awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, const uint64_t aid, client::core_t * core) noexcept {
+awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept {
 	// Результат работы функции
 	status_t result = status_t::STOP;
 	// Если рукопожатие не выполнено
@@ -485,9 +485,9 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 								// Устанавливаем полученную функцию обратного вызова
 								this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::CLOSE);
 							// Выполняем попытку повторить запрос
-							this->connectCallback(aid, sid, core);
+							this->connectCallback(bid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
-						} else dynamic_cast <client::core_t *> (core)->close(aid);
+						} else dynamic_cast <client::core_t *> (core)->close(bid);
 					// Если URL-адрес запроса не получен
 					} else {
 						// Если соединение является постоянным
@@ -501,9 +501,9 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 								// Устанавливаем полученную функцию обратного вызова
 								this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::CLOSE);
 							// Выполняем попытку повторить запрос
-							this->connectCallback(aid, sid, core);
+							this->connectCallback(bid, sid, core);
 						// Если подключение не постоянное, то завершаем работу
-						} else dynamic_cast <client::core_t *> (core)->close(aid);
+						} else dynamic_cast <client::core_t *> (core)->close(bid);
 					}
 					// Завершаем работу
 					return status_t::SKIP;
@@ -664,8 +664,8 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					break;
 					// Если ответом является PONG
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
-						// Если идентификатор адъютанта совпадает
-						if(::memcmp(::to_string(aid).c_str(), data.data(), data.size()) == 0)
+						// Если идентификатор брокера совпадает
+						if(::memcmp(::to_string(bid).c_str(), data.data(), data.size()) == 0)
 							// Обновляем контрольную точку
 							this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					break;
@@ -885,13 +885,13 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
-		if((this->_core != nullptr) && this->_core->working() && this->_allow.send && (this->_aid > 0)){
+		if((this->_core != nullptr) && this->_core->working() && this->_allow.send && (this->_bid > 0)){
 			// Запрещаем получение данных
 			this->_allow.receive = false;
 			// Получаем объект биндинга ядра TCP/IP
 			client::core_t * core = const_cast <client::core_t *> (this->_core);
 			// Выполняем остановку получения данных
-			core->disabled(engine_t::method_t::READ, this->_aid);
+			core->disabled(engine_t::method_t::READ, this->_bid);
 			// Если код ошибки относится к WebSocket
 			if(mess.code >= 1000){
 				// Получаем буфер сообщения
@@ -908,13 +908,13 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
 					// Выполняем отправку сообщения на сервер
-					core->write(buffer.data(), buffer.size(), this->_aid);
+					core->write(buffer.data(), buffer.size(), this->_bid);
 					// Выходим из функции
 					return;
 				}
 			}
 			// Завершаем работу
-			core->close(this->_aid);
+			core->close(this->_bid);
 		}
 	}
 }
@@ -933,7 +933,7 @@ void awh::client::WebSocket1::sendMessage(const vector <char> & message, const b
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
-			if(!message.empty() && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_aid > 0)){
+			if(!message.empty() && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1016,7 +1016,7 @@ void awh::client::WebSocket1::sendMessage(const vector <char> & message, const b
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Отправляем серверу сообщение
-							const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_aid);
+							const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_bid);
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
@@ -1031,7 +1031,7 @@ void awh::client::WebSocket1::sendMessage(const vector <char> & message, const b
 					// Если бинарный буфер для отправки данных получен
 					if(!payload.empty())
 						// Отправляем серверу сообщение
-						const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_aid);
+						const_cast <client::core_t *> (this->_core)->write(payload.data(), payload.size(), this->_bid);
 				}
 			}
 			// Выполняем разблокировку отправки сообщения
@@ -1073,7 +1073,7 @@ void awh::client::WebSocket1::stop() noexcept {
 			// Выполняем отключение флага постоянного подключения
 			this->_scheme.alive = false;
 			// Выполняем отключение клиента
-			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			const_cast <client::core_t *> (this->_core)->close(this->_bid);
 			// Восстанавливаем предыдущее значение флага
 			this->_scheme.alive = alive;
 		}

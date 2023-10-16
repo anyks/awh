@@ -45,13 +45,13 @@ namespace awh {
 		typedef struct SchemeWEB : public scheme_t {
 			public:
 				/**
-				 * Coffer Структура сундука параметров
+				 * Options Структура параметров активного клиента
 				 */
-				typedef struct Coffer {
+				typedef struct Options {
 					bool mode;                   // Флаг открытия подключения
 					bool crypt;                  // Флаг шифрования сообщений
 					bool alive;                  // Флаг долгоживущего подключения
-					bool close;                  // Флаг требования закрыть адъютанта
+					bool close;                  // Флаг требования закрыть брокера
 					bool stopped;                // Флаг принудительной остановки
 					int32_t sid;                 // Идентификатор потока
 					time_t point;                // Контрольная точка ответа на пинг
@@ -61,27 +61,27 @@ namespace awh {
 					engine_t::proto_t proto;     // Активный прототип интернета
 					http_t::compress_t compress; // Метод компрессии данных
 					/**
-					 * Coffer Конструктор
+					 * Options Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
+					Options(const fmk_t * fmk, const log_t * log) noexcept :
 					 mode(false), crypt(false), alive(false),
 					 close(false), stopped(false), sid(1),
 					 point(0), requests(0), http(fmk, log),
 					 proto(engine_t::proto_t::HTTP1_1),
 					 compress(awh::http_t::compress_t::NONE) {}
 					/**
-					 * ~Coffer Деструктор
+					 * ~Options Деструктор
 					 */
-					~Coffer() noexcept {}
-				} coffer_t;
+					~Options() noexcept {}
+				} options_t;
 			public:
 				// Флаги работы с сжатыми данными
 				awh::http_t::compress_t compress;
 			private:
-				// Параметры подключения адъютантов
-				map <uint64_t, unique_ptr <coffer_t>> _coffers;
+				// Список параметров активных клиентов
+				map <uint64_t, unique_ptr <options_t>> _options;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -94,27 +94,27 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * set Метод создания параметров адъютанта
-				 * @param aid идентификатор адъютанта
+				 * set Метод создания параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void set(const uint64_t aid) noexcept;
+				void set(const uint64_t bid) noexcept;
 				/**
-				 * rm Метод удаления параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
+				 * rm Метод удаления параметров активного клиента
+				 * @param bid идентификатор брокера
 				 */
-				void rm(const uint64_t aid) noexcept;
+				void rm(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * get Метод получения параметров подключения адъютанта
-				 * @param aid идентификатор адъютанта
-				 * @return    параметры подключения адъютанта
+				 * get Метод получения параметров активного клиента
+				 * @param bid идентификатор брокера
+				 * @return    параметры активного клиента
 				 */
-				const coffer_t * get(const uint64_t aid) const noexcept;
+				const options_t * get(const uint64_t bid) const noexcept;
 				/**
-				 * get Метод извлечения списка сундука параметров
-				 * @return список сундука параметров
+				 * get Метод извлечения списка параметров активных клиентов
+				 * @return список параметров активных клиентов
 				 */
-				const map <uint64_t, unique_ptr <coffer_t>> & get() const noexcept;
+				const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
 			public:
 				/**
 				 * SchemeWEB Конструктор

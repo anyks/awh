@@ -32,26 +32,26 @@ class Executor {
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
-		 * @param aid   идентификатор адъютанта (клиента)
+		 * @param bid   идентификатор брокера (клиента)
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const uint64_t aid, const string & login){
+		string password(const uint64_t bid, const string & login){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", aid);
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
 			// Выводим пароль
 			return "password";
 		}
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
-		 * @param aid      идентификатор адъютанта (клиента)
+		 * @param bid      идентификатор брокера (клиента)
 		 * @param login    логин пользователя (от клиента)
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const uint64_t aid, const string & login, const string & password){
+		bool auth(const uint64_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
-			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), aid);
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -72,10 +72,10 @@ class Executor {
 		/**
 		 * active Метод событий сервера
 		 * @param sid  идентификатор потока
-		 * @param aid  идентификатор адъютанта (клиента)
+		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode флаг события
 		 */
-		void active(const int32_t sid, const uint64_t aid, const server::web_t::mode_t mode){
+		void active(const int32_t sid, const uint64_t bid, const server::web_t::mode_t mode){
 			// Блокируем неиспользуемую переменную
 			(void) sid;
 			// Определяем флаг события сервера
@@ -94,27 +94,27 @@ class Executor {
 		}
 		/**
 		 * error Метод вывода ошибок WebSocket сервера
-		 * @param aid  идентификатор адъютанта (клиента)
+		 * @param bid  идентификатор брокера (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const uint64_t aid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const u_int code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
 		 * message Метод получения сообщений
-		 * @param aid    идентификатор адъютанта (клиента)
+		 * @param bid    идентификатор брокера (клиента)
 		 * @param buffer бинарный буфер сообщения
 		 * @param text   тип буфера сообщения
 		 */
-		void message(const uint64_t aid, const vector <char> & buffer, const bool text){
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
 				string subprotocol = "";
 				// Получаем список выбранных сабпротоколов
-				const auto subprotocols = this->_ws->subprotocols(aid);
+				const auto subprotocols = this->_ws->subprotocols(bid);
 				// Если список выбранных сабпротоколов получен
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
@@ -122,22 +122,22 @@ class Executor {
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
-				this->_ws->sendMessage(aid, buffer, text);
+				this->_ws->sendMessage(bid, buffer, text);
 			}
 		}
 		/**
 		 * request Метод вывода входящего запроса
 		 * @param sid     идентификатор входящего потока
-		 * @param aid     идентификатор адъютанта (клиента)
+		 * @param bid     идентификатор брокера (клиента)
 		 * @param method  метод входящего запроса
 		 * @param url     адрес входящего запроса
 		 * @param headers заголовки запроса
 		 */
-		void headers(const int32_t sid, const uint64_t aid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			// Создаём объект URI
 			uri_t uri(this->_fmk);
 			// Выводим информацию в лог
-			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, aid, uri.url(url).c_str());
+			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
