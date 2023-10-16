@@ -883,7 +883,7 @@ void awh::server::Http2::erase(const uint64_t aid) noexcept {
 			// Выполняем поиск указанного адъютанта
 			auto it = this->_disconected.find(aid);
 			// Если данные отключившегося адъютанта найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 10000)){
+			if((it != this->_disconected.end()) && ((date - it->second) >= 5000)){
 				// Выполняем удаление отключившегося адъютанта
 				eraseFn(it->first);
 				// Выполняем удаление адъютанта
@@ -894,7 +894,7 @@ void awh::server::Http2::erase(const uint64_t aid) noexcept {
 			// Выполняем переход по всему списку отключившихся адъютантов
 			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
 				// Если адъютант уже давно отключился
-				if((date - it->second) >= 10000){
+				if((date - it->second) >= 5000){
 					// Выполняем удаление отключившегося адъютанта
 					eraseFn(it->first);
 					// Выполняем удаление объекта адъютантов из списка отключившихся

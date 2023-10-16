@@ -633,13 +633,6 @@ namespace awh {
 				 * @return    результат работы пинга
 				 */
 				bool ping(const uint64_t aid) noexcept;
-			protected:
-				/**
-				 * pinging Метод таймера выполнения пинга клиента
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
-				 */
-				virtual void pinging(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения клиенту

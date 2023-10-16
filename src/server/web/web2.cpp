@@ -40,9 +40,9 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 				// Выполняем очистку списка активных сессий
 				this->_sessions.clear();
 		}
+		// Выполняем переадресацию выполняемого события в родительский модуль
+		web_t::eventsCallback(status, core);
 	}
-	// Выполняем переадресацию выполняемого события в родительский модуль
-	web_t::eventsCallback(status, core);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
@@ -136,23 +136,6 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 		return it->second->ping();
 	// Выводим результат
 	return false;
-}
-/**
- * pinging Метод таймера выполнения пинга клиента
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
- */
-void awh::server::Web2::pinging(const u_short tid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
-		// Выполняем перебор всех клиентов сессии
-		for(auto & session : this->_sessions){
-			// Если пинг не прошел до клиента
-			if(!this->ping(session.first))
-				// Завершаем работу
-				dynamic_cast <server::core_t *> (core)->close(session.first);
-		}
-	}
 }
 /**
  * send Метод отправки сообщения клиенту
