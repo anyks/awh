@@ -167,7 +167,7 @@ void awh::Core::Dispatch::start() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение об ошибке
-						this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
+						this->_core->_log->print("%s", log_t::flag_t::WARNING, error.what());
 						// Если функция обратного вызова установлена
 						if(this->_core->_callback.is("error"))
 							// Выполняем функцию обратного вызова
