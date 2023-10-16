@@ -55,7 +55,7 @@ void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 				// Выполняем биндинг ядра локального таймера выполнения пинга
 				core->bind(&this->_timer);
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
-				this->_timer.setInterval(PING_INTERVAL, std::bind(static_cast <void (web_t::*)(const uint16_t, awh::core_t *)> (&web_t::pinging), this, _1, _2));
+				this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1, _2));
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
