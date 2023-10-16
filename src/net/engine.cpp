@@ -2578,9 +2578,6 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	if(target._ssl != nullptr){
 		// Если подключение выполнено
 		if(target._type == type_t::SERVER ? SSL_accept(target._ssl) : SSL_connect(target._ssl)){
-			
-			cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO1 " << endl;
-			
 			// Определяет желаемый активный протокол
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует сырому
@@ -2589,9 +2586,6 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP1):
 				// Если протокол соответствует HTTP/1.1
 				case static_cast <uint8_t> (proto_t::HTTP1_1):
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO2 " << endl;
-					
 					// Устанавливаем активный протокол
 					result = target._proto;
 				break;
@@ -2601,9 +2595,6 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP2):
 				// Если протокол соответствует HTTP/3
 				case static_cast <uint8_t> (proto_t::HTTP3): {
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO3 " << endl;
-					
 					// Размер строки протокола
 					u_int size = 0;
 					// Строка протокола для сравнения
@@ -2624,42 +2615,40 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 							// Выполняем извлечение выбранного протокола
 							SSL_get0_alpn_selected(target._ssl, &alpn, &size);
 					#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-					
-					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO4 " << alpn << endl;
-					
-					// Определяет желаемый активный протокол
-					switch(static_cast <uint8_t> (target._proto)){
-						// Если протокол соответствует SPDY/1
-						case static_cast <uint8_t> (proto_t::SPDY1): {
-							// Если активный протокол не соответствует протоколу SPDY/1
-							if((alpn == nullptr) || (size != 6) || (::memcmp("spdy/1", alpn, 6) != 0))
-								// Устанавливаем активный протокол
-								result = proto_t::HTTP1_1;
-							// Устанавливаем протокол как есть
-							else result = target._proto;
-						} break;
-						// Если протокол соответствует HTTP/2
-						case static_cast <uint8_t> (proto_t::HTTP2): {
-							
-							cout << " *****************!!!!!!! " << alpn << endl;
-							
-							// Если активный протокол не соответствует протоколу HTTP/2
-							if((alpn == nullptr) || (size != 2) || (::memcmp("h2", alpn, 2) != 0))
-								// Устанавливаем активный протокол
-								result = proto_t::HTTP1_1;
-							// Устанавливаем протокол как есть
-							else result = target._proto;
-						} break;
-						// Если протокол соответствует HTTP/3
-						case static_cast <uint8_t> (proto_t::HTTP3):
-							// Если активный протокол не соответствует протоколу HTTP/3
-							if((alpn == nullptr) || (size != 2) || (::memcmp("h3", alpn, 2) != 0))
-								// Устанавливаем активный протокол
-								result = proto_t::HTTP1_1;
-							// Устанавливаем протокол как есть
-							else result = target._proto;
-						break;
-					}
+					// Если тип протокола передачи данных получен
+					if(alpn != nullptr){
+						// Определяет желаемый активный протокол
+						switch(static_cast <uint8_t> (target._proto)){
+							// Если протокол соответствует SPDY/1
+							case static_cast <uint8_t> (proto_t::SPDY1): {
+								// Если активный протокол не соответствует протоколу SPDY/1
+								if((size != 6) || (::memcmp("spdy/1", alpn, 6) != 0))
+									// Устанавливаем активный протокол
+									result = proto_t::HTTP1_1;
+								// Устанавливаем протокол как есть
+								else result = target._proto;
+							} break;
+							// Если протокол соответствует HTTP/2
+							case static_cast <uint8_t> (proto_t::HTTP2): {
+								// Если активный протокол не соответствует протоколу HTTP/2
+								if((size != 2) || (::memcmp("h2", alpn, 2) != 0))
+									// Устанавливаем активный протокол
+									result = proto_t::HTTP1_1;
+								// Устанавливаем протокол как есть
+								else result = target._proto;
+							} break;
+							// Если протокол соответствует HTTP/3
+							case static_cast <uint8_t> (proto_t::HTTP3):
+								// Если активный протокол не соответствует протоколу HTTP/3
+								if((size != 2) || (::memcmp("h3", alpn, 2) != 0))
+									// Устанавливаем активный протокол
+									result = proto_t::HTTP1_1;
+								// Устанавливаем протокол как есть
+								else result = target._proto;
+							break;
+						}
+					// Устанавливаем протокол как есть
+					} else result = target._proto;
 				} break;
 			}
 		}
