@@ -43,18 +43,10 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-
-				cout << " *******************! START1 " << endl;
-
 				// Устанавливаем интервал времени на удаление мусорных адъютантов раз в 5 секунд
 				this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1, _2));
-
-				cout << " *******************! START2 " << endl;
-
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1, _2));
-
-				cout << " *******************! START3 " << endl;
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
