@@ -1195,8 +1195,14 @@ uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_
 uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16_t, core_t *)> callback) noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
+	
+	cout << " ******************* setInterval1 " << delay << endl;
+
 	// Если данные переданы
 	if((this->_dispatch.base != nullptr) && (delay > 0) && (callback != nullptr)){
+		
+		cout << " ******************* setInterval2 " << delay << endl;
+		
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
@@ -1223,6 +1229,8 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
 		// Запускаем работу таймера
 		ret.first->second->io.start(ret.first->second->delay);
+
+		cout << " ******************* setInterval3 " << delay << endl;
 	}
 	// Выводим результат
 	return result;
