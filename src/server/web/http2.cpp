@@ -26,12 +26,21 @@ void awh::server::Http2::connectCallback(const uint64_t aid, const uint16_t sid,
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём адъютанта
 		this->_scheme.set(aid);
+		
+		cout << " ^^^^^^^^^^^^^^ connectCallback1 " << aid << endl;
+		
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectCallback(aid, sid, core);
+		
+		cout << " ^^^^^^^^^^^^^^ connectCallback2 " << aid << endl;
+		
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(aid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
+			
+			cout << " ^^^^^^^^^^^^^^ connectCallback3 " << aid << endl;
+			
 			// Получаем параметры подключения адъютанта
 			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если параметры подключения адъютанта получены
@@ -123,14 +132,8 @@ void awh::server::Http2::disconnectCallback(const uint64_t aid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	
-	cout << " ^^^^^^^^^^^^^ readCallback1 " << size << endl;
-	
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		
-		cout << " ^^^^^^^^^^^^^ readCallback2 " << size << endl;
-		
 		// Получаем параметры подключения адъютанта
 		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -142,16 +145,10 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 				// Выходим из функции
 				return;
 			}
-
-			cout << " ^^^^^^^^^^^^^ readCallback3 " << size << endl;
-
 			// Выполняем поиск агента которому соответствует клиент
 			auto it = this->_agents.find(aid);
 			// Если активный агент клиента установлен
 			if(it != this->_agents.end()){
-				
-				cout << " ^^^^^^^^^^^^^ readCallback4 " << size << endl;
-				
 				// Выполняем установку протокола подключения
 				adj->proto = core->proto(aid);
 				// Определяем тип активного протокола
@@ -167,16 +164,10 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 							break;
 							// Если протокол подключения соответствует HTTP/2
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-								
-								cout << " ^^^^^^^^^^^^^ readCallback5 " << size << endl;
-								
 								// Выполняем поиск адъютанта в списке активных сессий
 								auto it = this->_sessions.find(aid);
 								// Если активная сессия найдена
 								if(it != this->_sessions.end()){
-									
-									cout << " ^^^^^^^^^^^^^ readCallback6 " << size << endl;
-									
 									// Если прочитать данные фрейма не удалось, выходим из функции
 									if(!it->second->frame((const uint8_t *) buffer, size)){
 										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
@@ -184,8 +175,6 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 										// Выходим из функции
 										return;
 									}
-
-									cout << " ^^^^^^^^^^^^^ readCallback7 " << size << endl;
 								}
 							} break;
 						}
