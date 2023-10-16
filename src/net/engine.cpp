@@ -2578,6 +2578,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	if(target._ssl != nullptr){
 		// Если подключение выполнено
 		if(target._type == type_t::SERVER ? SSL_accept(target._ssl) : SSL_connect(target._ssl)){
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO1 " << endl;
+			
 			// Определяет желаемый активный протокол
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует сырому
@@ -2586,6 +2589,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP1):
 				// Если протокол соответствует HTTP/1.1
 				case static_cast <uint8_t> (proto_t::HTTP1_1):
+					
+					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO2 " << endl;
+					
 					// Устанавливаем активный протокол
 					result = target._proto;
 				break;
@@ -2595,6 +2601,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				case static_cast <uint8_t> (proto_t::HTTP2):
 				// Если протокол соответствует HTTP/3
 				case static_cast <uint8_t> (proto_t::HTTP3): {
+					
+					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO3 " << endl;
+					
 					// Размер строки протокола
 					u_int size = 0;
 					// Строка протокола для сравнения
@@ -2615,6 +2624,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 							// Выполняем извлечение выбранного протокола
 							SSL_get0_alpn_selected(target._ssl, &alpn, &size);
 					#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+					
+					cout << " ^^^^^^^^^^^^^^^^^^^^ PROTO4 " << alpn << endl;
+					
 					// Определяет желаемый активный протокол
 					switch(static_cast <uint8_t> (target._proto)){
 						// Если протокол соответствует SPDY/1
