@@ -653,44 +653,6 @@ void awh::server::Http1::websocket(const uint64_t aid, const uint16_t sid, awh::
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::server::Http1::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(aid);
-		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем передачу данных клиенту WebSocket
-			this->_ws1.persistCallback(aid, sid, core);
-		// Иначе выполняем обработку входящих данных как Web-сервер
-		else {
-			// Получаем параметры подключения адъютанта
-			web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
-			// Если параметры подключения адъютанта получены
-			if((adj != nullptr) && ((!adj->alive && !this->_service.alive) || adj->close)){
-				// Если адъютант давно должен был быть отключён, отключаем его
-				if(adj->close || !adj->http.isAlive())
-					// Выполняем отключение клиента от сервера
-					dynamic_cast <server::core_t *> (core)->close(aid);
-				// Иначе проверяем прошедшее время
-				else {
-					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-					if((stamp - adj->point) >= this->_timeAlive)
-						// Завершаем работу
-						dynamic_cast <server::core_t *> (core)->close(aid);
-				}
-			}
-		}
-	}
-}
-/**
  * erase Метод удаления отключившихся адъютантов
  * @param aid идентификатор адъютанта
  */
@@ -750,6 +712,48 @@ void awh::server::Http1::erase(const uint64_t aid) noexcept {
 					it = this->_disconected.erase(it);
 				// Выполняем пропуск адъютанта
 				} else ++it;
+			}
+		}
+	}
+}
+/**
+ * pinging Метод таймера выполнения пинга клиента
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Http1::pinging(const u_short tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Выполняем перебор всех активных агентов
+		for(auto & agent : this->_agents){
+			// Определяем тип активного агента
+			switch(static_cast <uint8_t> (agent.second)){
+				// Если агент соответствует серверу HTTP
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Получаем параметры подключения адъютанта
+					web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(agent.first));
+					// Если параметры подключения адъютанта получены
+					if((adj != nullptr) && ((!adj->alive && !this->_service.alive) || adj->close)){
+						// Если адъютант давно должен был быть отключён, отключаем его
+						if(adj->close || !adj->http.isAlive())
+							// Выполняем отключение клиента от сервера
+							dynamic_cast <server::core_t *> (core)->close(agent.first);
+						// Иначе проверяем прошедшее время
+						else {
+							// Получаем текущий штамп времени
+							const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+							if((stamp - adj->point) >= this->_timeAlive)
+								// Завершаем работу
+								dynamic_cast <server::core_t *> (core)->close(agent.first);
+						}
+					}
+				} break;
+				// Если агент соответствует серверу WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Выполняем передачу данных клиенту WebSocket
+					this->_ws1.pinging(tid, core);
+				break;
 			}
 		}
 	}
@@ -1406,8 +1410,6 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
-		// Активируем персистентный запуск для работы пингов
-		const_cast <server::core_t *> (this->_core)->persistEnable(true);
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 		// Устанавливаем функцию активации ядра сервера
@@ -1425,8 +1427,6 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <server::core_t *> (this->_core)->easily(false);
 		}
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <server::core_t *> (this->_core)->persistEnable(false);
 		// Удаляем схему сети из сетевого ядра
 		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.sid);
 		// Выполняем установку объекта сетевого ядра
@@ -1471,8 +1471,6 @@ void awh::server::Http1::bytesDetect(const scheme_t::mark_t read, const scheme_t
 awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _webSocket(false), _ws1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http1_t::openCallback, this, _1, _2));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http1_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
@@ -1495,8 +1493,6 @@ awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const 
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http1_t::openCallback, this, _1, _2));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
 	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http1_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения

@@ -208,10 +208,8 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 		if(status == awh::core_t::status_t::STOP)
 			// Выполняем удаление сессии
 			this->_nghttp2.close();
-		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callback.is("events"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
+		// Выполняем передачу события в родительский объект
+		web_t::eventsCallback(status, core);
 	}
 }
 /**
@@ -644,12 +642,9 @@ void awh::client::Web2::crypto(const string & pass, const string & salt, const h
  * @param log объект для работы с логами
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _nghttp2(fmk, log),
- _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
+ web_t(fmk, log), _nghttp2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }
 /**
  * Web2 Конструктор
@@ -658,10 +653,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _nghttp2(fmk, log),
- _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
+ web_t(core, fmk, log), _nghttp2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&web2_t::persistCallback, this, _1, _2, _3));
 }

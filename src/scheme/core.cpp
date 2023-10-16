@@ -34,8 +34,10 @@ SOCKET awh::Scheme::getSocket(const uint64_t aid) const noexcept {
 	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим MAC адрес
-		if(it != this->adjutants.end()) return it->second->addr.fd;
+		// Если адъютант найден, выводим
+		if(it != this->adjutants.end())
+			// Выводим полученный сокет
+			return it->second->addr.fd;
 	}
 	// Выводим результат
 	return result;
@@ -52,8 +54,10 @@ u_int awh::Scheme::getPort(const uint64_t aid) const noexcept {
 	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим IP адрес
-		if(it != this->adjutants.end()) return it->second->port;
+		// Если адъютант найден, выводим
+		if(it != this->adjutants.end())
+			// Выводим полученный порт
+			return it->second->port;
 	}
 	// Выводим результат
 	return result;
@@ -70,8 +74,10 @@ const string & awh::Scheme::getIp(const uint64_t aid) const noexcept {
 	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим IP адрес
-		if(it != this->adjutants.end()) return it->second->ip;
+		// Если адъютант найден, выводим
+		if(it != this->adjutants.end())
+			// Выводим полученный IP-адрес
+			return it->second->ip;
 	}
 	// Выводим результат
 	return result;
@@ -89,7 +95,9 @@ const string & awh::Scheme::getMac(const uint64_t aid) const noexcept {
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант найден, выводим MAC адрес
-		if(it != this->adjutants.end()) return it->second->mac;
+		if(it != this->adjutants.end())
+			// Выводим полученный MAC-адрес
+			return it->second->mac;
 	}
 	// Выводим результат
 	return result;

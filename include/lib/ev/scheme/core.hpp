@@ -343,7 +343,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
+			 sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

@@ -35,31 +35,31 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 	// Останавливаем работу таймера
 	timer.stop();
 	// Выполняем извлечение адъютанта
-	auto it = this->core->adjutants.find(this->aid);
+	auto it = this->core->_adjutants.find(this->aid);
 	// Если адъютант получен
-	if(it != this->core->adjutants.end()){
+	if(it != this->core->_adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Выполняем ожидание входящих подключений
-		if(this->core->engine.wait(adj->ectx)){
+		if(this->core->_engine.wait(adj->ectx)){
 			// Устанавливаем параметры сокета
 			adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 			// Если прикрепление клиента к серверу выполнено
 			if(adj->addr.attach(shm->addr)){
 				// Выполняем прикрепление контекста клиента к контексту сервера
-				this->core->engine.attach(adj->ectx, &adj->addr);
+				this->core->_engine.attach(adj->ectx, &adj->addr);
 				// Если MAC или IP адрес не получен, тогда выходим
 				if(adj->addr.mac.empty() || adj->addr.ip.empty()){
 					// Выполняем очистку контекста двигателя
 					adj->ectx.clear();
 					// Если подключение не установлено, выводим сообщение об ошибке
-					this->core->log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+					this->core->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
 					// Если функция обратного вызова установлена
 					if(this->core->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->fmk->format("Client address not received, pid = %d", getpid()));
+						this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Client address not received, pid = %d", getpid()));
 				// Если все данные получены
 				} else {
 					// Получаем адрес подключения клиента
@@ -73,7 +73,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						// Если порт установлен
 						if(adj->port > 0){
 							// Выводим сообщение об ошибке
-							this->core->log->print(
+							this->core->_log->print(
 								"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
 								adj->ip.c_str(),
@@ -89,7 +89,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 									"error",
 									log_t::flag_t::WARNING,
 									error_t::ACCEPT,
-									this->core->fmk->format(
+									this->core->_fmk->format(
 										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 										adj->ip.c_str(),
 										adj->port,
@@ -101,7 +101,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						// Если порт не установлен
 						} else {
 							// Выводим сообщение об ошибке
-							this->core->log->print(
+							this->core->_log->print(
 								"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::WARNING,
 								adj->ip.c_str(),
@@ -116,7 +116,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 									"error",
 									log_t::flag_t::WARNING,
 									error_t::ACCEPT,
-									this->core->fmk->format(
+									this->core->_fmk->format(
 										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 										adj->ip.c_str(),
 										adj->mac.c_str(),
@@ -135,11 +135,11 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Запускаем чтение данных
 					this->core->enabled(engine_t::method_t::READ, this->aid);
 					// Если вывод информационных данных не запрещён
-					if(!this->core->noinfo){
+					if(!this->core->_noinfo){
 						// Если порт установлен
 						if(adj->port > 0){
 							// Выводим в консоль информацию
-							this->core->log->print(
+							this->core->_log->print(
 								"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								adj->ip.c_str(),
@@ -150,7 +150,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						// Если порт не установлен
 						} else {
 							// Выводим в консоль информацию
-							this->core->log->print(
+							this->core->_log->print(
 								"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								adj->ip.c_str(),
@@ -167,11 +167,11 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 			// Подключение не установлено
 			} else {
 				// Выводим сообщение об ошибке
-				this->core->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+				this->core->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				// Если функция обратного вызова установлена
 				if(this->core->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->fmk->format("Accepting failed, pid = %d", getpid()));
+					this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Accepting failed, pid = %d", getpid()));
 			}
 		// Запускаем таймер вновь на 100мс
 		} else timer.start(.1);
@@ -185,13 +185,13 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
  */
 void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->schemes.find(sid);
+	auto it = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-	if(it != this->schemes.end()){
+	if(it != this->_schemes.end()){
 		// Получаем объект подключения
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 		// Определяем члена семейства кластера
-		const cluster_t::family_t family = (this->pid == getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
+		const cluster_t::family_t family = (this->_pid == getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
@@ -201,7 +201,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 					// Запоминаем текущий идентификатор процесса
 					this->_pid = pid;
 					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->settings.sonet)){
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как UDP
 						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 							// Выполняем активацию сервера
@@ -210,7 +210,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 						// Для всех остальных типов сокетов
 						default: {
 							// Устанавливаем базу событий
-							shm->io.set(this->dispatch.base);
+							shm->io.set(this->_dispatch.base);
 							// Устанавливаем событие на чтение данных подключения
 							shm->io.set <scheme_t, &scheme_t::accept> (shm);
 							// Устанавливаем сокет для чтения
@@ -224,7 +224,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 			// Если производится остановка процесса
 			case static_cast <uint8_t> (cluster_t::event_t::STOP): {
 				// Если тип сокета не установлен как UDP
-				if(this->settings.sonet != scheme_t::sonet_t::UDP)
+				if(this->_settings.sonet != scheme_t::sonet_t::UDP)
 					// Останавливаем чтение данных с клиента
 					shm->io.stop();
 			} break;
@@ -244,25 +244,25 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if((sid > 0) && (fd != INVALID_SOCKET) && (fd < MAX_SOCKETS)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end()){
+		if(it != this->_schemes.end()){
 			// Получаем объект подключения
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Определяем тип сокета
-			switch(static_cast <uint8_t> (this->settings.sonet)){
+			switch(static_cast <uint8_t> (this->_settings.sonet)){
 				// Если тип сокета установлен как UDP
 				case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 					// Создаём бъект адъютанта
-					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
+					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->_fmk, this->_log));
 					// Определяем тип протокола подключения
-					switch(static_cast <uint8_t> (this->settings.family)){
+					switch(static_cast <uint8_t> (this->_settings.family)){
 						// Если тип протокола подключения IPv4
 						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 							// Выполняем перебор всего списка адресов
-							for(auto & host : this->settings.net.first){
+							for(auto & host : this->_settings.net.first){
 								// Если хост соответствует адресу IPv4
-								if(this->net.host(host) == net_t::type_t::IPV4)
+								if(this->_net.host(host) == net_t::type_t::IPV4)
 									// Выполняем установку полученного хоста
 									adj->addr.network.push_back(host);
 							}
@@ -270,9 +270,9 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если тип протокола подключения IPv6
 						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 							// Выполняем перебор всего списка адресов
-							for(auto & host : this->settings.net.first){
+							for(auto & host : this->_settings.net.first){
 								// Если хост соответствует адресу IPv4
-								if(this->net.host(host) == net_t::type_t::IPV6)
+								if(this->_net.host(host) == net_t::type_t::IPV6)
 									// Выполняем установку полученного хоста
 									adj->addr.network.push_back(host);
 							}
@@ -281,11 +281,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Устанавливаем параметры сокета
 					adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					// Если unix-сокет используется
-					if(this->settings.family == scheme_t::family_t::NIX)
+					if(this->_settings.family == scheme_t::family_t::NIX)
 						// Выполняем инициализацию сокета
-						adj->addr.init(this->settings.filename, engine_t::type_t::SERVER);
+						adj->addr.init(this->_settings.filename, engine_t::type_t::SERVER);
 					// Если unix-сокет не используется, выполняем инициализацию сокета
-					else adj->addr.init(shm->host, shm->port, (this->settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
+					else adj->addr.init(shm->host, shm->port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
 					// Выполняем разрешение подключения
 					if(adj->addr.accept(adj->addr.fd, 0)){
 						// Получаем адрес подключения клиента
@@ -295,15 +295,15 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Получаем порт подключения клиента
 						adj->port = adj->addr.port;
 						// Выполняем установку желаемого протокола подключения
-						adj->ectx.proto(this->settings.proto);
+						adj->ectx.proto(this->_settings.proto);
 						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+						adj->aid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем получение контекста сертификата
-						this->engine.wrapServer(adj->ectx, &adj->addr);
+						this->_engine.wrapServer(adj->ectx, &adj->addr);
 						// Если подключение не обёрнуто
 						if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 							// Выводим сообщение об ошибке
-							this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+							this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
@@ -316,7 +316,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Добавляем созданного адъютанта в список адъютантов
 						auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
+						this->_adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
 						// Переводим сокет в неблокирующий режим
@@ -330,11 +330,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Подключение не установлено
 					} else {
 						// Выводим сообщение об ошибке
-						this->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+						this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Accepting failed, pid = %d", getpid()));
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
 					}
 				} break;
 				// Если подключение зашифрованно
@@ -342,30 +342,30 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
-						this->log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
 						// Выходим
 						break;
 					}
 					// Создаём объект для работы с DTLS
 					unique_ptr <dtls_t> dtls(new dtls_t());
 					// Создаём бъект адъютанта
-					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
+					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->_fmk, this->_log));
 					// Устанавливаем идентификатор адъютанта
-					adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+					adj->aid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 					// Устанавливаем объект сетевого ядра
 					dtls->core = this;
 					// Устанавливаем идентификатор адъютанта
 					dtls->aid = adj->aid;
 					// Выполняем установку желаемого протокола подключения
-					adj->ectx.proto(this->settings.proto);
+					adj->ectx.proto(this->_settings.proto);
 					// Выполняем получение контекста сертификата
-					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
+					this->_engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
 					// Устанавливаем базу событий
-					dtls->timer.set(this->dispatch.base);
+					dtls->timer.set(this->_dispatch.base);
 					// Устанавливаем событие на работу таймера проверки подключения DTLS
 					dtls->timer.set <dtls_t, &dtls_t::callback> (dtls.get());
 					// Выполняем блокировку потока
@@ -373,7 +373,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 					// Добавляем адъютанта в список подключений
-					this->adjutants.emplace(ret.first->first, ret.first->second.get());
+					this->_adjutants.emplace(ret.first->first, ret.first->second.get());
 					// Добавляем объект для работы с DTLS в список
 					this->_dtls.emplace(ret.first->second->aid, std::forward <unique_ptr <dtls_t>> (dtls)).first->second->timer.start(.1);
 					// Выполняем блокировку потока
@@ -390,20 +390,20 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
-						this->log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
+						this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->total));
 						// Выходим
 						break;
 					}
 					// Создаём бъект адъютанта
-					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
+					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->_fmk, this->_log));
 					// Устанавливаем время жизни подключения
 					adj->addr.alive = shm->keepAlive;
 					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->settings.sonet)){
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						/**
 						 * Если операционной системой является Linux или FreeBSD
 						 */
@@ -426,11 +426,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Выполняем очистку контекста двигателя
 							adj->ectx.clear();
 							// Если подключение не установлено, выводим сообщение об ошибке
-							this->log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+							this->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Client address not received, pid = %d", getpid()));
+								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
 						// Если все данные получены
 						} else {
 							// Получаем адрес подключения клиента
@@ -444,7 +444,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Если порт установлен
 								if(adj->port > 0){
 									// Выводим сообщение об ошибке
-									this->log->print(
+									this->_log->print(
 										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
 										adj->ip.c_str(),
@@ -460,7 +460,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											"error",
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
-											this->fmk->format(
+											this->_fmk->format(
 												"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 												adj->ip.c_str(),
 												adj->port,
@@ -472,7 +472,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Если порт не установлен
 								} else {
 									// Выводим сообщение об ошибке
-									this->log->print(
+									this->_log->print(
 										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::WARNING,
 										adj->ip.c_str(),
@@ -487,7 +487,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											"error",
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
-											this->fmk->format(
+											this->_fmk->format(
 												"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 												adj->ip.c_str(),
 												adj->mac.c_str(),
@@ -502,19 +502,19 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								break;
 							}
 							// Выполняем установку желаемого протокола подключения
-							adj->ectx.proto(this->settings.proto);
+							adj->ectx.proto(this->_settings.proto);
 							// Устанавливаем идентификатор адъютанта
-							adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+							adj->aid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата
-							this->engine.wrapServer(adj->ectx, &adj->addr);
+							this->_engine.wrapServer(adj->ectx, &adj->addr);
 							// Если мы хотим работать в зашифрованном режиме
-							if(this->settings.sonet == scheme_t::sonet_t::TLS){
+							if(this->_settings.sonet == scheme_t::sonet_t::TLS){
 								// Если сертификаты не приняты, выходим
-								if(!this->engine.encrypted(adj->ectx)){
+								if(!this->_engine.encrypted(adj->ectx)){
 									// Выполняем очистку контекста двигателя
 									adj->ectx.clear();
 									// Выводим сообщение об ошибке
-									this->log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+									this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
@@ -526,7 +526,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если подключение не обёрнуто
 							if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 								// Выводим сообщение об ошибке
-								this->log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+								this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
@@ -539,7 +539,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Добавляем созданного адъютанта в список адъютантов
 							auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 							// Добавляем адъютанта в список подключений
-							this->adjutants.emplace(ret.first->first, ret.first->second.get());
+							this->_adjutants.emplace(ret.first->first, ret.first->second.get());
 							// Выполняем блокировку потока
 							this->_mtx.accept.unlock();
 							// Переводим сокет в неблокирующий режим
@@ -547,11 +547,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Запускаем чтение данных
 							this->enabled(engine_t::method_t::READ, ret.first->first);
 							// Если вывод информационных данных не запрещён
-							if(!this->noinfo){
+							if(!this->_noinfo){
 								// Если порт установлен
 								if(ret.first->second->port > 0){
 									// Выводим в консоль информацию
-									this->log->print(
+									this->_log->print(
 										"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
 										ret.first->second->ip.c_str(),
@@ -562,7 +562,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Если порт не установлен
 								} else {
 									// Выводим в консоль информацию
-									this->log->print(
+									this->_log->print(
 										"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
 										log_t::flag_t::INFO,
 										ret.first->second->ip.c_str(),
@@ -579,11 +579,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					// Если подключение не установлено
 					} else {
 						// Выводим сообщение об ошибке
-						this->log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+						this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->fmk->format("Accepting failed, pid = %d", getpid()));
+							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
 					}
 				} break;
 			}
@@ -595,13 +595,13 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
  */
 void awh::server::Core::close() noexcept {
 	// Если список схем сети активен
-	if(!this->schemes.empty()){
+	if(!this->_schemes.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.close);
 		// Объект работы с функциями обратного вызова
-		fn_t callback(this->log);
+		fn_t callback(this->_log);
 		// Переходим по всему списку схем сети
-		for(auto & item : this->schemes){
+		for(auto & item : this->_schemes){
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 			// Если в схеме сети есть подключённые клиенты
@@ -619,7 +619,7 @@ void awh::server::Core::close() noexcept {
 						// Выполняем очистку контекста двигателя
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
-						this->adjutants.erase(it->first);
+						this->_adjutants.erase(it->first);
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
@@ -652,13 +652,13 @@ void awh::server::Core::close() noexcept {
  */
 void awh::server::Core::remove() noexcept {
 	// Если список схем сети активен
-	if(!this->schemes.empty()){
+	if(!this->_schemes.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.close);
 		// Объект работы с функциями обратного вызова
-		fn_t callback(this->log);
+		fn_t callback(this->_log);
 		// Переходим по всему списку схем сети
-		for(auto it = this->schemes.begin(); it != this->schemes.end();){
+		for(auto it = this->_schemes.begin(); it != this->_schemes.end();){
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если в схеме сети есть подключённые клиенты
@@ -676,7 +676,7 @@ void awh::server::Core::remove() noexcept {
 						// Выполняем очистку контекста двигателя
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
-						this->adjutants.erase(jt->first);
+						this->_adjutants.erase(jt->first);
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
@@ -700,7 +700,7 @@ void awh::server::Core::remove() noexcept {
 			// Выполняем закрытие подключение сервера
 			shm->addr.clear();
 			// Выполняем удаление схемы сети
-			it = this->schemes.erase(it);
+			it = this->_schemes.erase(it);
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
@@ -714,11 +714,11 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){		
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end()){			
+		if(it != this->_schemes.end()){			
 			// Устанавливаем базу событий кластера
-			this->_cluster.base(this->dispatch.base);
+			this->_cluster.base(this->_dispatch.base);
 			// Выполняем инициализацию кластера
 			this->_cluster.init(it->first, this->_clusterSize);
 			// Устанавливаем флаг автоматического перезапуска упавших процессов
@@ -728,9 +728,9 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 			// Если хост сервера не указан
 			if(shm->host.empty()){
 				// Объект для работы с сетевым интерфейсом
-				ifnet_t ifnet(this->fmk, this->log);
+				ifnet_t ifnet(this->_fmk, this->_log);
 				// Определяем тип протокола подключения
-				switch(static_cast <uint8_t> (this->settings.family)){
+				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
@@ -751,20 +751,20 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 			// Если хост сервера является доменным именем
 			} else {			
 				// Определяем тип протокола подключения
-				switch(static_cast <uint8_t> (this->settings.family)){
+				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Выполняем резолвинг домена
-						const string & ip = this->dns.resolve(AF_INET, shm->host);
+						const string & ip = this->_dns.resolve(AF_INET, shm->host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Выполняем резолвинг домена
-						const string & ip = this->dns.resolve(AF_INET6, shm->host);
+						const string & ip = this->_dns.resolve(AF_INET6, shm->host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET6);
 					} break;
@@ -783,11 +783,11 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.close);
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end()){
+		if(it != this->_schemes.end()){
 			// Объект работы с функциями обратного вызова
-			fn_t callback(this->log);
+			fn_t callback(this->_log);
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если в схеме сети есть подключённые клиенты
@@ -809,7 +809,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем адъютанта из списка подключений
-						this->adjutants.erase(jt->first);
+						this->_adjutants.erase(jt->first);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -827,7 +827,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 			// Выполняем закрытие подключение сервера
 			shm->addr.clear();
 			// Выполняем удаление схемы сети
-			this->schemes.erase(sid);
+			this->_schemes.erase(sid);
 			// Выполняем все функции обратного вызова
 			callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
 		}
@@ -841,17 +841,17 @@ void awh::server::Core::close(const uint64_t aid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если тип сокета установлен как не UDP, останавливаем чтение
-	if(this->settings.sonet != scheme_t::sonet_t::UDP){
+	if(this->_settings.sonet != scheme_t::sonet_t::UDP){
 		// Если блокировка адъютанта не установлена
 		if(this->_locking.count(aid) < 1){
 			// Выполняем блокировку адъютанта
 			this->_locking.emplace(aid);
 			// Объект работы с функциями обратного вызова
-			fn_t callback(this->log);
+			fn_t callback(this->_log);
 			// Выполняем извлечение адъютанта
-			auto it = this->adjutants.find(aid);
+			auto it = this->_adjutants.find(aid);
 			// Если адъютант получен
-			if(it != this->adjutants.end()){
+			if(it != this->_adjutants.end()){
 				// Получаем объект адъютанта
 				awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 				// Получаем объект схемы сети
@@ -865,17 +865,17 @@ void awh::server::Core::close(const uint64_t aid) noexcept {
 				// Удаляем адъютанта из списка адъютантов
 				shm->adjutants.erase(aid);
 				// Удаляем адъютанта из списка подключений
-				this->adjutants.erase(aid);
+				this->_adjutants.erase(aid);
 				// Если разрешено выводить информационыне уведомления
-				if(!core->noinfo)
+				if(!core->_noinfo)
 					// Выводим информацию об удачном отключении от сервера
-					this->log->print("%s", log_t::flag_t::INFO, "Disconnect client from server");
+					this->_log->print("%s", log_t::flag_t::INFO, "Disconnect client from server");
 				// Если функция обратного вызова установлена
 				if(shm->callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
 					callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (aid, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
-				if(this->settings.sonet == scheme_t::sonet_t::DTLS){
+				if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
 					// Если функция обратного вызова установлена
 					if(callback.is(aid)){
 						// Выполняем все функции обратного вызова
@@ -910,9 +910,9 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 	// Если данные переданы
 	if(this->working() && (aid > 0)){
 		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
+		auto it = this->_adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end()){
+		if(it != this->_adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
@@ -936,7 +936,7 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 						// Если подключение выполнено и чтение данных разрешено
 						if(!adj->bev.locked.read){
 							// Если тип сокета установлен как UDP или DTLS
-							if((this->settings.sonet == scheme_t::sonet_t::UDP) || (this->settings.sonet == scheme_t::sonet_t::DTLS)){
+							if((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS)){
 								// Если флаг ожидания входящих сообщений, активирован
 								if(adj->timeouts.read > 0)
 									// Выполняем установку таймаута ожидания
@@ -988,7 +988,7 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 							// Если запись не выполнена, входим
 							} else {
 								// Если произошёл дисконнект
-								if((bytes == 0) && (this->settings.sonet != scheme_t::sonet_t::DTLS))
+								if((bytes == 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 									// Выполняем отключение клиента
 									this->close(aid);
 								// Выходим из цикла
@@ -999,7 +999,7 @@ void awh::server::Core::read(const uint64_t aid) noexcept {
 					// Выполняем чтение до тех пор, пока всё не прочитаем
 					} while(this->method(aid) == engine_t::method_t::READ);
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
-					if((this->settings.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+					if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_adjutants.count(aid) > 0))
 						// Запускаем событие на чтение базы событий
 						adj->bev.event.read.start();
 				// Выполняем отключение клиента
@@ -1018,9 +1018,9 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 	// Если данные переданы
 	if(this->working() && (aid > 0) && (buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
+		auto it = this->_adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end()){
+		if(it != this->_adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
@@ -1077,7 +1077,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-				if((this->settings.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+				if((this->_settings.sonet == scheme_t::sonet_t::UDP) && (this->_adjutants.count(aid) > 0))
 					// Запускаем событие на чтение базы событий
 					adj->bev.event.read.start();
 			}
@@ -1090,34 +1090,34 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
  */
 void awh::server::Core::timeout(const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Определяем тип протокола подключения
-		switch(static_cast <uint8_t> (this->settings.family)){
+		switch(static_cast <uint8_t> (this->_settings.family)){
 			// Если тип протокола подключения IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Если тип протокола подключения IPv6
 			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("Timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
+				this->_log->print("Timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host = %s, mac = %s", adj->ip.c_str(), adj->mac.c_str()));
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host = %s, mac = %s", adj->ip.c_str(), adj->mac.c_str()));
 			} break;
 			// Если тип протокола подключения unix-сокет
 			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("Timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
+				this->_log->print("Timeout host %s", log_t::flag_t::WARNING, this->_settings.filename.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->fmk->format("Timeout host %s", this->settings.filename.c_str()));
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
 			} break;
 		}
 		// Останавливаем чтение данных
@@ -1138,9 +1138,9 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end()){
+		if(it != this->_schemes.end()){
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если IP адрес получен
@@ -1149,17 +1149,17 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 				// Обновляем хост сервера
 				shm->host = ip;
 				// Определяем тип сокета
-				switch(static_cast <uint8_t> (this->settings.sonet)){
+				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 						// Если разрешено выводить информационные сообщения
-						if(!this->noinfo){
+						if(!this->_noinfo){
 							// Если unix-сокет используется
-							if(this->settings.family == scheme_t::family_t::NIX)
+							if(this->_settings.family == scheme_t::family_t::NIX)
 								// Выводим информацию о запущенном сервере на unix-сокете
-								this->log->print("Start server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+								this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.filename.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-							else this->log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
+							else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
 						}
 						// Если операционная система является Windows или количество процессов всего один
 						if(this->_cluster.count(shm->sid) == 1)
@@ -1173,13 +1173,13 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 					// Для всех остальных типов сокетов
 					default: {
 						// Определяем тип протокола подключения
-						switch(static_cast <uint8_t> (this->settings.family)){
+						switch(static_cast <uint8_t> (this->_settings.family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 								// Выполняем перебор всего списка адресов
-								for(auto & host : this->settings.net.first){
+								for(auto & host : this->_settings.net.first){
 									// Если хост соответствует адресу IPv4
-									if(this->net.host(host) == net_t::type_t::IPV4)
+									if(this->_net.host(host) == net_t::type_t::IPV4)
 										// Выполняем установку полученного хоста
 										shm->addr.network.push_back(host);
 								}
@@ -1187,16 +1187,16 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 								// Выполняем перебор всего списка адресов
-								for(auto & host : this->settings.net.first){
+								for(auto & host : this->_settings.net.first){
 									// Если хост соответствует адресу IPv4
-									if(this->net.host(host) == net_t::type_t::IPV6)
+									if(this->_net.host(host) == net_t::type_t::IPV6)
 										// Выполняем установку полученного хоста
 										shm->addr.network.push_back(host);
 								}
 							} break;
 						}
 						// Определяем тип сокета
-						switch(static_cast <uint8_t> (this->settings.sonet)){
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как UDP TLS
 							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 								// Устанавливаем параметры сокета
@@ -1218,28 +1218,28 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 								shm->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 						}
 						// Если unix-сокет используется
-						if(this->settings.family == scheme_t::family_t::NIX)
+						if(this->_settings.family == scheme_t::family_t::NIX)
 							// Выполняем инициализацию сокета
-							shm->addr.init(this->settings.filename, engine_t::type_t::SERVER);
+							shm->addr.init(this->_settings.filename, engine_t::type_t::SERVER);
 						// Если unix-сокет не используется, выполняем инициализацию сокета
-						else shm->addr.init(shm->host, shm->port, (this->settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
+						else shm->addr.init(shm->host, shm->port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
 						// Если сокет подключения получен
 						if((shm->addr.fd != INVALID_SOCKET) && (shm->addr.fd < MAX_SOCKETS)){
 							// Если повесить прослушку на порт не вышло, выходим из условия
 							if(!shm->addr.list()) break;
 							// Если разрешено выводить информационные сообщения
-							if(!this->noinfo){
+							if(!this->_noinfo){
 								// Если unix-сокет используется
-								if(this->settings.family == scheme_t::family_t::NIX)
+								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->log->print("Start server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
+									this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.filename.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
+								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->host.c_str(), shm->port);
 							}
 							// Если операционная система является Windows или количество процессов всего один
 							if(this->_cluster.count(shm->sid) == 1){
 								// Устанавливаем базу событий
-								shm->io.set(this->dispatch.base);
+								shm->io.set(this->_dispatch.base);
 								// Устанавливаем событие на чтение данных подключения
 								shm->io.set <scheme_t, &scheme_t::accept> (shm);
 								// Устанавливаем сокет для чтения
@@ -1253,21 +1253,21 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 						// Если сокет не создан, выводим в консоль информацию
 						} else {
 							// Если unix-сокет используется
-							if(this->settings.family == scheme_t::family_t::NIX){
+							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
+								this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Server cannot be started [%s]", this->settings.filename.c_str()));
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.filename.c_str()));
 							// Если unix-сокет не используется
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
-								this->log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->host.c_str(), shm->port);
+								this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->host.c_str(), shm->port);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Server cannot be started [%s:%u]", shm->host.c_str(), shm->port));
+									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->host.c_str(), shm->port));
 							}
 						}
 					}
@@ -1275,11 +1275,11 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 			// Если IP адрес сервера не получен
 			} else {
 				// Выводим в консоль информацию
-				this->log->print("Broken host server %s", log_t::flag_t::CRITICAL, shm->host.c_str());
+				this->_log->print("Broken host server %s", log_t::flag_t::CRITICAL, shm->host.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->fmk->format("Broken host server %s", shm->host.c_str()));
+					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Broken host server %s", shm->host.c_str()));
 			}
 			// Останавливаем работу сервера
 			this->stop();
@@ -1294,9 +1294,9 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
  */
 void awh::server::Core::bandWidth(const uint64_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		/**
 		 * Если операционной системой является Nix-подобная
 		 */
@@ -1305,8 +1305,8 @@ void awh::server::Core::bandWidth(const uint64_t aid, const string & read, const
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
 			adj->ectx.buffer(
-				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
-				(!write.empty() ? this->fmk->sizeBuffer(write) : 0),
+				(!read.empty() ? this->_fmk->sizeBuffer(read) : 0),
+				(!write.empty() ? this->_fmk->sizeBuffer(write) : 0),
 				reinterpret_cast <const scheme_t *> (adj->parent)->total
 			);
 		/**
@@ -1337,7 +1337,7 @@ void awh::server::Core::clusterSize(const uint16_t size) noexcept {
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
-		this->log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1363,7 +1363,7 @@ void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) 
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
-		this->log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1391,9 +1391,9 @@ void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept 
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end())
+		if(it != this->_schemes.end())
 			// Устанавливаем максимальное количество одновременных подключений
 			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second)))->total = total;
 	}
@@ -1408,9 +1408,9 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->schemes.end()){
+		if(it != this->_schemes.end()){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.main);
 			// Получаем объект схемы сети
@@ -1426,9 +1426,9 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 			// Иначе получаем IP адрес сервера автоматически
 			else {
 				// Объект для работы с сетевым интерфейсом
-				ifnet_t ifnet(this->fmk, this->log);
+				ifnet_t ifnet(this->_fmk, this->_log);
 				// Определяем тип протокола подключения
-				switch(static_cast <uint8_t> (this->settings.family)){
+				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
@@ -1490,7 +1490,7 @@ void awh::server::Core::on(function <void (const cluster_t::family_t, const uint
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
-	this->type = engine_t::type_t::SERVER;
+	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
 }

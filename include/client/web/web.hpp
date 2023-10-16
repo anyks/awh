@@ -168,6 +168,9 @@ namespace awh {
 				uint8_t _attempt;
 				// Общее количество попыток
 				uint8_t _attempts;
+			private:
+				// Ядро для локального таймера
+				awh::core_t _timer;
 			protected:
 				// Метод компрессии данных
 				http_t::compress_t _compress;
@@ -261,6 +264,13 @@ namespace awh {
 				 * flush Метод сброса параметров запроса
 				 */
 				virtual void flush() noexcept = 0;
+			protected:
+				/**
+				 * pinging Метод таймера выполнения пинга удалённого сервера
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				virtual void pinging(const u_short tid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -644,14 +654,6 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			protected:
-				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу

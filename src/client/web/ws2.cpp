@@ -241,38 +241,6 @@ void awh::client::WebSocket2::writeCallback(const char * buffer, const size_t si
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::client::WebSocket2::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если переключение протокола на HTTP/2 не выполнено
-		if(this->_proto != engine_t::proto_t::HTTP2)
-			// Выполняем переброс персистентного вызова на клиент WebSocket
-			this->_ws1.persistCallback(aid, sid, core);
-		// Если переключение протокола на HTTP/2 выполнено
-		else if(this->_allow.receive) {
-			// Если рукопожатие выполнено
-			if(this->_shake){
-				// Получаем текущий штамп времени
-				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if(this->_close || ((stamp - this->_point) >= (PERSIST_INTERVAL * 5)))
-					// Завершаем работу
-					dynamic_cast <client::core_t *> (core)->close(aid);
-				// Отправляем запрос адъютанту
-				else this->ping(to_string(aid));
-			// Если рукопожатие уже выполнено и пинг не прошёл
-			} else if(!web2_t::ping())
-				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));
-		}
-	}
-}
-/**
  * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
  * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
@@ -847,6 +815,37 @@ void awh::client::WebSocket2::flush() noexcept {
 	}
 }
 /**
+ * pinging Метод таймера выполнения пинга удалённого сервера
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::client::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Если переключение протокола на HTTP/2 не выполнено
+		if(this->_proto != engine_t::proto_t::HTTP2)
+			// Выполняем переброс персистентного вызова на клиент WebSocket
+			this->_ws1.pinging(tid, core);
+		// Если переключение протокола на HTTP/2 выполнено
+		else if(this->_allow.receive) {
+			// Если рукопожатие выполнено
+			if(this->_shake){
+				// Получаем текущий штамп времени
+				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+				if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
+					// Завершаем работу
+					dynamic_cast <client::core_t *> (core)->close(this->_aid);
+				// Отправляем запрос адъютанту
+				else this->ping(::to_string(this->_aid));
+			// Если рукопожатие уже выполнено и пинг не прошёл
+			} else if(!web2_t::ping())
+				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_aid));
+		}
+	}
+}
+/**
  * ping Метод проверки доступности сервера
  * @param message сообщение для отправки
  */
@@ -913,7 +912,10 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
-						const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
+						const bool schema = (
+							(this->_fmk->compare(url.host, this->_scheme.url.host)) &&
+							(this->_fmk->compare(url.schema, this->_scheme.url.schema))
+						);
 						// Если соединение является постоянным
 						if(schema && this->_http.isAlive()){
 							// Устанавливаем новый адрес запроса
@@ -1761,14 +1763,8 @@ void awh::client::WebSocket2::mode(const set <flag_t> & flags) noexcept {
 void awh::client::WebSocket2::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
-		// Добавляем схемы сети в сетевое ядро
-		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(true);
-		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->on(std::bind(&ws2_t::eventsCallback, this, _1, _2));
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 		// Если многопоточность активированна
 		if(this->_thr.is() || this->_ws1._thr.is())
 			// Устанавливаем простое чтение базы событий
@@ -1784,12 +1780,8 @@ void awh::client::WebSocket2::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(false);
-		// Удаляем схему сети из сетевого ядра
-		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 	}
 }
 /**
@@ -1924,8 +1916,6 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -1938,8 +1928,6 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

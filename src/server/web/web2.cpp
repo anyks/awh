@@ -123,21 +123,6 @@ void awh::server::Web2::connectCallback(const uint64_t aid, const uint16_t sid, 
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::server::Web2::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
-		if((this->_sessions.count(aid) > 0) && !this->ping(aid))
-			// Завершаем работу
-			dynamic_cast <server::core_t *> (core)->close(aid);
-	}
-}
-/**
  * ping Метод выполнения пинга клиента
  * @param aid идентификатор адъютанта
  * @return    результат работы пинга
@@ -151,6 +136,23 @@ bool awh::server::Web2::ping(const uint64_t aid) noexcept {
 		return it->second->ping();
 	// Выводим результат
 	return false;
+}
+/**
+ * pinging Метод таймера выполнения пинга клиента
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Web2::pinging(const u_short tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Выполняем перебор всех клиентов сессии
+		for(auto & session : this->_sessions){
+			// Если пинг не прошел до клиента
+			if(!this->ping(session.first))
+				// Завершаем работу
+				dynamic_cast <server::core_t *> (core)->close(session.first);
+		}
+	}
 }
 /**
  * send Метод отправки сообщения клиенту

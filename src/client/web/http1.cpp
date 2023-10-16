@@ -244,21 +244,6 @@ void awh::client::Http1::writeCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::client::Http1::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Если агент является клиентом WebSocket
-		if(this->_agent == agent_t::WEBSOCKET)
-			// Выполняем переброс персистентного вызова на клиент WebSocket
-			this->_ws1.persistCallback(aid, sid, core);
-	}
-}
-/**
  * redirect Метод выполнения редиректа если требуется
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -459,6 +444,20 @@ void awh::client::Http1::flush() noexcept {
 	this->_stopped = false;
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
+}
+/**
+ * pinging Метод таймера выполнения пинга удалённого сервера
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::client::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Если агент является клиентом WebSocket
+		if(this->_agent == agent_t::WEBSOCKET)
+			// Выполняем переброс персистентного вызова на клиент WebSocket
+			this->_ws1.pinging(tid, core);
+	}
 }
 /**
  * prepare Метод выполнения препарирования полученных данных
@@ -1170,14 +1169,8 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 void awh::client::Http1::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
-		// Добавляем схемы сети в сетевое ядро
-		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(true);
-		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->on(std::bind(&http1_t::eventsCallback, this, _1, _2));
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 		// Если многопоточность активированна
 		if(this->_threads > 0)
 			// Устанавливаем простое чтение базы событий
@@ -1193,12 +1186,8 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(false);
-		// Удаляем схему сети из сетевого ядра
-		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 	}
 }
 /**
@@ -1311,8 +1300,6 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -1326,8 +1313,6 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
  web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&http1_t::chunking, this, _1, _2, _3));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

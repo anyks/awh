@@ -244,12 +244,6 @@ namespace awh {
 				void on(function <bool (const string &, const string &, const u_int, ProxySocks5 *)> callback) noexcept;
 			public:
 				/**
-				 * serverName Метод добавления названия сервера
-				 * @param name название сервера для добавления
-				 */
-				void serverName(const string & name = "") noexcept;
-			public:
-				/**
 				 * port Метод получения порта подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    порт подключения адъютанта

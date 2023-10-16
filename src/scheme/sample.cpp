@@ -46,7 +46,9 @@ void awh::server::SchemeSample::rm(const uint64_t aid) noexcept {
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->_coffers.end()) this->_coffers.erase(it);
+		if(it != this->_coffers.end())
+			// Выполняем удаление адъютантов
+			this->_coffers.erase(it);
 	}
 }
 /**
@@ -62,7 +64,9 @@ const awh::server::SchemeSample::coffer_t * awh::server::SchemeSample::get(const
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->_coffers.end()) result = it->second.get();
+		if(it != this->_coffers.end())
+			// Выводим параметры подключения адъютанта
+			result = it->second.get();
 	}
 	// Выводим результат
 	return result;

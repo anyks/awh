@@ -106,7 +106,7 @@ namespace awh {
 			typedef class Timer {
 				public:
 					// Идентификатор таймера
-					u_short id;
+					uint16_t id;
 				public:
 					// Флаг персистентной работы
 					bool persist;
@@ -121,7 +121,7 @@ namespace awh {
 					Core * core;
 				public:
 					// Внешняя функция обратного вызова
-					function <void (const u_short, Core *)> fn;
+					function <void (const uint16_t, Core *)> fn;
 				public:
 					/**
 					 * callback Метод обратного вызова
@@ -271,26 +271,23 @@ namespace awh {
 					 */
 					~Dispatch() noexcept;
 			} dispatch_t;
-		private:
-			// Флаг основного приложения
-			bool _main;
 		protected:
 			// Идентификатор процесса
-			pid_t pid;
+			pid_t _pid;
 		protected:
 			// Создаем объект сети
-			net_t net;
+			net_t _net;
 		protected:
 			// Создаём объект работы с URI
-			uri_t uri;
+			uri_t _uri;
 			// Создаём объект DNS-резолвера
-			dns_t dns;
+			dns_t _dns;
 			// Создаём объект для работы с актуатором
-			engine_t engine;
+			engine_t _engine;
 			// Сетевые параметры
-			settings_t settings;
+			settings_t _settings;
 			// Объект для работы с чтением базы событий
-			dispatch_t dispatch;
+			dispatch_t _dispatch;
 		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
@@ -298,50 +295,37 @@ namespace awh {
 			sig_t _sig;
 			// Объект функций обратного вызова
 			fn_t _callback;
-			// Объект события таймера
-			timer_t _timer;
 		protected:
 			// Мютекс для блокировки основного потока
 			mutable mtx_t _mtx;
 		protected:
 			// Статус сетевого ядра
-			status_t status;
-			// Тип запускаемого ядра
-			engine_t::type_t type;
-		protected:
+			status_t _status;
 			// Флаг обработки сигналов
 			signals_t _signals;
+			// Тип запускаемого ядра
+			engine_t::type_t _type;
 		private:
 			// Список активных таймеров
-			map <u_short, unique_ptr <timer_t>> _timers;
+			map <uint16_t, unique_ptr <timer_t>> _timers;
 		protected:
 			// Список активных схем сети
-			map <uint16_t, const scheme_t *> schemes;
+			map <uint16_t, const scheme_t *> _schemes;
 			// Список подключённых клиентов
-			map <uint64_t, const scheme_t::adj_t *> adjutants;
+			map <uint64_t, const scheme_t::adj_t *> _adjutants;
 		protected:
 			// Флаг разрешения работы
-			bool mode;
+			bool _mode;
 			// Флаг запрета вывода информационных сообщений
-			bool noinfo;
-			// Флаг персистентного запуска каллбека
-			bool persist;
-			// Флаг вывода запуска функции активности в отдельном потоке
-			bool activeOnTrhead;
-		protected:
-			// Количество подключённых внешних ядер
-			u_int cores;
-		protected:
-			// Название сервера по умолчанию
-			string servName;
+			bool _noinfo;
 		private:
-			// Интервал персистентного таймера в миллисекундах
-			time_t _persIntvl;
+			// Количество подключённых внешних ядер
+			u_int _cores;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log;
+			const log_t * _log;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -351,13 +335,6 @@ namespace awh {
 			 * closedown Метод вызова при деакцтивации базы событий
 			 */
 			void closedown() noexcept;
-		private:
-			/**
-			 * persistent Метод персистентного вызова по таймеру
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 */
-			void persistent(const evutil_socket_t fd, const short event) noexcept;
 		private:
 			/**
 			 * signal Метод вывода полученного сигнала
@@ -527,7 +504,7 @@ namespace awh {
 			 * clearTimer Метод очистки таймера
 			 * @param id идентификатор таймера для очистки
 			 */
-			void clearTimer(const u_short id) noexcept;
+			void clearTimer(const uint16_t id) noexcept;
 		public:
 			/**
 			 * setTimeout Метод установки таймаута
@@ -535,14 +512,14 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			u_short setTimeout(const time_t delay, function <void (const u_short, Core *)> callback) noexcept;
+			uint16_t setTimeout(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
 			/**
 			 * setInterval Метод установки интервала времени
 			 * @param delay    задержка времени в миллисекундах
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			u_short setInterval(const time_t delay, function <void (const u_short, Core *)> callback) noexcept;
+			uint16_t setInterval(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
 		public:
 			/**
 			 * easily Метод активации простого режима чтения базы событий
@@ -704,25 +681,10 @@ namespace awh {
 			 */
 			void verifySSL(const bool mode) noexcept;
 			/**
-			 * persistEnable Метод установки персистентного флага
-			 * @param mode флаг персистентного запуска каллбека
-			 */
-			void persistEnable(const bool mode) noexcept;
-			/**
-			 * persistInterval Метод установки персистентного таймера
-			 * @param itv интервал персистентного таймера в миллисекундах
-			 */
-			void persistInterval(const time_t itv) noexcept;
-			/**
 			 * frequency Метод установки частоты обновления базы событий
 			 * @param msec частота обновления базы событий в миллисекундах
 			 */
 			void frequency(const uint8_t msec = 10) noexcept;
-			/**
-			 * serverName Метод добавления названия сервера
-			 * @param name название сервера для добавления
-			 */
-			void serverName(const string & name = "") noexcept;
 			/**
 			 * signalInterception Метод активации перехвата сигналов
 			 * @param mode флаг активации

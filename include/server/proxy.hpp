@@ -510,12 +510,6 @@ namespace awh {
 				void certificate(const string & chain, const string & key) noexcept;
 			public:
 				/**
-				 * serverName Метод добавления названия сервера
-				 * @param name название сервера для добавления
-				 */
-				void serverName(const string & name = "") noexcept;
-			public:
-				/**
 				 * chunkSize Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */

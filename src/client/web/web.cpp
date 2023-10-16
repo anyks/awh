@@ -48,6 +48,23 @@ void awh::client::Web::openCallback(const uint16_t sid, awh::core_t * core) noex
 void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера выполнения пинга
+				core->bind(&this->_timer);
+				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
+				this->_timer.setInterval(PING_INTERVAL, std::bind(static_cast <void (web_t::*)(const uint16_t, awh::core_t *)> (&web_t::pinging), this, _1, _2));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Останавливаем все установленные таймеры
+				this->_timer.clearTimers();
+				// Выполняем анбиндинг ядра локального таймера выполнения пинга
+				core->unbind(&this->_timer);
+			} break;
+		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
 			// Выводим функцию обратного вызова
@@ -722,7 +739,9 @@ void awh::client::Web::authTypeProxy(const auth_t::type_t type, const auth_t::ha
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _aid(0), _uri(fmk), _callback(log), _scheme(fmk, log), _unbind(true),
  _active(false), _stopped(false), _redirects(false), _attempt(0), _attempts(15),
- _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(nullptr) {
+ _timer(fmk, log), _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(nullptr) {
+	// Выполняем отключение информационных сообщений сетевого ядра пинга
+	this->_timer.noInfo(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2, _3));
 	// Устанавливаем событие на запуск системы
@@ -749,10 +768,10 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _aid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
  _unbind(true), _active(false), _stopped(false), _redirects(false),
- _attempt(0), _attempts(15), _compress(awh::http_t::compress_t::NONE),
- _fmk(fmk), _log(log), _core(core) {
-	// Активируем персистентный запуск для работы пингов
-	const_cast <client::core_t *> (this->_core)->persistEnable(true);
+ _attempt(0), _attempts(15), _timer(fmk, log),
+ _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(core) {
+	// Выполняем отключение информационных сообщений сетевого ядра пинга
+	this->_timer.noInfo(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on(std::bind(&web_t::chunking, this, _1, _2, _3));
 	// Устанавливаем событие на запуск системы

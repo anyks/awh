@@ -180,14 +180,6 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
@@ -240,6 +232,13 @@ namespace awh {
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
+			private:
+				/**
+				 * pinging Метод таймера выполнения пинга удалённого сервера
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * ping Метод проверки доступности сервера

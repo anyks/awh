@@ -101,18 +101,17 @@ namespace awh {
 				void websocket(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * erase Метод удаления отключившихся адъютантов
 				 * @param aid идентификатор адъютанта
 				 */
 				void erase(const uint64_t aid = 0) noexcept;
+			private:
+				/**
+				 * pinging Метод таймера выполнения пинга клиента
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void pinging(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WEB-сервера

@@ -600,8 +600,6 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&sample_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4, _5));
-	// Активируем персистентный запуск для работы пингов
-	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра сервера

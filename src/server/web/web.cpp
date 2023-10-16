@@ -43,14 +43,18 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
+				// Устанавливаем интервал времени на удаление мусорных адъютантов раз в 10 секунд
+				this->_timer.setInterval(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
+				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
+				this->_timer.setInterval(PING_INTERVAL, std::bind(static_cast <void (web_t::*)(const uint16_t, awh::core_t *)> (&web_t::pinging), this, _1, _2));
 			} break;
 			// Если система остановлена
-			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Останавливаем все установленные таймеры
+				this->_timer.clearTimers();
 				// Выполняем анбиндинг ядра локального таймера
 				core->unbind(&this->_timer);
-			break;
+			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
@@ -147,8 +151,6 @@ void awh::server::Web::disconnect(const uint64_t aid) noexcept {
 void awh::server::Web::disconected(const u_short tid, awh::core_t * core) noexcept {
 	// Выполняем удаление отключившихся адъютантов
 	this->erase();
-	// Устанавливаем таймаут времени на удаление отключившихся адъютантов раз в 10 секунд
-	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
 }
 /**
  * init Метод инициализации WEB адъютанта
@@ -328,17 +330,12 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
-		// Активируем персистентный запуск для работы пингов
-		const_cast <server::core_t *> (this->_core)->persistEnable(true);
 		// Устанавливаем функцию активации ядра сервера
 		const_cast <server::core_t *> (this->_core)->on(std::bind(&web_t::eventsCallback, this, _1, _2));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
-	} else if(this->_core != nullptr) {
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <server::core_t *> (this->_core)->persistEnable(false);
+	} else if(this->_core != nullptr)
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
-	}
 }
 /**
  * stop Метод остановки сервера
@@ -459,8 +456,6 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
-	// Активируем персистентный запуск для работы пингов
-	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Устанавливаем функцию активации ядра сервера
 	const_cast <server::core_t *> (this->_core)->on(std::bind(&web_t::eventsCallback, this, _1, _2));
 }

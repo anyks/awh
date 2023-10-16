@@ -169,35 +169,6 @@ void awh::client::Http2::writeCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::client::Http2::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Выполняем перебор всех доступных воркеров
-		for(auto & worker : this->_workers){
-			// Определяем протокол клиента
-			switch(static_cast <uint8_t> (worker.second->agent)){
-				// Если агент является клиентом HTTP
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
-					if(!this->ping())
-						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), aid));
-				} break;
-				// Если агент является клиентом WebSocket
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем переброс персистентного вызова на клиент WebSocket
-					this->_ws2.persistCallback(aid, sid, core);
-				break;
-			}
-		}
-	}
-}
-/**
  * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
  * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
@@ -914,6 +885,34 @@ void awh::client::Http2::flush() noexcept {
 	this->_active = false;
 	// Снимаем флаг принудительной остановки
 	this->_stopped = false;
+}
+/**
+ * pinging Метод таймера выполнения пинга удалённого сервера
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Выполняем перебор всех доступных воркеров
+		for(auto & worker : this->_workers){
+			// Определяем протокол клиента
+			switch(static_cast <uint8_t> (worker.second->agent)){
+				// Если агент является клиентом HTTP
+				case static_cast <uint8_t> (agent_t::HTTP): {
+					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
+					if(!this->ping())
+						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_aid));
+				} break;
+				// Если агент является клиентом WebSocket
+				case static_cast <uint8_t> (agent_t::WEBSOCKET):
+					// Выполняем переброс персистентного вызова на клиент WebSocket
+					this->_ws2.pinging(tid, core);
+				break;
+			}
+		}
+	}
 }
 /**
  * update Метод обновления параметров запроса для переадресации
@@ -1783,14 +1782,8 @@ void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
 void awh::client::Http2::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
-		// Добавляем схемы сети в сетевое ядро
-		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(true);
-		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->on(std::bind(&http2_t::eventsCallback, this, _1, _2));
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 		// Если многопоточность активированна
 		if(this->_threads > 0)
 			// Устанавливаем простое чтение базы событий
@@ -1809,12 +1802,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(false);
-		// Удаляем схему сети из сетевого ядра
-		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 	}
 }
 /**
@@ -1955,8 +1944,6 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -1976,8 +1963,6 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on((function <void (const int32_t, const mode_t)>) std::bind(&http2_t::stream, this, _1, _2));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&http2_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

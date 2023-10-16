@@ -103,12 +103,18 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void rm(const uint64_t aid) noexcept;
+			public:
 				/**
 				 * get Метод получения параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
 				const coffer_t * get(const uint64_t aid) const noexcept;
+				/**
+				 * get Метод извлечения списка сундука параметров
+				 * @return список сундука параметров
+				 */
+				const map <uint64_t, unique_ptr <coffer_t>> & get() const noexcept;
 			public:
 				/**
 				 * SchemeWEB Конструктор

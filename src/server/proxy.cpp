@@ -1239,14 +1239,6 @@ void awh::server::Proxy::certificate(const string & chain, const string & key) n
 	this->_core.server.certificate(chain, key);
 }
 /**
- * serverName Метод добавления названия сервера
- * @param name название сервера для добавления
- */
-void awh::server::Proxy::serverName(const string & name) noexcept {
-	// Устанавливаем названия сервера
-	this->_core.server.serverName(name);
-}
-/**
  * chunkSize Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -1348,8 +1340,6 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&proxy_t::writeServerCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> ("accept", std::bind(&proxy_t::acceptServerCallback, this, _1, _2, _3, _4, _5));
-	// Активируем персистентный запуск для работы пингов
-	this->_core.server.persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	this->_core.server.add(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов

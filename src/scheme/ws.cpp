@@ -53,7 +53,9 @@ void awh::server::SchemeWebSocket::rm(const uint64_t aid) noexcept {
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->_coffers.end()) this->_coffers.erase(it);
+		if(it != this->_coffers.end())
+			// Выполняем удаление адъютантов
+			this->_coffers.erase(it);
 	}
 }
 /**
@@ -69,8 +71,18 @@ const awh::server::SchemeWebSocket::coffer_t * awh::server::SchemeWebSocket::get
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->_coffers.end()) result = it->second.get();
+		if(it != this->_coffers.end())
+			// Выводим параметры подключения адъютанта
+			result = it->second.get();
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * get Метод извлечения списка сундука параметров
+ * @return список сундука параметров
+ */
+const map <uint64_t, unique_ptr <awh::server::SchemeWebSocket::coffer_t>> & awh::server::SchemeWebSocket::get() const noexcept {
+	// Выводим результат
+	return this->_coffers;
 }

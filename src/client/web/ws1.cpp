@@ -275,25 +275,6 @@ void awh::client::WebSocket1::writeCallback(const char * buffer, const size_t si
 	}
 }
 /**
- * persistCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
- */
-void awh::client::WebSocket1::persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (sid > 0) && (core != nullptr)){
-		// Получаем текущий штамп времени
-		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if(this->_close || ((stamp - this->_point) >= (PERSIST_INTERVAL * 5)))
-			// Завершаем работу
-			dynamic_cast <client::core_t *> (core)->close(aid);
-		// Отправляем запрос адъютанту
-		else this->ping(to_string(aid));
-	}
-}
-/**
  * redirect Метод выполнения редиректа если требуется
  * @return результат выполнения редиректа
  */
@@ -405,6 +386,24 @@ void awh::client::WebSocket1::flush() noexcept {
 	this->_allow = allow_t();
 }
 /**
+ * pinging Метод таймера выполнения пинга удалённого сервера
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::client::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((tid > 0) && (core != nullptr)){
+		// Получаем текущий штамп времени
+		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+		if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
+			// Завершаем работу
+			dynamic_cast <client::core_t *> (core)->close(this->_aid);
+		// Отправляем запрос адъютанту
+		else this->ping(::to_string(this->_aid));
+	}
+}
+/**
  * ping Метод проверки доступности сервера
  * @param message сообщение для отправки
  */
@@ -469,7 +468,10 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
-						const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
+						const bool schema = (
+							(this->_fmk->compare(url.host, this->_scheme.url.host)) &&
+							(this->_fmk->compare(url.schema, this->_scheme.url.schema))
+						);
 						// Если соединение является постоянным
 						if(schema && this->_http.isAlive()){
 							// Выполняем сброс параметров запроса
@@ -1311,14 +1313,8 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(true);
-		// Добавляем схемы сети в сетевое ядро
-		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-		// Устанавливаем функцию активации ядра клиента
-		const_cast <client::core_t *> (this->_core)->on(std::bind(&ws1_t::eventsCallback, this, _1, _2));
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 		// Если многопоточность активированна
 		if(this->_thr.is())
 			// Устанавливаем простое чтение базы событий
@@ -1332,12 +1328,8 @@ void awh::client::WebSocket1::core(const client::core_t * core) noexcept {
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
-		// Деактивируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(false);
-		// Удаляем схему сети из сетевого ядра
-		const_cast <client::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем передачу настроек сетевого ядра в родительский модуль
+		web_t::core(core);
 	}
 }
 /**
@@ -1458,8 +1450,6 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -1474,8 +1464,6 @@ awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * f
  _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
-	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("persist", std::bind(&ws1_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

@@ -492,14 +492,6 @@ void awh::server::ProxySocks5::on(function <bool (const string &, const string &
 	this->_callback.accept = callback;
 }
 /**
- * serverName Метод добавления названия сервера
- * @param name название сервера для добавления
- */
-void awh::server::ProxySocks5::serverName(const string & name) noexcept {
-	// Устанавливаем названия сервера
-	this->_core.server.serverName(name);
-}
-/**
  * port Метод получения порта подключения адъютанта
  * @param aid идентификатор адъютанта
  * @return    порт подключения адъютанта

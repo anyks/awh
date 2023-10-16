@@ -94,7 +94,7 @@ void awh::Core::Timer::callback(const evutil_socket_t fd, const short event) noe
 	// Получаем объект сетевого ядра
 	core_t * core = this->core;
 	// Получаем идентификатор таймера
-	const u_short id = this->id;
+	const uint16_t id = this->id;
 	// Если персистентная работа не установлена, удаляем таймер
 	if(!this->persist){
 		// Если родительский объект установлен
@@ -237,7 +237,7 @@ void awh::Core::Dispatch::setBase(struct event_base * base) noexcept {
 	if(base != nullptr){
 		// Если работа уже запущена
 		if(this->_work){
-			// Выполняем блокировку чтения данных
+			// Выполняем блокировку получения данных
 			this->_init = !this->_init;
 			// Выполняем пинок
 			this->kick();
@@ -249,7 +249,9 @@ void awh::Core::Dispatch::setBase(struct event_base * base) noexcept {
 		// Создаем новую базу
 		this->base = base;
 		// Если работа уже запущена
-		if(this->_work) this->_init = !this->_init;
+		if(this->_work)
+			// Выполняем разблокировку получения данных
+			this->_init = !this->_init;
 	}
 }
 /**
@@ -270,7 +272,8 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
  * Dispatch Конструктор
  * @param core объект сетевого ядра
  */
-awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false), _work(false), _init(true), _freeze(false), base(nullptr), _freq(10ms) {
+awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
+ _core(core), _easy(false), _work(false), _init(true), _freeze(false), base(nullptr), _freq(10ms) {
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -326,13 +329,13 @@ void awh::Core::launching() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Устанавливаем статус сетевого ядра
-	this->status = status_t::START;
+	this->_status = status_t::START;
 	// Если список схем сети существует
-	if(!this->schemes.empty()){
+	if(!this->_schemes.empty()){
 		// Объект работы с функциями обратного вызова
-		fn_t callback(this->log);
+		fn_t callback(this->_log);
 		// Переходим по всему списку схем сети
-		for(auto & scheme : this->schemes){
+		for(auto & scheme : this->_schemes){
 			// Если функция обратного вызова установлена
 			if(scheme.second->callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
@@ -342,35 +345,13 @@ void awh::Core::launching() noexcept {
 		callback.bind <const uint16_t, core_t *> ();
 	}
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("status")){
-		// Если нужно запустить функцию в основном потоке
-		if(!this->activeOnTrhead)
-			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("status", this->status, this);
-		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), this->status, this).detach();
-	}
+	if(this->_callback.is("status"))
+		// Выполняем запуск функции в основном потоке
+		this->_callback.call <const status_t, core_t *> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
-	if(!this->noinfo)
+	if(!this->_noinfo)
 		// Выводим в консоль информацию
-		this->log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
-	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-	if(this->persist){
-		// Выполняем остановку работы таймера
-		this->_timer.event.stop();
-		// Устанавливаем флаг персистентного вызова
-		this->_timer.persist = this->persist;
-		// Устанавливаем время задержки персистентного вызова
-		this->_timer.delay = this->_persIntvl;
-		// Устанавливаем тип таймера
-		this->_timer.event.set(-1, EV_TIMEOUT);
-		// Устанавливаем базу данных событий
-		this->_timer.event.set(this->dispatch.base);
-		// Устанавливаем функцию обратного вызова
-		this->_timer.event.set(std::bind(&core_t::persistent, this, _1, _2));
-		// Выполняем запуск работы таймера
-		this->_timer.event.start(this->_timer.delay);
-	}
+		this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
  * closedown Метод вызова при деакцтивации базы событий
@@ -379,99 +360,57 @@ void awh::Core::closedown() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Устанавливаем статус сетевого ядра
-	this->status = status_t::STOP;
-	// Если таймер периодического запуска коллбека активирован
-	if(this->persist)
-		// Останавливаем работу таймера
-		this->_timer.event.stop();
+	this->_status = status_t::STOP;
 	// Выполняем отключение всех адъютантов
 	this->close();
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("status")){
-		// Если нужно запустить функцию в основном потоке
-		if(!this->activeOnTrhead)
-			// Выполняем запуск функции в основном потоке
-			this->_callback.call <const status_t, core_t *> ("status", this->status, this);
-		// Выводим результат в отдельном потоке
-		else std::thread(this->_callback.get <void (const status_t, core_t *)> ("status"), this->status, this).detach();
-	}
+	if(this->_callback.is("status"))
+		// Выполняем запуск функции в основном потоке
+		this->_callback.call <const status_t, core_t *> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
-	if(!this->noinfo)
+	if(!this->_noinfo)
 		// Выводим в консоль информацию
-		this->log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
-}
-/**
- * persistent Метод персистентного вызова по таймеру
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- */
-void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept {
-	// Останавливаем работу таймера
-	this->_timer.event.stop();
-	// Если работа сетевого ядра запущена
-	if(this->status == status_t::START){
-		// Если список схем сети существует
-		if(!this->schemes.empty() && !this->adjutants.empty()){
-			// Объект работы с функциями обратного вызова
-			fn_t callback(this->log);
-			// Переходим по всему списку схем сети
-			for(auto & item : this->schemes){
-				// Получаем объект схемы сети
-				scheme_t * shm = const_cast <scheme_t *> (item.second);
-				// Если функция обратного вызова установлена и адъютанты существуют
-				if(shm->callback.is("persist") && !this->adjutants.empty()){
-					// Переходим по всему списку адъютантов и формируем список их идентификаторов
-					for(auto & adj : this->adjutants)
-						// Получаем функцию обратного вызова
-						callback.set <void (const uint64_t, const uint16_t, core_t *)> (adj.first, shm->callback.get <void (const uint64_t, const uint16_t, core_t *)> ("persist"), adj.first, item.first, this);
-				}
-			}
-			// Выполняем все функции обратного вызова
-			callback.bind <const uint64_t, const uint16_t, core_t *> ();
-		}
-		// Запускаем работу таймера
-		this->_timer.event.start();
-	}
+		this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
  * signal Метод вывода полученного сигнала
  */
 void awh::Core::signal(const int signal) noexcept {
 	// Если процесс является дочерним
-	if(this->pid != getpid()){
+	if(this->_pid != getpid()){
 		// Определяем тип сигнала
 		switch(signal){
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
+				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
 				// Выходим из приложения
 				exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
 		// Выходим принудительно из приложения
@@ -492,9 +431,9 @@ void awh::Core::signal(const int signal) noexcept {
  */
 void awh::Core::clean(const uint64_t aid) const noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект сетевого ядра
@@ -513,25 +452,25 @@ void awh::Core::clean(const uint64_t aid) const noexcept {
  * bind Метод подключения модуля ядра к текущей базе событий
  * @param core модуль ядра для подключения
  */
-void awh::Core::bind(Core * core) noexcept {
+void awh::Core::bind(core_t * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
 	if((core != nullptr) && (core != this)){
 		// Если базы событий отличаются
-		if(core->dispatch.base != this->dispatch.base){
+		if(core->_dispatch.base != this->_dispatch.base){
 			// Выполняем остановку базы событий
 			core->stop();
 			// Устанавливаем новую базу событий
-			core->dispatch.setBase(this->dispatch.base);
+			core->_dispatch.setBase(this->_dispatch.base);
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
 			// Увеличиваем количество подключённых потоков
-			this->cores++;
+			this->_cores++;
 			// Устанавливаем флаг запуска
-			core->mode = true;
+			core->_mode = true;
 			// Выполняем установку нейм-серверов для DNS-резолвера
-			core->dns.replace(core->settings.net.second);
+			core->_dns.replace(core->_settings.net.second);
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		// Если базы событий совпадают
@@ -539,9 +478,9 @@ void awh::Core::bind(Core * core) noexcept {
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
 			// Увеличиваем количество подключённых потоков
-			this->cores++;
+			this->_cores++;
 			// Устанавливаем флаг запуска
-			core->mode = true;
+			core->_mode = true;
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		}
@@ -553,17 +492,17 @@ void awh::Core::bind(Core * core) noexcept {
  * unbind Метод отключения модуля ядра от текущей базы событий
  * @param core модуль ядра для отключения
  */
-void awh::Core::unbind(Core * core) noexcept {
+void awh::Core::unbind(core_t * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
-	if((core != nullptr) && (core != this) && (core->dispatch.base == this->dispatch.base)){
+	if((core != nullptr) && (core != this) && (core->_dispatch.base == this->_dispatch.base)){
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
 		// Уменьшаем количество подключённых потоков
-		this->cores--;
+		this->_cores--;
 		// Запрещаем работу WebSocket
-		core->mode = false;
+		core->_mode = false;
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		/**
@@ -573,16 +512,14 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->clearTimers();
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
-		// Если таймер периодического запуска коллбека активирован
-		if(core->persist)
-			// Останавливаем работу таймера
-			core->_timer.event.stop();
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Выполняем удаление модуля DNS-резолвера
-		core->dns.clear();		
+		core->_dns.clear();		
 		// Запускаем метод деактивации базы событий
 		core->closedown();
+		// Зануляем базу событий
+		core->_dispatch.base = nullptr;
 	}
 }
 /**
@@ -599,7 +536,7 @@ void awh::Core::on(function <void (const int)> callback) noexcept {
  * on Метод установки функции обратного вызова при запуске/остановки работы модуля
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::on(function <void (const status_t, Core *)> callback) noexcept {
+void awh::Core::on(function <void (const status_t, core_t *)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
@@ -622,9 +559,9 @@ void awh::Core::stop() noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Если система уже запущена
-	if(this->mode){
+	if(this->_mode){
 		// Запрещаем работу WebSocket
-		this->mode = !this->mode;
+		this->_mode = !this->_mode;
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
 		/**
@@ -634,16 +571,12 @@ void awh::Core::stop() noexcept {
 		this->clearTimers();
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist)
-			// Останавливаем работу таймера
-			this->_timer.event.stop();
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
 		// Выполняем отключение всех клиентов
 		this->close();
 		// Выполняем остановку чтения базы событий
-		this->dispatch.stop();
+		this->_dispatch.stop();
 	// Выполняем разблокировку потока
 	} else this->_mtx.status.unlock();
 }
@@ -654,13 +587,13 @@ void awh::Core::start() noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Если система ещё не запущена
-	if(!this->mode){
+	if(!this->_mode){
 		// Разрешаем работу WebSocket
-		this->mode = !this->mode;
+		this->_mode = !this->_mode;
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
 		// Выполняем запуск чтения базы событий
-		this->dispatch.start();
+		this->_dispatch.start();
 	// Выполняем разблокировку потока
 	} else this->_mtx.status.unlock();
 }
@@ -670,7 +603,7 @@ void awh::Core::start() noexcept {
  */
 bool awh::Core::working() const noexcept {
 	// Выводим результат проверки
-	return this->mode;
+	return this->_mode;
 }
 /**
  * add Метод добавления схемы сети
@@ -687,13 +620,13 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Получаем идентификатор схемы сети
-		result = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+		result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Устанавливаем родительский объект
 		shm->core = this;
 		// Устанавливаем идентификатор схемы сети
 		shm->sid = result;
 		// Добавляем схему сети в список
-		this->schemes.emplace(result, shm);
+		this->_schemes.emplace(result, shm);
 	}
 	// Выводим результат
 	return result;
@@ -728,9 +661,11 @@ void awh::Core::remove(const uint16_t sid) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.scheme);
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->schemes.find(sid);
+		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
-		if(it != this->schemes.end()) this->schemes.erase(it);
+		if(it != this->_schemes.end())
+			// Выполняем удаление схему сети
+			this->_schemes.erase(it);
 	}
 }
 /**
@@ -786,14 +721,14 @@ void awh::Core::bandWidth(const uint64_t aid, const string & read, const string 
  */
 void awh::Core::rebase() noexcept {
 	// Если система уже запущена
-	if(this->mode){
+	if(this->_mode){
 		/**
 		 * Timer Структура таймера
 		 */
 		typedef struct Timer {
-			bool persist;                               // Таймер является персистентным
-			time_t delay;                               // Задержка времени в миллисекундах
-			function <void (const u_short, Core *)> fn; // Функция обратного вызова
+			bool persist;                                  // Таймер является персистентным
+			time_t delay;                                  // Задержка времени в миллисекундах
+			function <void (const uint16_t, core_t *)> fn; // Функция обратного вызова
 			/**
 			 * Timer Конструктор
 			 */
@@ -835,16 +770,16 @@ void awh::Core::rebase() noexcept {
 			// Выполняем остановку отслеживания сигналов
 			this->_sig.stop();
 		// Выполняем пересоздание базы событий
-		this->dispatch.rebase();
+		this->_dispatch.rebase();
 		// Если обработка сигналов включена
 		if(this->_signals == signals_t::ENABLED){
 			// Выполняем установку новой базы событий
-			this->_sig.base(this->dispatch.base);
+			this->_sig.base(this->_dispatch.base);
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		}
 		// Выполняем установку нейм-серверов для DNS-резолвера
-		this->dns.replace(this->settings.net.second);
+		this->_dns.replace(this->_settings.net.second);
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
 			// Переходим по всему списку таймеров
@@ -874,9 +809,9 @@ awh::engine_t::method_t awh::Core::method(const uint64_t aid) const noexcept {
 	// Результат работы функции
 	engine_t::method_t result = engine_t::method_t::DISCONNECT;
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Если подключение только установлено
@@ -905,9 +840,9 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
+		auto it = this->_adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end()){
+		if(it != this->_adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
@@ -927,17 +862,17 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 						// Устанавливаем тип события
 						adj->bev.events.read.set(adj->addr.fd, EV_READ);
 						// Устанавливаем базу данных событий
-						adj->bev.events.read.set(this->dispatch.base);
+						adj->bev.events.read.set(this->_dispatch.base);
 						// Устанавливаем функцию обратного вызова
 						adj->bev.events.read.set(std::bind(&awh::scheme_t::adj_t::read, adj, _1, _2));
 						// Выполняем запуск работы события
 						adj->bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if((adj->timeouts.read > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
+						if((adj->timeouts.read > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
 							adj->bev.timers.read.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.read.set(this->dispatch.base);
+							adj->bev.timers.read.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
 							adj->bev.timers.read.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
@@ -951,11 +886,11 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.write = shm->timeouts.write;
 						// Если флаг ожидания исходящих сообщений, активирован
-						if((adj->timeouts.write > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
+						if((adj->timeouts.write > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
 							adj->bev.timers.write.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.write.set(this->dispatch.base);
+							adj->bev.timers.write.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
 							adj->bev.timers.write.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
@@ -969,7 +904,7 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 						// Устанавливаем тип события
 						adj->bev.events.connect.set(adj->addr.fd, EV_WRITE);
 						// Устанавливаем базу данных событий
-						adj->bev.events.connect.set(this->dispatch.base);
+						adj->bev.events.connect.set(this->_dispatch.base);
 						// Устанавливаем функцию обратного вызова
 						adj->bev.events.connect.set(std::bind(&awh::scheme_t::adj_t::connect, adj, _1, _2));
 						// Выполняем запуск работы события
@@ -979,7 +914,7 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 							// Устанавливаем тип таймера
 							adj->bev.timers.connect.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
-							adj->bev.timers.connect.set(this->dispatch.base);
+							adj->bev.timers.connect.set(this->_dispatch.base);
 							// Устанавливаем функцию обратного вызова
 							adj->bev.timers.connect.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
 							// Выполняем запуск работы таймера
@@ -990,7 +925,7 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t aid) noe
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
 			} else if(adj->addr.fd > 65535)
 				// Удаляем из памяти объект адъютанта
-				this->adjutants.erase(it);
+				this->_adjutants.erase(it);
 		}
 	}
 }
@@ -1003,9 +938,9 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
+		auto it = this->_adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end()){
+		if(it != this->_adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
@@ -1022,10 +957,10 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 						adj->bev.events.read.stop();
 					} break;
 					// Если событием является запись
-					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
+					case static_cast <uint8_t> (engine_t::method_t::WRITE):
 						// Останавливаем работу таймера
 						adj->bev.timers.write.stop();
-					} break;
+					break;
 					// Если событием является подключение
 					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
 						// Останавливаем работу таймера
@@ -1035,7 +970,7 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
 					} break;
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то, удаляем из памяти объект адъютанта
-			} else this->adjutants.erase(it);
+			} else this->_adjutants.erase(it);
 		}
 	}
 }
@@ -1047,29 +982,21 @@ void awh::Core::disabled(const engine_t::method_t method, const uint64_t aid) no
  */
 void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
-			case static_cast <uint8_t> (engine_t::method_t::READ): {
-				// Если нужно заблокировать метод
-				if(mode)
-					// Запрещаем чтение данных из сокета
-					const_cast <scheme_t::adj_t *> (it->second)->bev.locked.read = true;
-				// Если нужно разблокировать метод
-				else const_cast <scheme_t::adj_t *> (it->second)->bev.locked.read = false;
-			} break;
+			case static_cast <uint8_t> (engine_t::method_t::READ):
+				// Выполняем установку разрешения на получение данных
+				const_cast <scheme_t::adj_t *> (it->second)->bev.locked.read = mode;
+			break;
 			// Режим работы ЗАПИСЬ
-			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-				// Если нужно заблокировать метод
-				if(mode)
-					// Запрещаем запись данных в сокет
-					const_cast <scheme_t::adj_t *> (it->second)->bev.locked.write = true;
-				// Если нужно разблокировать метод
-				else const_cast <scheme_t::adj_t *> (it->second)->bev.locked.write = false;
-			} break;
+			case static_cast <uint8_t> (engine_t::method_t::WRITE):
+				// Выполняем установку разрешения на передачу данных
+				const_cast <scheme_t::adj_t *> (it->second)->bev.locked.write = mode;
+			break;
 		}
 	}
 }
@@ -1081,9 +1008,9 @@ void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, con
  */
 void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
@@ -1113,9 +1040,9 @@ void awh::Core::dataTimeout(const engine_t::method_t method, const time_t second
  */
 void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t aid) noexcept {
 	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
+	auto it = this->_adjutants.find(aid);
 	// Если адъютант получен
-	if(it != this->adjutants.end()){
+	if(it != this->_adjutants.end()){
 		// Определяем метод режима работы
 		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
@@ -1164,7 +1091,7 @@ void awh::Core::clearTimers() noexcept {
  * clearTimer Метод очистки таймера
  * @param id идентификатор таймера для очистки
  */
-void awh::Core::clearTimer(const u_short id) noexcept {
+void awh::Core::clearTimer(const uint16_t id) noexcept {
 	// Если список таймеров существует
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -1186,15 +1113,15 @@ void awh::Core::clearTimer(const u_short id) noexcept {
  * @param callback функция обратного вызова
  * @return         идентификатор созданного таймера
  */
-u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short, Core *)> callback) noexcept {
+uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_t, core_t *)> callback) noexcept {
 	// Результат работы функции
-	u_short result = 0;
+	uint16_t result = 0;
 	// Если данные переданы
-	if((delay > 0) && (callback != nullptr)){
+	if((this->_dispatch.base != nullptr) && (delay > 0) && (callback != nullptr)){
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->log)));
+		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->_log)));
 		// Выполняем разблокировку потока
 		this->_mtx.timer.unlock();
 		// Получаем идентификатор таймера
@@ -1210,7 +1137,7 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		// Устанавливаем тип таймера
 		ret.first->second->event.set(-1, EV_TIMEOUT);
 		// Устанавливаем базу данных событий
-		ret.first->second->event.set(this->dispatch.base);
+		ret.first->second->event.set(this->_dispatch.base);
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->event.set(std::bind(&timer_t::callback, ret.first->second.get(), _1, _2));
 		// Выполняем запуск работы таймера
@@ -1225,15 +1152,15 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
  * @param callback функция обратного вызова
  * @return         идентификатор созданного таймера
  */
-u_short awh::Core::setInterval(const time_t delay, function <void (const u_short, Core *)> callback) noexcept {
+uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16_t, core_t *)> callback) noexcept {
 	// Результат работы функции
-	u_short result = 0;
+	uint16_t result = 0;
 	// Если данные переданы
-	if((delay > 0) && (callback != nullptr)){		
+	if((this->_dispatch.base != nullptr) && (delay > 0) && (callback != nullptr)){		
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->log)));
+		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->_log)));
 		// Выполняем разблокировку потока
 		this->_mtx.timer.unlock();
 		// Получаем идентификатор таймера
@@ -1251,7 +1178,7 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		// Устанавливаем тип таймера
 		ret.first->second->event.set(-1, EV_TIMEOUT);
 		// Устанавливаем базу данных событий
-		ret.first->second->event.set(this->dispatch.base);
+		ret.first->second->event.set(this->_dispatch.base);
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->event.set(std::bind(&timer_t::callback, ret.first->second.get(), _1, _2));
 		// Выполняем запуск работы таймера
@@ -1266,11 +1193,11 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
  */
 void awh::Core::easily(const bool mode) noexcept {
 	// Определяем запущено ли ядро сети
-	const bool start = this->mode;
+	const bool start = this->_mode;
 	// Если ядро сети уже запущено, останавливаем его
 	if(start) this->stop();
 	// Устанавливаем режим чтения базы событий
-	this->dispatch.easily(mode);
+	this->_dispatch.easily(mode);
 	// Если ядро сети уже было запущено, запускаем его
 	if(start) this->start();
 }
@@ -1280,7 +1207,7 @@ void awh::Core::easily(const bool mode) noexcept {
  */
 void awh::Core::freeze(const bool mode) noexcept {
 	// Устанавливаем режим заморозки чтения данных
-	this->dispatch.freeze(mode);
+	this->_dispatch.freeze(mode);
 }
 /**
  * removeUnixSocket Метод удаления unix-сокета
@@ -1298,7 +1225,7 @@ bool awh::Core::removeUnixSocket() noexcept {
 		// Если сервер в данный момент не работает
 		if((result = !this->working()))
 			// Выполняем очистку unix-сокета
-			this->settings.filename.clear();
+			this->_settings.filename.clear();
 	#endif
 	// Выводим результат
 	return result;
@@ -1322,15 +1249,15 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 			// Получаем адрес файла
 			filename = socket;
 		// Если адрес unix-сокета не передан
-		else filename = this->servName;
+		else filename = AWH_SHORT_NAME;
 		// Устанавливаем адрес файла unix-сокета
-		this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->transform(filename, fmk_t::transform_t::LOWER).c_str());
+		this->_settings.filename = this->_fmk->format("/tmp/%s.sock", this->_fmk->transform(filename, fmk_t::transform_t::LOWER).c_str());
 	/**
 	 * Если операционной системой является MS Windows
 	 */
 	#else
 		// Выводим в лог сообщение
-		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		this->_log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1339,7 +1266,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
-	return !this->settings.filename.empty();
+	return !this->_settings.filename.empty();
 }
 /**
  * proto Метод извлечения поддерживаемого протокола подключения
@@ -1347,7 +1274,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
  */
 awh::engine_t::proto_t awh::Core::proto() const noexcept {
 	// Выполняем вывод поддерживаемого протокола подключения
-	return this->settings.proto;
+	return this->_settings.proto;
 }
 /**
  * proto Метод извлечения активного протокола подключения
@@ -1360,11 +1287,11 @@ awh::engine_t::proto_t awh::Core::proto(const uint64_t aid) const noexcept {
 	// Если данные переданы верные
 	if(this->working() && (aid > 0)){
 		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
+		auto it = this->_adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end())
+		if(it != this->_adjutants.end())
 			// Выполняем извлечение активного протокола подключения
-			result = this->engine.proto(const_cast <awh::scheme_t::adj_t *> (it->second)->ectx);
+			result = this->_engine.proto(const_cast <awh::scheme_t::adj_t *> (it->second)->ectx);
 	}
 	// Выводим результат
 	return result;
@@ -1375,7 +1302,7 @@ awh::engine_t::proto_t awh::Core::proto(const uint64_t aid) const noexcept {
  */
 void awh::Core::proto(const engine_t::proto_t proto) noexcept {
 	// Выполняем установку поддерживаемого протокола подключения
-	this->settings.proto = proto;
+	this->_settings.proto = proto;
 }
 /**
  * sonet Метод извлечения типа сокета подключения
@@ -1383,7 +1310,7 @@ void awh::Core::proto(const engine_t::proto_t proto) noexcept {
  */
 awh::scheme_t::sonet_t awh::Core::sonet() const noexcept {
 	// Выполняем вывод тип сокета подключения
-	return this->settings.sonet;
+	return this->_settings.sonet;
 }
 /**
  * sonet Метод установки типа сокета подключения
@@ -1393,15 +1320,15 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
-	this->settings.sonet = sonet;
+	this->_settings.sonet = sonet;
 	/**
 	 * Если операционной системой не является Linux или FreeBSD
 	 */
 	#if !defined(__linux__) && !defined(__FreeBSD__)
 		// Если установлен протокол SCTP
-		if(this->settings.sonet == scheme_t::sonet_t::SCTP){
+		if(this->_settings.sonet == scheme_t::sonet_t::SCTP){
 			// Выводим в лог сообщение
-			this->log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
+			this->_log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
@@ -1417,7 +1344,7 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
  */
 awh::scheme_t::family_t awh::Core::family() const noexcept {
 	// Выполняем вывод тип протокола интернета
-	return this->settings.family;
+	return this->_settings.family;
 }
 /**
  * family Метод установки типа протокола интернета
@@ -1427,9 +1354,9 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип активного интернет-подключения
-	this->settings.family = family;
+	this->_settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if((this->settings.family == scheme_t::family_t::NIX) && this->settings.filename.empty()){
+	if((this->_settings.family == scheme_t::family_t::NIX) && this->_settings.filename.empty()){
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
@@ -1437,7 +1364,7 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
-	} else if(this->settings.family != scheme_t::family_t::NIX) {
+	} else if(this->_settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
@@ -1452,7 +1379,7 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
  */
 bool awh::Core::clearDNS() noexcept {
 	// Выполняем сброс кэша резолвера
-	return this->dns.clear();
+	return this->_dns.clear();
 }
 /**
  * flushDNS Метод сброса кэша DNS-резолвера
@@ -1460,7 +1387,7 @@ bool awh::Core::clearDNS() noexcept {
  */
 bool awh::Core::flushDNS() noexcept {
 	// Выполняем очистку кэша DNS-резолвера
-	return this->dns.flush();
+	return this->_dns.flush();
 }
 /**
  * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
@@ -1468,7 +1395,7 @@ bool awh::Core::flushDNS() noexcept {
  */
 void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
 	// Выполняем установку времени ожидания выполнения запроса
-	this->dns.timeout(sec);
+	this->_dns.timeout(sec);
 }
 /**
  * prefixDNS Метод установки префикса переменной окружения
@@ -1476,7 +1403,7 @@ void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
  */
 void awh::Core::prefixDNS(const string & prefix) noexcept {
 	// Выполняем установку префикса переменной окружения
-	this->dns.setPrefix(prefix);
+	this->_dns.setPrefix(prefix);
 }
 /**
  * cashTimeToLiveDNS Время жизни кэша DNS
@@ -1484,7 +1411,7 @@ void awh::Core::prefixDNS(const string & prefix) noexcept {
  */
 void awh::Core::cashTimeToLiveDNS(const time_t msec) noexcept {
 	// Выполняем установку времени жизни кэша
-	this->dns.timeToLive(msec);
+	this->_dns.timeToLive(msec);
 }
 /**
  * readHostsDNS Метод загрузки файла со списком хостов
@@ -1494,7 +1421,7 @@ void awh::Core::readHostsDNS(const string & filename) noexcept {
 	// Если адрес файла хостов в файловой системе передан
 	if(!filename.empty())
 		// Выполняем установку адрес файла хостов в файловой системе
-		this->dns.readHosts(filename);
+		this->_dns.readHosts(filename);
 }
 /**
  * serversDNS Метод установки серверов имён DNS
@@ -1506,9 +1433,9 @@ void awh::Core::serversDNS(const vector <string> & ns) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку нейм-серверов для DNS-резолвера
-		this->dns.replace(ns);
+		this->_dns.replace(ns);
 		// Выполняем установку DNS-резолвера
-		this->settings.net.second.assign(ns.begin(), ns.end());
+		this->_settings.net.second.assign(ns.begin(), ns.end());
 	}
 }
 /**
@@ -1522,18 +1449,18 @@ void awh::Core::serversDNS(const vector <string> & ns, const scheme_t::family_t 
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Устанавливаем полученный список серверов имён
-		this->settings.net.second.assign(ns.cbegin(), ns.cend());
+		this->_settings.net.second.assign(ns.cbegin(), ns.cend());
 		// Определяем тип интернет-протокола
 		switch(static_cast <uint8_t> (family)){
 			// Если тип протокола интернета IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 				// Выполняем установку нейм-серверов для DNS-резолвера
-				this->dns.replace(AF_INET, ns);
+				this->_dns.replace(AF_INET, ns);
 			break;
 			// Если тип протокола интернета IPv6
 			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 				// Выполняем установку нейм-серверов для DNS-резолвера
-				this->dns.replace(AF_INET6, ns);
+				this->_dns.replace(AF_INET6, ns);
 			break;
 		}
 	}
@@ -1544,7 +1471,7 @@ void awh::Core::serversDNS(const vector <string> & ns, const scheme_t::family_t 
  */
 void awh::Core::clearBlackListDNS(const string & domain) noexcept {
 	// Выполняем очистку чёрного списка IP-адресов
-	this->dns.clearBlackList(domain);
+	this->_dns.clearBlackList(domain);
 }
 /**
  * clearBlackListDNS Метод очистки чёрного списка
@@ -1557,12 +1484,12 @@ void awh::Core::clearBlackListDNS(const scheme_t::family_t family, const string 
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем очистку чёрного списка IP-адресов
-			this->dns.clearBlackList(AF_INET, domain);
+			this->_dns.clearBlackList(AF_INET, domain);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем очистку чёрного списка IP-адресов
-			this->dns.clearBlackList(AF_INET6, domain);
+			this->_dns.clearBlackList(AF_INET6, domain);
 		break;
 	}
 }
@@ -1573,7 +1500,7 @@ void awh::Core::clearBlackListDNS(const scheme_t::family_t family, const string 
  */
 void awh::Core::delInBlackListDNS(const string & domain, const string & ip) noexcept {
 	// Выполняем удаление из чёрного списка IP-адреса
-	this->dns.delInBlackList(domain, ip);
+	this->_dns.delInBlackList(domain, ip);
 }
 /**
  * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
@@ -1587,12 +1514,12 @@ void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string 
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем удаление из чёрного списка IP-адреса
-			this->dns.delInBlackList(AF_INET, domain, ip);
+			this->_dns.delInBlackList(AF_INET, domain, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем удаление из чёрного списка IP-адреса
-			this->dns.delInBlackList(AF_INET6, domain, ip);
+			this->_dns.delInBlackList(AF_INET6, domain, ip);
 		break;
 	}
 }
@@ -1603,7 +1530,7 @@ void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string 
  */
 void awh::Core::setToBlackListDNS(const string & domain, const string & ip) noexcept {
 	// Выполняем установку в чёрный список IP-адреса
-	this->dns.setToBlackList(domain, ip);
+	this->_dns.setToBlackList(domain, ip);
 }
 /**
  * setToBlackListDNS Метод добавления IP-адреса в чёрный список
@@ -1617,12 +1544,12 @@ void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string 
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем установку в чёрный список IP-адреса
-			this->dns.setToBlackList(AF_INET, domain, ip);
+			this->_dns.setToBlackList(AF_INET, domain, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем установку в чёрный список IP-адреса
-			this->dns.setToBlackList(AF_INET6, domain, ip);
+			this->_dns.setToBlackList(AF_INET6, domain, ip);
 		break;
 	}
 }
@@ -1634,7 +1561,7 @@ void awh::Core::noInfo(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
-	this->noinfo = mode;
+	this->_noinfo = mode;
 }
 /**
  * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
@@ -1644,48 +1571,7 @@ void awh::Core::verifySSL(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
-	this->engine.verifyEnable(mode);
-}
-/**
- * persistEnable Метод установки персистентного флага
- * @param mode флаг персистентного запуска каллбека
- */
-void awh::Core::persistEnable(const bool mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем установку флага персистентного запуска каллбека
-	this->persist = mode;
-	// Если работу сетевого ядра уже запущена
-	if(this->working()){
-		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-		if(this->persist){
-			// Выполняем остановку работы таймера
-			this->_timer.event.stop();
-			// Устанавливаем флаг персистентного вызова
-			this->_timer.persist = this->persist;
-			// Устанавливаем время задержки персистентного вызова
-			this->_timer.delay = this->_persIntvl;
-			// Устанавливаем тип таймера
-			this->_timer.event.set(-1, EV_TIMEOUT);
-			// Устанавливаем базу данных событий
-			this->_timer.event.set(this->dispatch.base);
-			// Устанавливаем функцию обратного вызова
-			this->_timer.event.set(std::bind(&core_t::persistent, this, _1, _2));
-			// Выполняем запуск работы таймера
-			this->_timer.event.start(this->_timer.delay);
-		// Выполняем остановку работы таймера
-		} else this->_timer.event.stop();
-	}
-}
-/**
- * persistInterval Метод установки персистентного таймера
- * @param itv интервал персистентного таймера в миллисекундах
- */
-void awh::Core::persistInterval(const time_t itv) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем интервал персистентного таймера
-	this->_persIntvl = itv;
+	this->_engine.verifyEnable(mode);
 }
 /**
  * frequency Метод установки частоты обновления базы событий
@@ -1693,21 +1579,7 @@ void awh::Core::persistInterval(const time_t itv) noexcept {
  */
 void awh::Core::frequency(const uint8_t msec) noexcept {
 	// Устанавливаем частоту чтения базы событий
-	this->dispatch.frequency(msec);
-}
-/**
- * serverName Метод добавления названия сервера
- * @param name название сервера для добавления
- */
-void awh::Core::serverName(const string & name) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Если название сервера передано
-	if(!name.empty())
-		// Устанавливаем новое название сервера
-		this->servName = name;
-	// Иначе устанавливаем название сервера по умолчанию
-	else this->servName = AWH_SHORT_NAME;
+	this->_dispatch.frequency(msec);
 }
 /**
  * signalInterception Метод активации перехвата сигналов
@@ -1723,7 +1595,7 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 			// Если передан флаг активации перехвата сигналов
 			case static_cast <uint8_t> (signals_t::ENABLED): {
 				// Если тип сокета подключения не является unix-сокетом
-				if(this->settings.family != scheme_t::family_t::NIX){
+				if(this->_settings.family != scheme_t::family_t::NIX){
 					// Устанавливаем функцию обработки сигналов
 					this->_sig.on(std::bind(&core_t::signal, this, placeholders::_1));
 					// Выполняем запуск отслеживания сигналов
@@ -1750,7 +1622,7 @@ void awh::Core::ciphers(const vector <string> & ciphers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку алгоритмов шифрования
-	this->engine.ciphers(ciphers);
+	this->_engine.ciphers(ciphers);
 }
 /**
  * ca Метод установки доверенного сертификата (CA-файла)
@@ -1761,7 +1633,7 @@ void awh::Core::ca(const string & trusted, const string & path) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем адрес CA-файла
-	this->engine.ca(trusted, path);
+	this->_engine.ca(trusted, path);
 }
 /**
  * certificate Метод установки файлов сертификата
@@ -1772,7 +1644,7 @@ void awh::Core::certificate(const string & chain, const string & key) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем файлы сертификата
-	this->engine.certificate(chain, key);
+	this->_engine.certificate(chain, key);
 }
 /**
  * network Метод установки параметров сети
@@ -1784,11 +1656,11 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
-	this->settings.sonet = sonet;
+	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
-	this->settings.family = family;
+	this->_settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if((this->settings.family == scheme_t::family_t::NIX) && this->settings.filename.empty()){
+	if((this->_settings.family == scheme_t::family_t::NIX) && this->_settings.filename.empty()){
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
@@ -1796,7 +1668,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
-	} else if(this->settings.family != scheme_t::family_t::NIX) {
+	} else if(this->_settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
@@ -1807,17 +1679,17 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если IP-адреса переданы
 	if(!ips.empty()){
 		// Выполняем установку параметров сети для DNS-резолвера
-		this->dns.network(ips);
+		this->_dns.network(ips);
 		// Переходим по всему списку полученных адресов
 		for(auto & host : ips){
 			// Определяем к какому адресу относится полученный хост
-			switch(static_cast <uint8_t> (this->net.host(host))){
+			switch(static_cast <uint8_t> (this->_net.host(host))){
 				// Если IP-адрес является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Если IP-адрес является IPv6 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
 					// Устанавливаем полученные IP-адреса
-					this->settings.net.first.push_back(host);
+					this->_settings.net.first.push_back(host);
 				break;
 				// Для всех остальных адресов
 				default: {
@@ -1826,20 +1698,20 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 						// Если тип протокола интернета IPv4
 						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 							// Выполняем получение IP-адреса для IPv4
-							const string & ip = this->dns.host(AF_INET, host);
+							const string & ip = this->_dns.host(AF_INET, host);
 							// Если IP-адрес успешно получен
 							if(!ip.empty())
 								// Выполняем добавление полученного хоста в список
-								this->settings.net.first.push_back(ip);
+								this->_settings.net.first.push_back(ip);
 						} break;
 						// Если тип протокола интернета IPv6
 						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 							// Выполняем получение IP-адреса для IPv6
-							const string & ip = this->dns.host(AF_INET6, host);
+							const string & ip = this->_dns.host(AF_INET6, host);
 							// Если результат получен, выполняем пинг
 							if(!ip.empty())
 								// Выполняем добавление полученного хоста в список
-								this->settings.net.first.push_back(ip);
+								this->_settings.net.first.push_back(ip);
 						} break;
 					}
 				}
@@ -1855,17 +1727,16 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- pid(getpid()), uri(fmk), engine(fmk, log, &uri), dns(fmk, log),
- dispatch(this), _fs(fmk, log), _sig(dispatch.base, log), _callback(log), _timer(log),
- status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
- mode(false), noinfo(false), persist(false), activeOnTrhead(true), cores(0),
- servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log) {
+ _pid(getpid()), _uri(fmk), _dns(fmk, log), _engine(fmk, log, &_uri),
+ _dispatch(this), _fs(fmk, log), _sig(_dispatch.base, log), _callback(log),
+ _status(status_t::STOP), _signals(signals_t::DISABLED), _type(engine_t::type_t::CLIENT),
+ _mode(false), _noinfo(false), _cores(0), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета
-	this->settings.sonet = sonet;
+	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
-	this->settings.family = family;
+	this->_settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if(this->settings.family == scheme_t::family_t::NIX)
+	if(this->_settings.family == scheme_t::family_t::NIX)
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 }
@@ -1876,27 +1747,27 @@ awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
 	// Выполняем удаление модуля DNS-резолвера
-	this->dns.clear();
+	this->_dns.clear();
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Выполняем удаление активных таймеров
 	this->_timers.clear();
 	// Выполняем удаление списка активных схем сети
-	this->schemes.clear();
+	this->_schemes.clear();
 	// Выполняем удаление активных адъютантов
-	this->adjutants.clear();
+	this->_adjutants.clear();
 	// Устанавливаем статус сетевого ядра
-	this->status = status_t::STOP;
+	this->_status = status_t::STOP;
 	// Если требуется использовать unix-сокет и ядро является сервером
-	if((this->settings.family == scheme_t::family_t::NIX) && (this->type == engine_t::type_t::SERVER)){
+	if((this->_settings.family == scheme_t::family_t::NIX) && (this->_type == engine_t::type_t::SERVER)){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(this->_fs.isSock(this->settings.filename))
+			if(this->_fs.isSock(this->_settings.filename))
 				// Удаляем файл сокета
-				::unlink(this->settings.filename.c_str());
+				::unlink(this->_settings.filename.c_str());
 		#endif
 	}
 	// Выполняем разблокировку потока

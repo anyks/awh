@@ -102,14 +102,6 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * redirect Метод выполнения редиректа если требуется
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети
@@ -154,6 +146,13 @@ namespace awh {
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
+			private:
+				/**
+				 * pinging Метод таймера выполнения пинга удалённого сервера
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void pinging(const u_short tid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных

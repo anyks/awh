@@ -147,8 +147,8 @@ namespace awh {
 				crypto_t _crypto;
 				// Объект параметров сервиса
 				service_t _service;
-			protected:
-				// Ядро локальных таймеров
+			private:
+				// Ядро для локального таймера
 				awh::core_t _timer;
 			protected:
 				// Выполнять анбиндинг после завершения запроса
@@ -218,14 +218,6 @@ namespace awh {
 				virtual void writeCallback(const char * buffer, const size_t size, const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept = 0;
-			protected:
-				/**
 				 * acceptCallback Функция обратного вызова при проверке подключения адъютанта
 				 * @param ip   адрес интернет подключения адъютанта
 				 * @param mac  мак-адрес подключившегося адъютанта
@@ -260,6 +252,13 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void disconected(const u_short tid, awh::core_t * core) noexcept;
+			protected:
+				/**
+				 * pinging Метод таймера выполнения пинга клиента
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				virtual void pinging(const u_short tid, awh::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта
@@ -629,19 +628,18 @@ namespace awh {
 				virtual void connectCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
-				 * persistCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				virtual void persistCallback(const uint64_t aid, const uint16_t sid, awh::core_t * core) noexcept;
-			protected:
-				/**
 				 * ping Метод выполнения пинга клиента
 				 * @param aid идентификатор адъютанта
 				 * @return    результат работы пинга
 				 */
 				bool ping(const uint64_t aid) noexcept;
+			protected:
+				/**
+				 * pinging Метод таймера выполнения пинга клиента
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				virtual void pinging(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения клиенту

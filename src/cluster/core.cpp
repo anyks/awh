@@ -125,9 +125,9 @@ void awh::cluster::Core::stop() noexcept {
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система уже запущена
-		if(this->mode){
+		if(this->_mode){
 			// Запрещаем работу WebSocket
-			this->mode = !this->mode;
+			this->_mode = !this->_mode;
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
 			/**
@@ -137,28 +137,12 @@ void awh::cluster::Core::stop() noexcept {
 			this->clearTimers();
 			// Выполняем блокировку потока
 			this->_mtx.status.lock();
-			// Если таймер периодического запуска коллбека активирован
-			if(this->persist){
-				/**
-				 * Если используется модуль LibEvent2
-				 */
-				#if defined(AWH_EVENT2)
-					// Останавливаем работу таймера
-					this->_timer.event.stop();
-				/**
-				 * Если используется модуль LibEv
-				 */
-				#elif defined(AWH_EV)
-					// Останавливаем работу персистентного таймера
-					this->_timer.io.stop();
-				#endif
-			}
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
 			// Выполняем отключение всех клиентов
 			this->close();
 			// Выполняем остановку чтения базы событий
-			this->dispatch.stop();
+			this->_dispatch.stop();
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("statusCluster"))
 				// Выполняем получение функции обратного вызова
@@ -166,8 +150,6 @@ void awh::cluster::Core::stop() noexcept {
 					"status",
 					this->_callback.get <void (const status_t, awh::core_t *)> ("statusCluster")
 				);
-			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
-			this->activeOnTrhead = !this->activeOnTrhead;
 		// Выполняем разблокировку потока
 		} else this->_mtx.status.unlock();
 	// Если процесс является дочерним, выполняем остановку процесса
@@ -182,9 +164,9 @@ void awh::cluster::Core::start() noexcept {
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система ещё не запущена
-		if(!this->mode){
+		if(!this->_mode){
 			// Разрешаем работу WebSocket
-			this->mode = !this->mode;
+			this->_mode = !this->_mode;
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
 			// Если функция обратного вызова установлена
@@ -194,12 +176,10 @@ void awh::cluster::Core::start() noexcept {
 					"statusCluster",
 					this->_callback.get <void (const status_t, awh::core_t *)> ("status")
 				);
-			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
-			this->activeOnTrhead = !this->activeOnTrhead;
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.set <void (const status_t, awh::core_t *)> ("status", std::bind(&cluster::core_t::active, this, _1, _2));
 			// Выполняем запуск чтения базы событий
-			this->dispatch.start();
+			this->_dispatch.start();
 		// Выполняем разблокировку потока
 		} else this->_mtx.status.unlock();
 	// Если процесс является дочерним
@@ -345,9 +325,9 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::f
 	// Устанавливаем идентификатор процесса
 	this->_pid = getpid();
 	// Устанавливаем тип запускаемого ядра
-	this->type = engine_t::type_t::SERVER;
+	this->_type = engine_t::type_t::SERVER;
 	// Выполняем установку базы данных
-	this->_cluster.base(this->dispatch.base);
+	this->_cluster.base(this->_dispatch.base);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_clusterSize);
 	// Устанавливаем функцию получения статуса кластера
