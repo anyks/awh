@@ -2629,7 +2629,7 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 						// Если протокол соответствует HTTP/2
 						case static_cast <uint8_t> (proto_t::HTTP2): {
 							
-							cout << " ^^^^^^^^^^^^^^^^ " << string((const char *) alpn, 2) << endl;
+							cout << " ^^^^^^^^^^^^^^^^ " << (alpn != nullptr ? string((const char *) alpn, 2) : "") << endl;
 							
 							// Если активный протокол не соответствует протоколу HTTP/2
 							if((alpn == nullptr) || (size != 2) || (::memcmp("h2", alpn, 2) != 0))
