@@ -152,7 +152,7 @@ namespace awh {
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void pinging(const u_short tid, awh::core_t * core) noexcept;
+				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных

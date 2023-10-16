@@ -721,7 +721,7 @@ void awh::server::Http1::erase(const uint64_t aid) noexcept {
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void awh::server::Http1::pinging(const u_short tid, awh::core_t * core) noexcept {
+void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (core != nullptr)){
 		// Выполняем перебор всех активных агентов

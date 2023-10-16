@@ -44,7 +44,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
 				// Устанавливаем интервал времени на удаление мусорных адъютантов раз в 5 секунд
-				this->_timer.setInterval(5000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
+				this->_timer.setInterval(5000, (function <void (const uint16_t, awh::core_t *)>) std::bind(&web_t::disconected, this, _1, _2));
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				this->_timer.setInterval(PING_INTERVAL, std::bind(static_cast <void (web_t::*)(const uint16_t, awh::core_t *)> (&web_t::pinging), this, _1, _2));
 			} break;
@@ -148,7 +148,7 @@ void awh::server::Web::disconnect(const uint64_t aid) noexcept {
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void awh::server::Web::disconected(const u_short tid, awh::core_t * core) noexcept {
+void awh::server::Web::disconected(const uint16_t tid, awh::core_t * core) noexcept {
 	// Выполняем удаление отключившихся адъютантов
 	this->erase();
 }

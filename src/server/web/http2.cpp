@@ -943,15 +943,24 @@ void awh::server::Http2::disconnect(const uint64_t aid) noexcept {
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void  awh::server::Http2::pinging(const u_short tid, awh::core_t * core) noexcept {
+void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+	
+	cout << " ******************** PING1 " << endl;
+	
 	// Если данные существуют
 	if((tid > 0) && (core != nullptr)){
+		
+		cout << " ******************** PING2 " << endl;
+		
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Выполняем поиск агента которому соответствует клиент
 			auto it = this->_agents.find(item.first);
 			// Если активный агент клиента установлен
 			if(it != this->_agents.end()){
+				
+				cout << " ******************** PING3 " << endl;
+				
 				// Определяем тип активного протокола
 				switch(static_cast <uint8_t> (it->second)){
 					// Если протокол соответствует HTTP-протоколу
@@ -965,6 +974,9 @@ void  awh::server::Http2::pinging(const u_short tid, awh::core_t * core) noexcep
 							break;
 							// Если протокол подключения соответствует HTTP/2
 							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+								
+								cout << " ******************** PING4 " << endl;
+								
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 								if(!this->ping(item.first)){
 									// Выполняем поиск адъютанта в списке активных сессий
@@ -974,6 +986,8 @@ void  awh::server::Http2::pinging(const u_short tid, awh::core_t * core) noexcep
 										// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), item.first));
 								}
+
+								cout << " ******************** PING5 " << endl;
 							} break;
 						}
 					} break;

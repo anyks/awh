@@ -251,14 +251,14 @@ namespace awh {
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void disconected(const u_short tid, awh::core_t * core) noexcept;
+				void disconected(const uint16_t tid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * pinging Метод таймера выполнения пинга клиента
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				virtual void pinging(const u_short tid, awh::core_t * core) noexcept = 0;
+				virtual void pinging(const uint16_t tid, awh::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB адъютанта
