@@ -1366,14 +1366,8 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							left = (size - offset);
 							// Определяем размер отправляемых данных
 							actual = (left >= max ? max : left);
-							
-							cout << " ================1 " << actual << endl;
-							
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->ectx.write(buffer + offset, actual);
-							
-							cout << " ================2 " << bytes << endl;
-							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если произошёл дисконнект
