@@ -947,6 +947,8 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 				options->http.headers(web->http.headers());
 				// Выполняем коммит полученного результата
 				options->http.commit();
+				// Выполняем замену активного агнета
+				this->_agents.at(bid) = agent_t::WEBSOCKET;
 				// Ответ клиенту по умолчанию успешный
 				awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
 				// Если рукопожатие выполнено
@@ -1030,8 +1032,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						if(this->_callback.is("handshake"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
-						// Выполняем замену активного агнета
-						this->_agents.at(bid) = agent_t::WEBSOCKET;
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
