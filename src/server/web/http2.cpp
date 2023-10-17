@@ -1014,7 +1014,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						this->_ws2._core = dynamic_cast <server::core_t *> (core);
 						
 						for(auto & header : headers)
-							cout << " *********************1 " << header.first << " == " << headers.second << endl;
+							cout << " *********************1 " << header.first << " == " << header.second << endl;
 						
 						// Выполняем ответ подключившемуся клиенту
 						if(web2_t::send(options->sid, bid, headers, false) < 0)
