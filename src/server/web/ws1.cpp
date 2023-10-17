@@ -751,13 +751,9 @@ void awh::server::WebSocket1::ping(const uint64_t bid, awh::core_t * core, const
 			// Создаём буфер для отправки
 			const auto & buffer = options->frame.methods.ping(message);
 			// Если буфер данных получен
-			if(!buffer.empty()){
-
-				cout << " ***************PING " << core << " == " << dynamic_cast <server::core_t *> (core) << " == " << buffer.size() << " == " << bid << endl;
-
+			if(!buffer.empty())
 				// Выполняем отправку сообщения брокеру
 				dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), bid);
-			}
 		}
 	}
 }
@@ -831,9 +827,9 @@ void awh::server::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) no
 			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 			if(item.second->close || ((stamp - item.second->point) >= (PING_INTERVAL * 5)))
 				// Завершаем работу
-				dynamic_cast <server::core_t *> (core)->close(item.first);
+				const_cast <server::core_t *> (this->_core)->close(item.first);
 			// Отправляем запрос брокеру
-			else this->ping(item.first, core, ::to_string(item.first));
+			else this->ping(item.first, const_cast <server::core_t *> (this->_core), ::to_string(item.first));
 		}
 	}
 }
@@ -914,9 +910,6 @@ void awh::server::WebSocket1::sendError(const uint64_t bid, const ws::mess_t & m
  * @param text    данные передаются в текстовом виде
  */
 void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
-	
-	cout << " ^^^^^^^^^^^^^^^^^^^^^^^^ sendMessage " << bid << " == " << const_cast <server::core_t *> (this->_core) << endl;
-	
 	// Если подключение выполнено
 	if(this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента

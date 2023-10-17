@@ -398,7 +398,7 @@ void awh::client::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) no
 		// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 		if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 			// Завершаем работу
-			dynamic_cast <client::core_t *> (core)->close(this->_bid);
+			const_cast <client::core_t *> (this->_core)->close(this->_bid);
 		// Отправляем запрос брокеру
 		else this->ping(::to_string(this->_bid));
 	}

@@ -835,13 +835,13 @@ void awh::client::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
 				// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 				if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 					// Завершаем работу
-					dynamic_cast <client::core_t *> (core)->close(this->_bid);
+					const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Отправляем запрос брокеру
 				else this->ping(::to_string(this->_bid));
 			// Если рукопожатие уже выполнено и пинг не прошёл
 			} else if(!web2_t::ping())
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_bid));
+				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 		}
 	}
 }

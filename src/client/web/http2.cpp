@@ -903,7 +903,7 @@ void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 					if(!this->ping())
 						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), this->_bid));
+						this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):

@@ -737,7 +737,7 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 						// Если брокер давно должен был быть отключён, отключаем его
 						if(options->close || !options->http.isAlive())
 							// Выполняем отключение клиента от сервера
-							dynamic_cast <server::core_t *> (core)->close(agent.first);
+							const_cast <server::core_t *> (this->_core)->close(agent.first);
 						// Иначе проверяем прошедшее время
 						else {
 							// Получаем текущий штамп времени
@@ -745,7 +745,7 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 							// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 							if((stamp - options->point) >= this->_timeAlive)
 								// Завершаем работу
-								dynamic_cast <server::core_t *> (core)->close(agent.first);
+								const_cast <server::core_t *> (this->_core)->close(agent.first);
 						}
 					}
 				} break;

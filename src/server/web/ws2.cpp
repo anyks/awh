@@ -1189,9 +1189,9 @@ void awh::server::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
 					// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 					if(item.second->close || ((stamp - item.second->point) >= (PING_INTERVAL * 5)))
 						// Завершаем работу
-						dynamic_cast <server::core_t *> (core)->close(item.first);
+						const_cast <server::core_t *> (this->_core)->close(item.first);
 					// Отправляем запрос брокеру
-					else this->ping(item.first, core, ::to_string(item.first));
+					else this->ping(item.first, const_cast <server::core_t *> (this->_core), ::to_string(item.first));
 				// Если рукопожатие не выполнено и пинг не прошёл
 				} else if(!web2_t::ping(item.first)) {
 					// Выполняем поиск брокера в списке активных сессий
@@ -1199,7 +1199,7 @@ void awh::server::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
 					// Если активная сессия найдена
 					if(it != this->_sessions.end())
 						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), item.first));
+						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), item.first));
 				}
 			}
 		}
