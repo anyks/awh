@@ -132,10 +132,16 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		
+		cout << " ==================1 " << size << endl;
+		
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
+			
+			cout << " ==================2 " << size << endl;
+			
 			// Если подключение закрыто
 			if(options->close){
 				// Принудительно выполняем отключение лкиента
@@ -145,20 +151,32 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 			}
 			// Выполняем установку протокола подключения
 			options->proto = core->proto(bid);
+			
+			cout << " ==================3 " << size << endl;
+			
 			// Определяем протокола подключения
 			switch(static_cast <uint8_t> (options->proto)){
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					
+					cout << " ==================4 " << size << endl;
+					
 					// Выполняем поиск агента которому соответствует клиент
 					auto it = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
 					if(it != this->_http1._agents.end()){
+						
+						cout << " ==================5 " << size << endl;
+						
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								
+								cout << " ==================6 " << size << endl;
+								
 								// Выполняем переброс вызова чтения клиенту HTTP
 								this->_http1.readCallback(buffer, size, bid, sid, core);
 							break;
