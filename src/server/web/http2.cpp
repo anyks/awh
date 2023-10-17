@@ -1794,16 +1794,24 @@ void awh::server::Http2::on(function <bool (const string &, const string &, cons
  * @param callback функция обратного вызова
  */
 void awh::server::Http2::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP-сервера
+	this->_http1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
  * @param callback функция обратного вызова
  */
 void awh::server::Http2::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP-сервера
+	this->_http1.on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибки

@@ -1469,8 +1469,8 @@ void awh::server::WebSocket2::on(function <bool (const string &, const string &,
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("wserror", callback);
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws1.on(callback);
 }
@@ -1479,8 +1479,8 @@ void awh::server::WebSocket2::on(function <void (const uint64_t, const u_int, co
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих сообщений
-	this->_callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", callback);
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws1.on(callback);
 }

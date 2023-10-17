@@ -1050,6 +1050,8 @@ void awh::server::Http1::on(function <bool (const string &, const string &, cons
  * @param callback функция обратного вызова
  */
 void awh::server::Http1::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws1.on(callback);
 }
@@ -1058,6 +1060,8 @@ void awh::server::Http1::on(function <void (const uint64_t, const u_int, const s
  * @param callback функция обратного вызова
  */
 void awh::server::Http1::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера
 	this->_ws1.on(callback);
 }

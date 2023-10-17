@@ -234,6 +234,22 @@ void awh::server::Web::on(function <bool (const string &, const string &, const 
 	this->_callback.set <bool (const string &, const string &, const u_int)> ("accept", callback);
 }
 /**
+ * on Метод установки функции обратного вызова на событие получения ошибок
+ * @param callback функция обратного вызова
+ */
+void awh::server::Web::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для получения входящих ошибок
+	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("wserror", callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param callback функция обратного вызова
+ */
+void awh::server::Web::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для получения входящих сообщений
+	this->_callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", callback);
+}
+/**
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */

@@ -309,6 +309,17 @@ namespace awh {
 				virtual void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова на событие получения ошибок
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на событие получения сообщений
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */

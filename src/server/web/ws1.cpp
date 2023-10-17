@@ -408,9 +408,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 					return;
 				// Если рукопожатие выполнено
 				} else if(options->allow.receive) {
-					
-					cout << " +++++++++++++++++++++++++!!!!1 " << bid << " == " << size << endl;
-					
 					// Флаг удачного получения данных
 					bool receive = false;
 					// Создаём буфер сообщения
@@ -631,9 +628,6 @@ void awh::server::WebSocket1::error(const uint64_t bid, const ws::mess_t & messa
  * @param text   данные передаются в текстовом виде
  */
 void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept {
-	
-	cout << " +++++++++++++++++++++++++!!!!1 " << bid << " == " << buffer.size() << endl;
-	
 	// Если буфер данных передан
 	if((bid > 0) && !buffer.empty() && this->_callback.is("message")){
 		// Получаем параметры активного клиента
@@ -1086,16 +1080,16 @@ void awh::server::WebSocket1::on(function <bool (const string &, const string &,
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket1::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих ошибок
-	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("wserror", callback);
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket1::on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих сообщений
-	this->_callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", callback);
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибки
