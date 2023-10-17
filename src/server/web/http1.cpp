@@ -85,6 +85,8 @@ void awh::server::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 						options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 				} break;
 			}
+			// Выполняем добавление агнета
+			this->_agents.emplace(bid, agent_t::HTTP);
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выводим функцию обратного вызова
@@ -280,8 +282,6 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								if(this->_callback.is("end"))
 									// Выводим функцию обратного вызова
 									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
-								// Выполняем добавление агнета
-								this->_agents.emplace(bid, agent_t::HTTP);
 								// Завершаем обработку
 								goto Next;
 							} break;
@@ -547,6 +547,8 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							// Выводим параметры ответа
 							cout << string(buffer.begin(), buffer.end()) << endl << endl;
 						#endif
+						// Выполняем замену активного агнета
+						this->_agents.at(bid) = agent_t::WEBSOCKET;
 						// Выполняем установку сетевого ядра
 						this->_ws1._core = dynamic_cast <server::core_t *> (core);
 						// Выполняем отправку данных брокеру
@@ -569,8 +571,6 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						if(this->_callback.is("end"))
 							// Выводим функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::SEND);
-						// Выполняем добавление агнета
-						this->_agents.emplace(bid, agent_t::WEBSOCKET);
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
