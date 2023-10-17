@@ -184,6 +184,9 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
+			
+			cout << " ***************** SEND " << bid << endl;
+			
 			// Выполняем отправку заголовков запроса на сервер
 			result = it->second->sendHeaders(id, headers, end);
 			// Если запрос не получилось отправить

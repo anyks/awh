@@ -1012,10 +1012,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						}
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = dynamic_cast <server::core_t *> (core);
-						
-						for(auto & header : headers)
-							cout << " *********************1 " << header.first << " == " << header.second << endl;
-						
 						// Выполняем ответ подключившемуся клиенту
 						if(web2_t::send(options->sid, bid, headers, false) < 0)
 							// Выходим из функции
@@ -1036,9 +1032,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
-						
-						cout << " *********************2 " << bid << endl;
-						
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
@@ -1095,10 +1088,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 								return;
 						}
 					}
-					// Если получение данных нужно остановить
-					if(options->stopped)
-						// Выполняем запрет на получение входящих данных
-						dynamic_cast <server::core_t *> (core)->disabled(engine_t::method_t::READ, bid);
 					// Выполняем извлечение параметров запроса
 					const auto & request = options->http.request();
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
