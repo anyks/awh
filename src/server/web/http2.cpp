@@ -1001,15 +1001,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 									cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							}
 						#endif
-						// Выполняем поиск брокера в списке активных сессий
-						auto it = this->_sessions.find(bid);
-						// Если активная сессия найдена
-						if(it != this->_sessions.end()){
-							// Выполняем создание нового объекта сессии HTTP/2
-							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
-							// Выполняем копирование контекста сессии HTTP/2
-							(* ret.first->second.get()) = (* it->second.get());
-						}
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = dynamic_cast <server::core_t *> (core);
 						// Выполняем ответ подключившемуся клиенту
@@ -1032,6 +1023,15 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
+						// Выполняем поиск брокера в списке активных сессий
+						auto it = this->_sessions.find(bid);
+						// Если активная сессия найдена
+						if(it != this->_sessions.end()){
+							// Выполняем создание нового объекта сессии HTTP/2
+							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
+							// Выполняем копирование контекста сессии HTTP/2
+							(* ret.first->second.get()) = (* it->second.get());
+						}
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
