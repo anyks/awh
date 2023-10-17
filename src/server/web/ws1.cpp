@@ -152,10 +152,16 @@ void awh::server::WebSocket1::disconnectCallback(const uint64_t bid, const uint1
 void awh::server::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		
+		cout << " +++++++++++++++++++++++++1 " << bid << " == " << size << endl;
+		
 		// Получаем параметры активного клиента
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
+			
+			cout << " +++++++++++++++++++++++++2 " << bid << " == " << size << endl;
+			
 			// Если подключение закрыто
 			if(options->close){
 				// Принудительно выполняем отключение лкиента
@@ -165,14 +171,23 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 			}
 			// Если разрешено получение данных
 			if(options->allow.receive){
+				
+				cout << " +++++++++++++++++++++++++3 " << bid << " == " << size << endl;
+				
 				// Добавляем полученные данные в буфер
 				options->buffer.payload.insert(options->buffer.payload.end(), buffer, buffer + size);
 				// Если рукопожатие не выполнено
 				if(!reinterpret_cast <http_t &> (options->http).isHandshake()){
+					
+					cout << " +++++++++++++++++++++++++4 " << bid << " == " << size << endl;
+					
 					// Выполняем парсинг полученных данных
 					const size_t bytes = options->http.parse(options->buffer.payload.data(), options->buffer.payload.size());
 					// Если все данные получены
 					if(options->http.isEnd()){
+						
+						cout << " +++++++++++++++++++++++++5 " << bid << " == " << size << endl;
+						
 						// Буфер данных для записи в сокет
 						vector <char> buffer;
 						// Выполняем создание объекта для генерации HTTP-ответа

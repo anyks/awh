@@ -122,20 +122,14 @@ void awh::server::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::server::Http1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		
-		cout << " +++++++++++++++++++++++++1 " << bid << " == " << size << endl;
-
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET)){
-			
-			cout << " +++++++++++++++++++++++++2 " << bid << " == " << size << endl;
-			
+		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту WebSocket
 			this->_ws1.readCallback(buffer, size, bid, sid, core);
 		// Иначе выполняем обработку входящих данных как Web-сервер
-		} else {
+		else {
 			// Получаем параметры активного клиента
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
