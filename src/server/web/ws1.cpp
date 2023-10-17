@@ -423,6 +423,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 					return;
 				// Если рукопожатие выполнено
 				} else if(options->allow.receive) {
+					
+					cout << " +++++++++++++++++++++++++!!!! " << bid << " == " << size << endl;
+					
 					// Флаг удачного получения данных
 					bool receive = false;
 					// Создаём буфер сообщения
