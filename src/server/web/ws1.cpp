@@ -820,6 +820,9 @@ void awh::server::WebSocket1::erase(const uint64_t bid) noexcept {
 void awh::server::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (core != nullptr)){
+		
+		cout << " -------------------***** PINGING " << core << endl;
+		
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Получаем текущий штамп времени
