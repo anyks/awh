@@ -159,6 +159,9 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 							case static_cast <uint8_t> (agent_t::HTTP):
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								
+								cout << " ++++++++++++++++++++ " << bid << " == " << size << endl;
+								
 								// Выполняем переброс вызова чтения клиенту HTTP
 								this->_http1.readCallback(buffer, size, bid, sid, core);
 							break;
