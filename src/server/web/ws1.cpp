@@ -753,7 +753,7 @@ void awh::server::WebSocket1::ping(const uint64_t bid, awh::core_t * core, const
 			// Если буфер данных получен
 			if(!buffer.empty()){
 
-				cout << " ***************PING " << dynamic_cast <server::core_t *> (core) << " == " << buffer.size() << " == " << bid << endl;
+				cout << " ***************PING " << core << " == " << dynamic_cast <server::core_t *> (core) << " == " << buffer.size() << " == " << bid << endl;
 
 				// Выполняем отправку сообщения брокеру
 				dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), bid);
