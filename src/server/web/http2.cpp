@@ -2341,8 +2341,6 @@ void awh::server::Http2::alive(const uint64_t bid, const bool mode) noexcept {
 	if(options != nullptr)
 		// Устанавливаем флаг пдолгоживущего подключения
 		options->alive = mode;
-	// Выполняем установку долгоживущего подключения для WebSocket-сервера
-	this->_ws2.alive(bid, mode);
 	// Выполняем установку долгоживущего подключения для HTTP-сервера
 	this->_http1.alive(bid, mode);
 }
