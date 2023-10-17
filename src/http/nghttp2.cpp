@@ -423,24 +423,12 @@ bool awh::NgHttp2::ping() noexcept {
 bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::RECV_FRAME;
-	
-	cout << " ***************************1 " << size << endl;
-	
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
-		
-		cout << " ***************************2 " << size << endl;
-
 		// Если сессия HTTP/2 инициализированна
 		if(this->_session != nullptr){
-			
-			cout << " ***************************3 " << size << endl;
-			
 			// Выполняем извлечение полученного чанка данных из сокета
 			ssize_t bytes = nghttp2_session_mem_recv(this->_session, buffer, size);
-			
-			cout << " ***************************4 " << bytes << endl;
-			
 			// Если данные не прочитаны, выводим ошибку и выходим
 			if(bytes < 0){
 				// Выводим сообщение об полученной ошибке
@@ -454,14 +442,8 @@ bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				// Выходим из функции
 				return false;
 			}
-
-			cout << " ***************************5 " << size << endl;
-
 			// Если сессия HTTP/2 инициализированна
 			if(this->_session != nullptr){
-				
-				cout << " ***************************6 " << size << endl;
-				
 				// Фиксируем полученный результат
 				if((bytes = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
@@ -476,8 +458,6 @@ bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
 					return false;
 				}
 			}
-
-			cout << " ***************************7 " << size << endl;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::RECV_FRAME);

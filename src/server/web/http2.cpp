@@ -381,14 +381,23 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		} break;
 		// Если производится получения фрейма с сервера
 		case static_cast <uint8_t> (nghttp2_t::direct_t::RECV): {
+			
+			cout << " ***********************1 " << bid << endl;
+			
 			// Получаем параметры активного клиента
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
+				
+				cout << " ***********************2 " << bid << endl;
+
 				// Выполняем поиск агента которому соответствует клиент
 				auto it = this->_agents.find(bid);
 				// Если активный агент клиента установлен
 				if(it != this->_agents.end()){
+					
+					cout << " ***********************3 " << bid << endl;
+					
 					// Определяем тип активного протокола
 					switch(static_cast <uint8_t> (it->second)){
 						// Если протокол соответствует HTTP-протоколу
@@ -456,6 +465,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 						} break;
 						// Если протокол соответствует протоколу WebSocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							
+							cout << " ***********************4 " << bid << endl;
+							
 							// Выполняем передачу фрейма клиенту WebSocket
 							this->_ws2.frameSignal(sid, bid, direct, type, flags);
 						break;
