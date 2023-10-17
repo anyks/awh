@@ -528,9 +528,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						}
 						// Если сообщения получены
 						if(!buffer.empty()){
-							
-							cout << " +++++++++++++++++++++++++!!!!2 " << bid << " == " << size << endl;
-							
 							// Если тредпул активирован
 							if(this->_thr.is())
 								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
@@ -634,6 +631,9 @@ void awh::server::WebSocket1::error(const uint64_t bid, const ws::mess_t & messa
  * @param text   данные передаются в текстовом виде
  */
 void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept {
+	
+	cout << " +++++++++++++++++++++++++!!!!1 " << bid << " == " << buffer.size() << endl;
+	
 	// Если буфер данных передан
 	if((bid > 0) && !buffer.empty() && this->_callback.is("message")){
 		// Получаем параметры активного клиента
