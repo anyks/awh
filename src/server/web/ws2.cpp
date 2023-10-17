@@ -178,16 +178,10 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 void awh::server::WebSocket2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		
-		cout << " ************************ readCallback1 " << bid << " == " << size << endl;
-		
 		// Получаем параметры активного клиента
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
-			
-			cout << " ************************ readCallback2 " << bid << " == " << size << endl;
-			
 			// Если подключение закрыто
 			if(options->close){
 				// Принудительно выполняем отключение лкиента
@@ -197,28 +191,16 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 			}
 			// Выполняем установку протокола подключения
 			options->proto = core->proto(bid);
-			
-			cout << " ************************ readCallback3 " << bid << " == " << size << endl;
-			
 			// Если протокол подключения является HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
-				
-				cout << " ************************ readCallback4 " << bid << " == " << size << endl;
-				
 				// Если получение данных не разрешено
 				if(!options->allow.receive)
 					// Выходим из функции
 					return;
-				
-				cout << " ************************ readCallback5 " << bid << " == " << size << endl;
-				
 				// Выполняем поиск брокера в списке активных сессий
 				auto it = this->_sessions.find(bid);
 				// Если активная сессия найдена
 				if(it != this->_sessions.end()){
-					
-					cout << " ************************ readCallback6 " << bid << " == " << size << endl;
-					
 					// Если прочитать данные фрейма не удалось, выходим из функции
 					if(!it->second->frame((const uint8_t *) buffer, size)){
 						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
