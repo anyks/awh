@@ -895,6 +895,8 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_ws2._scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
+			// Устанавливаем идентификатор потока
+			options->sid = sid;
 			// Если данные необходимо зашифровать
 			if(this->_crypto.mode){
 				// Устанавливаем соль шифрования
