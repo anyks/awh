@@ -2075,16 +2075,20 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
  * @param subprotocol сабпротокол для установки
  */
 void awh::server::Http2::subprotocol(const string & subprotocol) noexcept {
-	// Выполняем установку списка поддерживаемого сабпротокола
+	// Выполняем установку списка поддерживаемого сабпротокола для WebSocket-модуля
 	this->_ws2.subprotocol(subprotocol);
+	// Выполняем установку списка поддерживаемого сабпротокола для HTTP-модуля
+	this->_http1.subprotocol(subprotocol);
 }
 /**
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
 void awh::server::Http2::subprotocols(const set <string> & subprotocols) noexcept {
-	// Выполняем установку списка поддерживаемых сабпротоколов
+	// Выполняем установку списка поддерживаемых сабпротоколов для WebSocket-модуля
 	this->_ws2.subprotocols(subprotocols);
+	// Выполняем установку списка поддерживаемых сабпротоколов для HTTP-модуля
+	this->_http1.subprotocols(subprotocols);
 }
 /**
  * subprotocol Метод получения списка выбранных сабпротоколов
@@ -2097,9 +2101,41 @@ const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const 
 	// Получаем параметры активного клиента
 	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
-	if(options != nullptr)
-		// Выводим согласованный сабпротокол
-		return this->_ws2.subprotocols(bid);
+	if(options != nullptr){
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выводим согласованный сабпротокол
+							return this->_http1.subprotocols(bid);
+					}
+				}
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выводим согласованный сабпротокол
+							return this->_ws2.subprotocols(bid);
+					}
+				}
+			} break;
+		}
+	}
 	// Выводим результат по умолчанию
 	return result;
 }
@@ -2108,8 +2144,10 @@ const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const 
  * @param extensions список поддерживаемых расширений
  */
 void awh::server::Http2::extensions(const vector <vector <string>> & extensions) noexcept {
-	// Выполняем установку списка поддерживаемых расширений
+	// Выполняем установку списка поддерживаемых расширений для WebSocket-модуля
 	this->_ws2.extensions(extensions);
+	// Выполняем установку списка поддерживаемых расширений для HTTP-модуля
+	this->_http1.extensions(extensions);
 }
 /**
  * extensions Метод извлечения списка расширений
@@ -2122,9 +2160,41 @@ const vector <vector <string>> & awh::server::Http2::extensions(const uint64_t b
 	// Получаем параметры активного клиента
 	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
-	if(options != nullptr)
-		// Выполняем извлечение списка поддерживаемых расширений WebSocket
-		return this->_ws2.extensions(bid);
+	if(options != nullptr){
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выполняем извлечение списка поддерживаемых расширений WebSocket
+							return this->_http1.extensions(bid);
+					}
+				}
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выполняем извлечение списка поддерживаемых расширений WebSocket
+							return this->_ws2.extensions(bid);
+					}
+				}
+			} break;
+		}
+	}
 	// Выводим результат по умолчанию
 	return result;
 }
@@ -2173,6 +2243,8 @@ void awh::server::Http2::segmentSize(const size_t size) noexcept {
 		this->_frameSize = size;
 	// Выполняем установку размеров сегментов фрейма для WebSocket-сервера
 	this->_ws2.segmentSize(size);
+	// Выполняем установку размеров сегментов фрейма для HTTP-сервера
+	this->_http1.segmentSize(size);
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
@@ -2269,6 +2341,10 @@ void awh::server::Http2::alive(const uint64_t bid, const bool mode) noexcept {
 	if(options != nullptr)
 		// Устанавливаем флаг пдолгоживущего подключения
 		options->alive = mode;
+	// Выполняем установку долгоживущего подключения для WebSocket-сервера
+	this->_ws2.alive(bid, mode);
+	// Выполняем установку долгоживущего подключения для HTTP-сервера
+	this->_http1.alive(bid, mode);
 }
 /**
  * core Метод установки сетевого ядра
