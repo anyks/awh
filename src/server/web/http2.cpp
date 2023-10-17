@@ -211,6 +211,9 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 void awh::server::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
+		
+		cout << " ****************** WRITE " << bid << " == " << size << endl;
+		
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -326,6 +329,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
+				
+				cout << " ******************** END SIGNAL1 " << bid << endl;
+				
 				// Получаем параметры активного клиента
 				web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -334,14 +340,23 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 					auto it = this->_agents.find(bid);
 					// Если активный агент клиента установлен
 					if(it != this->_agents.end()){
+						
+						cout << " ******************** END SIGNAL2 " << bid << endl;
+						
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
+								
+								cout << " ******************** END SIGNAL3 " << bid << endl;
+								
 								// Если необходимо выполнить закрыть подключение
 								if(!options->close && options->stopped){
 									// Устанавливаем флаг закрытия подключения
 									options->close = !options->close;
+									
+									cout << " ******************** END SIGNAL4 " << bid << endl;
+									
 									// Выполняем поиск брокера в списке активных сессий
 									auto it = this->_sessions.find(bid);
 									// Если активная сессия найдена
@@ -356,6 +371,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 							} break;
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+								
+								cout << " ******************** END SIGNAL5 " << bid << endl;
+								
 								// Выполняем передачу фрейма клиенту WebSocket
 								this->_ws2.frameSignal(sid, bid, direct, type, flags);
 								// Выполняем поиск брокера в списке активных сессий
@@ -367,14 +385,23 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 										// Выполняем копирование контекста сессии HTTP/2
 										(* this->_sessions.at(bid).get()) = (* it->second.get());
 								}
+
+								cout << " ******************** END SIGNAL6 " << bid << endl;
+
 							} break;
 						}
 					}
 				}
+
+				cout << " ******************** END SIGNAL7 " << bid << endl;
+
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
 					// Выводим функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::SEND);
+				
+				cout << " ******************** END SIGNAL8 " << bid << endl;
+
 				// Выходим из функции
 				return 0;
 			}
