@@ -103,9 +103,16 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end())
+		if(it != this->_sessions.end()){
 			// Выполняем закрытие подключения
 			it->second->close();
+			// Выполняем поиск брокера в списке активных сессий
+			auto jt = this->_ws2._sessions.find(bid);
+			// Если активная сессия найдена
+			if(jt != this->_ws2._sessions.end())
+				// Выполняем закрытие подключения
+				(* jt->second.get()) = (* it->second.get());
+		}
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -136,25 +143,38 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 				// Выходим из функции
 				return;
 			}
-			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(bid);
-			// Если активный агент клиента установлен
-			if(it != this->_agents.end()){
-				// Выполняем установку протокола подключения
-				options->proto = core->proto(bid);
-				// Определяем тип активного протокола
-				switch(static_cast <uint8_t> (it->second)){
-					// Если протокол соответствует HTTP-протоколу
-					case static_cast <uint8_t> (agent_t::HTTP): {
-						// Определяем протокола подключения
-						switch(static_cast <uint8_t> (options->proto)){
-							// Если протокол подключения соответствует HTTP/1.1
-							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+			// Выполняем установку протокола подключения
+			options->proto = core->proto(bid);
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем переброс вызова чтения клиенту HTTP
 								this->_http1.readCallback(buffer, size, bid, sid, core);
 							break;
-							// Если протокол подключения соответствует HTTP/2
-							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Выполняем поиск брокера в списке активных сессий
 								auto it = this->_sessions.find(bid);
 								// Если активная сессия найдена
@@ -168,14 +188,14 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 									}
 								}
 							} break;
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем переброс вызова чтения клиенту WebSocket
+								this->_ws2.readCallback(buffer, size, bid, sid, core);
+							break;
 						}
-					} break;
-					// Если протокол соответствует протоколу WebSocket
-					case static_cast <uint8_t> (agent_t::WEBSOCKET):
-						// Выполняем переброс вызова чтения клиенту WebSocket
-						this->_ws2.readCallback(buffer, size, bid, sid, core);
-					break;
-				}
+					}
+				} break;
 			}
 		}
 	}
@@ -195,25 +215,42 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
-			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(bid);
-			// Если активный агент клиента установлен
-			if(it != this->_agents.end()){
-				// Определяем тип активного протокола
-				switch(static_cast <uint8_t> (it->second)){
-					// Если протокол соответствует HTTP-протоколу
-					case static_cast <uint8_t> (agent_t::HTTP): {
-						// Если переключение протокола на HTTP/2 не выполнено
-						if(options->proto != engine_t::proto_t::HTTP2)
-							// Выполняем переброс вызова записи клиенту HTTP
-							this->_http1.writeCallback(buffer, size, bid, sid, core);
-					} break;
-					// Если протокол соответствует протоколу WebSocket
-					case static_cast <uint8_t> (agent_t::WEBSOCKET):
-						// Выполняем переброс вызова записи клиенту WebSocket
-						this->_ws2.writeCallback(buffer, size, bid, sid, core);
-					break;
-				}
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем переброс вызова записи клиенту HTTP
+								this->_http1.writeCallback(buffer, size, bid, sid, core);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем переброс вызова записи клиенту WebSocket
+								this->_ws2.writeCallback(buffer, size, bid, sid, core);
+							break;
+						}
+					}
+				} break;
 			}
 		}
 	}
@@ -327,7 +364,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								if(it != this->_ws2._sessions.end()){
 									// Если сессия была удалена
 									if(!it->second->is())
-										// Выполняем копирование контекста
+										// Выполняем копирование контекста сессии HTTP/2
 										(* this->_sessions.at(bid).get()) = (* it->second.get());
 								}
 							} break;
@@ -669,14 +706,11 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 				// Если заголовок WebSocket активирован
 				if(options->http.identity() == awh::http_t::identity_t::WS){
 					// Если запрашиваемый протокол соответствует WebSocket
-					if(this->_webSocket){
-						
-						cout << " +++++++++++++++++ WebSocket " << this->_webSocket << " == " << bid << endl;
-						
+					if(this->_webSocket)
 						// Выполняем инициализацию WebSocket-сервера
-						// this->websocket(bid, sid, core);
+						this->websocket(sid, bid, core);
 					// Если протокол запрещён или не поддерживается
-					} else {
+					else {
 						// Выполняем сброс состояния HTTP парсера
 						options->http.clear();
 						// Выполняем сброс состояния HTTP парсера
@@ -820,6 +854,274 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 	}
 }
 /**
+ * websocket Метод инициализации WebSocket протокола
+ * @param sid  идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept {
+	// Если данные переданы верные
+	if((sid > 0) && (bid > 0) && (core != nullptr)){
+		// Создаём брокера
+		this->_ws2._scheme.set(bid);
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_ws2._scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если данные необходимо зашифровать
+			if(this->_crypto.mode){
+				// Устанавливаем соль шифрования
+				options->hash.salt(this->_crypto.salt);
+				// Устанавливаем пароль шифрования
+				options->hash.pass(this->_crypto.pass);
+				// Устанавливаем размер шифрования
+				options->hash.cipher(this->_crypto.cipher);
+			}
+			// Выполняем установку идентификатора объекта
+			options->http.id(bid);
+			// Выполняем установку протокола подключения
+			options->proto = core->proto(bid);
+			// Устанавливаем флаг перехвата контекста компрессии
+			options->server.takeover = this->_ws2._server.takeover;
+			// Устанавливаем флаг перехвата контекста декомпрессии
+			options->client.takeover = this->_ws2._client.takeover;
+			// Разрешаем перехватывать контекст компрессии
+			options->hash.takeoverCompress(this->_ws2._server.takeover);
+			// Разрешаем перехватывать контекст декомпрессии
+			options->hash.takeoverDecompress(this->_ws2._client.takeover);
+			// Разрешаем перехватывать контекст для клиента
+			options->http.takeover(awh::web_t::hid_t::CLIENT, this->_ws2._client.takeover);
+			// Разрешаем перехватывать контекст для сервера
+			options->http.takeover(awh::web_t::hid_t::SERVER, this->_ws2._server.takeover);
+			// Устанавливаем данные сервиса
+			options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+			// Если сабпротоколы установлены
+			if(!this->_ws2._subprotocols.empty())
+				// Устанавливаем поддерживаемые сабпротоколы
+				options->http.subprotocols(this->_ws2._subprotocols);
+			// Если список расширений установлены
+			if(!this->_ws2._extensions.empty())
+				// Устанавливаем список поддерживаемых расширений
+				options->http.extensions(this->_ws2._extensions);
+			// Если размер фрейма установлен
+			if(this->_ws2._frameSize > 0)
+				// Выполняем установку размера фрейма
+				options->frame.size = this->_ws2._frameSize;
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			options->http.compress(this->_scheme.compress);
+			// Если сервер требует авторизацию
+			if(this->_service.type != auth_t::type_t::NONE){
+				// Определяем тип авторизации
+				switch(static_cast <uint8_t> (this->_service.type)){
+					// Если тип авторизации Basic
+					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+						// Устанавливаем параметры авторизации
+						options->http.authType(this->_service.type);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("checkPassword"))
+							// Устанавливаем функцию проверки авторизации
+							options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+					} break;
+					// Если тип авторизации Digest
+					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+						// Устанавливаем название сервера
+						options->http.realm(this->_service.realm);
+						// Устанавливаем временный ключ сессии сервера
+						options->http.opaque(this->_service.opaque);
+						// Устанавливаем параметры авторизации
+						options->http.authType(this->_service.type, this->_service.hash);
+						// Если функция обратного вызова для обработки чанков установлена
+						if(this->_callback.is("extractPassword"))
+							// Устанавливаем функцию извлечения пароля
+							options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+					} break;
+				}
+			}
+			// Получаем параметры активного клиента
+			web_scheme_t::options_t * web = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			// Если параметры активного клиента получены
+			if(web != nullptr){
+				// Выполняем установку параметров запроса
+				options->http.request(web->http.request());
+				// Выполняем установку полученных заголовков
+				options->http.headers(web->http.headers());
+				// Выполняем коммит полученного результата
+				options->http.commit();
+				// Ответ клиенту по умолчанию успешный
+				awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
+				// Если рукопожатие выполнено
+				if(options->http.isHandshake(http_t::process_t::REQUEST)){
+					// Проверяем версию протокола
+					if(!options->http.checkVer()){
+						// Получаем бинарные данные REST запроса
+						response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
+						// Завершаем работу
+						goto End;
+					}
+					// Выполняем сброс состояния HTTP-парсера
+					options->http.clear();
+					// Получаем флаг шифрованных данных
+					options->crypt = options->http.isCrypt();
+					// Если клиент согласился на шифрование данных
+					if(options->crypt)
+						// Устанавливаем параметры шифрования
+						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+					// Получаем поддерживаемый метод компрессии
+					options->compress = options->http.compress();
+					// Получаем размер скользящего окна сервера
+					options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
+					// Получаем размер скользящего окна клиента
+					options->client.wbit = options->http.wbit(awh::web_t::hid_t::CLIENT);
+					// Если разрешено выполнять перехват контекста компрессии для сервера
+					if(options->http.takeover(awh::web_t::hid_t::SERVER))
+						// Разрешаем перехватывать контекст компрессии для клиента
+						options->hash.takeoverCompress(true);
+					// Если разрешено выполнять перехват контекста компрессии для клиента
+					if(options->http.takeover(awh::web_t::hid_t::CLIENT))
+						// Разрешаем перехватывать контекст компрессии для сервера
+						options->hash.takeoverDecompress(true);
+					// Получаем заголовки ответа удалённому клиенту
+					const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
+					// Если бинарные данные ответа получены
+					if(!headers.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								// Получаем объект работы с HTTP-запросами
+								const http_t & http = reinterpret_cast <http_t &> (options->http);
+								// Получаем бинарные данные REST-ответа
+								const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+								// Если бинарные данные ответа получены
+								if(!buffer.empty())
+									// Выводим параметры ответа
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							}
+						#endif
+						// Выполняем поиск брокера в списке активных сессий
+						auto it = this->_sessions.find(bid);
+						// Если активная сессия найдена
+						if(it != this->_sessions.end()){
+							// Выполняем создание нового объекта сессии HTTP/2
+							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
+							// Выполняем копирование контекста сессии HTTP/2
+							(* ret.first->second.get()) = (* it->second.get());
+						}
+						// Выполняем установку сетевого ядра
+						this->_ws2._core = dynamic_cast <server::core_t *> (core);
+						// Выполняем ответ подключившемуся клиенту
+						if(web2_t::send(options->sid, bid, headers, false) < 0)
+							// Выходим из функции
+							return;
+						// Выполняем извлечение параметров запроса
+						const auto & request = options->http.request();
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(!options->http.body().empty() && this->_callback.is("entity"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+						// Если функция обратного вызова активности потока установлена
+						if(this->_callback.is("stream"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::OPEN);
+						// Если функция обратного вызова на получение удачного запроса установлена
+						if(this->_callback.is("handshake"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
+						// Выполняем замену активного агнета
+						this->_agents.at(bid) = agent_t::WEBSOCKET;
+						// Завершаем работу
+						return;
+					// Формируем ответ, что произошла внутренняя ошибка сервера
+					} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
+				// Формируем ответ, что страница не доступна
+				} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
+				// Устанавливаем метку завершения запроса
+				End:
+				// Выполняем сброс состояния HTTP парсера
+				options->http.clear();
+				// Выполняем сброс состояния HTTP парсера
+				options->http.reset();
+				// Получаем заголовки ответа удалённому клиенту
+				const auto & headers = options->http.reject2(response);
+				// Если бинарные данные ответа получены
+				if(!headers.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						{
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Получаем объект работы с HTTP-запросами
+							const http_t & http = reinterpret_cast <http_t &> (options->http);
+							// Получаем бинарные данные REST-ответа
+							const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+							// Если бинарные данные ответа получены
+							if(!buffer.empty())
+								// Выводим параметры ответа
+								cout << string(buffer.begin(), buffer.end()) << endl << endl;
+						}
+					#endif
+					// Выполняем ответ подключившемуся клиенту
+					if(web2_t::send(options->sid, bid, headers, false) < 0)
+						// Выходим из функции
+						return;
+					// Если тело запроса существует
+					if(!options->http.body().empty()){
+						// Тело WEB запроса
+						vector <char> entity;
+						// Получаем данные тела запроса
+						while(!(entity = options->http.payload()).empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение о выводе чанка тела
+								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+							#endif
+							// Выполняем отправку тела запроса на сервер
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
+								// Выходим из функции
+								return;
+						}
+					}
+					// Если получение данных нужно остановить
+					if(options->stopped)
+						// Выполняем запрет на получение входящих данных
+						dynamic_cast <server::core_t *> (core)->disabled(engine_t::method_t::READ, bid);
+					// Выполняем извлечение параметров запроса
+					const auto & request = options->http.request();
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(!web->http.body().empty() && this->_callback.is("entity"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, web->http.body());
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
+					// Выполняем сброс состояния HTTP парсера
+					options->http.clear();
+					// Выполняем сброс состояния HTTP парсера
+					options->http.reset();
+					// Завершаем работу
+					return;
+				}
+				// Выполняем поиск брокера в списке активных сессий
+				auto it = this->_sessions.find(bid);
+				// Если активная сессия найдена
+				if(it != this->_sessions.end())
+					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+					it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+				// Завершаем работу
+				else const_cast <server::core_t *> (this->_core)->close(bid);
+			}
+		}
+	}
+}
+/**
  * erase Метод удаления отключившихся брокеров
  * @param bid идентификатор брокера
  */
@@ -837,40 +1139,57 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 			if(options != nullptr){
 				// Устанавливаем флаг отключения
 				options->close = true;
-				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
-				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
-					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
-						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP): {
-							// Если переключение протокола на HTTP/2 не выполнено
-							if(options->proto != engine_t::proto_t::HTTP2)
-								// Выполняем удаление отключённого брокера HTTP-клиента
-								this->_http1.erase(bid);
-							// Выполняем удаление созданной ранее сессии HTTP/2
-							else this->_sessions.erase(bid);
-						} break;
-						// Если протокол соответствует протоколу WebSocket
-						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-							// Если переключение протокола на HTTP/2 выполнено
-							if(options->proto == engine_t::proto_t::HTTP2){
-								// Выполняем поиск брокера в списке активных сессий
-								auto it = this->_ws2._sessions.find(bid);
-								// Если активная сессия найдена
-								if(it != this->_ws2._sessions.end())
-									// Выполняем закрытие подключения
-									(* it->second.get()) = (* this->_sessions.at(bid).get());
-								// Выполняем удаление созданной ранее сессии HTTP/2
-								this->_sessions.erase(bid);
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (options->proto)){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+						// Выполняем поиск агента которому соответствует клиент
+						auto it = this->_http1._agents.find(bid);
+						// Если активный агент клиента установлен
+						if(it != this->_http1._agents.end()){
+							// Определяем тип активного протокола
+							switch(static_cast <uint8_t> (it->second)){
+								// Если протокол соответствует HTTP-протоколу
+								case static_cast <uint8_t> (agent_t::HTTP):
+								// Если протокол соответствует протоколу WebSocket
+								case static_cast <uint8_t> (agent_t::WEBSOCKET):
+									// Выполняем удаление отключённого брокера HTTP-клиента
+									this->_http1.erase(bid);
+								break;
 							}
-							// Выполняем удаление отключённого брокера WebSocket-клиента
-							this->_ws2.erase(bid);
-						} break;
-					}
-					// Выполняем удаление активного агента
-					this->_agents.erase(it);
+						}
+					} break;
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						// Выполняем поиск агента которому соответствует клиент
+						auto it = this->_agents.find(bid);
+						// Если активный агент клиента установлен
+						if(it != this->_agents.end()){
+							// Определяем тип активного протокола
+							switch(static_cast <uint8_t> (it->second)){
+								// Если протокол соответствует HTTP-протоколу
+								case static_cast <uint8_t> (agent_t::HTTP):
+									// Выполняем удаление созданной ранее сессии HTTP/2
+									this->_sessions.erase(bid);
+								break;
+								// Если протокол соответствует протоколу WebSocket
+								case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+									// Выполняем поиск брокера в списке активных сессий
+									auto it = this->_ws2._sessions.find(bid);
+									// Если активная сессия найдена
+									if(it != this->_ws2._sessions.end())
+										// Выполняем закрытие подключения
+										(* it->second.get()) = (* this->_sessions.at(bid).get());
+									// Выполняем удаление созданной ранее сессии HTTP/2
+									this->_sessions.erase(bid);
+									// Выполняем удаление отключённого брокера WebSocket-клиента
+									this->_ws2.erase(bid);
+								} break;
+							}
+							// Выполняем удаление активного агента
+							this->_agents.erase(it);
+						}
+					} break;
 				}
 			}
 			// Выполняем удаление параметров брокера
@@ -914,28 +1233,45 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если активный агент клиента установлен
-		if(it != this->_agents.end()){
-			// Определяем тип активного протокола
-			switch(static_cast <uint8_t> (it->second)){
-				// Если протокол соответствует HTTP-протоколу
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Если переключение протокола на HTTP/2 не выполнено
-					if(options->proto != engine_t::proto_t::HTTP2)
-						// Добавляем в очередь список мусорных брокеров
-						this->_http1.disconnect(bid);
-					// Добавляем в очередь список мусорных брокеров
-					this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
-				} break;
-				// Если протокол соответствует протоколу WebSocket
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем отключение брокера клиента WebSocket
-					this->_ws2.disconnect(bid);
-				break;
-			}
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Добавляем в очередь список мусорных брокеров
+							this->_http1.disconnect(bid);
+						break;
+					}
+				}
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выполняем отключение брокера клиента WebSocket
+							this->_ws2.disconnect(bid);
+						break;
+					}
+				}
+			} break;
 		}
+		// Добавляем в очередь список мусорных брокеров
+		this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 	}
 }
 /**
@@ -948,23 +1284,36 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	if((tid > 0) && (core != nullptr)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
-			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(item.first);
-			// Если активный агент клиента установлен
-			if(it != this->_agents.end()){
-				// Определяем тип активного протокола
-				switch(static_cast <uint8_t> (it->second)){
-					// Если протокол соответствует HTTP-протоколу
-					case static_cast <uint8_t> (agent_t::HTTP): {
-						// Определяем протокола подключения
-						switch(static_cast <uint8_t> (item.second->proto)){
-							// Если протокол подключения соответствует HTTP/1.1
-							case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (item.second->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(item.first);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем переброс события пинга в модуль HTTP
 								this->_http1.pinging(tid, core);
 							break;
-							// Если протокол подключения соответствует HTTP/2
-							case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(item.first);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 								if(!this->ping(item.first)){
 									// Выполняем поиск брокера в списке активных сессий
@@ -975,14 +1324,14 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 										it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), item.first));
 								}
 							} break;
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем переброс события пинга в модуль WebSocket
+								this->_ws2.pinging(tid, core);
+							break;
 						}
-					} break;
-					// Если протокол соответствует протоколу WebSocket
-					case static_cast <uint8_t> (agent_t::WEBSOCKET):
-						// Выполняем переброс события пинга в модуль WebSocket
-						this->_ws2.pinging(tid, core);
-					break;
-				}
+					}
+				} break;
 			}
 		}
 	}
@@ -1018,12 +1367,46 @@ void awh::server::Http2::init(const u_int port, const string & host, const http_
 void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем отправку ошибки клиенту WebSocket
-			this->_ws2.sendError(bid, mess);
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем отправку ошибки клиенту
+								this->_http1.sendError(bid, mess);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем отправку ошибки клиенту WebSocket
+								this->_ws2.sendError(bid, mess);
+							break;
+						}
+					}
+				} break;
+			}
+		}
 	}
 }
 /**
@@ -1035,12 +1418,46 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
 void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем передачу данных клиенту WebSocket
-			this->_ws2.sendMessage(bid, message, text);
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем передачу данных клиенту
+								this->_http1.sendMessage(bid, message, text);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем передачу данных клиенту WebSocket
+								this->_ws2.sendMessage(bid, message, text);
+							break;
+						}
+					}
+				} break;
+			}
+		}
 	}
 }
 /**
@@ -1057,42 +1474,59 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 	bool result = false;
 	// Если данные переданы верные
 	if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
-			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(options != nullptr){
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (options->proto)){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-						// Выполняем отправку тала сообщения клиенту через протокол HTTP/1.1
-						return this->_http1.send(bid, buffer, size, end);
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-						// Тело WEB сообщения
-						vector <char> entity;
-						// Выполняем сброс данных тела
-						options->http.clearBody();
-						// Устанавливаем тело запроса
-						options->http.body(vector <char> (buffer, buffer + size));
-						// Получаем данные тела запроса
-						while(!(entity = options->http.payload()).empty()){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
-							#endif
-							// Выполняем отправку данных на удалённый сервер
-							result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty()));
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем отправку тала сообщения клиенту через протокол HTTP/1.1
+								return this->_http1.send(bid, buffer, size, end);
 						}
-					} break;
-				}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Тело WEB сообщения
+								vector <char> entity;
+								// Выполняем сброс данных тела
+								options->http.clearBody();
+								// Устанавливаем тело запроса
+								options->http.body(vector <char> (buffer, buffer + size));
+								// Получаем данные тела запроса
+								while(!(entity = options->http.payload()).empty()){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+									#endif
+									// Выполняем отправку данных на удалённый сервер
+									result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty()));
+								}
+							} break;
+						}
+					}
+				} break;
 			}
 		}
 	}
@@ -1114,56 +1548,73 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 	int32_t result = -1;
 	// Если заголовки запроса переданы
 	if((result = (this->_core->working() && !headers.empty()))){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
-			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(options != nullptr){
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (options->proto)){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-						// Выполняем отправку заголовков клиенту через протокол HTTP/1.1
-						return this->_http1.send(bid, code, mess, headers, end);
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-						// Выполняем очистку параметров HTTP запроса
-						options->http.clear();
-						// Устанавливаем заголовоки запроса
-						options->http.headers(headers);
-						// Если сообщение ответа не установлено
-						if(mess.empty())
-							// Выполняем установку сообщения по умолчанию
-							const_cast <string &> (mess) = options->http.message(code);
-						// Формируем ответ на запрос клиента
-						awh::web_t::res_t response(2.0f, code, mess);
-						// Получаем заголовки ответа удалённому клиенту
-						const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
-						// Если заголовки запроса получены
-						if(!headers.empty()){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								{
-									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-									// Получаем бинарные данные REST-ответа
-									const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
-									// Если бинарные данные ответа получены
-									if(!buffer.empty())
-										// Выводим параметры ответа
-										cout << string(buffer.begin(), buffer.end()) << endl << endl;
-								}
-							#endif
-							// Выполняем заголовки запроса на сервер
-							result = web2_t::send(id, bid, headers, end);
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем отправку заголовков клиенту через протокол HTTP/1.1
+								return this->_http1.send(bid, code, mess, headers, end);
 						}
-					} break;
-				}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Выполняем очистку параметров HTTP запроса
+								options->http.clear();
+								// Устанавливаем заголовоки запроса
+								options->http.headers(headers);
+								// Если сообщение ответа не установлено
+								if(mess.empty())
+									// Выполняем установку сообщения по умолчанию
+									const_cast <string &> (mess) = options->http.message(code);
+								// Формируем ответ на запрос клиента
+								awh::web_t::res_t response(2.0f, code, mess);
+								// Получаем заголовки ответа удалённому клиенту
+								const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
+								// Если заголовки запроса получены
+								if(!headers.empty()){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										{
+											// Выводим заголовок ответа
+											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											// Получаем бинарные данные REST-ответа
+											const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
+											// Если бинарные данные ответа получены
+											if(!buffer.empty())
+												// Выводим параметры ответа
+												cout << string(buffer.begin(), buffer.end()) << endl << endl;
+										}
+									#endif
+									// Выполняем заголовки запроса на сервер
+									result = web2_t::send(id, bid, headers, end);
+								}
+							} break;
+						}
+					}
+				} break;
 			}
 		}
 	}
@@ -1181,80 +1632,97 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 void awh::server::Http2::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
-			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(options != nullptr){
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (options->proto)){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-						// Выполняем передачу запроса на сервер HTTP/1.1
-						this->_http1.send(bid, code, mess, entity, headers);
-					break;
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-						// Устанавливаем полезную нагрузку
-						options->http.body(entity);
-						// Устанавливаем заголовки ответа
-						options->http.headers(headers);
-						// Если сообщение ответа не установлено
-						if(mess.empty())
-							// Выполняем установку сообщения по умолчанию
-							const_cast <string &> (mess) = options->http.message(code);
-						{
-							// Формируем ответ на запрос клиента
-							awh::web_t::res_t response(2.0f, code, mess);
-							// Получаем заголовки ответа удалённому клиенту
-							const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
-							// Если бинарные данные ответа получены
-							if(!headers.empty()){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									{
-										// Выводим заголовок ответа
-										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-										// Получаем бинарные данные REST-ответа
-										const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
-										// Если бинарные данные ответа получены
-										if(!buffer.empty())
-											// Выводим параметры ответа
-											cout << string(buffer.begin(), buffer.end()) << endl << endl;
-									}
-								#endif
-								// Выполняем ответ подключившемуся клиенту
-								int32_t sid = web2_t::send(options->sid, bid, headers, options->http.body().empty());
-								// Если запрос не получилось отправить, выходим из функции
-								if(sid < 0) return;
-								// Если тело запроса существует
-								if(!options->http.body().empty()){
-									// Тело WEB запроса
-									vector <char> entity;
-									// Получаем данные тела запроса
-									while(!(entity = options->http.payload()).empty()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем передачу запроса на сервер HTTP/1.1
+								this->_http1.send(bid, code, mess, entity, headers);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Устанавливаем полезную нагрузку
+								options->http.body(entity);
+								// Устанавливаем заголовки ответа
+								options->http.headers(headers);
+								// Если сообщение ответа не установлено
+								if(mess.empty())
+									// Выполняем установку сообщения по умолчанию
+									const_cast <string &> (mess) = options->http.message(code);
+								{
+									// Формируем ответ на запрос клиента
+									awh::web_t::res_t response(2.0f, code, mess);
+									// Получаем заголовки ответа удалённому клиенту
+									const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
+									// Если бинарные данные ответа получены
+									if(!headers.empty()){
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
-											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+											{
+												// Выводим заголовок ответа
+												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												// Получаем бинарные данные REST-ответа
+												const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
+												// Если бинарные данные ответа получены
+												if(!buffer.empty())
+													// Выводим параметры ответа
+													cout << string(buffer.begin(), buffer.end()) << endl << endl;
+											}
 										#endif
-										// Выполняем отправку тела запроса на сервер
-										if(!web2_t::send((options->sid > -1 ? options->sid : sid), bid, entity.data(), entity.size(), options->http.body().empty()))
-											// Выходим из функции
-											return;
+										// Выполняем ответ подключившемуся клиенту
+										int32_t sid = web2_t::send(options->sid, bid, headers, options->http.body().empty());
+										// Если запрос не получилось отправить, выходим из функции
+										if(sid < 0) return;
+										// Если тело запроса существует
+										if(!options->http.body().empty()){
+											// Тело WEB запроса
+											vector <char> entity;
+											// Получаем данные тела запроса
+											while(!(entity = options->http.payload()).empty()){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим сообщение о выводе чанка тела
+													cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+												#endif
+												// Выполняем отправку тела запроса на сервер
+												if(!web2_t::send((options->sid > -1 ? options->sid : sid), bid, entity.data(), entity.size(), options->http.body().empty()))
+													// Выходим из функции
+													return;
+											}
+										}
 									}
 								}
-							}
+							} break;
 						}
-					} break;
-				}
+					}
+				} break;
 			}
 		}
 	}
@@ -1462,12 +1930,32 @@ u_int awh::server::Http2::port(const uint64_t bid) const noexcept {
  * @return    агент к которому относится подключённый клиент
  */
 awh::server::web_t::agent_t awh::server::Http2::agent(const uint64_t bid) const noexcept {
-	// Выполняем поиск нужного нам агента
-	auto it = this->_agents.find(bid);
-	// Если агент клиента найден
-	if(it != this->_agents.end())
-		// Выводим идентификатор агента
-		return it->second;
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end())
+					// Выводим идентификатор агента
+					return it->second;
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end())
+					// Выводим идентификатор агента
+					return it->second;
+			} break;
+		}
+	}
 	// Выводим сообщение, что ничего не найдено
 	return agent_t::HTTP;
 }
@@ -1516,23 +2004,36 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 	if(options != nullptr){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если активный агент клиента установлен
-		if(it != this->_agents.end()){
-			// Определяем тип активного протокола
-			switch(static_cast <uint8_t> (it->second)){
-				// Если протокол соответствует HTTP-протоколу
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Определяем протокола подключения
-					switch(static_cast <uint8_t> (options->proto)){
-						// Если протокол подключения соответствует HTTP/1.1
-						case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем закрытие подключения клиента HTTP/1.1
 							this->_http1.close(bid);
 						break;
-						// Если протокол подключения соответствует HTTP/2
-						case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					}
+				}
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Устанавливаем флаг закрытия подключения брокера
 							options->close = true;
 							// Выполняем поиск брокера в списке активных сессий
@@ -1546,39 +2047,20 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 							// Выполняем отключение брокера
 							} else const_cast <server::core_t *> (this->_core)->close(bid);
 						} break;
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+							// Выполняем закрытие подключения клиента WebSocket
+							this->_ws2.close(bid);
+							// Выполняем поиск брокера в списке активных сессий
+							auto it = this->_ws2._sessions.find(bid);
+							// Если активная сессия найдена
+							if(it != this->_ws2._sessions.end())
+								// Выполняем закрытие подключения
+								(* it->second.get()) = (* this->_sessions.at(bid).get());
+						} break;
 					}
-				} break;
-				// Если протокол соответствует протоколу WebSocket
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем закрытие подключения клиента WebSocket
-					this->_ws2.close(bid);
-				break;
-			}
-		// Иначе выполняем обработку входящих данных как Web-сервер
-		} else {
-			// Определяем протокола подключения
-			switch(static_cast <uint8_t> (options->proto)){
-				// Если протокол подключения соответствует HTTP/1.1
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-					// Выполняем закрытие подключения клиента HTTP/1.1
-					this->_http1.close(bid);
-				break;
-				// Если протокол подключения соответствует HTTP/2
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-					// Устанавливаем флаг закрытия подключения брокера
-					options->close = true;
-					// Выполняем поиск брокера в списке активных сессий
-					auto it = this->_sessions.find(bid);
-					// Если активная сессия найдена
-					if(it != this->_sessions.end()){
-						// Выполняем закрытие подключения
-						it->second->close();
-						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
-					// Выполняем отключение брокера
-					} else const_cast <server::core_t *> (this->_core)->close(bid);
-				} break;
-			}
+				}
+			} break;
 		}
 	}
 }

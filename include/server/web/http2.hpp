@@ -154,6 +154,13 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void prepare(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept;
+				/**
+				 * websocket Метод инициализации WebSocket протокола
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param core объект сетевого ядра
+				 */
+				void websocket(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся брокеров

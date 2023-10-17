@@ -459,7 +459,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("checkPassword"))
 							// Устанавливаем функцию проверки авторизации
-							options->http.authCallback(this->_callback.get <bool (const string &, const string &)> ("checkPassword"));
+							options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 					} break;
 					// Если тип авторизации Digest
 					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -472,7 +472,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("extractPassword"))
 							// Устанавливаем функцию извлечения пароля
-							options->http.extractPassCallback(this->_callback.get <string (const string &)> ("extractPassword"));
+							options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 					} break;
 				}
 			}
