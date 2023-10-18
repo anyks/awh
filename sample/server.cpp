@@ -105,8 +105,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	// core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.sonet(awh::scheme_t::sonet_t::DTLS);
+	// core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);

@@ -28,7 +28,7 @@ void awh::client::Sample::openCallback(const uint16_t sid, awh::core_t * core) n
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN))
 			// Выполняем подключение
-			const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+			dynamic_cast <client::core_t *> (core)->open(this->_scheme.sid);
 	}
 }
 /**
@@ -37,13 +37,10 @@ void awh::client::Sample::openCallback(const uint16_t sid, awh::core_t * core) n
  * @param core   объект сетевого ядра
  */
 void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if(core != nullptr){
-		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callback.is("events"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
-	}
+	// Если функция получения событий запуска и остановки сетевого ядра установлена
+	if((core != nullptr) && this->_callback.is("events"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
@@ -83,7 +80,7 @@ void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 			// Завершаем работу
 			if(this->_unbind)
 				// Выполняем остановку работы сетевого ядра
-				const_cast <client::core_t *> (this->_core)->stop();
+				dynamic_cast <client::core_t *> (core)->stop();
 		}
 		// Если функция обратного вызова существует
 		if(this->_callback.is("active"))
@@ -188,10 +185,8 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
 				net_t net{};
-				// Получаем данные хоста
-				net = host;
 				// Устанавливаем IP адрес
-				this->_scheme.url.ip = net;
+				this->_scheme.url.ip = net = host;
 			} break;
 			// Если хост является доменным именем
 			case static_cast <uint8_t> (net_t::type_t::DOMN):

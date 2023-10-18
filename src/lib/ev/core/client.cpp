@@ -1339,7 +1339,7 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					// Переводим сокет в неблокирующий режим
-					adj->_ectx.noblock();
+					adj->_ectx.block();
 					// Устанавливаем текущий метод режима работы
 					adj->_method = engine_t::method_t::WRITE;
 					// Если данных достаточно для записи в сокет
