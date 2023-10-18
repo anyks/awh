@@ -1611,7 +1611,7 @@ void awh::Core::verifySSL(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
-	this->_engine.verifyEnable(mode);
+	this->_engine.verify(mode);
 }
 /**
  * frequency Метод установки частоты обновления базы событий

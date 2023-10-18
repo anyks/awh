@@ -306,7 +306,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Устанавливаем идентификатор брокера
 						adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем получение контекста сертификата
-						this->_engine.wrapServer(adj->_ectx, &adj->_addr);
+						this->_engine.wrap(adj->_ectx, &adj->_addr);
 						// Если подключение не обёрнуто
 						if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
 							// Выводим сообщение об ошибке
@@ -515,7 +515,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Устанавливаем идентификатор брокера
 							adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата
-							this->_engine.wrapServer(adj->_ectx, &adj->_addr);
+							this->_engine.wrap(adj->_ectx, &adj->_addr);
 							// Если мы хотим работать в зашифрованном режиме
 							if(this->_settings.sonet == scheme_t::sonet_t::TLS){
 								// Если сертификаты не приняты, выходим

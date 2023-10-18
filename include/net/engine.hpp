@@ -309,6 +309,23 @@ namespace awh {
 			} addr_t;
 		private:
 			/**
+			 * Cert Структура адресов файлов сертификатов
+			 */
+			typedef struct Cert {
+				// Доверенный сертификат (CA-файл)
+				string ca;
+				// Приватный ключ сертификата
+				string key;
+				// Основной сертификат или цепочка сертификатов
+				string chain;
+				// Каталог с доверенными сертификатами (CA-файлами)
+				string capath;
+				/**
+				 * Cert Конструктор
+				 */
+				Cert() noexcept : ca{SSL_CA_FILE}, key{""}, chain{""}, capath{""} {}
+			} cert_t;
+			/**
 			 * Verify Структура параметров для валидации доменов
 			 */
 			typedef struct Verify {
@@ -485,15 +502,8 @@ namespace awh {
 			// Список алгоритмов шифрования
 			string _cipher;
 		private:
-			// Основной сертификат или цепочка сертификатов
-			string _chain;
-			// Приватный ключ сертификата
-			string _privkey;
-		private:
-			// Каталог с доверенными сертификатами (CA-файлами)
-			string _path;
-			// Доверенный сертификат (CA-файл)
-			mutable string _ca;
+			// Объект файлов сертификатов
+			mutable cert_t _cert;
 		private:
 			// Флаг инициализации куков
 			static bool _cookieInit;
@@ -714,6 +724,21 @@ namespace awh {
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * @param target контекст назначения
+			 * @param source исходный контекст
+			 * @return       объект SSL контекста
+			 */
+			void wrap(ctx_t & target, ctx_t & source) noexcept;
+			/**
+			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @return        объект SSL контекста
+			 */
+			void wrap(ctx_t & target, addr_t * address) noexcept;
+		public:
+			/**
+			 * wrap Метод обертывания файлового дескриптора для сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
@@ -722,47 +747,34 @@ namespace awh {
 			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
 		public:
 			/**
-			 * wrapServer Метод обертывания файлового дескриптора для сервера
-			 * @param target контекст назначения
-			 * @param source исходный контекст
-			 * @return       объект SSL контекста
-			 */
-			void wrapServer(ctx_t & target, ctx_t & source) noexcept;
-			/**
-			 * wrapServer Метод обертывания файлового дескриптора для сервера
-			 * @param target  контекст назначения
-			 * @param address объект подключения
-			 * @return        объект SSL контекста
-			 */
-			void wrapServer(ctx_t & target, addr_t * address) noexcept;
-		public:
-			/**
-			 * wrapClient Метод обертывания файлового дескриптора для клиента
+			 * wrap Метод обертывания файлового дескриптора для клиента
 			 * @param target контекст назначения
 			 * @param source исходный контекст
 			 * @param host   хост удалённого сервера
 			 * @return       объект SSL контекста
 			 */
-			void wrapClient(ctx_t & target, ctx_t & source, const string & host) noexcept;
+			void wrap(ctx_t & target, ctx_t & source, const string & host) noexcept;
 			/**
-			 * wrapClient Метод обертывания файлового дескриптора для клиента
+			 * wrap Метод обертывания файлового дескриптора для клиента
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param host    хост удалённого сервера
 			 * @return        объект SSL контекста
 			 */
-			void wrapClient(ctx_t & target, addr_t * address, const string & host) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const string & host) noexcept;
 		public:
 			/**
-			 * verifyEnable Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+			 * verify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
 			 * @param mode флаг состояния разрешения проверки
 			 */
-			void verifyEnable(const bool mode) noexcept;
+			void verify(const bool mode) noexcept;
+		public:
 			/**
 			 * ciphers Метод установки алгоритмов шифрования
 			 * @param ciphers список алгоритмов шифрования для установки
 			 */
 			void ciphers(const vector <string> & ciphers) noexcept;
+		public:
 			/**
 			 * ca Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
@@ -770,7 +782,7 @@ namespace awh {
 			 */
 			void ca(const string & trusted, const string & path = "") noexcept;
 			/**
-			 * setCert Метод установки файлов сертификата
+			 * certificate Метод установки файлов сертификата
 			 * @param chain файл цепочки сертификатов
 			 * @param key   приватный ключ сертификата (если требуется)
 			 */

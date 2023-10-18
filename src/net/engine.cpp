@@ -2370,11 +2370,11 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	// Если контекст SSL передан
 	if(ctx != nullptr){
 		// Если доверенный сертификат (CA-файл) найден и адрес файла указан
-		if(!this->_ca.empty() && (this->_fs.isFile(this->_ca) || this->_fs.isDir(this->_path))){
+		if(!this->_cert.ca.empty() && (this->_fs.isFile(this->_cert.ca) || this->_fs.isDir(this->_cert.capath))){
 			// Определяем путь где хранятся сертификаты
-			const char * path = (!this->_path.empty() ? this->_path.c_str() : nullptr);
+			const char * path = (!this->_cert.capath.empty() ? this->_cert.capath.c_str() : nullptr);
 			// Выполняем проверку
-			if(SSL_CTX_load_verify_locations(ctx, this->_ca.c_str(), path) != 1){
+			if(SSL_CTX_load_verify_locations(ctx, this->_cert.ca.c_str(), path) != 1){
 				// Выводим в лог сообщение
 				this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
@@ -2383,9 +2383,9 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если каталог получен
 			if(path != nullptr){
 				// Получаем полный адрес
-				const string & trustdir = this->_fs.realPath(this->_path);
+				const string & trustdir = this->_fs.realPath(this->_cert.capath);
 				// Если адрес существует
-				if(this->_fs.isDir(trustdir) && !this->_fs.isFile(this->_ca)){
+				if(this->_fs.isDir(trustdir) && !this->_fs.isFile(this->_cert.ca)){
 					/**
 					 * Если операционной системой является MS Windows
 					 */
@@ -2397,7 +2397,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Выполняем сплит адреса
 							auto path = this->_uri->splitPath(params.at(uri_t::flag_t::PATH), FS_SEPARATOR);
 							// Добавляем адрес файла в список
-							path.push_back(this->_ca);
+							path.push_back(this->_cert.ca);
 							// Формируем полный адарес файла
 							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, FS_SEPARATOR).c_str());
 							// Выполняем проверку доверенного сертификата
@@ -2414,7 +2414,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							}
 						}
 						// Выполняем очистку адреса доверенного сертификата
-						this->_ca.clear();
+						this->_cert.ca.clear();
 					/**
 					 * Если операционной системой является Nix-подобная
 					 */
@@ -2422,7 +2422,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Выполняем сплит адреса
 						auto path = this->_uri->splitPath(trustdir, FS_SEPARATOR);
 						// Добавляем адрес файла в список
-						path.push_back(this->_ca);
+						path.push_back(this->_cert.ca);
 						// Формируем полный адарес файла
 						string filename = this->_uri->joinPath(path, FS_SEPARATOR);
 						// Выполняем проверку доверенного сертификата
@@ -2438,24 +2438,24 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							}
 						}
 						// Выполняем очистку адреса доверенного сертификата
-						this->_ca.clear();
+						this->_cert.ca.clear();
 					#endif
 				// Если адрес файла существует
-				} else if((result = this->_fs.isFile(this->_ca)))
+				} else if((result = this->_fs.isFile(this->_cert.ca)))
 					// Выполняем проверку доверенного сертификата
-					SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_ca.c_str()));
+					SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_cert.ca.c_str()));
 				// Выполняем очистку адреса доверенного сертификата
-				else this->_ca.clear();
+				else this->_cert.ca.clear();
 			// Если адрес файла существует
-			} else if((result = this->_fs.isFile(this->_ca)))
+			} else if((result = this->_fs.isFile(this->_cert.ca)))
 				// Выполняем проверку доверенного сертификата
-				SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_ca.c_str()));
+				SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_cert.ca.c_str()));
 		// Выполняем очистку адреса доверенного сертификата
-		} else this->_ca.clear();
+		} else this->_cert.ca.clear();
 		// Метка следующей итерации
 		Next:
 		// Если доверенный сертификат не указан
-		if(this->_ca.empty()){
+		if(this->_cert.ca.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(ctx);
 			/**
@@ -2816,6 +2816,310 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 }
 /**
  * wrap Метод обертывания файлового дескриптора для сервера
+ * @param target контекст назначения
+ * @param source исходный контекст
+ * @return       объект SSL контекста
+ */
+void awh::Engine::wrap(ctx_t & target, ctx_t & source) noexcept {
+	// Если объект ещё не обёрнут в SSL контекст
+	if(!source._encrypted && (source._addr != nullptr))
+		// Выполняем обёртывание уже активного SSL контекста
+		this->wrap(target, source._addr);
+}
+/**
+ * wrap Метод обертывания файлового дескриптора для сервера
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @return        объект SSL контекста
+ */
+void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
+	// Если данные переданы
+	if(address != nullptr){
+		// Устанавливаем файловый дескриптор
+		target._addr = address;
+		// Устанавливаем тип приложения
+		target._type = type_t::SERVER;
+		// Проверяем семейство протоколов сервера
+		switch(target._addr->_peer.client.ss_family){
+			// Если семейство протоколов IPv4
+			case AF_INET:
+			// Если семейство протоколов IPv6
+			case AF_INET6: break;
+			// Если семейство протоколов другое, выходим
+			default: return;
+		}
+		// Если тип сокетов установлен не как потоковые
+		if(target._addr->_type != SOCK_STREAM)
+			// Выходим из функции
+			return;
+		// Если объект фреймворка существует
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_cert.key.empty() && !this->_cert.chain.empty()){
+			/**
+			 * Если операционной системой является Linux или FreeBSD
+			 */
+			#if defined(__linux__) || defined(__FreeBSD__)
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(DTLSv1_2_server_method());
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(TLSv1_2_server_method());
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Получаем контекст OpenSSL
+				target._ctx = SSL_CTX_new(TLSv1_2_server_method());
+			#endif
+			// Если контекст не создан
+			if(target._ctx == nullptr){
+				// Выводим в лог сообщение
+				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
+			// Устанавливаем опции запроса
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+			// Устанавливаем минимально-возможную версию TLS
+			SSL_CTX_set_min_proto_version(target._ctx, 0);
+			// Устанавливаем максимально-возможную версию TLS
+			SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
+			// Если нужно установить основные алгоритмы шифрования
+			if(!this->_cipher.empty()){
+				// Устанавливаем все основные алгоритмы шифрования
+				if(SSL_CTX_set_cipher_list(target._ctx, this->_cipher.c_str()) < 1){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+				// Заставляем серверные алгоритмы шифрования использовать в приоритете
+				SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+			}
+			// Получаем идентификатор процесса
+			const pid_t pid = getpid();
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 3.0.0
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
+				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+					// Выводим в лог сообщение
+					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+			/**
+			 * Если версия OpenSSL ниже версии 3.0.0
+			 */
+			#else 
+				{
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+					// Если кривые не получилось установить
+					if(ecdh == nullptr){
+						// Выводим в лог сообщение
+						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						// Выходим
+						return;
+					}
+					// Выполняем установку кривых P-256
+					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
+					// Выполняем очистку объекта кривой
+					EC_KEY_free(ecdh);
+				}
+			#endif
+			// Если протоколом является HTTP, выполняем переключение на него
+			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует SPDY/1
+				case static_cast <uint8_t> (proto_t::SPDY1):
+				// Если протокол соответствует HTTP/2
+				case static_cast <uint8_t> (proto_t::HTTP2):
+				// Если протокол соответствует HTTP/3
+				case static_cast <uint8_t> (proto_t::HTTP3):
+					// Выполняем переключение протокола подключения
+					this->httpUpgrade(target);
+				break;
+			}
+			// Выполняем установку идентификатора сессии
+			if(SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const u_char *> (&pid), sizeof(pid)) < 1){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
+				// Выходим
+				return;
+			}
+			// Устанавливаем поддерживаемые кривые
+			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
+			// Выполняем инициализацию доверенного сертификата
+			if(!this->storeCA(target._ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Устанавливаем флаг quiet shutdown
+			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
+			// Запускаем кэширование
+			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			// Если цепочка сертификатов установлена
+			if(!this->_cert.chain.empty()){
+				// Если цепочка сертификатов не установлена
+				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.chain.c_str()) < 1){
+					// Выводим в лог сообщение
+					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}
+			// Если приватный ключ установлен
+			if(!this->_cert.key.empty()){
+				// Если приватный ключ не может быть установлен
+				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
+					// Выводим в лог сообщение
+					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+				// Если приватный ключ недействителен
+				if(SSL_CTX_check_private_key(target._ctx) < 1){
+					// Выводим в лог сообщение
+					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}
+			// Если доверенный сертификат недействителен
+			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
+				// Выводим в лог сообщение
+				this->_log->print("Trusted certificate is invalid", log_t::flag_t::CRITICAL);
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Если нужно произвести проверку
+			if(this->_verify){
+				// Устанавливаем глубину проверки
+				SSL_CTX_set_verify_depth(target._ctx, 2);
+				// Выполняем проверку сертификата клиента
+				SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+			// Запрещаем выполнять првоерку сертификата пользователя
+			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
+			// Создаем SSL объект
+			target._ssl = SSL_new(target._ctx);
+			// Если объект не создан
+			if(!(target._encrypted = (target._ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
+			// Проверяем рукопожатие
+			if(SSL_do_handshake(target._ssl) < 1){
+				// Выполняем проверку рукопожатия
+				const long verify = SSL_get_verify_result(target._ssl);
+				// Если рукопожатие не выполнено
+				if(verify != X509_V_OK){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+					// Выходим
+					return;
+				}
+			}
+			// Устанавливаем флаг активации TLS
+			target._addr->_encrypted = target._encrypted;
+			/**
+			 * Если операционной системой является Linux или FreeBSD
+			 */
+			#if defined(__linux__) || defined(__FreeBSD__)
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+						// Выполняем обёртывание сокета UDP в BIO SSL
+						target._bio = BIO_new_dgram(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Выполняем обёртывание сокета в BIO SSL
+				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+			#endif
+			// Если BIO SSL создано
+			if(target._bio != nullptr){
+				// Устанавливаем неблокирующий режим ввода/вывода для сокета
+				target.noblock();
+				// Выполняем установку BIO SSL
+				SSL_set_bio(target._ssl, target._bio, target._bio);
+				/**
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 */
+				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
+					// Если протокол интернета установлен как SCTP
+					if(target._addr->_protocol == IPPROTO_SCTP)
+						// Устанавливаем функцию нотификации
+						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
+				#endif
+			// Если BIO SSL не создано
+			} else {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим сообщение об ошибке
+				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return;
+			}
+		}
+	}
+}
+/**
+ * wrap Метод обертывания файлового дескриптора для сервера
  * @param target  контекст назначения
  * @param address объект подключения
  * @param type    тип активного приложения
@@ -2987,13 +3291,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выполняем отключение SSL кеша
 				SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_OFF);
 			// Если цепочка сертификатов установлена
-			if(!this->_chain.empty()){
+			if(!this->_cert.chain.empty()){
 				// Определяем тип активного приложения
 				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
 					case static_cast <uint8_t> (type_t::CLIENT):
 						// Если цепочка сертификатов не установлена
-						if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
+						if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.chain.c_str(), SSL_FILETYPE_PEM) < 1){
 							// Выводим в лог сообщение
 							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
@@ -3005,7 +3309,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER):
 						// Если цепочка сертификатов не установлена
-						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
+						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.chain.c_str()) < 1){
 							// Выводим в лог сообщение
 							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
@@ -3017,9 +3321,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				}
 			}
 			// Если приватный ключ установлен
-			if(!this->_privkey.empty()){
+			if(!this->_cert.key.empty()){
 				// Если приватный ключ не может быть установлен
-				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
 					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
@@ -3128,330 +3432,26 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 	}
 }
 /**
- * wrapServer Метод обертывания файлового дескриптора для сервера
- * @param target контекст назначения
- * @param source исходный контекст
- * @return       объект SSL контекста
- */
-void awh::Engine::wrapServer(ctx_t & target, ctx_t & source) noexcept {
-	// Если объект ещё не обёрнут в SSL контекст
-	if(!source._encrypted && (source._addr != nullptr))
-		// Выполняем обёртывание уже активного SSL контекста
-		this->wrapServer(target, source._addr);
-}
-/**
- * wrapServer Метод обертывания файлового дескриптора для сервера
- * @param target  контекст назначения
- * @param address объект подключения
- * @return        объект SSL контекста
- */
-void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
-	// Если данные переданы
-	if(address != nullptr){
-		// Устанавливаем файловый дескриптор
-		target._addr = address;
-		// Устанавливаем тип приложения
-		target._type = type_t::SERVER;
-		// Проверяем семейство протоколов сервера
-		switch(target._addr->_peer.client.ss_family){
-			// Если семейство протоколов IPv4
-			case AF_INET:
-			// Если семейство протоколов IPv6
-			case AF_INET6: break;
-			// Если семейство протоколов другое, выходим
-			default: return;
-		}
-		// Если тип сокетов установлен не как потоковые
-		if(target._addr->_type != SOCK_STREAM)
-			// Выходим из функции
-			return;
-		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_privkey.empty() && !this->_chain.empty()){
-			/**
-			 * Если операционной системой является Linux или FreeBSD
-			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
-				// Определяем тип протокола подключения
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Получаем контекст OpenSSL
-						target._ctx = SSL_CTX_new(DTLSv1_2_server_method());
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Получаем контекст OpenSSL
-						target._ctx = SSL_CTX_new(TLSv1_2_server_method());
-					break;
-				}
-			/**
-			 * Если операционная система не является Linux
-			 */
-			#else
-				// Получаем контекст OpenSSL
-				target._ctx = SSL_CTX_new(TLSv1_2_server_method());
-			#endif
-			// Если контекст не создан
-			if(target._ctx == nullptr){
-				// Выводим в лог сообщение
-				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Устанавливаем опции запроса
-			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			// Устанавливаем минимально-возможную версию TLS
-			SSL_CTX_set_min_proto_version(target._ctx, 0);
-			// Устанавливаем максимально-возможную версию TLS
-			SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->_cipher.empty()){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(SSL_CTX_set_cipher_list(target._ctx, this->_cipher.c_str()) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			}
-			// Получаем идентификатор процесса
-			const pid_t pid = getpid();
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 3.0.0
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
-				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-			/**
-			 * Если версия OpenSSL ниже версии 3.0.0
-			 */
-			#else 
-				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
-					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Выводим в лог сообщение
-						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-						// Выходим
-						return;
-					}
-					// Выполняем установку кривых P-256
-					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					EC_KEY_free(ecdh);
-				}
-			#endif
-			// Если протоколом является HTTP, выполняем переключение на него
-			switch(static_cast <uint8_t> (target._proto)){
-				// Если протокол соответствует SPDY/1
-				case static_cast <uint8_t> (proto_t::SPDY1):
-				// Если протокол соответствует HTTP/2
-				case static_cast <uint8_t> (proto_t::HTTP2):
-				// Если протокол соответствует HTTP/3
-				case static_cast <uint8_t> (proto_t::HTTP3):
-					// Выполняем переключение протокола подключения
-					this->httpUpgrade(target);
-				break;
-			}
-			// Выполняем установку идентификатора сессии
-			if(SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const u_char *> (&pid), sizeof(pid)) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
-			// Устанавливаем поддерживаемые кривые
-			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Выполняем инициализацию доверенного сертификата
-			if(!this->storeCA(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
-			// Устанавливаем флаг quiet shutdown
-			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
-			// Запускаем кэширование
-			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-			// Если цепочка сертификатов установлена
-			if(!this->_chain.empty()){
-				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если приватный ключ установлен
-			if(!this->_privkey.empty()){
-				// Если приватный ключ не может быть установлен
-				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				// Если приватный ключ недействителен
-				if(SSL_CTX_check_private_key(target._ctx) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если доверенный сертификат недействителен
-			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
-				// Выводим в лог сообщение
-				this->_log->print("Trusted certificate is invalid", log_t::flag_t::CRITICAL);
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
-			// Если нужно произвести проверку
-			if(this->_verify){
-				// Устанавливаем глубину проверки
-				SSL_CTX_set_verify_depth(target._ctx, 2);
-				// Выполняем проверку сертификата клиента
-				SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
-			// Запрещаем выполнять првоерку сертификата пользователя
-			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
-			// Создаем SSL объект
-			target._ssl = SSL_new(target._ctx);
-			// Если объект не создан
-			if(!(target._encrypted = (target._ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Проверяем рукопожатие
-			if(SSL_do_handshake(target._ssl) < 1){
-				// Выполняем проверку рукопожатия
-				const long verify = SSL_get_verify_result(target._ssl);
-				// Если рукопожатие не выполнено
-				if(verify != X509_V_OK){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
-					// Выходим
-					return;
-				}
-			}
-			// Устанавливаем флаг активации TLS
-			target._addr->_encrypted = target._encrypted;
-			/**
-			 * Если операционной системой является Linux или FreeBSD
-			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
-				// Определяем тип протокола подключения
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-						// Выполняем обёртывание сокета UDP в BIO SSL
-						target._bio = BIO_new_dgram(target._addr->fd, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
-					break;
-				}
-			/**
-			 * Если операционная система не является Linux
-			 */
-			#else
-				// Выполняем обёртывание сокета в BIO SSL
-				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
-			#endif
-			// Если BIO SSL создано
-			if(target._bio != nullptr){
-				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				target.noblock();
-				// Выполняем установку BIO SSL
-				SSL_set_bio(target._ssl, target._bio, target._bio);
-				/**
-				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
-				 */
-				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
-					// Если протокол интернета установлен как SCTP
-					if(target._addr->_protocol == IPPROTO_SCTP)
-						// Устанавливаем функцию нотификации
-						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
-				#endif
-			// Если BIO SSL не создано
-			} else {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим сообщение об ошибке
-				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
-			}
-		}
-	}
-}
-/**
- * wrapClient Метод обертывания файлового дескриптора для клиента
+ * wrap Метод обертывания файлового дескриптора для клиента
  * @param target контекст назначения
  * @param source исходный контекст
  * @param host   хост удалённого сервера
  * @return       объект SSL контекста
  */
-void awh::Engine::wrapClient(ctx_t & target, ctx_t & source, const string & host) noexcept {
+void awh::Engine::wrap(ctx_t & target, ctx_t & source, const string & host) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
 	if((source._ssl == nullptr) && (source._addr != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		this->wrapClient(target, source._addr, host);
+		this->wrap(target, source._addr, host);
 }
 /**
- * wrapClient Метод обертывания файлового дескриптора для клиента
+ * wrap Метод обертывания файлового дескриптора для клиента
  * @param target  контекст назначения
  * @param address объект подключения
  * @param host    хост удалённого сервера
  * @return        объект SSL контекста
  */
-void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & host) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) noexcept {
 	// Если данные переданы
 	if((address != nullptr) && !host.empty()){
 		// Устанавливаем файловый дескриптор
@@ -3460,7 +3460,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
 		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) &&
-		  ((!this->_privkey.empty() && !this->_chain.empty()) || this->encrypted(target))){
+		  ((!this->_cert.key.empty() && !this->_cert.chain.empty()) || this->encrypted(target))){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3567,9 +3567,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если цепочка сертификатов установлена
-			if(!this->_chain.empty()){
+			if(!this->_cert.chain.empty()){
 				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
+				if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.chain.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
 					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
@@ -3579,9 +3579,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				}
 			}
 			// Если приватный ключ установлен
-			if(!this->_privkey.empty()){
+			if(!this->_cert.key.empty()){
 				// Если приватный ключ не может быть установлен
-				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
 					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
@@ -3711,10 +3711,10 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 	}
 }
 /**
- * verifyEnable Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+ * verify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
  * @param mode флаг состояния разрешения проверки
  */
-void awh::Engine::verifyEnable(const bool mode) noexcept {
+void awh::Engine::verify(const bool mode) noexcept {
 	// Устанавливаем флаг проверки
 	this->_verify = mode;
 }
@@ -3745,25 +3745,36 @@ void awh::Engine::ciphers(const vector <string> & ciphers) noexcept {
  */
 void awh::Engine::ca(const string & trusted, const string & path) noexcept {
 	// Если адрес CA-файла передан
-	if(!trusted.empty()){
+	if(!trusted.empty())
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
-		this->_ca = this->_fs.realPath(trusted);
-		// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
-		if(!path.empty() && this->_fs.isDir(path))
-			// Устанавливаем адрес каталога с доверенным сертификатом (CA-файлом)
-			this->_path = this->_fs.realPath(path);
-	}
+		this->_cert.ca = this->_fs.realPath(trusted);
+	// Если адрес CA-файла не передан, выполняем очистку ранее установленного CA-файла
+	else this->_cert.ca.clear();
+	// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
+	if(!path.empty() && this->_fs.isDir(path))
+		// Устанавливаем адрес каталога с доверенным сертификатом (CA-файлом)
+		this->_cert.capath = this->_fs.realPath(path);
+	// Если путь хранения CA-файлов не передан, выполняем очистку ранее установленного
+	else this->_cert.capath.clear();
 }
 /**
- * setCert Метод установки файлов сертификата
+ * certificate Метод установки файлов сертификата
  * @param chain файл цепочки сертификатов
  * @param key   приватный ключ сертификата (если требуется)
  */
 void awh::Engine::certificate(const string & chain, const string & key) noexcept {
-	// Устанавливаем приватный ключ сертификата
-	this->_privkey = this->_fs.realPath(key);
-	// Устанавливаем файл полной цепочки сертификатов
-	this->_chain = this->_fs.realPath(chain);
+	// Если ключ сертификата передан
+	if(!key.empty())
+		// Устанавливаем приватный ключ сертификата
+		this->_cert.key = this->_fs.realPath(key);
+	// Если ключ не передан, очищаем установленный ключ сертификата
+	else this->_cert.key.clear();
+	// Если сертификат передан
+	if(!chain.empty())
+		// Устанавливаем файл полной цепочки сертификатов
+		this->_cert.chain = this->_fs.realPath(chain);
+	// Если сертификат не передан, очищаем установленный адрес сертификата
+	else this->_cert.chain.clear();
 }
 /**
  * Engine Конструктор
@@ -3771,11 +3782,9 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- _verify(true), _fs(fmk, log), _cipher(""), _chain(""), _privkey(""),
- _path(""), _ca(SSL_CA_FILE), _fmk(fmk), _uri(uri), _log(log) {
+awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : _verify(true), _fs(fmk, log), _cipher{""}, _fmk(fmk), _uri(uri), _log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
-	this->_ca = this->_fs.realPath(this->_ca);
+	this->_cert.ca = this->_fs.realPath(this->_cert.ca);
 	// Выполняем установку алгоритмов шифрования
 	this->ciphers({
 		"ECDHE+AESGCM",

@@ -205,7 +205,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 								// Выполняем активацию шифрованного SSL канала
 								this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
 							// Выполняем активацию контекста подключения
-							this->_engine.wrapClient(adj->_ectx, &adj->_addr, host);
+							this->_engine.wrap(adj->_ectx, &adj->_addr, host);
 						// Если хост сервера не получен
 						} else {
 							// Разрешаем выполнение работы
@@ -1003,7 +1003,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Выполняем активацию шифрованного SSL канала
 					this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("ssl", shm->url, bid, shm->sid, this), adj->_ectx);
 				// Выполняем получение контекста сертификата
-				this->_engine.wrapClient(adj->_ectx, adj->_ectx, host);
+				this->_engine.wrap(adj->_ectx, adj->_ectx, host);
 				// Если подключение не обёрнуто
 				if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
 					// Выводим сообщение об ошибке
