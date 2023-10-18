@@ -3761,9 +3761,9 @@ void awh::Engine::ca(const string & trusted, const string & path) noexcept {
  */
 void awh::Engine::certificate(const string & chain, const string & key) noexcept {
 	// Устанавливаем приватный ключ сертификата
-	this->_privkey = key;
+	this->_privkey = this->_fs.realPath(key);
 	// Устанавливаем файл полной цепочки сертификатов
-	this->_chain = chain;
+	this->_chain = this->_fs.realPath(chain);
 }
 /**
  * Engine Конструктор
