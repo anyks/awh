@@ -254,7 +254,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 					if(core->proto(bid) == engine_t::proto_t::HTTP2){
 						// Запоминаем идентификатор брокера
 						this->_bid = bid;
-						// Если протокол активирован HTTPS или WSS защищённый поверх TLS
+						// Если протокол активирован HTTPS или WSS защищённый поверх SSL
 						if(this->_proxy.connect){
 							// Выполняем сброс состояния HTTP парсера
 							this->_scheme.proxy.http.reset();

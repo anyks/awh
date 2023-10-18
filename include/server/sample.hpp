@@ -1,6 +1,6 @@
 /**
  * @file: sample.hpp
- * @date: 2022-09-01
+ * @date: 2023-10-18
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2022
+ * @copyright: Copyright © 2023
  */
 
 #ifndef __AWH_SAMPLE_SERVER__
@@ -23,6 +23,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <core/server.hpp>
 #include <scheme/sample.hpp>
 
@@ -53,30 +54,16 @@ namespace awh {
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
-					NOT_INFO  = 0x01, // Флаг запрещающий вывод информационных сообщений
-					WAIT_MESS = 0x02  // Флаг ожидания входящих сообщений
+					NOT_INFO   = 0x01, // Флаг запрещающий вывод информационных сообщений
+					WAIT_MESS  = 0x02, // Флаг ожидания входящих сообщений
+					VERIFY_SSL = 0x03  // Флаг выполнения проверки сертификата SSL
 				};
-			private:
-				/**
-				 * Callback Структура функций обратного вызова
-				 */
-				typedef struct Callback {
-					// Функция обратного вызова, при запуске или остановки подключения к серверу
-					function <void (const size_t, const mode_t, Sample *)> active;
-					// Функция обратного вызова, при получении сообщения с сервера
-					function <void (const size_t, const vector <char> &, Sample *)> message;
-					// Функция разрешения подключения брокера на сервере
-					function <bool (const string &, const string &, const u_int, Sample *)> accept;
-					// Функция получения событий запуска и остановки сетевого ядра
-					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
-					/**
-					 * Callback Конструктор
-					 */
-					Callback() noexcept : active(nullptr), message(nullptr), accept(nullptr), events(nullptr) {}
-				} fn_t;
 			private:
 				// Идентификатор основного процесса
 				pid_t _pid;
+			private:
+				// Флаг долгоживущего подключения
+				bool _alive;
 			private:
 				// Порт сервера
 				u_int _port;
@@ -97,11 +84,8 @@ namespace awh {
 				// Размер шифрования передаваемых данных
 				hash_t::cipher_t _cipher;
 			private:
-				// Флаг долгоживущего подключения
-				bool _alive;
-			private:
-				// Список мусорных брокеров
-				map <time_t, size_t> _garbage;
+				// Список отключившихся клиентов
+				map <time_t, uint64_t> _disconnected;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -111,58 +95,51 @@ namespace awh {
 				const server::core_t * _core;
 			private:
 				/**
-				 * openCallback Функция обратного вызова при запуске работы
+				 * openCallback Метод обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * eventsCallback Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
-				 * persistCallback Функция персистентного вызова
+				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void persistCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * connectCallback Функция обратного вызова при подключении к серверу
+				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * disconnectCallback Функция обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void disconnectCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
-				/**
-				 * readCallback Функция обратного вызова при чтении сообщения с брокера
+				 * readCallback Метод обратного вызова при чтении сообщения с брокера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщение брокеру
+				 * writeCallback Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * acceptCallback Функция обратного вызова при проверке подключения брокера
+				 * acceptCallback Метод обратного вызова при проверке подключения брокера
 				 * @param ip   адрес интернет подключения брокера
 				 * @param mac  мак-адрес подключившегося брокера
 				 * @param port порт подключившегося брокера
@@ -170,36 +147,20 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept;
+				bool acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * handler Метод управления входящими методами
-				 * @param bid идентификатор брокера
-				 */
-				void handler(const size_t bid) noexcept;
-			private:
-				/**
-				 * actionRead Метод обработки экшена чтения с сервера
-				 * @param bid идентификатор брокера
-				 */
-				void actionRead(const size_t bid) noexcept;
-				/**
-				 * actionConnect Метод обработки экшена подключения к серверу
-				 * @param bid идентификатор брокера
-				 */
-				void actionConnect(const size_t bid) noexcept;
-				/**
-				 * actionDisconnect Метод обработки экшена отключения от сервера
-				 * @param bid идентификатор брокера
-				 */
-				void actionDisconnect(const size_t bid) noexcept;
-			private:
-				/**
-				 * garbage Метод удаления мусорных брокеров
+				 * erase Метод удаления отключившихся клиентов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void garbage(const u_short tid, awh::core_t * core) noexcept;
+				void erase(const uint16_t tid, awh::core_t * core) noexcept;
+				/**
+				 * pinging Метод таймера выполнения пинга клиента
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации Rest брокера
@@ -217,23 +178,22 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const size_t, const mode_t, Sample *)> callback) noexcept;
+				void on(function <void (const uint64_t, const mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const size_t, const vector <char> &, Sample *)> callback) noexcept;
+				void on(function <void (const uint64_t, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
-			public:
+				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие активации брокера на сервере
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const string &, const string &, const u_int, Sample *)> callback) noexcept;
+				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
 			public:
 				/**
 				 * response Метод отправки сообщения брокеру
@@ -241,26 +201,26 @@ namespace awh {
 				 * @param buffer буфер бинарных данных для отправки
 				 * @param size   размер бинарных данных для отправки
 				 */
-				void send(const size_t bid, const char * buffer, const size_t size) const noexcept;
+				void send(const uint64_t bid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const size_t bid) const noexcept;
+				u_int port(const uint64_t bid) const noexcept;
 				/**
-				 * ip Метод получения IP адреса брокера
+				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const size_t bid) const noexcept;
+				const string & ip(const uint64_t bid) const noexcept;
 				/**
-				 * mac Метод получения MAC адреса брокера
+				 * mac Метод получения MAC-адреса брокера
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const size_t bid) const noexcept;
+				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -272,7 +232,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void alive(const size_t bid, const bool mode) noexcept;
+				void alive(const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * stop Метод остановки сервера
@@ -287,7 +247,7 @@ namespace awh {
 				 * close Метод закрытия подключения брокера
 				 * @param bid идентификатор брокера
 				 */
-				void close(const size_t bid) noexcept;
+				void close(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -303,15 +263,15 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * mode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
-				 */
-				void mode(const u_short flag) noexcept;
-				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+				/**
+				 * mode Метод установки флага модуля
+				 * @param flag флаг модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов

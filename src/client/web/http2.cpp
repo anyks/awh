@@ -535,7 +535,7 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 					// Выводим функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_ENHANCE_YOUR_CALM, this->_fmk->format("Stream %d closed with error=%s", it->first, "ENHANCE_YOUR_CALM"));
 			} break;
-			// Если согласованные параметры TLS не приемлемы
+			// Если согласованные параметры SSL не приемлемы
 			case 0xC: {
 				// Выводим информацию о закрытии сессии с ошибкой
 				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "INADEQUATE_SECURITY");

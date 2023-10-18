@@ -71,3 +71,11 @@ const awh::server::SchemeSample::options_t * awh::server::SchemeSample::get(cons
 	// Выводим результат
 	return result;
 }
+/**
+ * get Метод извлечения списка параметров активных клиентов
+ * @return список параметров активных клиентов
+ */
+const map <uint64_t, unique_ptr <awh::server::SchemeSample::options_t>> & awh::server::SchemeSample::get() const noexcept {
+	// Выводим результат
+	return this->_options;
+}

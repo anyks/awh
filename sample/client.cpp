@@ -95,7 +95,7 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
+		// client::sample_t::flag_t::VERIFY_SSL
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
@@ -104,8 +104,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	// core.sonet(awh::scheme_t::sonet_t::DTLS);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);

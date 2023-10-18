@@ -107,7 +107,7 @@ void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t s
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
 				// Если прокси-сервер является HTTPS
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
-					// Если протокол активирован HTTPS или WSS защищённый поверх TLS
+					// Если протокол активирован HTTPS или WSS защищённый поверх SSL
 					if(this->_proxy.connect){
 						// Выполняем сброс состояния HTTP парсера
 						this->_scheme.proxy.http.reset();
@@ -340,14 +340,14 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 	}
 }
 /**
- * enableTLSCallback Метод активации зашифрованного канала TLS
- * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+ * enableSSLCallback Метод активации зашифрованного канала SSL
+ * @param url  адрес сервера для которого выполняется активация зашифрованного канала SSL
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
- * @return     результат активации зашифрованного канала TLS
+ * @return     результат активации зашифрованного канала SSL
  */
-bool awh::client::Web::enableTLSCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+bool awh::client::Web::enableSSLCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Блокируем переменные которые не используем
 	(void) bid;
 	(void) sid;
@@ -756,8 +756,8 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
-	// Устанавливаем событие на активацию шифрованного TLS канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
+	// Устанавливаем событие на активацию шифрованного SSL канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLCallback, this, _1, _2, _3, _4));
 }
 /**
  * Web Конструктор
@@ -786,8 +786,8 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
-	// Устанавливаем событие на активацию шифрованного TLS канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
+	// Устанавливаем событие на активацию шифрованного SSL канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLCallback, this, _1, _2, _3, _4));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра клиента

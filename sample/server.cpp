@@ -21,18 +21,23 @@ using namespace awh;
  */
 class Server {
 	private:
-		// Объект логирования
-		log_t * _log;
+		private:
+		// Создаём объект фреймворка
+		const fmk_t * _fmk;
+		// Создаём объект работы с логами
+		const log_t * _log;
+	private:
+		// Объект Сервера
+		server::sample_t * _sample;
 	public:
 		/**
 		 * accept Метод активации клиента на сервере
-		 * @param ip     адрес интернет подключения
-		 * @param mac    аппаратный адрес подключения
-		 * @param port   порт подключения
-		 * @param sample объект сервера
-		 * @return       результат проверки
+		 * @param ip   адрес интернет подключения
+		 * @param mac  аппаратный адрес подключения
+		 * @param port порт подключения
+		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
@@ -40,34 +45,32 @@ class Server {
 		}
 		/**
 		 * active Метод идентификации активности на сервере
-		 * @param aid    идентификатор адъютанта (клиента)
-		 * @param mode   режим события подключения
-		 * @param sample объект сервера
+		 * @param bid  идентификатор брокера
+		 * @param mode режим события подключения
 		 */
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
-		 * @param aid    идентификатор адъютанта (клиента)
+		 * @param bid    идентификатор брокера
 		 * @param buffer буфер входящих данных
-		 * @param sample объект сервера
 		 */
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			// Получаем сообщение
-			const string message(buffer.begin(), buffer.end());
-			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+		void message(const uint64_t bid, const vector <char> & buffer){
 			// Отправляем сообщение обратно
-			sample->send(aid, buffer.data(), buffer.size());
+			this->_sample->send(bid, buffer.data(), buffer.size());
+			// Выводим информацию в лог
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 		}
 	public:
 		/**
 		 * Server Конструктор
-		 * @param log объект логирования
+		 * @param fmk    объект фреймворка
+		 * @param log    объект логирования
+		 * @param sample объект сервера
 		 */
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 /**
@@ -81,12 +84,12 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект исполнителя
-	Server executor(&log);
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
 	// Создаём объект SAMPLE запроса
 	server::sample_t sample(&core, &fmk, &log);
+	// Создаём объект исполнителя
+	Server executor(&fmk, &log, &sample);
 	// Устанавливаем название сервиса
 	log.name("SAMPLE Server");
 	// Устанавливаем формат времени
@@ -102,8 +105,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	// core.sonet(awh::scheme_t::sonet_t::DTLS);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
@@ -118,11 +121,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

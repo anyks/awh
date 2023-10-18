@@ -81,9 +81,6 @@ namespace awh {
 				// Объект сетевой схемы
 				scheme_t _scheme;
 			private:
-				// Буфер бинарных данных
-				vector <char> _buffer;
-			private:
 				// Список рабочих событий
 				stack <event_t> _events;
 			private:

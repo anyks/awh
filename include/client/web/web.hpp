@@ -243,14 +243,14 @@ namespace awh {
 				virtual void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * enableTLSCallback Метод активации зашифрованного канала TLS
-				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+				 * enableSSLCallback Метод активации зашифрованного канала SSL
+				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала SSL
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
-				 * @return     результат активации зашифрованного канала TLS
+				 * @return     результат активации зашифрованного канала SSL
 				 */
-				bool enableTLSCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				bool enableSSLCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков

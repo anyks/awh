@@ -193,10 +193,10 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						else host = (!url.domain.empty() ? url.domain.c_str() : (!url.ip.empty() ? url.ip.c_str() : nullptr));
 						// Если хост сервера получен правильно
 						if(host != nullptr){
-							// Если функция обратного вызова активации шифрованного TLS канала установлена
-							if((shm->callback.is("tls")))
-								// Выполняем активацию шифрованного TLS канала
-								this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", url, adj->_bid, shm->sid, this), adj->_ectx);
+							// Если функция обратного вызова активации шифрованного SSL канала установлена
+							if((shm->callback.is("ssl")))
+								// Выполняем активацию шифрованного SSL канала
+								this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
 							// Выполняем активацию контекста подключения
 							this->_engine.wrapClient(adj->_ectx, &adj->_addr, host);
 						// Если хост сервера не получен
@@ -1001,10 +1001,10 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 			if(host != nullptr){
 				// Выполняем установку желаемого протокола подключения
 				adj->_ectx.proto(this->_settings.proto);
-				// Если функция обратного вызова активации шифрованного TLS канала установлена
-				if((shm->callback.is("tls")))
-					// Выполняем активацию шифрованного TLS канала
-					this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("tls", shm->url, bid, shm->sid, this), adj->_ectx);
+				// Если функция обратного вызова активации шифрованного SSL канала установлена
+				if((shm->callback.is("ssl")))
+					// Выполняем активацию шифрованного SSL канала
+					this->_engine.encrypted(shm->callback.apply <bool, const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *> ("ssl", shm->url, bid, shm->sid, this), adj->_ectx);
 				// Выполняем получение контекста сертификата
 				this->_engine.wrapClient(adj->_ectx, adj->_ectx, host);
 				// Если подключение не обёрнуто
