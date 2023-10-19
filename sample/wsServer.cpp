@@ -214,7 +214,7 @@ int main(int argc, char * argv[]){
 	// ws.opaque("keySession");
 	// Устанавливаем тип авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket сервера
 	// ws.init(2222, "127.0.0.1", awh::http_t::compress_t::DEFLATE);
 	ws.init(2222, "", awh::http_t::compress_t::DEFLATE);
