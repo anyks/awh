@@ -1217,8 +1217,18 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					if(size > 0){
 						// Количество полученных байт
 						int64_t bytes = -1;
-						// Переводим сокет в неблокирующий режим
-						adj->_ectx.noblock();
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Переводим сокет в неблокирующий режим
+								adj->_ectx.noblock();
+							break;
+						}
 						// Создаём буфер входящих данных
 						unique_ptr <char []> buffer(new char [size]);
 						// Выполняем чтение данных с сокета
@@ -1273,22 +1283,13 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											// Выводим функцию обратного вызова
 											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 									}
-								// Если данные не получены
-								} else {
-									// Если произошёл дисконнект
-									if(bytes == 0){
-										// Выполняем отключение клиента
+								// Если данные небыли получены
+								} else if(bytes <= 0) {
+									// Если чтение не выполнена, закрываем подключение
+									if(bytes == 0)
+										// Выполняем закрытие подключения
 										this->close(bid);
-										// Выходим из функции
-										return;
-									// Если нужно повторить запись
-									} else if(bytes == -2) {
-										// Если подключение ещё существует
-										if(this->method(bid) == engine_t::method_t::READ)
-											// Продолжаем попытку снова
-											continue;
-									}
-									// Входим из цикла
+									// Выходим из цикла
 									break;
 								}
 							// Если запись не выполнена, входим
@@ -1338,8 +1339,18 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
-					// Переводим сокет в неблокирующий режим
-					adj->_ectx.block();
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета установлен как TCP/IP
+						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+						// Если тип сокета установлен как TCP/IP TLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+						// Если тип сокета установлен как SCTP
+						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+							// Переводим сокет в неблокирующий режим
+							adj->_ectx.block();
+						break;
+					}
 					// Устанавливаем текущий метод режима работы
 					adj->_method = engine_t::method_t::WRITE;
 					// Если данных достаточно для записи в сокет
@@ -1375,18 +1386,12 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							bytes = adj->_ectx.write(buffer + offset, actual);
 							// Если данные небыли записаны
 							if(bytes <= 0){
-								// Если произошёл дисконнект
-								if(bytes == 0){
-									// Выполняем отключение клиента
+								// Если запись не выполнена, закрываем подключение
+								if(bytes == 0)
+									// Выполняем закрытие подключения
 									this->close(bid);
-									// Выходим из функции
-									return;
-								// Если запись не выполнена, входим
-								} else if(bytes == -2)
-									// Продолжаем попытку снова
-									continue;
-								// Если запись не выполнена, входим
-								else break;
+								// Выходим из цикла
+								break;
 							}
 							// Увеличиваем смещение в буфере
 							offset += bytes;

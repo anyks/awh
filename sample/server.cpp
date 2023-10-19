@@ -58,10 +58,10 @@ class Server {
 		 * @param buffer буфер входящих данных
 		 */
 		void message(const uint64_t bid, const vector <char> & buffer){
-			// Отправляем сообщение обратно
-			this->_sample->send(bid, buffer.data(), buffer.size());
 			// Выводим информацию в лог
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+			// Отправляем сообщение обратно
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
 		/**
@@ -101,7 +101,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
-	core.clusterSize();
+	// core.clusterSize();
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет

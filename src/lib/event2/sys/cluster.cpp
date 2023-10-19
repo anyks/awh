@@ -123,7 +123,7 @@
 		// Бинарный буфер для получения данных
 		char buffer[4096];
 		// Заполняем буфер нулями
-		memset(buffer, 0, sizeof(buffer));
+		::memset(buffer, 0, sizeof(buffer));
 		// Если процесс является родительским
 		if(this->cluster->_pid == static_cast <pid_t> (getpid())){
 			// Идентификатор процесса приславший сообщение
@@ -161,9 +161,9 @@
 				// Создаём объект сообщения
 				mess_t message;
 				// Выполняем зануление буфера данных полезной нагрузки
-				memset(message.payload, 0, sizeof(message.payload));
+				::memset(message.payload, 0, sizeof(message.payload));
 				// Выполняем извлечение входящих данных
-				memcpy(&message, buffer, bytes);
+				::memcpy(&message, buffer, bytes);
 				// Если размер данных соответствует
 				if((message.size > 0) && (message.size <= sizeof(message.payload))){
 					// Выполняем добавление полученных данных в общий буфер
@@ -198,8 +198,19 @@
 			} else {
 				// Выводим сообщение об ошибке в лог
 				this->_log->print("[%u] Data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
-				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выходим из функции
+					return;
+				/**
+				 * Если режим отладки не активирован
+				 */
+				#else
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
+				#endif
 			}
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (getppid())) {
@@ -237,9 +248,9 @@
 					// Создаём объект сообщения
 					mess_t message;
 					// Выполняем зануление буфера данных полезной нагрузки
-					memset(message.payload, 0, sizeof(message.payload));
+					::memset(message.payload, 0, sizeof(message.payload));
 					// Выполняем извлечение входящих данных
-					memcpy(&message, buffer, bytes);
+					::memcpy(&message, buffer, bytes);
 					// Если размер данных соответствует
 					if((message.size > 0) && (message.size <= sizeof(message.payload))){
 						// Выполняем добавление полученных данных в общий буфер
@@ -302,8 +313,19 @@
 				} else {
 					// Выводим сообщение об ошибке в лог
 					this->_log->print("[%u] Data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
-					// Выходим из приложения
-					exit(EXIT_FAILURE);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выходим из функции
+						return;
+					/**
+					 * Если режим отладки не активирован
+					 */
+					#else
+						// Выходим из приложения
+						exit(EXIT_FAILURE);
+					#endif
 				}
 			}
 		// Если процесс превратился в зомби
@@ -312,8 +334,19 @@
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Останавливаем чтение данных с родительского процесса
 			this->cluster->stop(this->wid);
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выходим из функции
+				return;
+			/**
+			 * Если режим отладки не активирован
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 	}
 #endif
@@ -451,8 +484,19 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					case -1: {
 						// Выводим в лог сообщение
 						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
-						// Выходим принудительно из приложения
-						exit(EXIT_FAILURE);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выходим из функции
+							return;
+						/**
+						 * Если режим отладки не активирован
+						 */
+						#else
+							// Выходим из приложения
+							exit(EXIT_FAILURE);
+						#endif
 					} break;
 					// Если - это дочерний поток значит все нормально
 					case 0: {
@@ -506,8 +550,19 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						} else {
 							// Процесс превратился в зомби, самоликвидируем его
 							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
-							// Выходим из приложения
-							exit(EXIT_FAILURE);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выходим из функции
+								return;
+							/**
+							 * Если режим отладки не активирован
+							 */
+							#else
+								// Выходим из приложения
+								exit(EXIT_FAILURE);
+							#endif
 						}
 					} break;
 					// Если - это родительский процесс
@@ -602,8 +657,19 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
 			// Выполняем остановку работы
 			this->stop(wid);
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выходим из функции
+				return;
+			/**
+			 * Если режим отладки не активирован
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
 			// Выполняем поиск работников
@@ -623,9 +689,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 					// Выполняем установку флага конца чанка
 					message.end = ((offset + message.size) == size);
 					// Выполняем зануление буфера полезной нагрузки
-					memset(message.payload, 0, sizeof(message.payload));
+					::memset(message.payload, 0, sizeof(message.payload));
 					// Выполняем копирование данные полезной нагрузки
-					memcpy(message.payload, buffer + offset, message.size);
+					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
 					::write(jt->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
@@ -672,9 +738,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 					// Выполняем установку флага конца чанка
 					message.end = ((offset + message.size) == size);
 					// Выполняем зануление буфера полезной нагрузки
-					memset(message.payload, 0, sizeof(message.payload));
+					::memset(message.payload, 0, sizeof(message.payload));
 					// Выполняем копирование данные полезной нагрузки
-					memcpy(message.payload, buffer + offset, message.size);
+					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
 					::write(jt->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
@@ -687,8 +753,19 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выходим из функции
+				return;
+			/**
+			 * Если режим отладки не активирован
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -728,9 +805,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Выполняем установку флага конца чанка
 					message.end = ((offset + message.size) == size);
 					// Выполняем зануление буфера полезной нагрузки
-					memset(message.payload, 0, sizeof(message.payload));
+					::memset(message.payload, 0, sizeof(message.payload));
 					// Выполняем копирование данные полезной нагрузки
-					memcpy(message.payload, buffer + offset, message.size);
+					::memcpy(message.payload, buffer + offset, message.size);
 					// Переходим по всем дочерним процессам
 					for(auto & jack : jt->second){
 						// Если идентификатор процесса не нулевой
@@ -748,8 +825,19 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выходим из функции
+				return;
+			/**
+			 * Если режим отладки не активирован
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -888,8 +976,19 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выходим из функции
+				return;
+			/**
+			 * Если режим отладки не активирован
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(it != this->_workers.end())

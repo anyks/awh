@@ -913,8 +913,9 @@ awh::Engine::Address::~Address() noexcept {
 /**
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
+ * @return       нужно ли завершить работу
  */
-void awh::Engine::Context::error(const int status) const noexcept {
+bool awh::Engine::Context::error(const int status) const noexcept {
 	// Если защищённый режим работы разрешён
 	if(this->_encrypted){
 		// Получаем данные описание ошибки
@@ -922,10 +923,12 @@ void awh::Engine::Context::error(const int status) const noexcept {
 		// Определяем тип ошибки
 		switch(error){
 			// Если сертификат неизвестный
-			case SSL_ERROR_SSL:
+			case SSL_ERROR_SSL: {
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-			break;
+				// Выполняем завершение работы
+				return true;
+			}
 			// Если был возвращён ноль
 			case SSL_ERROR_ZERO_RETURN: {
 				// Если удалённая сторона произвела закрытие подключения
@@ -949,6 +952,8 @@ void awh::Engine::Context::error(const int status) const noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 					// Если ещё есть ошибки
 					} while((error = ERR_get_error()));
+					// Выполняем завершение работы
+					return true;
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
@@ -962,10 +967,12 @@ void awh::Engine::Context::error(const int status) const noexcept {
 				while((error = ERR_get_error()))
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+				// Выполняем завершение работы
+				return true;
 			}
 		}
 	// Если произошла ошибка
-	} else if(status == -1) {
+	} else if(status < 0) {
 		// Определяем тип ошибки
 		switch(errno){
 			// Если ошибка не обнаружена, выходим
@@ -976,16 +983,23 @@ void awh::Engine::Context::error(const int status) const noexcept {
 				this->_log->print("EPIPE", log_t::flag_t::WARNING);
 			break;
 			// Если произведён сброс подключения
-			case ECONNRESET:
+			case ECONNRESET: {
 				// Выводим в лог сообщение
 				this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-			break;
+				// Выполняем завершение работы
+				return true;
+			}
 			// Для остальных ошибок
-			default:
+			default: {
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Выполняем завершение работы
+				return true;
+			}
 		}
 	}
+	// Завершение работы не требуется
+	return false;
 }
 /**
  * clear Метод очистки контекста
@@ -1181,29 +1195,31 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			// Получаем статус сокета
 			const bool status = this->isblock();
 			// Если сокет находится в блокирующем режиме
-			if((result < 0) && status)
+			if((result < 0) && status){
 				// Выполняем обработку ошибок
-				this->error(result);
+				if(this->error(result))
+					// Выполняем завершение работы
+					result = 0;
 			// Если произошла ошибка
-			else if((result < 0) && !status) {
-				// Если произошёл системный сигнал попробовать ещё раз
-				if(errno == EINTR)
-					// Пробуем повторно получить данные
-					return -2;
+			} else if((result < 0) && !status) {
 				// Если защищённый режим работы разрешён
 				if(this->_encrypted && (this->_ssl != nullptr)){
 					// Получаем данные описание ошибки
 					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
 						// Выполняем пропуск попытки
-						return -1;
+						return result;
 					// Иначе выводим сообщение об ошибке
-					else this->error(result);
+					else if(this->error(result))
+						// Требуем завершения работы
+						result = 0;
 				// Если защищённый режим работы запрещён
-				} else if(errno == EAGAIN)
+				} else if((errno == EAGAIN) || (errno == EINTR))
 					// Выполняем пропуск попытки
-					return -1;
-				// Иначе просто закрываем подключение
-				result = 0;
+					return result;
+				// Иначе выводим сообщение об ошибке
+				else if(this->error(result))
+					// Требуем завершения работы
+					result = 0;
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
 			if((result == 0) || status)
@@ -1359,29 +1375,31 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			// Получаем статус сокета
 			const bool status = this->isblock();
 			// Если сокет находится в блокирующем режиме
-			if((result < 0) && status)
+			if((result < 0) && status){
 				// Выполняем обработку ошибок
-				this->error(result);
+				if(this->error(result))
+					// Выполняем завершение работы
+					result = 0;
 			// Если произошла ошибка
-			else if((result < 0) && !status) {
-				// Если произошёл системный сигнал попробовать ещё раз
-				if(errno == EINTR)
-					// Пробуем повторно получить данные
-					return -2;
+			} else if((result < 0) && !status) {
 				// Если защищённый режим работы разрешён
 				if(this->_encrypted){
 					// Получаем данные описание ошибки
 					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
 						// Выполняем пропуск попытки
-						return -1;
+						return result;
 					// Иначе выводим сообщение об ошибке
-					else this->error(result);
+					else if(this->error(result))
+						// Требуем завершения работы
+						result = 0;
 				// Если защищённый режим работы запрещён
-				} else if(errno == EAGAIN)
+				} else if((errno == EAGAIN) || (errno == EINTR))
 					// Выполняем пропуск попытки
-					return -1;
-				// Иначе просто закрываем подключение
-				result = 0;
+					return result;
+				// Иначе выводим сообщение об ошибке
+				else if(this->error(result))
+					// Требуем завершения работы
+					result = 0;
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
 			if((result == 0) || status)

@@ -377,8 +377,9 @@ namespace awh {
 					/**
 					 * error Метод вывода информации об ошибке
 					 * @param status статус ошибки
+					 * @return       нужно ли завершить работу
 					 */
-					void error(const int status) const noexcept;
+					bool error(const int status) const noexcept;
 				public:
 					/**
 					 * clear Метод очистки контекста

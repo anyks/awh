@@ -131,9 +131,8 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 						return;
 					}
 					// Переводим сокет в неблокирующий режим
-					adj->_ectx.noblock();
-					// Запускаем чтение данных
-					this->core->enabled(engine_t::method_t::READ, this->bid);
+					adj->_ectx.block();
+					
 					// Если вывод информационных данных не запрещён
 					if(!this->core->_noinfo){
 						// Если порт установлен
@@ -159,6 +158,8 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 							);
 						}
 					}
+					// Запускаем чтение данных
+					this->core->enabled(engine_t::method_t::READ, this->bid);
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("connect"))
 						// Выполняем функцию обратного вызова
@@ -327,7 +328,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
 						// Переводим сокет в неблокирующий режим
-						ret.first->second->_ectx.noblock();
+						ret.first->second->_ectx.block();
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если функция обратного вызова установлена
@@ -553,8 +554,6 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							this->_mtx.accept.unlock();
 							// Переводим сокет в неблокирующий режим
 							ret.first->second->_ectx.noblock();
-							// Запускаем чтение данных
-							this->enabled(engine_t::method_t::READ, ret.first->first);
 							// Если вывод информационных данных не запрещён
 							if(!this->_noinfo){
 								// Если порт установлен
@@ -580,6 +579,8 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									);
 								}
 							}
+							// Запускаем чтение данных
+							this->enabled(engine_t::method_t::READ, ret.first->first);
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("connect"))
 								// Выполняем функцию обратного вызова
@@ -986,19 +987,11 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 								} else if(shm->callback.is("read"))
 									// Выводим функцию обратного вызова
 									shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-							// Если данные не получены и нужно повторить попытку снова
-							} else if(bytes == -2) {
-								// Если подключение ещё существует
-								if(this->method(bid) == engine_t::method_t::READ)
-									// Продолжаем попытку снова
-									continue;
-								// Если запись не выполнена, входим
-								else break;
-							// Если запись не выполнена, входим
-							} else {
-								// Если произошёл дисконнект
-								if((bytes == 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
-									// Выполняем отключение клиента
+							// Если данные небыли получены
+							} else if(bytes <= 0) {
+								// Если чтение не выполнена, закрываем подключение
+								if(bytes == 0)
+									// Выполняем закрытие подключения
 									this->close(bid);
 								// Выходим из цикла
 								break;
@@ -1060,12 +1053,12 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						bytes = adj->_ectx.write(buffer + offset, actual);
 						// Если данные небыли записаны
 						if(bytes <= 0){
-							// Если нужно повторить запись
-							if(bytes == -2)
-								// Продолжаем попытку снова
-								continue;
-							// Если запись не выполнена, входим
-							else break;
+							// Если запись не выполнена, закрываем подключение
+							if(bytes == 0)
+								// Выполняем закрытие подключения
+								this->close(bid);
+							// Выходим из цикла
+							break;
 						}
 						// Увеличиваем смещение в буфере
 						offset += bytes;
