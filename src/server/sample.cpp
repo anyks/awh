@@ -43,7 +43,7 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-				// Устанавливаем интервал времени на удаление мусорных брокеров раз в 5 секунд
+				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 5 секунд
 				this->_timer.setInterval(5000, std::bind(&sample_t::erase, this, _1, _2));
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				this->_timer.setInterval(PING_INTERVAL, std::bind(&sample_t::pinging, this, _1, _2));
@@ -88,7 +88,7 @@ void awh::server::Sample::connectCallback(const uint64_t bid, const uint16_t sid
 void awh::server::Sample::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
-		// Добавляем в очередь список мусорных брокеров
+		// Добавляем в очередь список отключившихся клиентов
 		this->_disconnected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
@@ -162,9 +162,6 @@ bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, 
 	bool result = true;
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
-		// Выполняем блокировку неиспользуемых переменных
-		(void) sid;
-		(void) core;
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова
@@ -179,11 +176,11 @@ bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, 
  * @param core объект сетевого ядра
  */
 void awh::server::Sample::erase(const uint16_t tid, awh::core_t * core) noexcept {
-	// Если список мусорных брокеров не пустой
+	// Если список отключившихся клиентов не пустой
 	if((tid > 0) && (core != nullptr) && !this->_disconnected.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку мусорных брокеров
+		// Выполняем переход по всему списку отключившихся клиентов
 		for(auto it = this->_disconnected.begin(); it != this->_disconnected.end();){
 			// Если брокер уже давно удалился
 			if((date - it->second) >= 10000){

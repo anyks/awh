@@ -18,6 +18,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <core/client.hpp>
 #include <core/server.hpp>
 #include <scheme/socks5.hpp>
@@ -34,7 +35,7 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * ProxySocks5 Класс работы с SOCKS5 PROXY сервером
+		 * ProxySocks5 Класс работы с SOCKS5 сервером
 		 */
 		typedef class ProxySocks5 {
 			public:
@@ -75,32 +76,13 @@ namespace awh {
 					Core(const fmk_t * fmk, const log_t * log) noexcept :
 					 timer(fmk, log), client(fmk, log), server(fmk, log) {}
 				} core_t;
-				/**
-				 * Callback Структура функций обратного вызова
-				 */
-				typedef struct Callback {
-					// Функция обратного вызова для обработки авторизации
-					function <bool (const string &, const string &)> checkAuth;
-					// Функция обратного вызова, при запуске или остановки подключения к серверу
-					function <void (const size_t, const mode_t, ProxySocks5 *)> active;
-					// Функция получения событий запуска и остановки сетевого ядра
-					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
-					// Функция разрешения подключения брокера на сервере
-					function <bool (const string &, const string &, const u_int, ProxySocks5 *)> accept;
-					// Функция обратного вызова, при получении сообщения с сервера
-					function <bool (const size_t, const event_t, const char *, const size_t, ProxySocks5 *)> message;
-					/**
-					 * Callback Конструктор
-					 */
-					Callback() noexcept : checkAuth(nullptr), active(nullptr), events(nullptr), accept(nullptr), message(nullptr) {}
-				} fn_t;
 			private:
 				// Порт сервера
 				u_int _port;
 				// Хости сервера
 				string _host;
 				// unix-сокет сервера
-				string _usock;
+				string _socket;
 			private:
 				// Объект для работы с сетью
 				net_t _net;
@@ -111,8 +93,8 @@ namespace awh {
 				// Объект рабочего для сервера
 				socks5_scheme_t _scheme;
 			private:
-				// Список мусорных брокеров
-				map <time_t, size_t> _garbage;
+				// Список отключившихся клиентов
+				map <uint64_t, time_t> _disconnected;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -124,7 +106,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openServerCallback(const size_t sid, awh::core_t * core) noexcept;
+				void openServerCallback(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
@@ -137,28 +119,28 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void connectClientCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectServerCallback Функция обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void connectServerCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectClientCallback Функция обратного вызова при отключении от сервера
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectClientCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectClientCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectServerCallback Функция обратного вызова при отключении от сервера
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectServerCallback(const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void disconnectServerCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * acceptServerCallback Функция обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
@@ -168,7 +150,7 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению клиента
 				 */
-				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept;
+				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readClientCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -177,7 +159,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readClientCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void readClientCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readServerCallback Функция обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -186,7 +168,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void readServerCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -195,22 +177,22 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeServerCallback(const char * buffer, const size_t size, const size_t bid, const size_t sid, awh::core_t * core) noexcept;
+				void writeServerCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * garbage Метод удаления мусорных брокеров
+				 * erase Метод удаления отключённых клиентов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void garbage(const u_short tid, awh::core_t * core) noexcept;
+				void erase(const uint16_t tid, awh::core_t * core) noexcept;
 			public:
 				/**
-				 * init Метод инициализации WebSocket брокера
+				 * init Метод инициализации брокера
 				 * @param socket unix-сокет для биндинга
 				 */
 				void init(const string & socket) noexcept;
 				/**
-				 * init Метод инициализации WebSocket клиента
+				 * init Метод инициализации брокера
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
@@ -220,62 +202,62 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const size_t, const mode_t, ProxySocks5 *)> callback) noexcept;
+				void on(function <void (const uint64_t, const mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
+				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const size_t, const event_t, const char *, const size_t, ProxySocks5 *)> callback) noexcept;
+				void on(function <bool (const uint64_t, const event_t, const char *, const size_t)> callback) noexcept;
 			public:
-				/**
-				 * on Метод добавления функции обработки авторизации
-				 * @param callback функция обратного вызова для обработки авторизации
-				 */
-				void on(function <bool (const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие активации клиента на сервере
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const string &, const string &, const u_int, ProxySocks5 *)> callback) noexcept;
+				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова для обработки авторизации
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const size_t bid) const noexcept;
+				u_int port(const uint64_t bid) const noexcept;
 				/**
-				 * ip Метод получения IP адреса брокера
+				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const size_t bid) const noexcept;
+				const string & ip(const uint64_t bid) const noexcept;
 				/**
-				 * mac Метод получения MAC адреса брокера
+				 * mac Метод получения MAC-адреса брокера
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const size_t bid) const noexcept;
+				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * stop Метод остановки клиента
+				 * stop Метод остановки сервера
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * start Метод запуска сервера
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения клиента
+				 * close Метод закрытия подключения
 				 * @param bid идентификатор брокера
 				 */
-				void close(const size_t bid) noexcept;
+				void close(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -291,20 +273,32 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * mode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
-				 */
-				void mode(const u_short flag) noexcept;
-				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+			public:
+				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const bool mode) noexcept;
 				/**
 				 * clusterSize Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const size_t size = 0) noexcept;
+				void clusterSize(const uint16_t size = 0) noexcept;
+			public:
+				/**
+				 * mode Метод установки флагов модуля
+				 * @param flags список флагов модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
+				/**
+				 * ciphers Метод установки алгоритмов шифрования
+				 * @param ciphers список алгоритмов шифрования для установки
+				 */
+				void ciphers(const vector <string> & ciphers) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
@@ -334,7 +328,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const size_t bid, const string & read, const string & write) noexcept;
+				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
 				/**
 				 * network Метод установки параметров сети
 				 * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
@@ -350,16 +344,6 @@ namespace awh {
 				 */
 				void verifySSL(const bool mode) noexcept;
 				/**
-				 * clusterAutoRestart Метод установки флага перезапуска процессов
-				 * @param mode флаг перезапуска процессов
-				 */
-				void clusterAutoRestart(const bool mode) noexcept;
-				/**
-				 * ciphers Метод установки алгоритмов шифрования
-				 * @param ciphers список алгоритмов шифрования для установки
-				 */
-				void ciphers(const vector <string> & ciphers) noexcept;
-				/**
 				 * ca Метод установки доверенного сертификата (CA-файла)
 				 * @param trusted адрес доверенного сертификата (CA-файла)
 				 * @param path    адрес каталога где находится сертификат (CA-файл)
@@ -371,6 +355,7 @@ namespace awh {
 				 * @param key   приватный ключ сертификата
 				 */
 				void certificate(const string & chain, const string & key) noexcept;
+			public:
 				/**
 				 * signalInterception Метод активации перехвата сигналов
 				 * @param mode флаг активации

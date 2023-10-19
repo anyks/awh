@@ -1161,9 +1161,9 @@ void awh::server::WebSocket2::disconnect(const uint64_t bid) noexcept {
 	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены и переключение протокола на HTTP/2 не выполнено
 	if((options != nullptr) && (options->proto != engine_t::proto_t::HTTP2))
-		// Добавляем в очередь список мусорных брокеров
+		// Добавляем в очередь список отключившихся клиентов
 		this->_ws1.disconnect(bid);
-	// Добавляем в очередь список мусорных брокеров
+	// Добавляем в очередь список отключившихся клиентов
 	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 }
 /**

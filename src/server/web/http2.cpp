@@ -1245,7 +1245,7 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 						case static_cast <uint8_t> (agent_t::HTTP):
 						// Если протокол соответствует протоколу WebSocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
-							// Добавляем в очередь список мусорных брокеров
+							// Добавляем в очередь список отключившихся клиентов
 							this->_http1.disconnect(bid);
 						break;
 					}
@@ -1268,7 +1268,7 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 				}
 			} break;
 		}
-		// Добавляем в очередь список мусорных брокеров
+		// Добавляем в очередь список отключившихся клиентов
 		this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 	}
 }

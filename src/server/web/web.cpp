@@ -43,7 +43,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
 				core->bind(&this->_timer);
-				// Устанавливаем интервал времени на удаление мусорных брокеров раз в 5 секунд
+				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 5 секунд
 				this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1, _2));
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1, _2));
@@ -76,9 +76,6 @@ bool awh::server::Web::acceptCallback(const string & ip, const string & mac, con
 	bool result = true;
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
-		// Выполняем блокировку неиспользуемых переменных
-		(void) sid;
-		(void) core;
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова
@@ -109,7 +106,7 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  * @param bid идентификатор брокера
  */
 void awh::server::Web::erase(const uint64_t bid) noexcept {
-	// Если список мусорных брокеров не пустой
+	// Если список отключившихся клиентов не пустой
 	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
@@ -140,7 +137,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::server::Web::disconnect(const uint64_t bid) noexcept {
-	// Добавляем в очередь список мусорных брокеров
+	// Добавляем в очередь список отключившихся клиентов
 	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 }
 /**

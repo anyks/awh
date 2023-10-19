@@ -85,7 +85,7 @@ namespace awh {
 				hash_t::cipher_t _cipher;
 			private:
 				// Список отключившихся клиентов
-				map <time_t, uint64_t> _disconnected;
+				map <uint64_t, time_t> _disconnected;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
