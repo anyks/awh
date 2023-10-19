@@ -381,7 +381,7 @@ void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  */
 void awh::client::Web::init(const string & dest, const http_t::compress_t compress) noexcept {
 	// Если unix-сокет установлен
-	if(this->_core->family() == scheme_t::family_t::NIX){
+	if((this->_core != nullptr) && (this->_core->family() == scheme_t::family_t::NIX)){
 		// Выполняем очистку схемы сети
 		this->_scheme.clear();
 		// Устанавливаем метод компрессии сообщений
@@ -516,7 +516,7 @@ void awh::client::Web::on(function <void (const int32_t, const u_int, const stri
  */
 void awh::client::Web::sendTimeout() noexcept {
 	// Если подключение выполнено
-	if(this->_core->working())
+	if((this->_core != nullptr) && this->_core->working())
 		// Отправляем сигнал принудительного таймаута
 		const_cast <client::core_t *> (this->_core)->sendTimeout(this->_bid);
 }
@@ -524,8 +524,10 @@ void awh::client::Web::sendTimeout() noexcept {
  * open Метод открытия подключения
  */
 void awh::client::Web::open() noexcept {
-	// Выполняем открытие подключения на удалённом сервере
-	this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+	// Если сетевое ядро инициализировано
+	if(this->_core != nullptr)
+		// Выполняем открытие подключения на удалённом сервере
+		this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 }
 /**
  * stop Метод остановки клиента
@@ -534,7 +536,7 @@ void awh::client::Web::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->_active = true;
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Очищаем адрес сервера
@@ -565,7 +567,7 @@ void awh::client::Web::stop() noexcept {
  */
 void awh::client::Web::start() noexcept {
 	// Если адрес URL запроса передан
-	if(!this->_scheme.url.empty()){
+	if((this->_core != nullptr) && !this->_scheme.url.empty()){
 		// Если биндинг не запущен
 		if(!this->_core->working())
 			// Выполняем запуск биндинга

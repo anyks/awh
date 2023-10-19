@@ -22,8 +22,10 @@
  * @param size   размер буфера данных для отправки
  */
 void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
-	// Выполняем отправку заголовков запроса клиенту
-	const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Выполняем отправку заголовков запроса клиенту
+		const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
 }
 /**
  * eventsCallback Функция обратного вызова при активации ядра сервера
@@ -150,7 +152,7 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if(this->_core->working() && (buffer != nullptr) && (size > 0)){
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
@@ -179,15 +181,13 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if(this->_core->working() && !headers.empty()){
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
-			// Выполняем отправку заголовков запроса на сервер
-			result = it->second->sendHeaders(id, headers, end);
 			// Если запрос не получилось отправить
-			if(result < 0){
+			if((result = it->second->sendHeaders(id, headers, end)) < 0){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -217,7 +217,7 @@ void awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & o
 	// Если активная сессия найдена
 	if(it != this->_sessions.end()){
 		// Если список разрешённых источников отправить не удалось
-		if(!it->second->sendOrigin(origins)){
+		if((this->_core != nullptr) && !it->second->sendOrigin(origins)){
 			// Выполняем закрытие подключения
 			const_cast <server::core_t *> (this->_core)->close(bid);
 			// Выходим из функции

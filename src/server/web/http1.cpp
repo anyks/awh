@@ -378,7 +378,7 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 			// Выполняем передачу данных клиенту WebSocket
 			this->_ws1.writeCallback(buffer, size, bid, sid, core);
 		// Иначе выполняем обработку входящих данных как Web-сервер
-		else {
+		else if(this->_core != nullptr) {
 			// Получаем параметры активного клиента
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -723,7 +723,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
  */
 void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Выполняем перебор всех активных агентов
 		for(auto & agent : this->_agents){
 			// Определяем тип активного агента
@@ -788,7 +788,7 @@ void awh::server::Http1::init(const u_int port, const string & host, const http_
  */
 void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует WebSocket-у
@@ -805,7 +805,7 @@ void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) 
  */
 void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует WebSocket-у
@@ -826,7 +826,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
-	if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
+	if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
@@ -874,7 +874,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 	// Результат работы функции
 	int32_t result = -1;
 	// Если заголовки запроса переданы
-	if((result = (this->_core->working() && !headers.empty()))){
+	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
@@ -929,7 +929,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
  */
 void awh::server::Http1::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
@@ -1208,12 +1208,15 @@ void awh::server::Http1::stop() noexcept {
  * start Метод запуска сервера
  */
 void awh::server::Http1::start() noexcept {
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <server::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запуск
-	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr){
+		// Если биндинг не запущен
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <server::core_t *> (this->_core)->start();
+		// Если биндинг уже запущен, выполняем запуск
+		else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	}
 }
 /**
  * close Метод закрытия подключения брокера
@@ -1227,7 +1230,7 @@ void awh::server::Http1::close(const uint64_t bid) noexcept {
 		// Выполняем закрытие подключения клиента WebSocket
 		this->_ws1.close(bid);
 	// Иначе выполняем обработку входящих данных как Web-сервер
-	else {
+	else if(this->_core != nullptr) {
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
@@ -1312,8 +1315,10 @@ void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noe
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Http1::total(const u_short total) noexcept {
-	// Устанавливаем максимальное количество одновременных подключений
-	const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Устанавливаем максимальное количество одновременных подключений
+		const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма
@@ -1328,8 +1333,10 @@ void awh::server::Http1::segmentSize(const size_t size) noexcept {
  * @param mode флаг перезапуска процессов
  */
 void awh::server::Http1::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага автоматического перезапуска
-	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Выполняем установку флага автоматического перезапуска
+		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
  * compress Метод установки метода сжатия

@@ -97,9 +97,11 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// sample.mode((uint8_t) server::sample_t::flag_t::WAIT_MESS);
+	// sample.mode({server::sample_t::flag_t::WAIT_MESS});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Активируем максимальное количество рабочих процессов
+	core.clusterSize();
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
@@ -118,6 +120,8 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
+	// Разрешаем перехват сигналов
+	core.signalInterception(core_t::signals_t::DISABLED);
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений

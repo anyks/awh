@@ -117,12 +117,12 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 			this->_sid = 1;
 			// Выполняем установку идентификатора объекта
 			this->_ws1._http.id(bid);
-			// Выполняем установку сетевого ядра
-			this->_ws1._core = this->_core;
 			// Устанавливаем метод сжатия
 			this->_ws1._compress = this->_compress;
 			// Выполняем установку данных URL-адреса
 			this->_ws1._scheme.url = this->_scheme.url;
+			// Выполняем установку сетевого ядра
+			this->_ws1._core = dynamic_cast <client::core_t *> (core);
 			// Если HTTP-заголовки установлены
 			if(!this->_headers.empty())
 				// Выполняем установку HTTP-заголовков
@@ -261,7 +261,7 @@ int awh::client::WebSocket2::chunkSignal(const int32_t sid, const uint8_t * buff
 				// Выводим функцию обратного вызова
 				this->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &this->_http);
 			// Если функция перехвата полученных чанков не установлена
-			else {
+			else if(this->_core != nullptr) {
 				// Если подключение закрыто
 				if(this->_close){
 					// Принудительно выполняем отключение лкиента
@@ -303,7 +303,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
 				// Если необходимо выполнить закрыть подключение
-				if(!this->_close && this->_stopped){
+				if((this->_core != nullptr) && !this->_close && this->_stopped){
 					// Устанавливаем флаг закрытия подключения
 					this->_close = !this->_close;
 					// Выполняем закрытие подключения
@@ -324,7 +324,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 				// Выполняем обработку полученных данных фрейма для прокси-сервера
 				return this->frameProxySignal(sid, direct, type, flags);
 			// Если мы работаем с сервером напрямую
-			else {
+			else if(this->_core != nullptr) {
 				// Выполняем определение типа фрейма
 				switch(type){
 					// Если мы получили входящие данные тела ответа
@@ -647,7 +647,7 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 		} break;
 	}
 	// Если флаг инициализации сессии HTTP/2 установлен
-	if((error > 0x00) && this->_nghttp2.is())
+	if((this->_core != nullptr) && (error > 0x00) && this->_nghttp2.is())
 		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 		this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 	// Если функция обратного вызова активности потока установлена
@@ -821,7 +821,7 @@ void awh::client::WebSocket2::flush() noexcept {
  */
 void awh::client::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Если переключение протокола на HTTP/2 не выполнено
 		if(this->_proto != engine_t::proto_t::HTTP2)
 			// Выполняем переброс персистентного вызова на клиент WebSocket
@@ -851,7 +851,7 @@ void awh::client::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
  */
 void awh::client::WebSocket2::ping(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && this->_allow.send){
+	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
 		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
@@ -869,7 +869,7 @@ void awh::client::WebSocket2::ping(const string & message) noexcept {
  */
 void awh::client::WebSocket2::pong(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && this->_allow.send){
+	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
 		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
@@ -1467,7 +1467,7 @@ void awh::client::WebSocket2::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->_active = true;
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Очищаем адрес сервера
@@ -1498,7 +1498,7 @@ void awh::client::WebSocket2::stop() noexcept {
  */
 void awh::client::WebSocket2::start() noexcept {
 	// Если адрес URL запроса передан
-	if(!this->_freeze && !this->_scheme.url.empty()){
+	if((this->_core != nullptr) && !this->_freeze && !this->_scheme.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->_core->working())
 			// Выполняем запуск биндинга

@@ -34,10 +34,10 @@ void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 		this->_mode = false;
 		// Выполняем установку идентификатора объекта
 		this->_ws1._http.id(bid);
-		// Выполняем установку сетевого ядра
-		this->_ws1._core = this->_core;
 		// Выполняем установку данных URL-адреса
 		this->_ws1._scheme.url = this->_scheme.url;
+		// Выполняем установку сетевого ядра
+		this->_ws1._core = dynamic_cast <client::core_t *> (core);
 		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выполняем установку функции обратного вызова
@@ -650,7 +650,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::SEND, event_t::CONNECT}, event_t::SUBMIT)){
 		// Если подключение выполнено
-		if(this->_bid > 0){
+		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Выполняем сброс параметров запроса
 			this->flush();
 			// Выполняем сброс состояния HTTP парсера
@@ -735,92 +735,95 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
-		// Если WebSocket ещё не активирован
-		if(this->_agent != agent_t::WEBSOCKET){
-			// Если это первый запрос
-			if(this->_attempt == 0){
-				// Если список заголовков установлен
-				if(!request.headers.empty()){
-					// Выполняем перебор всего списка заголовков
-					for(auto & item : request.headers){
-						// Если заголовок соответствует смене протокола на WebSocket
-						if(this->_fmk->compare(item.first, "upgrade") && this->_fmk->compare(item.second, "websocket")){
-							// Если протокол WebSocket разрешён для подключения
-							if(this->_webSocket)
-								// Выполняем установку агента воркера WebSocket
-								this->_agent = agent_t::WEBSOCKET;
-							// Если протокол WebSocket запрещён
-							else {
-								// Выводим сообщение об ошибке
-								this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
-								// Если функция обратного вызова на на вывод ошибок установлена
-								if(this->_callback.is("error"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
-								// Выходим из функции
-								return -1;
+		// Если сетевое ядро уже инициализированно
+		if(this->_core != nullptr){
+			// Если WebSocket ещё не активирован
+			if(this->_agent != agent_t::WEBSOCKET){
+				// Если это первый запрос
+				if(this->_attempt == 0){
+					// Если список заголовков установлен
+					if(!request.headers.empty()){
+						// Выполняем перебор всего списка заголовков
+						for(auto & item : request.headers){
+							// Если заголовок соответствует смене протокола на WebSocket
+							if(this->_fmk->compare(item.first, "upgrade") && this->_fmk->compare(item.second, "websocket")){
+								// Если протокол WebSocket разрешён для подключения
+								if(this->_webSocket)
+									// Выполняем установку агента воркера WebSocket
+									this->_agent = agent_t::WEBSOCKET;
+								// Если протокол WebSocket запрещён
+								else {
+									// Выводим сообщение об ошибке
+									this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
+									// Выходим из функции
+									return -1;
+								}
+								// Выходим из цикла
+								break;
 							}
-							// Выходим из цикла
-							break;
 						}
 					}
+					// Результат работы функции
+					int32_t result = (this->_requests.size() + 1);
+					// Определяем тип агента
+					switch(static_cast <uint8_t> (this->_agent)){
+						// Если протоколом агента является HTTP-клиент
+						case static_cast <uint8_t> (agent_t::HTTP): {
+							// Выполняем добавление активного запроса
+							this->_requests.emplace(result, request);
+							// Если В списке запросов ещё нет активных запросов
+							if(this->_requests.size() == 1)
+								// Выполняем запрос на удалённый сервер
+								this->submit(request);
+						} break;
+						// Если протоколом агента является WebSocket-клиент
+						case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+							// Если HTTP-заголовки установлены
+							if(!request.headers.empty())
+								// Выполняем установку HTTP-заголовков
+								this->_ws1.setHeaders(request.headers);
+							// Если метод компрессии установлен
+							if(request.compress != http_t::compress_t::NONE)
+								// Устанавливаем метод компрессии переданный пользователем
+								this->_ws1._compress = request.compress;
+							// Устанавливаем метод компрессии
+							else this->_ws1._compress = this->_compress;
+							// Устанавливаем новый адрес запроса
+							this->_uri.combine(this->_ws1._scheme.url, request.url);
+							// Выполняем установку подключения с WebSocket-сервером
+							this->_ws1.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+							// Выводим идентификатор подключения
+							result = 1;
+						} break;
+					}
+					// Выводим результат
+					return result;
+				// Если список запросов не пустой
+				} else if(!this->_requests.empty())
+					// Выполняем запрос на удалённый сервер
+					this->submit(this->_requests.begin()->second);
+				// Если мы получили ошибку
+				else {
+					// Выводим сообщение об ошибке
+					this->_log->print("Number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_SEND, "Number of redirect attempts has not been reset");
 				}
-				// Результат работы функции
-				int32_t result = (this->_requests.size() + 1);
-				// Определяем тип агента
-				switch(static_cast <uint8_t> (this->_agent)){
-					// Если протоколом агента является HTTP-клиент
-					case static_cast <uint8_t> (agent_t::HTTP): {
-						// Выполняем добавление активного запроса
-						this->_requests.emplace(result, request);
-						// Если В списке запросов ещё нет активных запросов
-						if(this->_requests.size() == 1)
-							// Выполняем запрос на удалённый сервер
-							this->submit(request);
-					} break;
-					// Если протоколом агента является WebSocket-клиент
-					case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-						// Если HTTP-заголовки установлены
-						if(!request.headers.empty())
-							// Выполняем установку HTTP-заголовков
-							this->_ws1.setHeaders(request.headers);
-						// Если метод компрессии установлен
-						if(request.compress != http_t::compress_t::NONE)
-							// Устанавливаем метод компрессии переданный пользователем
-							this->_ws1._compress = request.compress;
-						// Устанавливаем метод компрессии
-						else this->_ws1._compress = this->_compress;
-						// Устанавливаем новый адрес запроса
-						this->_uri.combine(this->_ws1._scheme.url, request.url);
-						// Выполняем установку подключения с WebSocket-сервером
-						this->_ws1.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
-						// Выводим идентификатор подключения
-						result = 1;
-					} break;
-				}
-				// Выводим результат
-				return result;
-			// Если список запросов не пустой
-			} else if(!this->_requests.empty())
-				// Выполняем запрос на удалённый сервер
-				this->submit(this->_requests.begin()->second);
-			// Если мы получили ошибку
-			else {
+			// Выводим сообщение об ошибке
+			} else {
 				// Выводим сообщение об ошибке
-				this->_log->print("Number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
+				this->_log->print("Websocket protocol is already activated", log_t::flag_t::WARNING);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_SEND, "Number of redirect attempts has not been reset");
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is already activated");
 			}
-		// Выводим сообщение об ошибке
-		} else {
-			// Выводим сообщение об ошибке
-			this->_log->print("Websocket protocol is already activated", log_t::flag_t::WARNING);
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is already activated");
 		}
 	}
 	// Сообщаем что идентификатор не получен
@@ -841,7 +844,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если данные переданы верные
-		if((result = ((buffer != nullptr) && (size > 0)))){
+		if((result = ((this->_core != nullptr) && (buffer != nullptr) && (size > 0)))){
 			// Тело WEB сообщения
 			vector <char> entity;
 			// Выполняем сброс данных тела
@@ -883,7 +886,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы
-		if(!headers.empty()){
+		if((this->_core != nullptr) && !headers.empty()){
 			// Выполняем очистку параметров HTTP запроса
 			this->_http.clear();
 			// Устанавливаем заголовоки запроса

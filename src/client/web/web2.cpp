@@ -21,8 +21,10 @@
  * @param size  размер буфера данных для отправки
  */
 void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) noexcept {
-	// Выполняем отправку заголовков запроса на сервер
-	const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_bid);
+	// Если сетевое ядро уже инициализированно
+	if(this->_core != nullptr)
+		// Выполняем отправку заголовков запроса на сервер
+		const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_bid);
 }
 /**
  * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
@@ -34,7 +36,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
  */
 int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
-	if(this->_proxy.sid == sid){
+	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
 		// Выполняем определение типа фрейма
 		switch(type){
 			// Если мы получили входящие данные тела ответа
@@ -66,8 +68,10 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 					if(this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_callback.call <const int32_t, const u_int, const string, const vector <char>> ("entity", sid, response.code, response.message, this->_scheme.proxy.http.body());
-					// Завершаем работу
-					const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					// Если сетевое ядро инициализированно
+					if(this->_core != nullptr)
+						// Завершаем работу
+						const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -144,8 +148,10 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 					if(this->_callback.is("headers"))
 						// Выводим функцию обратного вызова
 						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, this->_scheme.proxy.http.headers());
-					// Завершаем работу
-					const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					// Если сетевое ядро инициализированно
+					if(this->_core != nullptr)
+						// Завершаем работу
+						const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
 			} break;
 		}
@@ -452,7 +458,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-		if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
+		if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
 			if(!(result = this->_nghttp2.sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
@@ -480,7 +486,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-		if(this->_core->working() && !headers.empty()){
+		if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер
 			result = this->_nghttp2.sendHeaders(id, headers, end);
 			// Если запрос не получилось отправить

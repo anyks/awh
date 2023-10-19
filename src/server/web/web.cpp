@@ -159,8 +159,10 @@ void awh::server::Web::init(const string & socket, const http_t::compress_t comp
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем установку unix-сокет
-		const_cast <server::core_t *> (this->_core)->unixSocket(socket);
+		// Если объект сетевого ядра создан
+		if(this->_core != nullptr)
+			// Выполняем установку unix-сокет
+			const_cast <server::core_t *> (this->_core)->unixSocket(socket);
 	#endif
 }
 /**
@@ -178,8 +180,10 @@ void awh::server::Web::init(const u_int port, const string & host, const http_t:
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Удаляем unix-сокет ранее установленный
-		const_cast <server::core_t *> (this->_core)->removeUnixSocket();
+		// Если объект сетевого ядра создан
+		if(this->_core != nullptr)
+			// Удаляем unix-сокет ранее установленный
+			const_cast <server::core_t *> (this->_core)->removeUnixSocket();
 	#endif
 }
 /**
@@ -355,7 +359,7 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
  */
 void awh::server::Web::stop() noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Если завершить работу разрешено
 		if(this->_unbind)
 			// Завершаем работу
@@ -369,7 +373,7 @@ void awh::server::Web::stop() noexcept {
  */
 void awh::server::Web::start() noexcept {	
 	// Если биндинг не запущен
-	if(!this->_core->working())
+	if((this->_core != nullptr) && !this->_core->working())
 		// Выполняем запуск биндинга
 		const_cast <server::core_t *> (this->_core)->start();
 }

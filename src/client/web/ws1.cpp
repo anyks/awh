@@ -392,7 +392,7 @@ void awh::client::WebSocket1::flush() noexcept {
  */
 void awh::client::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Получаем текущий штамп времени
 		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 		// Если брокер не ответил на пинг больше двух интервалов, отключаем его
@@ -409,7 +409,7 @@ void awh::client::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) no
  */
 void awh::client::WebSocket1::ping(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && this->_allow.send){
+	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
 		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
@@ -427,7 +427,7 @@ void awh::client::WebSocket1::ping(const string & message) noexcept {
  */
 void awh::client::WebSocket1::pong(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && this->_allow.send){
+	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
 		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
@@ -1053,7 +1053,7 @@ void awh::client::WebSocket1::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->_active = true;
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Очищаем адрес сервера
@@ -1086,7 +1086,7 @@ void awh::client::WebSocket1::start() noexcept {
 	// Если адрес URL запроса передан
 	if(!this->_freeze && !this->_scheme.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга
-		if(!this->_core->working())
+		if((this->_core != nullptr) && !this->_core->working())
 			// Выполняем запуск биндинга
 			const_cast <client::core_t *> (this->_core)->start();
 		// Выполняем запрос на сервер

@@ -76,10 +76,10 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
-			// Выполняем установку сетевого ядра
-			this->_http1._core = this->_core;
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			this->_http1._scheme.compress = this->_scheme.compress;
+			// Выполняем установку сетевого ядра
+			this->_http1._core = dynamic_cast <server::core_t *> (core);
 			// Выполняем переброс вызова коннекта на клиент WebSocket
 			this->_http1.connectCallback(bid, sid, core);
 		}
@@ -210,7 +210,7 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
  */
 void awh::server::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -273,7 +273,7 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
 			// Выводим функцию обратного вызова
 			this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", bid, vector <char> (buffer, buffer + size), &options->http);
 		// Если функция перехвата полученных чанков не установлена
-		else {
+		else if(this->_core != nullptr) {
 			// Если подключение закрыто
 			if(options->close){
 				// Принудительно выполняем отключение лкиента
@@ -329,7 +329,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 				// Получаем параметры активного клиента
 				web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
-				if(options != nullptr){
+				if((this->_core != nullptr) && (options != nullptr)){
 					// Выполняем поиск агента которому соответствует клиент
 					auto it = this->_agents.find(bid);
 					// Если активный агент клиента установлен
@@ -384,7 +384,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 			// Получаем параметры активного клиента
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
-			if(options != nullptr){
+			if((this->_core != nullptr) && (options != nullptr)){
 				// Выполняем поиск агента которому соответствует клиент
 				auto it = this->_agents.find(bid);
 				// Если активный агент клиента установлен
@@ -615,7 +615,7 @@ int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, cons
 		} break;
 	}
 	// Если разрешено выполнить остановку
-	if(error > 0x00){
+	if((this->_core != nullptr) && (error > 0x00)){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
@@ -861,7 +861,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
  */
 void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((sid > 0) && (bid > 0) && (core != nullptr)){
+	if((sid > 0) && (bid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Создаём брокера
 		this->_ws2._scheme.set(bid);
 		// Получаем параметры активного клиента
@@ -1279,7 +1279,7 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
  */
 void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Определяем протокола подключения
@@ -1364,7 +1364,7 @@ void awh::server::Http2::init(const u_int port, const string & host, const http_
  */
 void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1415,7 +1415,7 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
  */
 void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1471,7 +1471,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
-	if((result = (this->_core->working() && (buffer != nullptr) && (size > 0)))){
+	if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1545,7 +1545,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 	// Результат работы функции
 	int32_t result = -1;
 	// Если заголовки запроса переданы
-	if((result = (this->_core->working() && !headers.empty()))){
+	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1629,7 +1629,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
  */
 void awh::server::Http2::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1994,12 +1994,15 @@ void awh::server::Http2::stop() noexcept {
  * start Метод запуска сервера
  */
 void awh::server::Http2::start() noexcept {
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <server::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запуск
-	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr){
+		// Если биндинг не запущен
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <server::core_t *> (this->_core)->start();
+		// Если биндинг уже запущен, выполняем запуск
+		else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	}
 }
 /**
  * close Метод закрытия подключения брокера
@@ -2009,7 +2012,7 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
 	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
-	if(options != nullptr){
+	if((this->_core != nullptr) && (options != nullptr)){
 		// Определяем протокола подключения
 		switch(static_cast <uint8_t> (options->proto)){
 			// Если протокол подключения соответствует HTTP/1.1
@@ -2229,8 +2232,10 @@ void awh::server::Http2::multiThreads(const uint16_t count, const bool mode) noe
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Http2::total(const u_short total) noexcept {
-	// Устанавливаем максимальное количество одновременных подключений
-	const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Устанавливаем максимальное количество одновременных подключений
+		const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма
@@ -2241,6 +2246,8 @@ void awh::server::Http2::segmentSize(const size_t size) noexcept {
 	if(size > 0)
 		// Устанавливаем размер одного сегмента фрейма
 		this->_frameSize = size;
+	// Иначе устанавливаем размер сегментов по умолчанию
+	else this->_frameSize = 0xFA000;
 	// Выполняем установку размеров сегментов фрейма для WebSocket-сервера
 	this->_ws2.segmentSize(size);
 	// Выполняем установку размеров сегментов фрейма для HTTP-сервера
@@ -2251,8 +2258,10 @@ void awh::server::Http2::segmentSize(const size_t size) noexcept {
  * @param mode флаг перезапуска процессов
  */
 void awh::server::Http2::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага автоматического перезапуска
-	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Выполняем установку флага автоматического перезапуска
+		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
  * compress Метод установки метода сжатия
@@ -2502,7 +2511,7 @@ void awh::server::Http2::crypto(const string & pass, const string & salt, const 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _webSocket(false), _frameSize(0), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
+awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _webSocket(false), _frameSize(0xFA000), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http2_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -2522,7 +2531,7 @@ awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept : web2_
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Http2::Http2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _webSocket(false), _frameSize(0), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
+awh::server::Http2::Http2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _webSocket(false), _frameSize(0xFA000), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

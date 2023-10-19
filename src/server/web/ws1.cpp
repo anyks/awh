@@ -679,7 +679,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 					// Выводим сообщение так - как оно пришло
 					this->_callback.call <const uint64_t, const vector <char> &, const bool> ("message", bid, data, text);
 				// Выводим сообщение об ошибке
-				} else {
+				} else if(this->_core != nullptr) {
 					// Создаём сообщение
 					options->mess = ws::mess_t(1007, "Received data decompression error");
 					// Получаем буфер сообщения
@@ -819,7 +819,7 @@ void awh::server::WebSocket1::erase(const uint64_t bid) noexcept {
  */
 void awh::server::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Получаем текущий штамп времени
@@ -863,7 +863,7 @@ void awh::server::WebSocket1::init(const u_int port, const string & host, const 
  */
 void awh::server::WebSocket1::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем параметры активного клиента
@@ -911,7 +911,7 @@ void awh::server::WebSocket1::sendError(const uint64_t bid, const ws::mess_t & m
  */
 void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
-	if(this->_core->working() && (bid > 0) && !message.empty()){
+	if((this->_core != nullptr) && this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
@@ -1212,26 +1212,32 @@ void awh::server::WebSocket1::stop() noexcept {
  * start Метод запуска сервера
  */
 void awh::server::WebSocket1::start() noexcept {
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <server::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запуск
-	else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr){
+		// Если биндинг не запущен
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <server::core_t *> (this->_core)->start();
+		// Если биндинг уже запущен, выполняем запуск
+		else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+	}
 }
 /**
  * close Метод закрытия подключения брокера
  * @param bid идентификатор брокера
  */
 void awh::server::WebSocket1::close(const uint64_t bid) noexcept {
-	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
-	if(options != nullptr){
-		// Устанавливаем флаг закрытия подключения брокера
-		options->close = true;
-		// Выполняем отключение брокера
-		const_cast <server::core_t *> (this->_core)->close(bid);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr){
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
+		if(options != nullptr){
+			// Устанавливаем флаг закрытия подключения брокера
+			options->close = true;
+			// Выполняем отключение брокера
+			const_cast <server::core_t *> (this->_core)->close(bid);
+		}
 	}
 }
 /**
@@ -1327,8 +1333,10 @@ void awh::server::WebSocket1::multiThreads(const uint16_t count, const bool mode
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::WebSocket1::total(const u_short total) noexcept {
-	// Устанавливаем максимальное количество одновременных подключений
-	const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Устанавливаем максимальное количество одновременных подключений
+		const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма
@@ -1339,14 +1347,18 @@ void awh::server::WebSocket1::segmentSize(const size_t size) noexcept {
 	if(size > 0)
 		// Устанавливаем размер одного сегмента фрейма
 		this->_frameSize = size;
+	// Иначе устанавливаем размер сегментов по умолчанию
+	else this->_frameSize = 0xFA000;
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
 void awh::server::WebSocket1::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага автоматического перезапуска
-	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Выполняем установку флага автоматического перезапуска
+		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
  * compress Метод установки метода сжатия
@@ -1484,7 +1496,7 @@ void awh::server::WebSocket1::bytesDetect(const scheme_t::mark_t read, const sch
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _frameSize(0xFA000), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws1_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -1504,7 +1516,7 @@ awh::server::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _frameSize(0), _scheme(fmk, log) {
+awh::server::WebSocket1::WebSocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _frameSize(0xFA000), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

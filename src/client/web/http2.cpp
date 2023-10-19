@@ -38,19 +38,19 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			this->_http1._bid = this->_bid;
 			// Выполняем установку идентификатора объекта
 			this->_http1._http.id(this->_bid);
-			// Выполняем установку сетевого ядра
-			this->_http1._core = this->_core;
 			// Выполняем установку данных URL-адреса
 			this->_http1._scheme.url = this->_scheme.url;
+			// Выполняем установку сетевого ядра
+			this->_http1._core = dynamic_cast <client::core_t *> (core);
 		}
 		// Выполняем установку идентификатора объекта
 		this->_ws2._http.id(bid);
-		// Выполняем установку сетевого ядра
-		this->_ws2._core = this->_core;
 		// Выполняем установку сессии HTTP/2
 		this->_ws2._nghttp2 = this->_nghttp2;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
+		// Выполняем установку сетевого ядра
+		this->_ws2._core = dynamic_cast <client::core_t *> (core);
 		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выполняем установку функции обратного вызова
@@ -252,7 +252,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const nghttp2_t::direct_t
 				// Выполняем обработку полученных данных фрейма для прокси-сервера
 				return this->frameProxySignal(sid, direct, type, flags);
 			// Если мы работаем с сервером напрямую
-			else {
+			else if(this->_core != nullptr) {
 				// Выполняем поиск идентификатора воркера
 				auto it = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
@@ -555,7 +555,7 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 			} break;
 		}
 		// Если флаг инициализации сессии HTTP/2 установлен
-		if((error > 0x0) && this->_nghttp2.is())
+		if((this->_core != nullptr) && (error > 0x0) && this->_nghttp2.is())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 			this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 		// Если функция обратного вызова активности потока установлена
@@ -893,7 +893,7 @@ void awh::client::Http2::flush() noexcept {
  */
 void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr)){
+	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Выполняем перебор всех доступных воркеров
 		for(auto & worker : this->_workers){
 			// Определяем протокол клиента
@@ -1179,7 +1179,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если подключение выполнено
-		if(this->_bid > 0){
+		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Идентификатор предыдущего потока
 			int32_t sid = -1;
 			// Агент воркера выполнения запроса
