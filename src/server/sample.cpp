@@ -183,7 +183,7 @@ void awh::server::Sample::erase(const uint16_t tid, awh::core_t * core) noexcept
 		// Выполняем переход по всему списку отключившихся клиентов
 		for(auto it = this->_disconnected.begin(); it != this->_disconnected.end();){
 			// Если брокер уже давно удалился
-			if((date - it->second) >= 10000){
+			if((date - it->second) >= 5000){
 				// Получаем параметры активного клиента
 				sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(it->first));
 				// Если параметры активного клиента получены

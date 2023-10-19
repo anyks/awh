@@ -404,7 +404,7 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, awh::core_t * core) noe
 		// Выполняем переход по всему списку отключившихся клиентов
 		for(auto it = this->_disconnected.begin(); it != this->_disconnected.end();){
 			// Если брокер уже давно удалился
-			if((date - it->second) >= 10000){
+			if((date - it->second) >= 5000){
 				// Выполняем удаление параметров брокера
 				this->_scheme.rm(it->first);
 				// Выполняем удаление объекта брокеров из списка мусора
