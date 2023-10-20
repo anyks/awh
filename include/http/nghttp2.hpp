@@ -303,6 +303,11 @@ namespace awh {
 			void on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept;
 		public:
 			/**
+			 * Оператор [=] зануления фрейма NgHttp2
+			 * @return сформированный объект NgHttp2
+			 */
+			NgHttp2 & operator = (std::nullptr_t) noexcept;
+			/**
 			 * Оператор [=] копирования объекта фрейма NgHttp2
 			 * @param ctx объект фрейма NgHttp2
 			 * @return    сформированный объект NgHttp2

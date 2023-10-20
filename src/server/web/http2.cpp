@@ -111,7 +111,7 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 			// Если активная сессия найдена
 			if(jt != this->_ws2._sessions.end())
 				// Выполняем закрытие подключения
-				(* jt->second.get()) = (* it->second.get());
+				(* jt->second.get()) = nullptr;
 		}
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
@@ -1177,7 +1177,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 									// Если активная сессия найдена
 									if(it != this->_ws2._sessions.end())
 										// Выполняем закрытие подключения
-										(* it->second.get()) = (* this->_sessions.at(bid).get());
+										(* it->second.get()) = nullptr;
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
 									// Выполняем удаление отключённого брокера WebSocket-клиента
@@ -2065,7 +2065,7 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 							// Если активная сессия найдена
 							if(it != this->_ws2._sessions.end())
 								// Выполняем закрытие подключения
-								(* it->second.get()) = (* this->_sessions.at(bid).get());
+								(* it->second.get()) = nullptr;
 						} break;
 					}
 				}

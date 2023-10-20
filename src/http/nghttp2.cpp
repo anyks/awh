@@ -939,6 +939,16 @@ void awh::NgHttp2::on(function <int (const int32_t, const direct_t, const uint8_
 	this->_callback.set <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> ("frame", callback);
 }
 /**
+ * Оператор [=] зануления фрейма NgHttp2
+ * @return сформированный объект NgHttp2
+ */
+awh::NgHttp2 & awh::NgHttp2::operator = (std::nullptr_t) noexcept {
+	// Выполняем копирование сессии подключения
+	this->_session = nullptr;
+	// Выводим текущий объект в качестве результата
+	return (* this);
+}
+/**
  * Оператор [=] копирования объекта фрейма NgHttp2
  * @param ctx объект фрейма NgHttp2
  * @return    сформированный объект NgHttp2

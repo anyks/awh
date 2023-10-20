@@ -75,7 +75,7 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 	// Выполняем удаление подключения
 	this->_nghttp2.close();
 	// Выполняем установку сессии HTTP/2
-	this->_ws2._nghttp2 = this->_nghttp2;
+	this->_ws2._nghttp2 = nullptr;
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
@@ -817,8 +817,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 				} break;
 				// Если протоколом агента является WebSocket-клиент
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-					// Выполняем установку сессии HTTP/2
-					this->_ws2._nghttp2 = this->_nghttp2;
 					// Выполняем переброс вызова дисконнекта на клиент WebSocket
 					this->_ws2.disconnectCallback(bid, sid, core);
 					// Если список ответов получен
@@ -1973,7 +1971,7 @@ awh::client::Http2::~Http2() noexcept {
 	// Снимаем адрес сетевого ядра
 	this->_ws2._core = nullptr;
 	// Выполняем установку сессии HTTP/2
-	this->_ws2._nghttp2 = this->_nghttp2;
+	this->_ws2._nghttp2 = nullptr;
 	// Если многопоточность активированна
 	if(this->_ws2._thr.is())
 		// Выполняем завершение всех активных потоков
