@@ -268,7 +268,7 @@ int main(int argc, char * argv[]){
 	);
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
-	// awh.crypto("PASS");
+	awh.crypto("PASS");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Разрешаем метод CONNECT для сервера

@@ -285,8 +285,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -336,7 +336,7 @@ int main(int argc, char * argv[]){
 	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
-	// ws.crypto("PASS");
+	ws.crypto("PASS");
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы

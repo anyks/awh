@@ -153,8 +153,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -175,6 +175,8 @@ int main(int argc, char * argv[]){
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
+	// Устанавливаем шифрование
+	awh.crypto("PASS");
 	// Устанавливаем логин и пароль пользователя
 	// awh.user("user", "password");
 	// Устанавливаем длительное подключение
