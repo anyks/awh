@@ -234,9 +234,6 @@ void awh::Http::commit() noexcept {
 		const string & encrypt = this->_web.header("x-awh-encryption");
 		// Если заголовок найден
 		if((this->_crypted = !encrypt.empty())){
-			
-			cout << " ************************** " << static_cast <uint16_t> (::stoi(encrypt)) << endl;
-			
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(encrypt))){
 				// Если шифрование произведено 128 битным ключём
