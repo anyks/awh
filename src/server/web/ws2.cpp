@@ -542,7 +542,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Получаем флаг шифрованных данных
 											options->crypt = options->http.isCrypt();
 											// Если клиент согласился на шифрование данных
-											if(options->crypt)
+											if(this->_crypto.mode)
 												// Устанавливаем параметры шифрования
 												options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 											// Получаем поддерживаемый метод компрессии

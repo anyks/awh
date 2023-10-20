@@ -513,7 +513,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Получаем флаг шифрованных данных
 					options->crypt = options->http.isCrypt();
 					// Если клиент согласился на шифрование данных
-					if(options->crypt)
+					if(this->_crypto.mode)
 						// Устанавливаем параметры шифрования
 						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 					// Получаем поддерживаемый метод компрессии

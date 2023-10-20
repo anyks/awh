@@ -1920,6 +1920,8 @@ void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::client::Http2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования у родительского объекта
+	web2_t::crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для WebSocket-клиента
 	this->_ws2.crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-парсера

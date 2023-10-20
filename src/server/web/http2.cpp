@@ -417,10 +417,8 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case NGHTTP2_HEADERS: {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 									if(flags & NGHTTP2_FLAG_END_HEADERS){
-										// Если мы получили неустановленный флаг или флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM)
-											// Выполняем коммит полученного результата
-											options->http.commit();
+										// Выполняем коммит полученного результата
+										options->http.commit();
 										// Выполняем извлечение параметров запроса
 										const auto & request = options->http.request();
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
@@ -444,12 +442,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 												// Выводим функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 										// Если заголовок WebSocket активирован
-										} else if(options->http.identity() == awh::http_t::identity_t::WS) {
-											// Выполняем коммит полученного результата
-											options->http.commit();
+										} else if(options->http.identity() == awh::http_t::identity_t::WS)
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
-										}
 									}
 								} break;
 							}
@@ -965,7 +960,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					// Получаем флаг шифрованных данных
 					options->crypt = options->http.isCrypt();
 					// Если клиент согласился на шифрование данных
-					if(options->crypt)
+					if(this->_crypto.mode)
 						// Устанавливаем параметры шифрования
 						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 					// Получаем поддерживаемый метод компрессии

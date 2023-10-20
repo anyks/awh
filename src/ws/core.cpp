@@ -319,11 +319,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Если заголовок передан
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
-		if((result = this->_fmk->exists("permessage-encrypt=", extension))){
-			// Запоминаем, что сообщение получено зашифрованное
-			this->_crypt = result;
+		if((result = this->_crypted = this->_fmk->exists("permessage-encrypt=", extension))){
 			// Определяем размер шифрования
-			switch(static_cast <u_short> (::stoi(extension.substr(19)))){
+			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
 				case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
 				// Если шифрование произведено 192 битным ключём
