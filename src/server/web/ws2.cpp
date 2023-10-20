@@ -1114,23 +1114,12 @@ void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
 				// Выполняем очистку оставшихся фрагментов
 				options->buffer.fragmes.clear();
 				// Если переключение протокола на HTTP/2 не выполнено
-				if(options->proto != engine_t::proto_t::HTTP2) {
-					
-					cout << " *************** WS2 END WS1 " << endl;
-					
+				if(options->proto != engine_t::proto_t::HTTP2)
 					// Выполняем очистку отключившихся брокеров у WebSocket-сервера
 					this->_ws1.erase(bid);
 				// Выполняем удаление созданной ранее сессии HTTP/2
-				} else {
-
-					cout << " *************** WS2 END WS2 " << endl;
-
-					this->_sessions.erase(bid);
-				}
+				else this->_sessions.erase(bid);
 			}
-
-			cout << " *************** WS2 STOP " << endl;
-
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};

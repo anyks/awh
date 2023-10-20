@@ -781,12 +781,7 @@ void awh::server::WebSocket1::erase(const uint64_t bid) noexcept {
 				options->buffer.payload.clear();
 				// Выполняем очистку оставшихся фрагментов
 				options->buffer.fragmes.clear();
-
-				cout << " *************** WS1 END " << endl;
 			}
-
-			cout << " *************** WS1 STOP " << endl;
-
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};

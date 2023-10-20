@@ -1151,9 +1151,6 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 								case static_cast <uint8_t> (agent_t::HTTP):
 								// Если протокол соответствует протоколу WebSocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
-									
-									cout << " *************** MAIN END HTTP1 " << endl;
-									
 									// Выполняем удаление отключённого брокера HTTP-клиента
 									this->_http1.erase(bid);
 								break;
@@ -1170,9 +1167,6 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 							switch(static_cast <uint8_t> (it->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
-									
-									cout << " *************** MAIN END HTTP2 " << endl;
-
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
 								break;
@@ -1186,25 +1180,16 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 										(* it->second.get()) = nullptr;
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
-									
-									cout << " *************** MAIN END WS2 " << endl;
-									
 									// Выполняем удаление отключённого брокера WebSocket-клиента
 									this->_ws2.erase(bid);
 								} break;
 							}
-
-							cout << " *************** MAIN END " << endl;
-
 							// Выполняем удаление активного агента
 							this->_agents.erase(it);
 						}
 					} break;
 				}
 			}
-
-			cout << " *************** MAIN STOP " << endl;
-
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};
