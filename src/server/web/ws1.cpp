@@ -171,6 +171,15 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 				if(!reinterpret_cast <http_t &> (options->http).isHandshake()){
 					// Выполняем парсинг полученных данных
 					const size_t bytes = options->http.parse(options->buffer.payload.data(), options->buffer.payload.size());
+					// Если парсер обработал какое-то количество байт
+					if((bytes > 0) && !options->buffer.payload.empty()){
+						// Если размер буфера больше количества удаляемых байт
+						if(options->buffer.payload.size() >= bytes)
+							// Удаляем количество обработанных байт
+							options->buffer.payload.assign(options->buffer.payload.begin() + bytes, options->buffer.payload.end());
+						// Если байт в буфере меньше, просто очищаем буфер
+						else options->buffer.payload.clear();
+					}
 					// Если все данные получены
 					if(options->http.isEnd()){
 						// Буфер данных для записи в сокет
@@ -266,13 +275,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										#endif
 										// Выполняем отправку данных брокеру
 										dynamic_cast <server::core_t *> (core)->write(buffer.data(), buffer.size(), bid);
-										// Есла данных передано больше чем обработано
-										if(options->buffer.payload.size() > bytes)
-											// Удаляем количество обработанных байт
-											options->buffer.payload.assign(options->buffer.payload.begin() + bytes, options->buffer.payload.end());
-											// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + bytes, options->buffer.payload.end()).swap(options->buffer.payload);
-										// Если данных в буфере больше нет, очищаем буфер собранных данных
-										else options->buffer.payload.clear();
 										// Выполняем извлечение параметров запроса
 										const auto & request = options->http.request();
 										// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена

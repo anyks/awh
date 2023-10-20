@@ -152,6 +152,13 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
 				const size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
+				// Есла данных передано больше чем обработано
+				if(this->_buffer.size() > bytes)
+					// Удаляем количество обработанных байт
+					this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+				// Если данных в буфере больше нет, очищаем буфер собранных данных
+				else this->_buffer.clear();
 				// Если все данные получены
 				if(this->_http.isEnd()){
 					/**
@@ -190,16 +197,6 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 							if(this->_callback.is("end"))
 								// Выводим функцию обратного вызова
 								this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
-						} break;
-						// Если необходимо выполнить переход к следующему этапу обработки
-						case static_cast <uint8_t> (status_t::NEXT): {
-							// Есла данных передано больше чем обработано
-							if(this->_buffer.size() > bytes)
-								// Удаляем количество обработанных байт
-								this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-								// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
-							// Если данных в буфере больше нет, очищаем буфер собранных данных
-							else this->_buffer.clear();
 						} break;
 					}
 					// Если функция обратного вызова активности потока установлена

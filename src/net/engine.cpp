@@ -923,12 +923,10 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 		// Определяем тип ошибки
 		switch(error){
 			// Если сертификат неизвестный
-			case SSL_ERROR_SSL: {
+			case SSL_ERROR_SSL:
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-				// Выполняем завершение работы
-				return true;
-			}
+			break;
 			// Если был возвращён ноль
 			case SSL_ERROR_ZERO_RETURN: {
 				// Если удалённая сторона произвела закрытие подключения
@@ -952,12 +950,10 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 					// Если ещё есть ошибки
 					} while((error = ERR_get_error()));
-					// Выполняем завершение работы
-					return true;
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -967,10 +963,10 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				while((error = ERR_get_error()))
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-				// Выполняем завершение работы
-				return true;
 			}
 		}
+		// Выводим результат
+		return (error != 0);
 	// Если произошла ошибка
 	} else if(status < 0) {
 		// Определяем тип ошибки
@@ -983,20 +979,17 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				this->_log->print("EPIPE", log_t::flag_t::WARNING);
 			break;
 			// Если произведён сброс подключения
-			case ECONNRESET: {
+			case ECONNRESET:
 				// Выводим в лог сообщение
 				this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-				// Выполняем завершение работы
-				return true;
-			}
+			break;
 			// Для остальных ошибок
-			default: {
+			default:
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-				// Выполняем завершение работы
-				return true;
-			}
 		}
+		// Выводим результат
+		return (errno != 0);
 	}
 	// Завершение работы не требуется
 	return false;

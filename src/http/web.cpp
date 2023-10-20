@@ -160,7 +160,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							} else {
 								// Устанавливаем символ ошибки
 								error = 'n';
-								// Выходим
+								// Выполняем переход к ошибке
 								goto Stop;
 							}
 						} break;
@@ -204,7 +204,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							else {
 								// Устанавливаем символ ошибки
 								error = 'r';
-								// Выходим
+								// Выполняем переход к ошибке
 								goto Stop;
 							}
 						} break;
@@ -217,7 +217,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
-								if(this->_chunk.size == 0) goto Stop;								
+								if(this->_chunk.size == 0)
+									// Выполняем переход к ошибке
+									goto Stop;								
 								// Если функция обратного вызова на перехват входящих чанков установлена
 								else if(this->_callback.is("chunking"))
 									// Выводим функцию обратного вызова
@@ -228,7 +230,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							} else {
 								// Устанавливаем символ ошибки
 								error = 'n';
-								// Выходим
+								// Выполняем переход к ошибке
 								goto Stop;
 							}
 						} break;
@@ -291,6 +293,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 			}
 			/**
 			 * Выполняем парсинг заголовков запроса
+			 * @param buffer буфер бинарных данных
+			 * @param size   размер бинарных данных
+			 * @param bytes  общий размер обработанных данных
+			 * @param stop   флаг завершения обработки данных
 			 */
 			this->prepare(buffer, size, [&result, this](const char * buffer, const size_t size, const size_t bytes, const bool stop) noexcept {
 				// Запоминаем количество обработанных байт
@@ -370,11 +376,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									// Создаём буфер для проверки
 									char temp[5];
 									// Копируем полученную строку
-									strncpy(temp, buffer, 4);
+									::strncpy(temp, buffer, 4);
 									// Устанавливаем конец строки
 									temp[4] = '\0';
 									// Если мы получили ответ от сервера
-									if(strcmp(temp, "HTTP") == 0){
+									if(::strcmp(temp, "HTTP") == 0){
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Выполняем сброс размера тела
@@ -406,11 +412,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									// Создаём буфер для проверки
 									char temp[5];
 									// Копируем полученную строку
-									strncpy(temp, buffer + (this->_pos[1] + 1), 4);
+									::strncpy(temp, buffer + (this->_pos[1] + 1), 4);
 									// Устанавливаем конец строки
 									temp[4] = '\0';
 									// Если мы получили ответ от сервера
-									if(strcmp(temp, "HTTP") == 0){
+									if(::strcmp(temp, "HTTP") == 0){
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Выполняем сброс размера тела
@@ -851,7 +857,10 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 					result += this->readPayload(buffer + result, size - result);
 			} break;
 			// Если установлен стейт чтения полезной нагрузки
-			case static_cast <uint8_t> (state_t::BODY): result = this->readPayload(buffer, size); break;
+			case static_cast <uint8_t> (state_t::BODY):
+				// Выполняем извлечение данных тела сообщения
+				result = this->readPayload(buffer, size);
+			break;
 		}
 	}
 	// Выводим реузльтат
