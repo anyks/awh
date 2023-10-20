@@ -42,19 +42,25 @@ void awh::Http::encrypt() noexcept {
 		if(!body.empty()){
 			// Выполняем шифрование полезной нагрузки
 			const auto & result = this->_hash.encrypt(body.data(), body.size());
+
+			cout << " ****************** CRYPTED2 " << this->_crypted << endl;
+
 			// Если шифрование выполнено
 			if((this->_crypted = !result.empty())){
 
-				cout << " ****************** CRYPTED2 " << this->_crypted << endl;
+				cout << " ****************** CRYPTED3 " << this->_crypted << endl;
 
-				// Очищаем тело сообщения
-				this->clearBody();
+				// Выполняем очистку данных тела
+				this->_web.clearBody();
 				// Формируем новое тело сообщения
 				this->_web.body(result);
+
+				cout << " ****************** CRYPTED4 " << this->_crypted << endl;
+
 			// Если шифрование не выполнено
 			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
 
-			cout << " ****************** CRYPTED3 " << this->_crypted << endl;
+			cout << " ****************** CRYPTED5 " << this->_crypted << endl;
 		}
 	}
 }
@@ -72,8 +78,8 @@ void awh::Http::decrypt() noexcept {
 			const auto & result = this->_hash.decrypt(body.data(), body.size());
 			// Если дешифрование выполнено
 			if(!(this->_crypted = result.empty())){
-				// Очищаем тело сообщения
-				this->clearBody();
+				// Выполняем очистку данных тела
+				this->_web.clearBody();
 				// Формируем новое тело сообщения
 				this->_web.body(result);
 			// Если дешифрование не выполнено
@@ -101,8 +107,8 @@ void awh::Http::deflate() noexcept {
 					const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
 					// Если декомпрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Формируем новое тело сообщения
 						this->_web.body(result);
 						// Снимаем флаг компрессии
@@ -115,8 +121,8 @@ void awh::Http::deflate() noexcept {
 					const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
 					// Если декомпрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Формируем новое тело сообщения
 						this->_web.body(result);
 						// Снимаем флаг компрессии
@@ -133,8 +139,8 @@ void awh::Http::deflate() noexcept {
 					const auto & result = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 					// Если декомпрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Формируем новое тело сообщения
 						this->_web.body(result);
 						// Снимаем флаг компрессии
@@ -181,8 +187,8 @@ void awh::Http::inflate() noexcept {
 					const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::BROTLI);
 					// Если компрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Формируем новое тело сообщения
 						this->_web.body(result);
 						// Устанавливаем флаг компрессии
@@ -196,8 +202,8 @@ void awh::Http::inflate() noexcept {
 					const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::GZIP);
 					// Если компрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Формируем новое тело сообщения
 						this->_web.body(result);
 						// Устанавливаем флаг компрессии
@@ -211,8 +217,8 @@ void awh::Http::inflate() noexcept {
 					auto result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::DEFLATE);
 					// Если компрессия выполнена
 					if(!result.empty()){
-						// Очищаем тело сообщения
-						this->clearBody();
+						// Выполняем очистку данных тела
+						this->_web.clearBody();
 						// Удаляем хвост в полученных данных
 						this->_hash.rmTail(result);
 						// Формируем новое тело сообщения
@@ -244,10 +250,13 @@ void awh::Http::commit() noexcept {
 		this->_crypted = false;
 		// Получаем заголовок шифрования
 		const string & encrypt = this->_web.header("x-awh-encryption");
+		
+		cout << " ******************* SET CRYPTO1 " << encrypt << endl;
+		
 		// Если заголовок найден
 		if((this->_crypt = !encrypt.empty())){
 			
-			cout << " ******************* SET CRYPTO " << static_cast <uint16_t> (::stoi(encrypt)) << endl;
+			cout << " ******************* SET CRYPTO2 " << static_cast <uint16_t> (::stoi(encrypt)) << endl;
 			
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(encrypt))){
@@ -1948,8 +1957,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Если запрос не содержит тела запроса
 						} else {
-							// Очищаем тела сообщения
-							this->clearBody();
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
 							if((this->_chunking = (this->_crypt && !this->isBlack("X-AWH-Encryption"))))
 								// Устанавливаем X-AWH-Encryption
@@ -1977,6 +1984,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_compress != compress_t::NONE);
 							}
+							// Очищаем тела сообщения
+							this->clearBody();
 						}
 					} break;
 					// Если мы работаем с сервером
@@ -2574,8 +2583,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							}
 						// Если запрос не содержит тела запроса
 						} else {
-							// Очищаем тела сообщения
-							this->clearBody();
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
 							if((this->_chunking = (this->_crypt && !this->isBlack("x-awh-encryption"))))
 								// Устанавливаем X-AWH-Encryption
@@ -2603,6 +2610,8 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_compress != compress_t::NONE);
 							}
+							// Очищаем тела сообщения
+							this->clearBody();
 						}
 					} break;
 					// Если мы работаем с сервером
