@@ -285,8 +285,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -325,8 +325,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	// ws.authType(awh::auth_t::type_t::BASIC);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream");
 	// ws.init("wss://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);

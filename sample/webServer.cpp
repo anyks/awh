@@ -252,8 +252,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем временный ключ сессии
 	// awh.opaque("keySession");
 	// Устанавливаем тип авторизации
-	awh.authType(auth_t::type_t::BASIC);
-	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType(auth_t::type_t::BASIC);
+	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	// awh.init(2222, "127.0.0.1", awh::http_t::compress_t::ALL_COMPRESS);
 	awh.init(2222, "", awh::http_t::compress_t::ALL_COMPRESS);
@@ -274,9 +274,9 @@ int main(int argc, char * argv[]){
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
-	// awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
+	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
+	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок
