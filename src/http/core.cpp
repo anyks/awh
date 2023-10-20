@@ -41,6 +41,9 @@ void awh::Http::encrypt() noexcept {
 			const auto & result = this->_hash.encrypt(body.data(), body.size());
 			// Если шифрование выполнено
 			if((this->_crypted = !result.empty())){
+				
+				cout << " ****************** CRYPTED " << endl;
+				
 				// Очищаем тело сообщения
 				this->clearBody();
 				// Формируем новое тело сообщения
@@ -236,8 +239,11 @@ void awh::Http::commit() noexcept {
 		const string & encrypt = this->_web.header("x-awh-encryption");
 		// Если заголовок найден
 		if((this->_crypt = !encrypt.empty())){
+			
+			cout << " ******************* SET CRYPTO " << static_cast <uint16_t> (::stoi(encrypt)) << endl;
+			
 			// Определяем размер шифрования
-			switch(::stoi(encrypt)){
+			switch(static_cast <uint16_t> (::stoi(encrypt))){
 				// Если шифрование произведено 128 битным ключём
 				case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
 				// Если шифрование произведено 192 битным ключём
@@ -1933,8 +1939,38 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							else if(!this->isBlack("Content-Length") && ((length > 0) || this->isHeader("Content-Length")))
 								// Устанавливаем размер передаваемого тела Content-Length
 								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
-						// Очищаем тела сообщения
-						} else this->clearBody();
+						// Если запрос не содержит тела запроса
+						} else {
+							// Очищаем тела сообщения
+							this->clearBody();
+							// Если данные зашифрованы, устанавливаем соответствующие заголовки
+							if((this->_chunking = (this->_crypt && !this->isBlack("X-AWH-Encryption"))))
+								// Устанавливаем X-AWH-Encryption
+								request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+							// Устанавливаем Content-Encoding если заголовок есть в запросе
+							if(available[9] && !this->isBlack("Content-Encoding")){
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
+									break;
+								}
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_compress != compress_t::NONE);
+							}
+						}
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -2097,10 +2133,17 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								if(!this->_chunking)
 									// Устанавливаем размер тела сообщения
 									length = this->_web.body().size();
+								
+								cout << " ******* RENDER1 " << endl;
+								
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypted)
+								if(this->_crypted){
+									
+									cout << " ******* RENDER2 " << endl;
+									
 									// Устанавливаем X-AWH-Encryption
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								}
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_inflated)){
 									// Если полезная нагрузка сжата методом BROTLI
@@ -2522,8 +2565,38 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									}
 								}
 							}
-						// Очищаем тела сообщения
-						} else this->clearBody();
+						// Если запрос не содержит тела запроса
+						} else {
+							// Очищаем тела сообщения
+							this->clearBody();
+							// Если данные зашифрованы, устанавливаем соответствующие заголовки
+							if((this->_chunking = (this->_crypt && !this->isBlack("x-awh-encryption"))))
+								// Устанавливаем X-AWH-Encryption
+								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+							// Устанавливаем Content-Encoding если заголовок есть в запросе
+							if(available[9] && !this->isBlack("content-encoding")){
+								// Определяем метод компрессии полезной нагрузки
+								switch(static_cast <uint8_t> (this->_compress)){
+									// Если полезная нагрузка сжата методом BROTLI
+									case static_cast <uint8_t> (compress_t::BROTLI):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "br"));
+									break;
+									// Если полезная нагрузка сжата методом GZIP
+									case static_cast <uint8_t> (compress_t::GZIP):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "gzip"));
+									break;
+									// Если полезная нагрузка сжата методом DEFLATE
+									case static_cast <uint8_t> (compress_t::DEFLATE):
+										// Устанавливаем Content-Encoding если не передан
+										result.push_back(make_pair("content-encoding", "deflate"));
+									break;
+								}
+								// Проверяем нужно ли передать тело разбив на чанки
+								this->_chunking = (this->_compress != compress_t::NONE);
+							}
+						}
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -2672,10 +2745,17 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								const_cast <http_t *> (this)->inflate();
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
+								
+								cout << " ******* RENDER3 " << endl;
+								
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypted)
+								if(this->_crypted){
+									
+									cout << " ******* RENDER4 " << endl;
+									
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								}
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_inflated)){
 									// Если полезная нагрузка сжата методом BROTLI
