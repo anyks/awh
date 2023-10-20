@@ -31,6 +31,9 @@ void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer
  * encrypt Метод выполнения шифрования полезной нагрузки
  */
 void awh::Http::encrypt() noexcept {
+	
+	cout << " ****************** CRYPTED1 " << this->_crypted << endl;
+	
 	// Если полезная нагрузка не зашифрована
 	if(!this->_crypted && this->_crypt){
 		// Получаем данные тела
@@ -41,15 +44,17 @@ void awh::Http::encrypt() noexcept {
 			const auto & result = this->_hash.encrypt(body.data(), body.size());
 			// Если шифрование выполнено
 			if((this->_crypted = !result.empty())){
-				
-				cout << " ****************** CRYPTED " << endl;
-				
+
+				cout << " ****************** CRYPTED2 " << this->_crypted << endl;
+
 				// Очищаем тело сообщения
 				this->clearBody();
 				// Формируем новое тело сообщения
 				this->_web.body(result);
 			// Если шифрование не выполнено
 			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
+
+			cout << " ****************** CRYPTED3 " << this->_crypted << endl;
 		}
 	}
 }
@@ -73,6 +78,8 @@ void awh::Http::decrypt() noexcept {
 				this->_web.body(result);
 			// Если дешифрование не выполнено
 			} else this->_log->print("Decryption module has failed", log_t::flag_t::WARNING);
+
+			cout << " ************** DECRYPT " << this->_crypted << endl;
 		}
 	}
 }
@@ -2746,7 +2753,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypted || (this->_inflated != compress_t::NONE));
 								
-								cout << " ******* RENDER3 " << endl;
+								cout << " ******* RENDER3 " << this->_crypted << endl;
 								
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted){
