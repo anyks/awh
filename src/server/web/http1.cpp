@@ -669,9 +669,16 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			// Если агент найден в списке активных агентов
 			if(it != this->_agents.end()){
 				// Если агент соответствует серверу WebSocket
-				if(it->second == agent_t::WEBSOCKET)
+				if(it->second == agent_t::WEBSOCKET){
+					
+					cout << " *************** HTTP1 END WS1 " << endl;
+					
 					// Выполняем удаление отключённого брокера
 					this->_ws1.erase(it->first);
+				}
+
+				cout << " *************** HTTP1 END HTTP1 " << endl;
+
 				// Выполняем удаление активного агента
 				this->_agents.erase(it);
 			}
@@ -683,7 +690,12 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 				options->close = true;
 				// Выполняем очистку оставшихся данных
 				options->buffer.clear();
+
+				cout << " *************** HTTP1 END " << endl;
 			}
+
+			cout << " *************** HTTP1 STOP " << endl;
+
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};
