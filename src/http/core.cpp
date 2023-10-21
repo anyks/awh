@@ -31,35 +31,20 @@ void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer
  * encrypt Метод выполнения шифрования полезной нагрузки
  */
 void awh::Http::encrypt() noexcept {
-	
-	cout << " ^^^^^^^^^^^^^^^ ENCRYPT1 " << endl;
-	
 	// Если полезная нагрузка не зашифрована
 	if(!this->_crypted && this->_crypt){
-		
-		cout << " ^^^^^^^^^^^^^^^ ENCRYPT2 " << endl;
-		
 		// Получаем данные тела
 		const auto & body = this->_web.body();
 		// Если тело сообщения получено
 		if(!body.empty()){
-			
-			cout << " ^^^^^^^^^^^^^^^ ENCRYPT3 " << endl;
-			
 			// Выполняем шифрование полезной нагрузки
 			const auto & result = this->_hash.encrypt(body.data(), body.size());
 			// Если шифрование выполнено
 			if((this->_crypted = !result.empty())){
-				
-				cout << " ^^^^^^^^^^^^^^^ ENCRYPT4 " << endl;
-				
 				// Выполняем очистку данных тела
 				this->_web.clearBody();
 				// Формируем новое тело сообщения
 				this->_web.body(result);
-
-				cout << " ^^^^^^^^^^^^^^^ ENCRYPT4 " << string(result.begin(), result.end()) << endl;
-
 			// Если шифрование не выполнено
 			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
 		}
@@ -2960,6 +2945,9 @@ void awh::Http::crypto(const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	
+	cout << " ****************** PASSWORD " << pass << endl;
+
 	// Если пароль шифрования передан
 	if(!pass.empty()){
 		// Устанавливаем соль шифрования
