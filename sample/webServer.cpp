@@ -127,9 +127,7 @@ class WebServer {
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				// this->_awh->encrypt(bid, false);
-				
-				
+				this->_awh->encrypt(bid, false);
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
@@ -140,14 +138,8 @@ class WebServer {
 				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
-				
-
-				this->_awh->send(sid, bid, 200, "OK", {{"Goga", "Hello"},{"Content-Encoding", "br"},{"Transfer-Encoding", "chunked"}}, false);
-
-				this->_awh->send(sid, bid, body.data(), body.size(), true);
-				
 				// Отправляем сообщение клиенту
-				// this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
+				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
 		}
 		/**
