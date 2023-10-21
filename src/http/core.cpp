@@ -2139,6 +2139,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
+								
+								cout << " ######################### " << endl;
+								
 								// Выполняем компрессию полезной нагрузки
 								const_cast <http_t *> (this)->inflate();
 								// Выполняем шифрование полезной нагрузки
