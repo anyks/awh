@@ -2566,6 +2566,9 @@ void awh::server::Http2::crypto(const uint64_t bid, const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::server::Http2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	
+	cout << " $$$$$$$$$$$$$ PASSWORD " << pass << endl;
+	
 	// Устанавливаем параметры шифрования
 	web2_t::crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для WebSocket-сервера
