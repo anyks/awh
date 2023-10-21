@@ -949,13 +949,13 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						// Завершаем работу
 						goto End;
 					}
-					// Выполняем сброс состояния HTTP-парсера
-					options->http.clear();
 					// Получаем флаг шифрованных данных
 					options->crypto = options->http.isCrypt();
 
 					cout << " ********************* SETTING1 " << options->crypto << endl;
 
+					// Выполняем сброс состояния HTTP-парсера
+					options->http.clear();
 					// Если клиент согласился на шифрование данных
 					if(this->_crypto.mode){
 						// Устанавливаем флаг шифрования

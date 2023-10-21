@@ -502,8 +502,6 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		}
-
-		cout << " !!!!!!!!!!!!!!!!!!!! " << this->_crypted << endl;
 	}
 	// Выводим результат
 	return result;

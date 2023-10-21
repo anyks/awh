@@ -250,8 +250,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			WCore(const fmk_t * fmk, const log_t * log) noexcept :
-			 http_t(fmk, log), _key{""}, _compress(compress_t::DEFLATE) {}
+			WCore(const fmk_t * fmk, const log_t * log) noexcept : http_t(fmk, log), _key{""}, _compress(compress_t::DEFLATE) {}
 			/**
 			 * ~WCore Деструктор
 			 */
