@@ -1208,7 +1208,9 @@ bool awh::Http::is(const state_t state) const noexcept {
 						return !this->_fmk->compare(header.second, "close");
 				}
 			}
-		} break;
+			// Сообщаем, что подключение постоянное
+			return true;
+		}
 		// Если проверяется режим бракованных данных
 		case static_cast <uint8_t> (state_t::BROKEN):
 			// Выводрим результат проверки
