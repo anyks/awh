@@ -245,7 +245,7 @@ void awh::Http::commit() noexcept {
 			}
 		}
 		// Отключаем сжатие тела сообщения
-		this->_compress = compress_t::NONE;
+		this->_inflated = compress_t::NONE;
 		// Проверяем пришли ли сжатые данные
 		const string & encoding = this->_web.header("content-encoding");
 		// Если данные пришли сжатые
@@ -253,161 +253,172 @@ void awh::Http::commit() noexcept {
 			// Если данные пришли сжатые методом Brotli
 			if(this->_fmk->compare(encoding, "br"))
 				// Устанавливаем тип компрессии полезной нагрузки
-				this->_compress = compress_t::BROTLI;
+				this->_inflated = compress_t::BROTLI;
 			// Если данные пришли сжатые методом GZip
 			else if(this->_fmk->compare(encoding, "gzip"))
 				// Устанавливаем тип компрессии полезной нагрузки
-				this->_compress = compress_t::GZIP;
+				this->_inflated = compress_t::GZIP;
 			// Если данные пришли сжатые методом Deflate
 			else if(this->_fmk->compare(encoding, "deflate"))
 				// Устанавливаем тип компрессии полезной нагрузки
-				this->_compress = compress_t::DEFLATE;
+				this->_inflated = compress_t::DEFLATE;
+		}
+		// Определяем к какому сервису относится модуль
+		switch(static_cast <uint8_t> (this->_web.hid())){
+			// Если модуль соответствует клиенту
+			case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+				// Если тело полезной нагрузки получено в сжатом виде
+				if(this->_inflated != compress_t::NONE)
+					// Устанавливаем флаг метода компрессии
+					this->_compress = this->_inflated;
+			break;
+			// Если модуль соответствует серверу
+			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+				// Если метод компрессии установлен
+				if(this->_compress != compress_t::NONE){
+					// Список запрашиваемых методов
+					set <compress_t> compress;
+					// Если заголовок с запрашиваемой кодировкой существует
+					if(this->_web.isHeader("accept-encoding")){
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Если заголовок найден
+							if(this->_fmk->compare(header.first, "accept-encoding")){
+								// Если конкретный метод сжатия не запрашивается
+								if(this->_fmk->compare(header.second, "*")) break;
+								// Если запрашиваются конкретные методы сжатия
+								else {
+									// Если найден запрашиваемый метод компрессии BROTLI
+									if(this->_fmk->exists("br", header.second)){
+										// Запоминаем запрашиваемый метод компрессии BROTLI
+										compress.emplace(compress_t::BROTLI);
+										// Если уже в списке существует метод компрессии GZIP
+										if(compress.count(compress_t::GZIP) > 0){
+											// Устанавливаем метод компрессии GZIP, BROTLI
+											compress.emplace(compress_t::GZIP_BROTLI);
+											// Если уже в списке существует метод компрессии DEFLATE
+											if(compress.count(compress_t::DEFLATE) > 0)
+												// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
+												compress.emplace(compress_t::ALL_COMPRESS);
+										// Если уже в списке существует метод компрессии DEFLATE
+										} else if(compress.count(compress_t::DEFLATE) > 0)
+											// Устанавливаем метод компрессии DEFLATE, BROTLI
+											compress.emplace(compress_t::DEFLATE_BROTLI);
+									}
+									// Если найден запрашиваемый метод компрессии GZip
+									if(this->_fmk->exists("gzip", header.second)){
+										// Запоминаем запрашиваемый метод компрессии GZip
+										compress.emplace(compress_t::GZIP);
+										// Если уже в списке существует метод компрессии BROTLI
+										if(compress.count(compress_t::BROTLI) > 0){
+											// Устанавливаем метод компрессии GZIP, BROTLI
+											compress.emplace(compress_t::GZIP_BROTLI);
+											// Если уже в списке существует метод компрессии DEFLATE
+											if(compress.count(compress_t::DEFLATE) > 0)
+												// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
+												compress.emplace(compress_t::ALL_COMPRESS);
+										// Если уже в списке существует метод компрессии DEFLATE
+										} else if(compress.count(compress_t::DEFLATE) > 0)
+											// Устанавливаем метод компрессии GZIP, DEFLATE
+											compress.emplace(compress_t::GZIP_DEFLATE);
+									}
+									// Если найден запрашиваемый метод компрессии Deflate
+									if(this->_fmk->exists("deflate", header.second)){
+										// Запоминаем запрашиваемый метод компрессии Deflate
+										compress.emplace(compress_t::DEFLATE);
+										// Если уже в списке существует метод компрессии BROTLI
+										if(compress.count(compress_t::BROTLI) > 0){
+											// Устанавливаем метод компрессии DEFLATE, BROTLI
+											compress.emplace(compress_t::DEFLATE_BROTLI);
+											// Если уже в списке существует метод компрессии GZIP
+											if(compress.count(compress_t::GZIP) > 0)
+												// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
+												compress.emplace(compress_t::ALL_COMPRESS);
+										// Если уже в списке существует метод компрессии GZIP
+										} else if(compress.count(compress_t::GZIP) > 0)
+											// Устанавливаем метод компрессии GZIP, DEFLATE
+											compress.emplace(compress_t::GZIP_DEFLATE);
+									}
+								}
+							}
+						}
+					}
+					// Если метод компрессии сервера совпадает с выбором клиента
+					if(!compress.empty()){
+						// Определяем метод сжатия который поддерживает клиент
+						switch(static_cast <uint8_t> (this->_compress)){
+							// Если клиент поддерживает методот сжатия GZIP, BROTLI
+							case static_cast <uint8_t> (compress_t::GZIP_BROTLI): {
+								// Если клиент поддерживает метод компрессии BROTLI
+								if(compress.count(compress_t::BROTLI) > 0)
+									// Переключаем метод компрессии на BROTLI
+									this->_compress = compress_t::BROTLI;
+								// Если клиент поддерживает метод компрессии GZIP
+								else if(compress.count(compress_t::GZIP) > 0)
+									// Переключаем метод компрессии на GZIP
+									this->_compress = compress_t::GZIP;
+								// Отключаем поддержку сжатия на сервере
+								else this->_compress = compress_t::NONE;
+							} break;
+							// Если клиент поддерживает методот сжатия GZIP, DEFLATE
+							case static_cast <uint8_t> (compress_t::GZIP_DEFLATE): {
+								// Если клиент поддерживает метод компрессии GZIP
+								if(compress.count(compress_t::GZIP) > 0)
+									// Переключаем метод компрессии на GZIP
+									this->_compress = compress_t::GZIP;
+								// Если клиент поддерживает метод компрессии DEFLATE
+								else if(compress.count(compress_t::DEFLATE) > 0)
+									// Переключаем метод компрессии на DEFLATE
+									this->_compress = compress_t::DEFLATE;
+								// Отключаем поддержку сжатия на сервере
+								else this->_compress = compress_t::NONE;
+							} break;
+							// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
+							case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI): {
+								// Если клиент поддерживает метод компрессии BROTLI
+								if(compress.count(compress_t::BROTLI) > 0)
+									// Переключаем метод компрессии на BROTLI
+									this->_compress = compress_t::BROTLI;
+								// Если клиент поддерживает метод компрессии DEFLATE
+								else if(compress.count(compress_t::DEFLATE) > 0)
+									// Переключаем метод компрессии на DEFLATE
+									this->_compress = compress_t::DEFLATE;
+								// Отключаем поддержку сжатия на сервере
+								else this->_compress = compress_t::NONE;
+							} break;
+							// Если клиент поддерживает все методы сжатия
+							case static_cast <uint8_t> (compress_t::ALL_COMPRESS): {
+								// Если клиент поддерживает метод компрессии BROTLI
+								if(compress.count(compress_t::BROTLI) > 0)
+									// Переключаем метод компрессии на BROTLI
+									this->_compress = compress_t::BROTLI;
+								// Если клиент поддерживает метод компрессии GZIP
+								else if(compress.count(compress_t::GZIP) > 0)
+									// Переключаем метод компрессии на GZIP
+									this->_compress = compress_t::GZIP;
+								// Если клиент поддерживает метод компрессии DEFLATE
+								else if(compress.count(compress_t::DEFLATE) > 0)
+									// Переключаем метод компрессии на DEFLATE
+									this->_compress = compress_t::DEFLATE;
+								// Отключаем поддержку сжатия на сервере
+								else this->_compress = compress_t::NONE;
+							} break;
+							// Для всех остальных методов компрессии
+							default: {
+								// Если метод компрессии сервера не совпадает с выбранным методом компрессии клиентом
+								if(compress.count(this->_compress) < 1)
+									// Отключаем поддержку сжатия на сервере
+									this->_compress = compress_t::NONE;
+							}
+						}
+					// Отключаем поддержку сжатия на сервере
+					} else this->_compress = compress_t::NONE;
+				}
+			} break;
 		}
 
 		cout << " *******************1 " << (u_short) this->_compress << endl;
 
-		// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
-		this->_inflated = this->_compress;
-		// Если мы работаем с HTTP сервером и метод компрессии установлен
-		if((this->_web.hid() == web_t::hid_t::SERVER) && (this->_compress != compress_t::NONE)){
-			// Список запрашиваемых методов
-			set <compress_t> compress;
-			// Если заголовок с запрашиваемой кодировкой существует
-			if(this->_web.isHeader("accept-encoding")){
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Если заголовок найден
-					if(this->_fmk->compare(header.first, "accept-encoding")){
-						// Если конкретный метод сжатия не запрашивается
-						if(this->_fmk->compare(header.second, "*")) break;
-						// Если запрашиваются конкретные методы сжатия
-						else {
-							// Если найден запрашиваемый метод компрессии BROTLI
-							if(this->_fmk->exists("br", header.second)){
-								// Запоминаем запрашиваемый метод компрессии BROTLI
-								compress.emplace(compress_t::BROTLI);
-								// Если уже в списке существует метод компрессии GZIP
-								if(compress.count(compress_t::GZIP) > 0){
-									// Устанавливаем метод компрессии GZIP, BROTLI
-									compress.emplace(compress_t::GZIP_BROTLI);
-									// Если уже в списке существует метод компрессии DEFLATE
-									if(compress.count(compress_t::DEFLATE) > 0)
-										// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
-										compress.emplace(compress_t::ALL_COMPRESS);
-								// Если уже в списке существует метод компрессии DEFLATE
-								} else if(compress.count(compress_t::DEFLATE) > 0)
-									// Устанавливаем метод компрессии DEFLATE, BROTLI
-									compress.emplace(compress_t::DEFLATE_BROTLI);
-							}
-							// Если найден запрашиваемый метод компрессии GZip
-							if(this->_fmk->exists("gzip", header.second)){
-								// Запоминаем запрашиваемый метод компрессии GZip
-								compress.emplace(compress_t::GZIP);
-								// Если уже в списке существует метод компрессии BROTLI
-								if(compress.count(compress_t::BROTLI) > 0){
-									// Устанавливаем метод компрессии GZIP, BROTLI
-									compress.emplace(compress_t::GZIP_BROTLI);
-									// Если уже в списке существует метод компрессии DEFLATE
-									if(compress.count(compress_t::DEFLATE) > 0)
-										// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
-										compress.emplace(compress_t::ALL_COMPRESS);
-								// Если уже в списке существует метод компрессии DEFLATE
-								} else if(compress.count(compress_t::DEFLATE) > 0)
-									// Устанавливаем метод компрессии GZIP, DEFLATE
-									compress.emplace(compress_t::GZIP_DEFLATE);
-							}
-							// Если найден запрашиваемый метод компрессии Deflate
-							if(this->_fmk->exists("deflate", header.second)){
-								// Запоминаем запрашиваемый метод компрессии Deflate
-								compress.emplace(compress_t::DEFLATE);
-								// Если уже в списке существует метод компрессии BROTLI
-								if(compress.count(compress_t::BROTLI) > 0){
-									// Устанавливаем метод компрессии DEFLATE, BROTLI
-									compress.emplace(compress_t::DEFLATE_BROTLI);
-									// Если уже в списке существует метод компрессии GZIP
-									if(compress.count(compress_t::GZIP) > 0)
-										// Устанавливаем метод компрессии GZIP, DEFLATE, BROTLI
-										compress.emplace(compress_t::ALL_COMPRESS);
-								// Если уже в списке существует метод компрессии GZIP
-								} else if(compress.count(compress_t::GZIP) > 0)
-									// Устанавливаем метод компрессии GZIP, DEFLATE
-									compress.emplace(compress_t::GZIP_DEFLATE);
-							}
-						}
-					}
-				}
-			}
-			// Если метод компрессии сервера совпадает с выбором клиента
-			if(!compress.empty()){
-				// Определяем метод сжатия который поддерживает клиент
-				switch(static_cast <uint8_t> (this->_compress)){
-					// Если клиент поддерживает методот сжатия GZIP, BROTLI
-					case static_cast <uint8_t> (compress_t::GZIP_BROTLI): {
-						// Если клиент поддерживает метод компрессии BROTLI
-						if(compress.count(compress_t::BROTLI) > 0)
-							// Переключаем метод компрессии на BROTLI
-							this->_compress = compress_t::BROTLI;
-						// Если клиент поддерживает метод компрессии GZIP
-						else if(compress.count(compress_t::GZIP) > 0)
-							// Переключаем метод компрессии на GZIP
-							this->_compress = compress_t::GZIP;
-						// Отключаем поддержку сжатия на сервере
-						else this->_compress = compress_t::NONE;
-					} break;
-					// Если клиент поддерживает методот сжатия GZIP, DEFLATE
-					case static_cast <uint8_t> (compress_t::GZIP_DEFLATE): {
-						// Если клиент поддерживает метод компрессии GZIP
-						if(compress.count(compress_t::GZIP) > 0)
-							// Переключаем метод компрессии на GZIP
-							this->_compress = compress_t::GZIP;
-						// Если клиент поддерживает метод компрессии DEFLATE
-						else if(compress.count(compress_t::DEFLATE) > 0)
-							// Переключаем метод компрессии на DEFLATE
-							this->_compress = compress_t::DEFLATE;
-						// Отключаем поддержку сжатия на сервере
-						else this->_compress = compress_t::NONE;
-					} break;
-					// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
-					case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI): {
-						// Если клиент поддерживает метод компрессии BROTLI
-						if(compress.count(compress_t::BROTLI) > 0)
-							// Переключаем метод компрессии на BROTLI
-							this->_compress = compress_t::BROTLI;
-						// Если клиент поддерживает метод компрессии DEFLATE
-						else if(compress.count(compress_t::DEFLATE) > 0)
-							// Переключаем метод компрессии на DEFLATE
-							this->_compress = compress_t::DEFLATE;
-						// Отключаем поддержку сжатия на сервере
-						else this->_compress = compress_t::NONE;
-					} break;
-					// Если клиент поддерживает все методы сжатия
-					case static_cast <uint8_t> (compress_t::ALL_COMPRESS): {
-						// Если клиент поддерживает метод компрессии BROTLI
-						if(compress.count(compress_t::BROTLI) > 0)
-							// Переключаем метод компрессии на BROTLI
-							this->_compress = compress_t::BROTLI;
-						// Если клиент поддерживает метод компрессии GZIP
-						else if(compress.count(compress_t::GZIP) > 0)
-							// Переключаем метод компрессии на GZIP
-							this->_compress = compress_t::GZIP;
-						// Если клиент поддерживает метод компрессии DEFLATE
-						else if(compress.count(compress_t::DEFLATE) > 0)
-							// Переключаем метод компрессии на DEFLATE
-							this->_compress = compress_t::DEFLATE;
-						// Отключаем поддержку сжатия на сервере
-						else this->_compress = compress_t::NONE;
-					} break;
-					// Для всех остальных методов компрессии
-					default: {
-						// Если метод компрессии сервера не совпадает с выбранным методом компрессии клиентом
-						if(compress.count(this->_compress) < 1)
-							// Отключаем поддержку сжатия на сервере
-							this->_compress = compress_t::NONE;
-					}
-				}
-			// Отключаем поддержку сжатия на сервере
-			} else this->_compress = compress_t::NONE;
-		}
 		// Выполняем установку стейта завершения получения данных
 		this->_web.state(web_t::state_t::END);
 	}
