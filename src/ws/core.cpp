@@ -194,7 +194,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		} break;
 	}
 	// Если данные должны быть зашифрованны
-	if(this->_crypt)
+	if(this->_crypted)
 		// Выполняем установку указанного метода шифрования
 		extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
 	// Если список расширений не пустой
@@ -320,6 +320,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
 		if((result = this->_crypted = this->_fmk->exists("permessage-encrypt=", extension))){
+			
+			cout << " !!!!!!!!!!!!!!!!!!!! " << this->_crypted << endl;
+			
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
