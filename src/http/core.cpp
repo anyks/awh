@@ -1946,8 +1946,12 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 								}
+								// Если данные необходимо разбивать на чанки
+								if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding") && this->_web.isHeader("Transfer-Encoding"))
+									// Устанавливаем заголовок Transfer-Encoding
+									request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 								// Если заголовок размера передаваемого тела, не запрещён
-								if(!this->_chunking && !this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
 									request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							}
@@ -2204,8 +2208,12 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 								}
+								// Если данные необходимо разбивать на чанки
+								if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding") && this->_web.isHeader("Transfer-Encoding"))
+									// Устанавливаем заголовок Transfer-Encoding
+									response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 								// Если заголовок размера передаваемого тела, не запрещён
-								if(!this->_chunking && !this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
 									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							}
