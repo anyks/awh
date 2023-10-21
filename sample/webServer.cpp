@@ -276,7 +276,7 @@ int main(int argc, char * argv[]){
 	// Активируем шифрование
 	awh.crypto(true);
 	// Устанавливаем пароль шифрования
-	awh.crypto("PASS");
+	awh.crypto(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Разрешаем метод CONNECT для сервера
