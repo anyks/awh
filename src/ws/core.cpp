@@ -320,9 +320,6 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
 		if((result = this->_crypted = this->_fmk->exists("permessage-encrypt=", extension))){
-			
-			cout << " !!!!!!!!!!!!!!!!!!!! " << this->_crypted << endl;
-			
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
@@ -505,6 +502,8 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				} break;
 			}
 		}
+
+		cout << " !!!!!!!!!!!!!!!!!!!! " << this->_crypted << endl;
 	}
 	// Выводим результат
 	return result;
