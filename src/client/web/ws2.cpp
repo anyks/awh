@@ -1356,8 +1356,8 @@ void awh::client::WebSocket2::sendMessage(const vector <char> & message, const b
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Если отправляемое сообщение является текстом
-						if(text)
+						// Если отправляемое сообщение является текстом и не зашифрованно
+						if(text && !this->_crypt)
 							// Выводим параметры ответа
 							cout << string(message.begin(), message.end()) << endl << endl;
 						// Выводим сообщение о выводе чанка полезной нагрузки

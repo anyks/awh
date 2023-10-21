@@ -933,8 +933,8 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Если отправляемое сообщение является текстом
-					if(text)
+					// Если отправляемое сообщение является текстом и не зашифрованно
+					if(text && !options->crypto)
 						// Выводим параметры ответа
 						cout << string(message.begin(), message.end()) << endl << endl;
 					// Выводим сообщение о выводе чанка полезной нагрузки
