@@ -127,7 +127,7 @@ class WebServer {
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				// this->_awh->crypto(bid, false);
+				this->_awh->crypto(bid, false);
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
