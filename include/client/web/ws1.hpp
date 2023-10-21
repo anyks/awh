@@ -452,6 +452,11 @@ namespace awh {
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
+				 * crypto Метод активации шифрования
+				 * @param mode флаг активации шифрования
+				 */
+				void crypto(const bool mode) noexcept;
+				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных

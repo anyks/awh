@@ -1399,10 +1399,13 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					if(!this->_ident.id.empty() || !this->_ident.name.empty() || !this->_ident.ver.empty())
 						// Устанавливаем данные сервиса
 						ret.first->second->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
-					// Если пароль для шифрования передан
-					if(!this->_crypto.pass.empty())
+					// Если шифрование активированно
+					if(this->_crypto.mode){
+						// Устанавливаем флаг шифрования
+						ret.first->second->http.crypto(this->_crypto.mode);
 						// Устанавливаем параметры шифрования для HTTP-клиента
 						ret.first->second->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+					}
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
@@ -1912,6 +1915,20 @@ void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_ws2.authTypeProxy(type, hash);
 	// Устанавливаем тип авторизации на проксе-сервере для HTTP-клиента
 	this->_http1.authTypeProxy(type, hash);
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::client::Http2::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования у родительского объекта
+	web2_t::crypto(mode);
+	// Устанавливаем флаг шифрования для WebSocket-клиента
+	this->_ws2.crypto(mode);
+	// Устанавливаем флаг шифрования для HTTP-парсера
+	this->_http.crypto(mode);
+	// Устанавливаем флаг шифрования для HTTP-клиента
+	this->_http1.crypto(mode);
 }
 /**
  * crypto Метод установки параметров шифрования

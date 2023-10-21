@@ -49,9 +49,9 @@ namespace awh {
 				 */
 				typedef struct Options {
 					bool mode;                   // Флаг открытия подключения
-					bool crypt;                  // Флаг шифрования сообщений
 					bool alive;                  // Флаг долгоживущего подключения
 					bool close;                  // Флаг требования закрыть брокера
+					bool crypto;                 // Флаг шифрования сообщений
 					bool stopped;                // Флаг принудительной остановки
 					int32_t sid;                 // Идентификатор потока
 					time_t point;                // Контрольная точка ответа на пинг
@@ -66,8 +66,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Options(const fmk_t * fmk, const log_t * log) noexcept :
-					 mode(false), crypt(false), alive(false),
-					 close(false), stopped(false), sid(1),
+					 mode(false), alive(false), close(false),
+					 crypto(false), stopped(false), sid(1),
 					 point(0), requests(0), http(fmk, log),
 					 proto(engine_t::proto_t::HTTP1_1),
 					 compress(awh::http_t::compress_t::NONE) {}

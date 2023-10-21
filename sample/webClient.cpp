@@ -175,7 +175,9 @@ int main(int argc, char * argv[]){
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
-	// Устанавливаем шифрование
+	// Активируем шифрование
+	awh.crypto(true);
+	// Устанавливаем пароль шифрования
 	awh.crypto("PASS");
 	// Устанавливаем логин и пароль пользователя
 	// awh.user("user", "password");

@@ -45,9 +45,12 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 				// Устанавливаем данные сервиса
 				options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 				// Если требуется установить параметры шифрования
-				if(this->_crypto.mode)
+				if(this->_crypto.mode){
+					// Устанавливаем флаг шифрования
+					options->http.crypto(this->_crypto.mode);
 					// Устанавливаем параметры шифрования
 					options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+				}
 				// Определяем тип авторизации
 				switch(static_cast <uint8_t> (this->_service.type)){
 					// Если тип авторизации Basic
@@ -670,7 +673,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 		// Выполняем сброс количества выполненных запросов
 		} else options->requests = 0;
 		// Получаем флаг шифрованных данных
-		options->crypt = options->http.isCrypt();
+		options->crypto = options->http.isCrypt();
 		// Получаем поддерживаемый метод компрессии
 		options->compress = options->http.compress();
 		/**
@@ -958,11 +961,14 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Получаем флаг шифрованных данных
-					options->crypt = options->http.isCrypt();
+					options->crypto = options->http.isCrypt();
 					// Если клиент согласился на шифрование данных
-					if(this->_crypto.mode)
+					if(this->_crypto.mode){
+						// Устанавливаем флаг шифрования
+						options->http.crypto(web->crypto);
 						// Устанавливаем параметры шифрования
 						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+					}
 					// Получаем поддерживаемый метод компрессии
 					options->compress = options->http.compress();
 					// Получаем размер скользящего окна сервера
@@ -2486,6 +2492,72 @@ void awh::server::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 	this->_ws2.authType(type, hash);
 	// Устанавливаем тип авторизации для HTTP-сервера
 	this->_http1.authType(type, hash);
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http2::crypto(const bool mode) noexcept {
+	// Устанавливаем флага шифрования
+	web2_t::crypto(mode);
+	// Устанавливаем флага шифрования для WebSocket-сервера
+	this->_ws2.crypto(mode);
+	// Устанавливаем флага шифрования для HTTP-сервера
+	this->_http1.crypto(mode);
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid   идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http2::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Определяем протокола подключения
+		switch(static_cast <uint8_t> (options->proto)){
+			// Если протокол подключения соответствует HTTP/1.1
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_http1._agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_http1._agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Устанавливаем флаг шифрования для клиента
+							this->_http1.crypto(bid, mode);
+						break;
+					}
+				}
+			} break;
+			// Если протокол подключения соответствует HTTP/2
+			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP): {
+							// Устанавливаем флаг шифрования для клиента
+							options->crypto = mode;
+							// Устанавливаем флаг шифрования
+							options->http.crypto(options->crypto);
+						} break;
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Устанавливаем флаг шифрования для клиента
+							this->_ws2.crypto(bid, mode);
+						break;
+					}
+				}
+			} break;
+		}
+	}
 }
 /**
  * crypto Метод установки параметров шифрования

@@ -57,9 +57,12 @@ void awh::server::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
 				options->http.on((function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), bid, _1, _2, _3, _4));
 			// Если требуется установить параметры шифрования
-			if(this->_crypto.mode)
+			if(this->_crypto.mode){
+				// Устанавливаем флаг шифрования
+				options->http.crypto(this->_crypto.mode);
 				// Устанавливаем параметры шифрования
 				options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+			}
 			// Определяем тип авторизации
 			switch(static_cast <uint8_t> (this->_service.type)){
 				// Если тип авторизации Basic
@@ -186,7 +189,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 						// Выполняем сброс количества выполненных запросов
 						} else options->requests = 0;
 						// Получаем флаг шифрованных данных
-						options->crypt = options->http.isCrypt();
+						options->crypto = options->http.isCrypt();
 						// Получаем поддерживаемый метод компрессии
 						options->compress = options->http.compress();
 						// Выполняем проверку авторизации
@@ -511,11 +514,14 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Получаем флаг шифрованных данных
-					options->crypt = options->http.isCrypt();
+					options->crypto = options->http.isCrypt();
 					// Если клиент согласился на шифрование данных
-					if(this->_crypto.mode)
+					if(this->_crypto.mode){
+						// Устанавливаем флаг шифрования
+						options->http.crypto(web->crypto);
 						// Устанавливаем параметры шифрования
 						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+					}
 					// Получаем поддерживаемый метод компрессии
 					options->compress = options->http.compress();
 					// Получаем размер скользящего окна сервера
@@ -1473,6 +1479,37 @@ void awh::server::Http1::bytesDetect(const scheme_t::mark_t read, const scheme_t
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
 		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http1::crypto(const bool mode) noexcept {
+	// Устанавливаем флага шифрования
+	web_t::crypto(mode);
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid   идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http1::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr)
+		// Устанавливаем флаг шифрования для клиента
+		options->crypto = mode;
+}
+/**
+ * crypto Метод установки параметров шифрования
+ * @param pass   пароль шифрования передаваемых данных
+ * @param salt   соль шифрования передаваемых данных
+ * @param cipher размер шифрования передаваемых данных
+ */
+void awh::server::Http1::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования
+	web_t::crypto(pass, salt, cipher);
 }
 /**
  * Http1 Конструктор

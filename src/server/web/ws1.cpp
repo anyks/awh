@@ -32,6 +32,8 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		if(options != nullptr){
 			// Если данные необходимо зашифровать
 			if(this->_crypto.mode){
+				// Устанавливаем флаг шифрования
+				options->http.crypto(this->_crypto.mode);
 				// Устанавливаем соль шифрования
 				options->hash.salt(this->_crypto.salt);
 				// Устанавливаем пароль шифрования
@@ -237,11 +239,14 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем сброс состояния HTTP-парсера
 									options->http.clear();
 									// Получаем флаг шифрованных данных
-									options->crypt = options->http.isCrypt();
+									options->crypto = options->http.isCrypt();
 									// Если клиент согласился на шифрование данных
-									if(this->_crypto.mode)
+									if(this->_crypto.mode){
+										// Устанавливаем флаг шифрования
+										options->http.crypto(options->crypto);
 										// Устанавливаем параметры шифрования
 										options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+									}
 									// Получаем поддерживаемый метод компрессии
 									options->compress = options->http.compress();
 									// Получаем размер скользящего окна сервера
@@ -667,7 +672,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 				// Если данные получены
 				if(!data.empty()){
 					// Если нужно производить дешифрование
-					if(options->crypt){
+					if(options->crypto){
 						// Выполняем шифрование переданных данных
 						const auto & res = options->hash.decrypt(data.data(), data.size());
 						// Отправляем полученный результат
@@ -698,7 +703,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 			// Если функция обратного вызова установлена, выводим полученное сообщение
 			} else {
 				// Если нужно производить дешифрование
-				if(options->crypt){
+				if(options->crypto){
 					// Выполняем шифрование переданных данных
 					const auto & res = options->hash.decrypt(buffer.data(), buffer.size());
 					// Отправляем полученный результат
@@ -938,7 +943,7 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 				// Создаём объект заголовка для отправки
 				ws::frame_t::head_t head(true, false);
 				// Если нужно производить шифрование
-				if(options->crypt){
+				if(options->crypto){
 					// Выполняем шифрование переданных данных
 					const auto & payload = options->hash.encrypt(message.data(), message.size());
 					// Если данные зашифрованны
@@ -1492,6 +1497,37 @@ void awh::server::WebSocket1::bytesDetect(const scheme_t::mark_t read, const sch
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
 		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket1::crypto(const bool mode) noexcept {
+	// Устанавливаем флага шифрования
+	web_t::crypto(mode);
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid   идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket1::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Получаем параметры активного клиента
+	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr)
+		// Устанавливаем флаг шифрования для клиента
+		options->crypto = mode;
+}
+/**
+ * crypto Метод установки параметров шифрования
+ * @param pass   пароль шифрования передаваемых данных
+ * @param salt   соль шифрования передаваемых данных
+ * @param cipher размер шифрования передаваемых данных
+ */
+void awh::server::WebSocket1::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования
+	web_t::crypto(pass, salt, cipher);
 }
 /**
  * WebSocket1 Конструктор

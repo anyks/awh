@@ -335,7 +335,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
-	// Устанавливаем шифрование
+	// Активируем шифрование
+	ws.crypto(true);
+	// Устанавливаем пароль шифрования
 	ws.crypto("PASS");
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});

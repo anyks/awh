@@ -741,6 +741,14 @@ void awh::client::AWH::proxy(const string & uri, const scheme_t::family_t family
 	this->_http.proxy(uri, family);
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::client::AWH::crypto(const bool mode) noexcept {
+	// Выполняем установку флага шифрования
+	this->_http.crypto(mode);
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных

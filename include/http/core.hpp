@@ -199,8 +199,6 @@ namespace awh {
 		protected:
 			// Создаём объект для работы с сжатыми данными
 			mutable hash_t _hash;
-			// Создаём объект для работы с временными сжатыми данными
-			mutable hash_t _dhash;
 		protected:
 			// Флаг зашифрованных данных
 			bool _crypt;
@@ -617,6 +615,12 @@ namespace awh {
 			 * @param ver  версия сервиса
 			 */
 			void ident(const string & id, const string & name, const string & ver) noexcept;
+		public:
+			/**
+			 * crypto Метод активации шифрования
+			 * @param mode флаг активации шифрования
+			 */
+			void crypto(const bool mode) noexcept;
 			/**
 			 * crypto Метод установки параметров шифрования
 			 * @param pass   пароль шифрования передаваемых данных

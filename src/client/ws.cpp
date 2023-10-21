@@ -340,6 +340,14 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
 	this->_ws.proxy(uri, family);
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::client::WebSocket::crypto(const bool mode) noexcept {
+	// Выполняем установку флага шифрования
+	this->_ws.crypto(mode);
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных

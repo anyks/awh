@@ -268,6 +268,11 @@ namespace awh {
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
+				 * crypto Метод активации шифрования
+				 * @param mode флаг активации шифрования
+				 */
+				void crypto(const bool mode) noexcept;
+				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных

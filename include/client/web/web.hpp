@@ -461,6 +461,11 @@ namespace awh {
 				virtual void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
+				 * crypto Метод активации шифрования
+				 * @param mode флаг активации шифрования
+				 */
+				virtual void crypto(const bool mode) noexcept = 0;
+				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
@@ -530,13 +535,14 @@ namespace awh {
 				 * Crypto Структура параметров шифрования
 				 */
 				typedef struct Crypto {
+					bool mode;               // Флаг активности механизма шифрования
 					string pass;             // Пароль шифрования передаваемых данных
 					string salt;             // Соль шифрования передаваемых данных
 					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
 					/**
 					 * Crypto Конструктор
 					 */
-					Crypto() noexcept : pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+					Crypto() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} crypto_t;
 			protected:
 				// Объект идентификации сервиса
@@ -739,6 +745,11 @@ namespace awh {
 				 */
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
+				/**
+				 * crypto Метод активации шифрования
+				 * @param mode флаг активации шифрования
+				 */
+				virtual void crypto(const bool mode) noexcept;
 				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных

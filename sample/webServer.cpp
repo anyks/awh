@@ -77,6 +77,10 @@ class WebServer {
 		 * @param mode режим события подключения
 		 */
 		void active(const uint64_t bid, const server::web_t::mode_t mode){
+			// Если подключение клиента установлено
+			if(mode == server::web_t::mode_t::CONNECT)
+				// Аактивируем шифрование
+				this->_awh->crypto(bid, true);
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -122,6 +126,8 @@ class WebServer {
 		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent){
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
+				// Деактивируем шифрование
+				this->_awh->crypto(bid, false);
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
@@ -267,7 +273,9 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
-	// Устанавливаем шифрование
+	// Активируем шифрование
+	awh.crypto(true);
+	// Устанавливаем пароль шифрования
 	awh.crypto("PASS");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});

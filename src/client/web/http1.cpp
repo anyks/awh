@@ -1283,6 +1283,16 @@ void awh::client::Http1::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_ws1.authTypeProxy(type, hash);
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::client::Http1::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования для WebSocket-клиента
+	this->_ws1.crypto(mode);
+	// Устанавливаем флаг шифрования для HTTP-клиента
+	this->_http.crypto(mode);
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных

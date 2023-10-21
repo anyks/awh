@@ -55,7 +55,7 @@ void awh::Http::encrypt() noexcept {
  */
 void awh::Http::decrypt() noexcept {
 	// Если полезная нагрузка зашифрованна
-	if(this->_crypted && this->_crypt){
+	if(this->_crypted){
 		// Получаем данные тела
 		const auto & body = this->_web.body();
 		// Если тело сообщения получено
@@ -2931,28 +2931,28 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		this->_ident.version = ver;
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::Http::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования
+	this->_crypt = mode;
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Устанавливаем флаг шифрования
-	this->_crypt = !pass.empty();
-	{
+	// Если пароль шифрования передан
+	if(!pass.empty()){
 		// Устанавливаем соль шифрования
 		this->_hash.salt(salt);
 		// Устанавливаем пароль шифрования
 		this->_hash.pass(pass);
 		// Устанавливаем размер шифрования
 		this->_hash.cipher(cipher);
-	}{
-		// Устанавливаем соль шифрования
-		this->_dhash.salt(salt);
-		// Устанавливаем пароль шифрования
-		this->_dhash.pass(pass);
-		// Устанавливаем размер шифрования
-		this->_dhash.cipher(cipher);
 	}
 }
 /**
@@ -2962,7 +2962,7 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _stath(stath_t::NONE), _state(state_t::NONE), _identity(identity_t::NONE),
- _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log), _dhash(log),
+ _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log),
  _crypt(false), _crypted(false), _chunking(false), _chunk(BUFFER_CHUNK),
  _inflated(compress_t::NONE), _compress(compress_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {

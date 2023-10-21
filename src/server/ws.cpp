@@ -458,6 +458,23 @@ void awh::server::WebSocket::authType(const auth_t::type_t type, const auth_t::h
 	this->_ws.authType(type, hash);
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket::crypto(const bool mode) noexcept {
+	// Выполняем установку флага шифрования
+	this->_ws.crypto(mode);
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid   идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Выполняем установку флага шифрования для клиента
+	this->_ws.crypto(bid, mode);
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных

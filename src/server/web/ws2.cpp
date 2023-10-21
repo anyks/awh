@@ -38,6 +38,8 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 			if(options != nullptr){
 				// Если данные необходимо зашифровать
 				if(this->_crypto.mode){
+					// Устанавливаем флаг шифрования
+					options->http.crypto(this->_crypto.mode);
 					// Устанавливаем соль шифрования
 					options->hash.salt(this->_crypto.salt);
 					// Устанавливаем пароль шифрования
@@ -540,11 +542,14 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Выполняем сброс состояния HTTP-парсера
 											options->http.clear();
 											// Получаем флаг шифрованных данных
-											options->crypt = options->http.isCrypt();
+											options->crypto = options->http.isCrypt();
 											// Если клиент согласился на шифрование данных
-											if(this->_crypto.mode)
+											if(this->_crypto.mode){
+												// Устанавливаем флаг шифрования
+												options->http.crypto(options->crypto);
 												// Устанавливаем параметры шифрования
 												options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+											}
 											// Получаем поддерживаемый метод компрессии
 											options->compress = options->http.compress();
 											// Получаем размер скользящего окна сервера
@@ -1001,7 +1006,7 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 				// Если данные получены
 				if(!data.empty()){
 					// Если нужно производить дешифрование
-					if(options->crypt){
+					if(options->crypto){
 						// Выполняем шифрование переданных данных
 						const auto & res = options->hash.decrypt(data.data(), data.size());
 						// Отправляем полученный результат
@@ -1030,7 +1035,7 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 			// Если функция обратного вызова установлена, выводим полученное сообщение
 			} else {
 				// Если нужно производить дешифрование
-				if(options->crypt){
+				if(options->crypto){
 					// Выполняем шифрование переданных данных
 					const auto & res = options->hash.decrypt(buffer.data(), buffer.size());
 					// Отправляем полученный результат
@@ -1316,7 +1321,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 					// Создаём объект заголовка для отправки
 					ws::frame_t::head_t head(true, false);
 					// Если нужно производить шифрование
-					if(options->crypt){
+					if(options->crypto){
 						// Выполняем шифрование переданных данных
 						const auto & payload = options->hash.encrypt(message.data(), message.size());
 						// Если данные зашифрованны
@@ -2010,6 +2015,34 @@ void awh::server::WebSocket2::authType(const auth_t::type_t type, const auth_t::
 	web2_t::authType(type, hash);
 	// Устанавливаем тип авторизации для WebSocket-сервера
 	this->_ws1.authType(type, hash);
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket2::crypto(const bool mode) noexcept {
+	// Устанавливаем флага шифрования
+	web2_t::crypto(mode);
+	// Устанавливаем флага шифрования для WebSocket-сервера
+	this->_ws1.crypto(mode);
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid   идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket2::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Получаем параметры активного клиента
+	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Если переключение протокола на HTTP/2 не выполнено
+		if(options->proto != engine_t::proto_t::HTTP2)
+			// Устанавливаем флаг шифрования для клиента WebSocket
+			this->_ws1.crypto(bid, mode);
+		// Устанавливаем флаг шифрования для клиента
+		else options->crypto = mode;
+	}
 }
 /**
  * crypto Метод установки параметров шифрования

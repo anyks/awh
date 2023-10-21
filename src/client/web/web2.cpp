@@ -625,6 +625,14 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
 	}
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::client::Web2::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования
+	this->_crypto.mode = mode;
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных

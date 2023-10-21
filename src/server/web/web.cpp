@@ -435,21 +435,26 @@ void awh::server::Web::authType(const auth_t::type_t type, const auth_t::hash_t 
 	this->_service.type = type;
 }
 /**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Web::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования
+	this->_crypto.mode = mode;
+}
+/**
  * crypto Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::server::Web::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Устанавливаем флаг шифрования
-	if((this->_crypto.mode = !pass.empty())){
-		// Пароль шифрования передаваемых данных
-		this->_crypto.pass = pass;
-		// Соль шифрования передаваемых данных
-		this->_crypto.salt = salt;
-		// Размер шифрования передаваемых данных
-		this->_crypto.cipher = cipher;
-	}
+	// Пароль шифрования передаваемых данных
+	this->_crypto.pass = pass;
+	// Соль шифрования передаваемых данных
+	this->_crypto.salt = salt;
+	// Размер шифрования передаваемых данных
+	this->_crypto.cipher = cipher;
 }
 /**
  * Web Конструктор
