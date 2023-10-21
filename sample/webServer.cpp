@@ -127,7 +127,7 @@ class WebServer {
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				// this->_awh->encrypt(bid, false);
+				this->_awh->encrypt(bid, false);
 				
 				
 				// Формируем тело ответа
