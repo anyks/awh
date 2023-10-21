@@ -868,15 +868,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 		if(options != nullptr){
 			// Устанавливаем идентификатор потока
 			options->sid = sid;
-			// Если данные необходимо зашифровать
-			if(this->_crypto.mode){
-				// Устанавливаем соль шифрования
-				options->hash.salt(this->_crypto.salt);
-				// Устанавливаем пароль шифрования
-				options->hash.pass(this->_crypto.pass);
-				// Устанавливаем размер шифрования
-				options->hash.cipher(this->_crypto.cipher);
-			}
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);
 			// Выполняем установку протокола подключения
@@ -962,10 +953,19 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					options->http.clear();
 					// Получаем флаг шифрованных данных
 					options->crypto = options->http.isCrypt();
+
+					cout << " ********************* SETTING1 " << options->crypto << endl;
+
 					// Если клиент согласился на шифрование данных
 					if(this->_crypto.mode){
 						// Устанавливаем флаг шифрования
 						options->http.crypto(web->crypto);
+						// Устанавливаем соль шифрования
+						options->hash.salt(this->_crypto.salt);
+						// Устанавливаем пароль шифрования
+						options->hash.pass(this->_crypto.pass);
+						// Устанавливаем размер шифрования
+						options->hash.cipher(this->_crypto.cipher);
 						// Устанавливаем параметры шифрования
 						options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 					}

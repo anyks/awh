@@ -30,21 +30,12 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
-			// Если данные необходимо зашифровать
-			if(this->_crypto.mode){
-				// Устанавливаем флаг шифрования
-				options->http.crypto(this->_crypto.mode);
-				// Устанавливаем соль шифрования
-				options->hash.salt(this->_crypto.salt);
-				// Устанавливаем пароль шифрования
-				options->hash.pass(this->_crypto.pass);
-				// Устанавливаем размер шифрования
-				options->hash.cipher(this->_crypto.cipher);
-			}
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);
 			// Устанавливаем размер чанка
 			options->http.chunk(this->_chunkSize);
+			// Устанавливаем флаг шифрования
+			options->http.crypto(this->_crypto.mode);
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			options->http.compress(this->_scheme.compress);
 			// Устанавливаем флаг перехвата контекста компрессии
@@ -244,6 +235,12 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									if(this->_crypto.mode){
 										// Устанавливаем флаг шифрования
 										options->http.crypto(options->crypto);
+										// Устанавливаем соль шифрования
+										options->hash.salt(this->_crypto.salt);
+										// Устанавливаем пароль шифрования
+										options->hash.pass(this->_crypto.pass);
+										// Устанавливаем размер шифрования
+										options->hash.cipher(this->_crypto.cipher);
 										// Устанавливаем параметры шифрования
 										options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 									}
@@ -933,8 +930,8 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Если отправляемое сообщение является текстом и не зашифрованно
-					if(text && !options->crypto)
+					// Если отправляемое сообщение является текстом
+					if(text)
 						// Выводим параметры ответа
 						cout << string(message.begin(), message.end()) << endl << endl;
 					// Выводим сообщение о выводе чанка полезной нагрузки

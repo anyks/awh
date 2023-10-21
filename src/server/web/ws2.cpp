@@ -330,6 +330,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 						if(options->shake && options->allow.receive){
 							// Если мы получили неустановленный флаг или флаг завершения потока
 							if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
+								
+								
+								cout << " ********************* SETTING2 " << options->crypto << endl;
+								
 								// Флаг удачного получения данных
 								bool receive = false;
 								// Создаём буфер сообщения
@@ -547,9 +551,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												// Устанавливаем параметры шифрования
 												options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 											}
-
-											cout << " ************************** ##########1 " << options->crypto << endl;
-
 											// Получаем поддерживаемый метод компрессии
 											options->compress = options->http.compress();
 											// Получаем размер скользящего окна сервера
@@ -1005,9 +1006,6 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 				}
 				// Если данные получены
 				if(!data.empty()){
-					
-					cout << " @@@@@@@@@@@@@@@@@@@@@ DECRYPT " << options->crypto << endl;
-					
 					// Если нужно производить дешифрование
 					if(options->crypto){
 						// Выполняем шифрование переданных данных
@@ -1314,8 +1312,8 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Если отправляемое сообщение является текстом и не зашифрованно
-						if(text && !options->crypto)
+						// Если отправляемое сообщение является текстом
+						if(text)
 							// Выводим параметры ответа
 							cout << string(message.begin(), message.end()) << endl << endl;
 						// Выводим сообщение о выводе чанка полезной нагрузки
