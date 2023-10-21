@@ -58,7 +58,7 @@ void awh::Http::encrypt() noexcept {
 				// Формируем новое тело сообщения
 				this->_web.body(result);
 
-				cout << " ^^^^^^^^^^^^^^^ ENCRYPT4 " << endl;
+				cout << " ^^^^^^^^^^^^^^^ ENCRYPT4 " << string(result.begin(), result.end()) << endl;
 
 			// Если шифрование не выполнено
 			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
