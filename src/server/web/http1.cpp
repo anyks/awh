@@ -1509,9 +1509,12 @@ void awh::server::Http1::encrypt(const uint64_t bid, const bool mode) noexcept {
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
-		if(options != nullptr)
+		if(options != nullptr){
 			// Устанавливаем флаг шифрования для клиента
 			options->crypted = mode;
+			// Устанавливаем флаг шифрования
+			options->http.encryption(options->crypted);
+		}
 	}
 }
 /**
