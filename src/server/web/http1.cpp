@@ -857,7 +857,10 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
 					#endif
 					// Устанавливаем флаг закрытия подключения
-					// options->stopped = (end && options->http.body().empty());
+					options->stopped = (end && options->http.body().empty());
+
+					cout << " ################## " << entity.size() << endl;
+
 					// Выполняем отправку тела запроса на сервер
 					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 				}
