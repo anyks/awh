@@ -416,14 +416,9 @@ void awh::Http::commit() noexcept {
 				}
 			} break;
 		}
-
-		cout << " *******************1 " << (u_short) this->_compress << endl;
-
 		// Выполняем установку стейта завершения получения данных
 		this->_web.state(web_t::state_t::END);
 	}
-
-	cout << " *******************2 " << (u_short) this->_compress << endl;
 }
 /**
  * clear Метод очистки собранных данных
@@ -993,8 +988,6 @@ awh::Http::compress_t awh::Http::compress() const noexcept {
 void awh::Http::compress(const compress_t compress) noexcept {
 	// Устанавливаем метод компрессии сообщений
 	this->_compress = compress;
-
-	cout << " *******************3 " << (u_short) this->_compress << endl;
 }
 /**
  * dump Метод получения бинарного дампа
