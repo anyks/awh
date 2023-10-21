@@ -673,7 +673,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 		// Выполняем сброс количества выполненных запросов
 		} else options->requests = 0;
 		// Получаем флаг шифрованных данных
-		options->crypto = options->http.isCrypt();
+		options->crypto = options->http.isCrypto();
 		// Получаем поддерживаемый метод компрессии
 		options->compress = options->http.compress();
 		/**
@@ -950,7 +950,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						goto End;
 					}
 					// Получаем флаг шифрованных данных
-					options->crypto = options->http.isCrypt();
+					options->crypto = options->http.isCrypto();
 
 					cout << " ********************* SETTING1 " << options->crypto << endl;
 

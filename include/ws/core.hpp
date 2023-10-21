@@ -132,6 +132,12 @@ namespace awh {
 			virtual stath_t checkAuth() noexcept = 0;
 		public:
 			/**
+			 * isCrypto Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			bool isCrypto() const noexcept;
+		public:
+			/**
 			 * dump Метод получения бинарного дампа
 			 * @return бинарный дамп данных
 			 */

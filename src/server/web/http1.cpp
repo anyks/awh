@@ -189,7 +189,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 						// Выполняем сброс количества выполненных запросов
 						} else options->requests = 0;
 						// Получаем флаг шифрованных данных
-						options->crypto = options->http.isCrypt();
+						options->crypto = options->http.isCrypto();
 						// Получаем поддерживаемый метод компрессии
 						options->compress = options->http.compress();
 						// Выполняем проверку авторизации
@@ -514,7 +514,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Получаем флаг шифрованных данных
-					options->crypto = options->http.isCrypt();
+					options->crypto = options->http.isCrypto();
 					// Если клиент согласился на шифрование данных
 					if(this->_crypto.mode){
 						// Устанавливаем флаг шифрования

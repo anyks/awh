@@ -230,7 +230,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем сброс состояния HTTP-парсера
 									options->http.clear();
 									// Получаем флаг шифрованных данных
-									options->crypto = options->http.isCrypt();
+									options->crypto = options->http.isCrypto();
 									// Если клиент согласился на шифрование данных
 									if(this->_crypto.mode){
 										// Устанавливаем флаг шифрования

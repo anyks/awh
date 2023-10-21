@@ -201,7 +201,7 @@ namespace awh {
 			mutable hash_t _hash;
 		protected:
 			// Флаг зашифрованных данных
-			bool _crypt;
+			bool _crypto;
 			// Флаг зашифрованной полезной нагрузки
 			bool _crypted;
 		private:
@@ -419,15 +419,15 @@ namespace awh {
 			 */
 			bool isEnd() const noexcept;
 			/**
-			 * isCrypt Метод проверки на зашифрованные данные
-			 * @return флаг проверки на зашифрованные данные
-			 */
-			bool isCrypt() const noexcept;
-			/**
 			 * isAlive Метод проверки на постоянное подключение
 			 * @return результат проверки
 			 */
 			bool isAlive() const noexcept;
+			/**
+			 * isCrypto Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			virtual bool isCrypto() const noexcept;
 		public:
 			/**
 			 * isHandshake Метод проверки рукопожатия (Метод не должен быть виртуальным, так-как он должен быть переопределён в других модулях)

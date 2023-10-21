@@ -510,7 +510,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 						// Если запрос выполнен удачно
 						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 							// Получаем флаг шифрованных данных
-							options->crypt = options->srv.isCrypt();
+							options->crypt = options->srv.isCrypto();
 							// Получаем поддерживаемый метод компрессии
 							options->compress = options->srv.compress();
 							// Если подключение не выполнено

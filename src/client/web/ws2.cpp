@@ -962,7 +962,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					// Очищаем список фрагментированных сообщений
 					this->_fragmes.clear();
 					// Получаем флаг шифрованных данных
-					this->_crypt = this->_http.isCrypt();
+					this->_crypted = this->_http.isCrypto();
 					// Получаем поддерживаемый метод компрессии
 					this->_compress = this->_http.compress();
 					// Получаем размер скользящего окна сервера
@@ -972,7 +972,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Если данные необходимо зашифровать
-					if(this->_crypto.mode && this->_crypt){
+					if(this->_crypto.mode && this->_crypted){
 						// Устанавливаем соль шифрования
 						this->_hash.salt(this->_crypto.salt);
 						// Устанавливаем пароль шифрования
@@ -1243,7 +1243,7 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
 			// Если данные получены
 			if(!data.empty()){
 				// Если нужно производить дешифрование
-				if(this->_crypt){
+				if(this->_crypted){
 					// Выполняем шифрование переданных данных
 					const auto & res = this->_hash.decrypt(data.data(), data.size());
 					// Если данные сообщения получилось удачно расшифровать
@@ -1268,7 +1268,7 @@ void awh::client::WebSocket2::extraction(const vector <char> & buffer, const boo
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
 			// Если нужно производить дешифрование
-			if(this->_crypt){
+			if(this->_crypted){
 				// Выполняем шифрование переданных данных
 				const auto & res = this->_hash.decrypt(buffer.data(), buffer.size());
 				// Если данные сообщения получилось удачно распаковать
@@ -1366,7 +1366,7 @@ void awh::client::WebSocket2::sendMessage(const vector <char> & message, const b
 					// Создаём объект заголовка для отправки
 					ws::frame_t::head_t head(true, true);
 					// Если нужно производить шифрование
-					if(this->_crypt){
+					if(this->_crypted){
 						// Выполняем шифрование переданных данных
 						const auto & payload = this->_hash.encrypt(message.data(), message.size());
 						// Если данные зашифрованны
@@ -1937,7 +1937,7 @@ void awh::client::WebSocket2::crypto(const string & pass, const string & salt, c
  * @param log объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
+ web2_t(fmk, log), _sid(-1), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));
@@ -1949,7 +1949,7 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(-1), _close(false), _crypt(false), _shake(false), _noinfo(false), _freeze(false), _inflate(false),
+ web2_t(core, fmk, log), _sid(-1), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));

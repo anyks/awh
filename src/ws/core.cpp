@@ -194,7 +194,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		} break;
 	}
 	// Если данные должны быть зашифрованны
-	if(this->_crypted)
+	if(this->_crypto)
 		// Выполняем установку указанного метода шифрования
 		extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
 	// Если список расширений не пустой
@@ -319,7 +319,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Если заголовок передан
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
-		if((result = this->_crypted = this->_fmk->exists("permessage-encrypt=", extension))){
+		if((result = this->_crypto = this->_fmk->exists("permessage-encrypt=", extension))){
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
@@ -505,6 +505,14 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * isCrypto Метод проверки на зашифрованные данные
+ * @return флаг проверки на зашифрованные данные
+ */
+bool awh::WCore::isCrypto() const noexcept {
+	// Выводим флаг шифрования данных
+	return this->_crypto;
 }
 /**
  * dump Метод получения бинарного дампа
