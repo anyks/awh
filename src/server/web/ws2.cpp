@@ -36,21 +36,12 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Если данные необходимо зашифровать
-				if(this->_crypto.mode){
-					// Устанавливаем флаг шифрования
-					options->http.crypto(this->_crypto.mode);
-					// Устанавливаем соль шифрования
-					options->hash.salt(this->_crypto.salt);
-					// Устанавливаем пароль шифрования
-					options->hash.pass(this->_crypto.pass);
-					// Устанавливаем размер шифрования
-					options->hash.cipher(this->_crypto.cipher);
-				}
 				// Выполняем установку идентификатора объекта
 				options->http.id(bid);
 				// Устанавливаем размер чанка
 				options->http.chunk(this->_chunkSize);
+				// Устанавливаем флаг шифрования
+				options->http.crypto(this->_crypto.mode);
 				// Устанавливаем метод компрессии поддерживаемый сервером
 				options->http.compress(this->_scheme.compress);
 				// Устанавливаем флаг перехвата контекста компрессии
@@ -547,9 +538,18 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											if(this->_crypto.mode){
 												// Устанавливаем флаг шифрования
 												options->http.crypto(options->crypto);
+												// Устанавливаем соль шифрования
+												options->hash.salt(this->_crypto.salt);
+												// Устанавливаем пароль шифрования
+												options->hash.pass(this->_crypto.pass);
+												// Устанавливаем размер шифрования
+												options->hash.cipher(this->_crypto.cipher);
 												// Устанавливаем параметры шифрования
 												options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
 											}
+
+											cout << " ************************** ##########1 " << options->crypto << endl;
+
 											// Получаем поддерживаемый метод компрессии
 											options->compress = options->http.compress();
 											// Получаем размер скользящего окна сервера
@@ -1005,6 +1005,9 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 				}
 				// Если данные получены
 				if(!data.empty()){
+					
+					cout << " @@@@@@@@@@@@@@@@@@@@@ DECRYPT " << options->crypto << endl;
+					
 					// Если нужно производить дешифрование
 					if(options->crypto){
 						// Выполняем шифрование переданных данных
