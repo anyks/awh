@@ -330,10 +330,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 						if(options->shake && options->allow.receive){
 							// Если мы получили неустановленный флаг или флаг завершения потока
 							if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
-								
-								
-								cout << " ********************* SETTING2 " << options->crypto << endl;
-								
 								// Флаг удачного получения данных
 								bool receive = false;
 								// Создаём буфер сообщения

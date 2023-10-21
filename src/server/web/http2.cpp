@@ -951,9 +951,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					}
 					// Получаем флаг шифрованных данных
 					options->crypto = options->http.isCrypto();
-
-					cout << " ********************* SETTING1 " << options->crypto << endl;
-
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Если клиент согласился на шифрование данных
