@@ -495,7 +495,7 @@ vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const n
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		
-		cout << " §§§§§§§§§§§§§§§2 " << endl;
+		cout << " §§§§§§§§§§§§§§§2 " << this->_pass << endl;
 		
 		// Если пароль установлен
 		if(!this->_pass.empty()){
