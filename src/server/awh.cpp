@@ -521,6 +521,9 @@ void awh::server::AWH::crypto(const uint64_t bid, const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::server::AWH::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	
+	cout << " @@@@@@@@@@@@@@@@@@ PASSWORD " << pass << endl;
+	
 	// Выполняем установку параметров шифрования
 	this->_http.crypto(pass, salt, cipher);
 }
