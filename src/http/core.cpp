@@ -263,6 +263,9 @@ void awh::Http::commit() noexcept {
 				// Устанавливаем тип компрессии полезной нагрузки
 				this->_compress = compress_t::DEFLATE;
 		}
+
+		cout << " *******************1 " << (u_short) this->_compress << endl;
+
 		// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
 		this->_inflated = this->_compress;
 		// Если мы работаем с HTTP сервером и метод компрессии установлен
@@ -408,6 +411,8 @@ void awh::Http::commit() noexcept {
 		// Выполняем установку стейта завершения получения данных
 		this->_web.state(web_t::state_t::END);
 	}
+
+	cout << " *******************2 " << (u_short) this->_compress << endl;
 }
 /**
  * clear Метод очистки собранных данных
@@ -977,6 +982,8 @@ awh::Http::compress_t awh::Http::compress() const noexcept {
 void awh::Http::compress(const compress_t compress) noexcept {
 	// Устанавливаем метод компрессии сообщений
 	this->_compress = compress;
+
+	cout << " *******************3 " << (u_short) this->_compress << endl;
 }
 /**
  * dump Метод получения бинарного дампа
@@ -2174,9 +2181,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "Content-Encoding")){
-									
-									cout << " ^^^^^^^^^^^^^^^^ " << (u_short) this->_compress << endl;
-									
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
