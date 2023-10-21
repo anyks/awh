@@ -111,6 +111,9 @@ class WebServer {
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
 					subprotocol = (* subprotocols.begin());
+				
+				cout << " ********************* " << this->_awh->crypto(bid) << endl;
+				
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
