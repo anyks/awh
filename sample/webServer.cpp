@@ -142,7 +142,7 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				
 
-				this->_awh->send(sid, bid, 200, "OK", {{"Goga", "Hello"}}, false);
+				this->_awh->send(sid, bid, 200, "OK", {{"Goga", "Hello"},{"Content-Encoding", "br"}}, false);
 
 				this->_awh->send(sid, bid, body.data(), body.size(), false);
 				
