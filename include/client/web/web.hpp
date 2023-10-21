@@ -120,6 +120,19 @@ namespace awh {
 					 */
 					Proxy() noexcept : sid(-1), connect(true), answer(0) {}
 				} __attribute__((packed)) proxy_t;
+				/**
+				 * Crypto Структура параметров шифрования
+				 */
+				typedef struct Crypto {
+					bool mode;               // Флаг активности механизма шифрования
+					string pass;             // Пароль шифрования передаваемых данных
+					string salt;             // Соль шифрования передаваемых данных
+					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
+					/**
+					 * Crypto Конструктор
+					 */
+					Crypto() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+				} crypto_t;
 			protected:
 				/**
 				 * Этапы обработки
@@ -152,6 +165,8 @@ namespace awh {
 				proxy_t _proxy;
 				// Объект функций обратного вызова
 				fn_t _callback;
+				// Объект параметров шифрования
+				crypto_t _crypto;
 				// Объект рабочего
 				scheme_t _scheme;
 			protected:
@@ -464,14 +479,14 @@ namespace awh {
 				 * crypto Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
-				virtual void crypto(const bool mode) noexcept = 0;
+				virtual void crypto(const bool mode) noexcept;
 				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept = 0;
+				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Web Конструктор
@@ -531,24 +546,9 @@ namespace awh {
 					 */
 					Ident() noexcept : id{""}, ver{""}, name{""} {}
 				} ident_t;
-				/**
-				 * Crypto Структура параметров шифрования
-				 */
-				typedef struct Crypto {
-					bool mode;               // Флаг активности механизма шифрования
-					string pass;             // Пароль шифрования передаваемых данных
-					string salt;             // Соль шифрования передаваемых данных
-					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
-					/**
-					 * Crypto Конструктор
-					 */
-					Crypto() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
-				} crypto_t;
 			protected:
 				// Объект идентификации сервиса
 				ident_t _ident;
-				// Объект параметров шифрования
-				crypto_t _crypto;
 				// Объект работы с фреймами NgHttp2
 				nghttp2_t _nghttp2;
 			protected:
@@ -744,19 +744,6 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void ident(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * crypto Метод активации шифрования
-				 * @param mode флаг активации шифрования
-				 */
-				virtual void crypto(const bool mode) noexcept;
-				/**
-				 * crypto Метод установки параметров шифрования
-				 * @param pass   пароль шифрования передаваемых данных
-				 * @param salt   соль шифрования передаваемых данных
-				 * @param cipher размер шифрования передаваемых данных
-				 */
-				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Web2 Конструктор

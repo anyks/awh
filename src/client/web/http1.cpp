@@ -1287,6 +1287,8 @@ void awh::client::Http1::authTypeProxy(const auth_t::type_t type, const auth_t::
  * @param mode флаг активации шифрования
  */
 void awh::client::Http1::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования в родительском модуле
+	web_t::crypto(mode);
 	// Устанавливаем флаг шифрования для WebSocket-клиента
 	this->_ws1.crypto(mode);
 	// Устанавливаем флаг шифрования для HTTP-клиента
@@ -1299,6 +1301,8 @@ void awh::client::Http1::crypto(const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::client::Http1::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования в родительском модуле
+	web_t::crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для WebSocket-клиента
 	this->_ws1.crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента

@@ -625,32 +625,6 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
 	}
 }
 /**
- * crypto Метод активации шифрования
- * @param mode флаг активации шифрования
- */
-void awh::client::Web2::crypto(const bool mode) noexcept {
-	// Устанавливаем флаг шифрования
-	this->_crypto.mode = mode;
-}
-/**
- * crypto Метод установки параметров шифрования
- * @param pass   пароль шифрования передаваемых данных
- * @param salt   соль шифрования передаваемых данных
- * @param cipher размер шифрования передаваемых данных
- */
-void awh::client::Web2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Если пароль для шифрования передаваемых данных получен
-	if(!pass.empty())
-		// Выполняем установку пароля шифрования передаваемых данных
-		this->_crypto.pass = pass;
-	// Если соль шифрования переданных данных получен
-	if(!salt.empty())
-		// Выполняем установку соли шифрования передаваемых данных
-		this->_crypto.salt = salt;
-	// Выполняем установку размера шифрования передаваемых данных
-	this->_crypto.cipher = cipher;
-}
-/**
  * Web2 Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

@@ -971,6 +971,15 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Если данные необходимо зашифровать
+					if(this->_crypto.mode && this->_crypt){
+						// Устанавливаем соль шифрования
+						this->_hash.salt(this->_crypto.salt);
+						// Устанавливаем пароль шифрования
+						this->_hash.pass(this->_crypto.pass);
+						// Устанавливаем размер шифрования
+						this->_hash.cipher(this->_crypto.cipher);
+					}
 					// Разрешаем перехватывать контекст компрессии для клиента
 					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
 					// Разрешаем перехватывать контекст компрессии для сервера
@@ -1901,6 +1910,8 @@ void awh::client::WebSocket2::authTypeProxy(const auth_t::type_t type, const aut
  * @param mode флаг активации шифрования
  */
 void awh::client::WebSocket2::crypto(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования в родительском модуле
+	web2_t::crypto(mode);
 	// Устанавливаем флаг шифрования для WebSocket-клиента
 	this->_ws1.crypto(mode);
 	// Устанавливаем флаг шифрования для HTTP-клиента
@@ -1913,6 +1924,8 @@ void awh::client::WebSocket2::crypto(const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::client::WebSocket2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования в родительском модуле
+	web2_t::crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для WebSocket-клиента
 	this->_ws1.crypto(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента

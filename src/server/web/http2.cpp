@@ -868,9 +868,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 		if(options != nullptr){
 			// Устанавливаем идентификатор потока
 			options->sid = sid;
-			
-			cout << " ************************* WEBSOCKET1 " << this->_crypto.pass << endl;
-			
 			// Если данные необходимо зашифровать
 			if(this->_crypto.mode){
 				// Устанавливаем соль шифрования
@@ -879,8 +876,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 				options->hash.pass(this->_crypto.pass);
 				// Устанавливаем размер шифрования
 				options->hash.cipher(this->_crypto.cipher);
-
-				cout << " ************************* WEBSOCKET2 " << this->_crypto.pass << endl;
 			}
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);
