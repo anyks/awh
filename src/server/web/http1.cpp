@@ -858,9 +858,6 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = (end && options->http.body().empty());
-
-					cout << " ################## " << entity.size() << endl;
-
 					// Выполняем отправку тела запроса на сервер
 					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 				}
