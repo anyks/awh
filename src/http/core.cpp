@@ -2140,7 +2140,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
 								
-								cout << " ######################### " << endl;
+								cout << " #########################1 " << endl;
 								
 								// Выполняем компрессию полезной нагрузки
 								const_cast <http_t *> (this)->inflate();
@@ -2184,6 +2184,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							// Если тело запроса не существует
 							} else {
+								
+								cout << " #########################2 " << this->_encryption << endl;
+								
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_encryption || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
