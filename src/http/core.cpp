@@ -1938,7 +1938,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок размера передаваемого тела, не запрещён
 								if(!this->_chunking && !this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
-									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+									request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							}
 						// Если запрос не содержит тела запроса
 						} else {
