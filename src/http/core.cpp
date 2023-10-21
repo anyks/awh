@@ -1898,6 +1898,14 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										request.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
 									break;
 								}
+								// Если данные необходимо разбивать на чанки
+								if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
+									// Устанавливаем заголовок Transfer-Encoding
+									request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+								// Если заголовок размера передаваемого тела, не запрещён
+								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+									// Устанавливаем размер передаваемого тела Content-Length
+									request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
@@ -1927,15 +1935,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 								}
+								// Если заголовок размера передаваемого тела, не запрещён
+								if(!this->_chunking && !this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+									// Устанавливаем размер передаваемого тела Content-Length
+									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							}
-							// Если данные необходимо разбивать на чанки
-							if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
-								// Устанавливаем заголовок Transfer-Encoding
-								request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
-								// Устанавливаем размер передаваемого тела Content-Length
-								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Если запрос не содержит тела запроса
 						} else {
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
@@ -2152,6 +2156,14 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										response.append(this->_fmk->format("Content-Encoding: %s\r\n", "deflate"));
 									break;
 								}
+								// Если данные необходимо разбивать на чанки
+								if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
+									// Устанавливаем заголовок Transfer-Encoding
+									response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+								// Если заголовок размера передаваемого тела, не запрещён
+								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+									// Устанавливаем размер передаваемого тела Content-Length
+									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
@@ -2162,6 +2174,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "Content-Encoding")){
+									
+									cout << " ^^^^^^^^^^^^^^^^ " << (u_short) this->_compress << endl;
+									
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
@@ -2181,15 +2196,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 								}
+								// Если заголовок размера передаваемого тела, не запрещён
+								if(!this->_chunking && !this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
+									// Устанавливаем размер передаваемого тела Content-Length
+									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 							}
-							// Если данные необходимо разбивать на чанки
-							if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
-								// Устанавливаем заголовок Transfer-Encoding
-								response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
-							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
-								// Устанавливаем размер передаваемого тела Content-Length
-								response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Очищаем тела сообщения
 						} else const_cast <http_t *> (this)->clear(suite_t::BODY);
 					} break;
