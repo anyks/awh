@@ -489,24 +489,12 @@ vector <char> awh::Hash::decompressDeflate(const char * buffer, const size_t siz
 vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
-	
-	cout << " §§§§§§§§§§§§§§§1 " << endl;
-	
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		
-		cout << " §§§§§§§§§§§§§§§2 " << this->_pass << endl;
-		
 		// Если пароль установлен
 		if(!this->_pass.empty()){
-			
-			cout << " §§§§§§§§§§§§§§§3 " << endl;
-			
 			// Выполняем инициализацию AES
 			if(this->init()){
-				
-				cout << " §§§§§§§§§§§§§§§4 " << endl;
-				
 				// Максимальный размер считываемых данных
 				int chunk = 0;
 				// Размер буфера полученных данных
@@ -528,14 +516,16 @@ vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const n
 					// Вычитаем считанные данные
 					len -= chunk;
 				} while(len > 0);
-				
-				cout << " §§§§§§§§§§§§§§§5 " << endl;
-				
 				// Запоминаем полученные данные
 				result.insert(result.end(), output.data(), output.data() + count);
 			}
-		// Выводим тот же самый буфер как он был передан
-		} else result.insert(result.end(), buffer, buffer + size);
+		// Если пароль не установлен
+		} else {
+			// Выводим тот же самый буфер как он был передан
+			result.insert(result.end(), buffer, buffer + size);
+			// Выводим сообщение об ошибке
+			this->_log->print("Data encryption password is not set", log_t::flag_t::CRITICAL);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -579,8 +569,13 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
 				// Запоминаем полученные данные
 				result.insert(result.end(), output.data(), output.data() + count);
 			}
-		// Выводим тот же самый буфер как он был передан
-		} else result.insert(result.end(), buffer, buffer + size);
+		// Если пароль не установлен
+		} else {
+			// Выводим тот же самый буфер как он был передан
+			result.insert(result.end(), buffer, buffer + size);
+			// Выводим сообщение об ошибке
+			this->_log->print("Data decryption password is not set", log_t::flag_t::CRITICAL);
+		}
 	}
 	// Выводим результат
 	return result;

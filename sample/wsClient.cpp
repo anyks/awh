@@ -338,7 +338,7 @@ int main(int argc, char * argv[]){
 	// Активируем шифрование
 	ws.crypto(true);
 	// Устанавливаем пароль шифрования
-	ws.crypto("PASS");
+	ws.crypto(string{"PASS"});
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы

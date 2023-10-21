@@ -2945,9 +2945,6 @@ void awh::Http::crypto(const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	
-	cout << " ****************** PASSWORD " << pass << endl;
-
 	// Если пароль шифрования передан
 	if(!pass.empty()){
 		// Устанавливаем соль шифрования

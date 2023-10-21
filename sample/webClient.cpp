@@ -178,7 +178,7 @@ int main(int argc, char * argv[]){
 	// Активируем шифрование
 	awh.crypto(true);
 	// Устанавливаем пароль шифрования
-	awh.crypto("PASS");
+	awh.crypto(string{"PASS"});
 	// Устанавливаем логин и пароль пользователя
 	// awh.user("user", "password");
 	// Устанавливаем длительное подключение
