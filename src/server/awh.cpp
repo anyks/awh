@@ -498,38 +498,38 @@ void awh::server::AWH::authType(const auth_t::type_t type, const auth_t::hash_t 
 	this->_http.authType(type, hash);
 }
 /**
- * crypto Метод получения флага шифрования
+ * crypted Метод получения флага шифрования
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::AWH::crypto(const uint64_t bid) const noexcept {
+bool awh::server::AWH::crypted(const uint64_t bid) const noexcept {
 	// Выводим установленный флаг шифрования
-	return this->_http.crypto(bid);
+	return this->_http.crypted(bid);
 }
 /**
- * crypto Метод активации шифрования для клиента
+ * encrypt Метод активации шифрования для клиента
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::AWH::crypto(const uint64_t bid, const bool mode) noexcept {
+void awh::server::AWH::encrypt(const uint64_t bid, const bool mode) noexcept {
 	// Выполняем установку флага шифрования для клиента
-	this->_http.crypto(bid, mode);
+	this->_http.encrypt(bid, mode);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::server::AWH::crypto(const bool mode) noexcept {
+void awh::server::AWH::encryption(const bool mode) noexcept {
 	// Выполняем установку флага шифрования
-	this->_http.crypto(mode);
+	this->_http.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::server::AWH::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::server::AWH::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Выполняем установку параметров шифрования
-	this->_http.crypto(pass, salt, cipher);
+	this->_http.encryption(pass, salt, cipher);
 }

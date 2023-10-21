@@ -186,8 +186,8 @@ void awh::server::Proxy::connectServerCallback(const size_t bid, const size_t si
 			// Если данные будем передавать в зашифрованном виде
 			if(this->_crypt){
 				// Устанавливаем параметры шифрования
-				options->cli.crypto(this->_pass, this->_salt, this->_cipher);
-				options->srv.crypto(this->_pass, this->_salt, this->_cipher);
+				options->cli.encryption(this->_pass, this->_salt, this->_cipher);
+				options->srv.encryption(this->_pass, this->_salt, this->_cipher);
 			}
 			// Определяем тип авторизации
 			switch(static_cast <uint8_t> (this->_authType)){
@@ -512,7 +512,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 						// Если запрос выполнен удачно
 						case static_cast <uint8_t> (http_t::status_t::GOOD): {
 							// Получаем флаг шифрованных данных
-							options->crypt = options->srv.crypto();
+							options->crypt = options->srv.crypted();
 							// Получаем поддерживаемый метод компрессии
 							options->compress = options->srv.compress();
 							// Если подключение не выполнено

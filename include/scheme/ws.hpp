@@ -96,7 +96,7 @@ namespace awh {
 				typedef struct Options {
 					bool close;                  // Флаг требования закрыть брокера
 					bool shake;                  // Флаг выполненного рукопожатия
-					bool crypto;                 // Флаг шифрования сообщений
+					bool crypted;               // Флаг шифрования сообщений
 					bool inflate;                // Флаг переданных сжатых данных
 					bool stopped;                // Флаг принудительной остановки
 					int32_t sid;                 // Идентификатор потока
@@ -118,7 +118,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Options(const fmk_t * fmk, const log_t * log) noexcept :
-					 close(false), shake(false), crypto(false),
+					 close(false), shake(false), crypted(false),
 					 inflate(false), stopped(false), sid(1), point(0),
 					 hash(log), frame(fmk, log), http(fmk, log),
 					 proto(engine_t::proto_t::HTTP1_1),

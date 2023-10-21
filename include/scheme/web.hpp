@@ -51,7 +51,7 @@ namespace awh {
 					bool mode;                   // Флаг открытия подключения
 					bool alive;                  // Флаг долгоживущего подключения
 					bool close;                  // Флаг требования закрыть брокера
-					bool crypto;                 // Флаг шифрования сообщений
+					bool crypted;                // Флаг шифрования сообщений
 					bool stopped;                // Флаг принудительной остановки
 					int32_t sid;                 // Идентификатор потока
 					time_t point;                // Контрольная точка ответа на пинг
@@ -67,7 +67,7 @@ namespace awh {
 					 */
 					Options(const fmk_t * fmk, const log_t * log) noexcept :
 					 mode(false), alive(false), close(false),
-					 crypto(false), stopped(false), sid(1),
+					 crypted(false), stopped(false), sid(1),
 					 point(0), requests(0), http(fmk, log),
 					 proto(engine_t::proto_t::HTTP1_1),
 					 compress(awh::http_t::compress_t::NONE) {}

@@ -268,17 +268,17 @@ namespace awh {
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * crypto Метод активации шифрования
+				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
-				void crypto(const bool mode) noexcept;
+				void encryption(const bool mode) noexcept;
 				/**
-				 * crypto Метод установки параметров шифрования
+				 * encryption Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации

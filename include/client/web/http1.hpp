@@ -380,17 +380,17 @@ namespace awh {
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * crypto Метод активации шифрования
+				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
-				void crypto(const bool mode) noexcept;
+				void encryption(const bool mode) noexcept;
 				/**
-				 * crypto Метод установки параметров шифрования
+				 * encryption Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Http1 Конструктор

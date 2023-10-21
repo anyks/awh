@@ -523,7 +523,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Очищаем список фрагментированных сообщений
 					this->_fragmes.clear();
 					// Получаем флаг шифрованных данных
-					this->_crypted = this->_http.crypto();
+					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
 					this->_compress = this->_http.compress();
 					// Получаем размер скользящего окна сервера
@@ -533,13 +533,13 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Обновляем контрольную точку времени получения данных
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Если данные необходимо зашифровать
-					if(this->_crypto.mode && this->_crypted){
+					if(this->_encryption.mode && this->_crypted){
 						// Устанавливаем соль шифрования
-						this->_hash.salt(this->_crypto.salt);
+						this->_hash.salt(this->_encryption.salt);
 						// Устанавливаем пароль шифрования
-						this->_hash.pass(this->_crypto.pass);
+						this->_hash.pass(this->_encryption.pass);
 						// Устанавливаем размер шифрования
-						this->_hash.cipher(this->_crypto.cipher);
+						this->_hash.cipher(this->_encryption.cipher);
 					}
 					// Разрешаем перехватывать контекст компрессии для клиента
 					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
@@ -1437,26 +1437,26 @@ void awh::client::WebSocket1::authTypeProxy(const auth_t::type_t type, const aut
 	web_t::authTypeProxy(type, hash);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::WebSocket1::crypto(const bool mode) noexcept {
+void awh::client::WebSocket1::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования в родительском модуле
-	web_t::crypto(mode);
+	web_t::encryption(mode);
 	// Устанавливаем флаг шифрования для HTTP-клиента
-	this->_http.crypto(mode);
+	this->_http.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::WebSocket1::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::WebSocket1::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования в родительском модуле
-	web_t::crypto(pass, salt, cipher);
+	web_t::encryption(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента
-	this->_http.crypto(pass, salt, cipher);
+	this->_http.encryption(pass, salt, cipher);
 }
 /**
  * WebSocket1 Конструктор

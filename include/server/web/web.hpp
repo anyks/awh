@@ -102,18 +102,18 @@ namespace awh {
 					Ident() noexcept : id{""}, ver{""}, name{""} {}
 				} ident_t;
 				/**
-				 * Crypto Структура параметров шифрования
+				 * Encryption Структура параметров шифрования
 				 */
-				typedef struct Crypto {
+				typedef struct Encryption {
 					bool mode;               // Флаг активности механизма шифрования
 					string pass;             // Пароль шифрования передаваемых данных
 					string salt;             // Соль шифрования передаваемых данных
 					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
 					/**
-					 * Crypto Конструктор
+					 * Encryption Конструктор
 					 */
-					Crypto() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
-				} crypto_t;
+					Encryption() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+				} encryption_t;
 				/**
 				 * Service Структура сервиса
 				 */
@@ -143,10 +143,10 @@ namespace awh {
 				ident_t _ident;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
-				// Объект параметров шифрования
-				crypto_t _crypto;
 				// Объект параметров сервиса
 				service_t _service;
+				// Объект параметров шифрования
+				encryption_t _encryption;
 			private:
 				// Ядро для локального таймера
 				awh::core_t _timer;
@@ -505,30 +505,30 @@ namespace awh {
 				virtual void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * crypto Метод получения флага шифрования
+				 * crypted Метод получения флага шифрования
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
-				virtual bool crypto(const uint64_t bid) const noexcept = 0;
+				virtual bool crypted(const uint64_t bid) const noexcept = 0;
 				/**
-				 * crypto Метод активации шифрования для клиента
+				 * encrypt Метод активации шифрования для клиента
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
-				virtual void crypto(const uint64_t bid, const bool mode) noexcept = 0;
+				virtual void encrypt(const uint64_t bid, const bool mode) noexcept = 0;
 			public:
 				/**
-				 * crypto Метод активации шифрования
+				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
-				virtual void crypto(const bool mode) noexcept;
+				virtual void encryption(const bool mode) noexcept;
 				/**
-				 * crypto Метод установки параметров шифрования
+				 * encryption Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				virtual void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+				virtual void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Web Конструктор

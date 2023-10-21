@@ -458,38 +458,38 @@ void awh::server::WebSocket::authType(const auth_t::type_t type, const auth_t::h
 	this->_ws.authType(type, hash);
 }
 /**
- * crypto Метод получения флага шифрования
+ * crypted Метод получения флага шифрования
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::WebSocket::crypto(const uint64_t bid) const noexcept {
+bool awh::server::WebSocket::crypted(const uint64_t bid) const noexcept {
 	// Выводим установленный флаг шифрования
-	return this->_ws.crypto(bid);
+	return this->_ws.crypted(bid);
 }
 /**
- * crypto Метод активации шифрования для клиента
+ * encrypt Метод активации шифрования для клиента
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket::crypto(const uint64_t bid, const bool mode) noexcept {
+void awh::server::WebSocket::encrypt(const uint64_t bid, const bool mode) noexcept {
 	// Выполняем установку флага шифрования для клиента
-	this->_ws.crypto(bid, mode);
+	this->_ws.encrypt(bid, mode);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket::crypto(const bool mode) noexcept {
+void awh::server::WebSocket::encryption(const bool mode) noexcept {
 	// Выполняем установку флага шифрования
-	this->_ws.crypto(mode);
+	this->_ws.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::server::WebSocket::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::server::WebSocket::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Выполняем установку параметров шифрования
-	this->_ws.crypto(pass, salt, cipher);
+	this->_ws.encryption(pass, salt, cipher);
 }

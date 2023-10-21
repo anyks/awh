@@ -432,30 +432,30 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * crypto Метод получения флага шифрования
+				 * crypted Метод получения флага шифрования
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
-				bool crypto(const uint64_t bid) const noexcept;
+				bool crypted(const uint64_t bid) const noexcept;
 				/**
-				 * crypto Метод активации шифрования для клиента
+				 * encrypt Метод активации шифрования для клиента
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
-				void crypto(const uint64_t bid, const bool mode) noexcept;
+				void encrypt(const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
-				 * crypto Метод активации шифрования
+				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
-				void crypto(const bool mode) noexcept;
+				void encryption(const bool mode) noexcept;
 				/**
-				 * crypto Метод установки параметров шифрования
+				 * encryption Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * WebSocket1 Конструктор

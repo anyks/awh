@@ -194,7 +194,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		} break;
 	}
 	// Если данные должны быть зашифрованны
-	if(this->_crypto)
+	if(this->_encryption)
 		// Выполняем установку указанного метода шифрования
 		extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
 	// Если список расширений не пустой
@@ -319,7 +319,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	// Если заголовок передан
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
-		if((result = this->_crypto = this->_fmk->exists("permessage-encrypt=", extension))){
+		if((result = this->_encryption = this->_fmk->exists("permessage-encrypt=", extension))){
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
@@ -729,6 +729,14 @@ void awh::WCore::clean() noexcept {
 	this->_server.wbit = GZIP_MAX_WBITS;
 }
 /**
+ * crypted Метод проверки на зашифрованные данные
+ * @return флаг проверки на зашифрованные данные
+ */
+bool awh::WCore::crypted() const noexcept {
+	// Выводим флаг шифрования данных
+	return this->_encryption;
+}
+/**
  * compress Метод получения метода компрессии
  * @return метод компрессии сообщений
  */
@@ -1126,30 +1134,4 @@ void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
 			this->_server.takeover = flag;
 		break;
 	}
-}
-/**
- * crypto Метод проверки на зашифрованные данные
- * @return флаг проверки на зашифрованные данные
- */
-bool awh::WCore::crypto() const noexcept {
-	// Выводим флаг шифрования данных
-	return this->_crypto;
-}
-/**
- * crypto Метод активации шифрования
- * @param mode флаг активации шифрования
- */
-void awh::WCore::crypto(const bool mode) noexcept {
-	// Выполняем установку флага шифрования у родительского модуля
-	http_t::crypto(mode);
-}
-/**
- * crypto Метод установки параметров шифрования
- * @param pass   пароль шифрования передаваемых данных
- * @param salt   соль шифрования передаваемых данных
- * @param cipher размер шифрования передаваемых данных
- */
-void awh::WCore::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Выполняем установку параметров шифрования у родительского модуля
-	http_t::crypto(pass, salt, cipher);
 }

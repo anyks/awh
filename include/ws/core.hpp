@@ -148,6 +148,12 @@ namespace awh {
 			void clean() noexcept;
 		public:
 			/**
+			 * crypted Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			bool crypted() const noexcept;
+		public:
+			/**
 			 * compress Метод получения метода компрессии
 			 * @return метод компрессии сообщений
 			 */
@@ -246,24 +252,6 @@ namespace awh {
 			 * @param flag флаг запрета переиспользования контекста компрессии
 			 */
 			void takeover(const web_t::hid_t hid, const bool flag) noexcept;
-		public:
-			/**
-			 * crypto Метод проверки на зашифрованные данные
-			 * @return флаг проверки на зашифрованные данные
-			 */
-			bool crypto() const noexcept;
-			/**
-			 * crypto Метод активации шифрования
-			 * @param mode флаг активации шифрования
-			 */
-			void crypto(const bool mode) noexcept;
-			/**
-			 * crypto Метод установки параметров шифрования
-			 * @param pass   пароль шифрования передаваемых данных
-			 * @param salt   соль шифрования передаваемых данных
-			 * @param cipher размер шифрования передаваемых данных
-			 */
-			void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
 			 * WCore Конструктор

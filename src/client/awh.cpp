@@ -741,22 +741,22 @@ void awh::client::AWH::proxy(const string & uri, const scheme_t::family_t family
 	this->_http.proxy(uri, family);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::AWH::crypto(const bool mode) noexcept {
+void awh::client::AWH::encryption(const bool mode) noexcept {
 	// Выполняем установку флага шифрования
-	this->_http.crypto(mode);
+	this->_http.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::AWH::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::AWH::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Выполняем установку параметров шифрования
-	this->_http.crypto(pass, salt, cipher);
+	this->_http.encryption(pass, salt, cipher);
 }
 /**
  * authType Метод установки типа авторизации

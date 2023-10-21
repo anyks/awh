@@ -22,7 +22,7 @@ void awh::server::WS::commit() noexcept {
 	// Если данные ещё не зафиксированы
 	if(this->_status == status_t::NONE){
 		// Сбрасываем флаг шифрования
-		this->_crypto = false;
+		this->_encryption = false;
 		// Выполняем проверку авторизации
 		this->_status = this->status();
 		// Если ключ соответствует

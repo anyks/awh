@@ -734,30 +734,30 @@ void awh::client::Web::authTypeProxy(const auth_t::type_t type, const auth_t::ha
 	this->_scheme.proxy.http.authType(type, hash);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::Web::crypto(const bool mode) noexcept {
+void awh::client::Web::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
-	this->_crypto.mode = mode;
+	this->_encryption.mode = mode;
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::Web::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::Web::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Если пароль для шифрования передаваемых данных получен
 	if(!pass.empty())
 		// Выполняем установку пароля шифрования передаваемых данных
-		this->_crypto.pass = pass;
+		this->_encryption.pass = pass;
 	// Если соль шифрования переданных данных получен
 	if(!salt.empty())
 		// Выполняем установку соли шифрования передаваемых данных
-		this->_crypto.salt = salt;
+		this->_encryption.salt = salt;
 	// Выполняем установку размера шифрования передаваемых данных
-	this->_crypto.cipher = cipher;
+	this->_encryption.cipher = cipher;
 }
 /**
  * Web Конструктор

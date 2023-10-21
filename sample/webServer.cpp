@@ -80,7 +80,7 @@ class WebServer {
 			// Если подключение клиента установлено
 			if(mode == server::web_t::mode_t::CONNECT)
 				// Аактивируем шифрование
-				this->_awh->crypto(bid, true);
+				this->_awh->encrypt(bid, true);
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -112,7 +112,7 @@ class WebServer {
 					// Выполняем получение выбранного сабпротокола
 					subprotocol = (* subprotocols.begin());
 				
-				cout << " ********************* " << this->_awh->crypto(static_cast <uint64_t> (bid)) << endl;
+				cout << " ********************* " << this->_awh->crypted(bid) << endl;
 				
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
@@ -130,7 +130,7 @@ class WebServer {
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				this->_awh->crypto(bid, false);
+				this->_awh->encrypt(bid, false);
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
@@ -277,9 +277,9 @@ int main(int argc, char * argv[]){
 	);
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Активируем шифрование
-	awh.crypto(true);
+	awh.encryption(true);
 	// Устанавливаем пароль шифрования
-	awh.crypto(string{"PASS"});
+	awh.encryption(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Разрешаем метод CONNECT для сервера

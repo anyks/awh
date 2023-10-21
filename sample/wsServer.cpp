@@ -230,7 +230,7 @@ int main(int argc, char * argv[]){
 
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
-	// ws.crypto("PASS");
+	// ws.encryption("PASS");
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля

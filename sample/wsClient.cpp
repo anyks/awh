@@ -336,9 +336,9 @@ int main(int argc, char * argv[]){
 	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Активируем шифрование
-	ws.crypto(true);
+	ws.encryption(true);
 	// Устанавливаем пароль шифрования
-	ws.crypto(string{"PASS"});
+	ws.encryption(string{"PASS"});
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы

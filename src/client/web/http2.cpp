@@ -1400,11 +1400,11 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Устанавливаем данные сервиса
 						ret.first->second->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 					// Если шифрование активированно
-					if(this->_crypto.mode){
+					if(this->_encryption.mode){
 						// Устанавливаем флаг шифрования
-						ret.first->second->http.crypto(this->_crypto.mode);
+						ret.first->second->http.encryption(this->_encryption.mode);
 						// Устанавливаем параметры шифрования для HTTP-клиента
-						ret.first->second->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+						ret.first->second->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}
 				}
 			}
@@ -1917,34 +1917,34 @@ void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_http1.authTypeProxy(type, hash);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::Http2::crypto(const bool mode) noexcept {
+void awh::client::Http2::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования у родительского объекта
-	web2_t::crypto(mode);
+	web2_t::encryption(mode);
 	// Устанавливаем флаг шифрования для WebSocket-клиента
-	this->_ws2.crypto(mode);
+	this->_ws2.encryption(mode);
 	// Устанавливаем флаг шифрования для HTTP-парсера
-	this->_http.crypto(mode);
+	this->_http.encryption(mode);
 	// Устанавливаем флаг шифрования для HTTP-клиента
-	this->_http1.crypto(mode);
+	this->_http1.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::Http2::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::Http2::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования у родительского объекта
-	web2_t::crypto(pass, salt, cipher);
+	web2_t::encryption(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для WebSocket-клиента
-	this->_ws2.crypto(pass, salt, cipher);
+	this->_ws2.encryption(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-парсера
-	this->_http.crypto(pass, salt, cipher);
+	this->_http.encryption(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-клиента
-	this->_http1.crypto(pass, salt, cipher);
+	this->_http1.encryption(pass, salt, cipher);
 }
 /**
  * Http2 Конструктор

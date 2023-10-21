@@ -340,22 +340,22 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
 	this->_ws.proxy(uri, family);
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::WebSocket::crypto(const bool mode) noexcept {
+void awh::client::WebSocket::encryption(const bool mode) noexcept {
 	// Выполняем установку флага шифрования
-	this->_ws.crypto(mode);
+	this->_ws.encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::WebSocket::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::WebSocket::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Выполняем установку параметров шифрования
-	this->_ws.crypto(pass, salt, cipher);
+	this->_ws.encryption(pass, salt, cipher);
 }
 /**
  * authType Метод установки типа авторизации

@@ -32,7 +32,7 @@ void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer
  */
 void awh::Http::encrypt() noexcept {
 	// Если полезная нагрузка не зашифрована
-	if(!this->_crypted && this->_crypto){
+	if(!this->_crypted && this->_encryption){
 		// Получаем данные тела
 		const auto & body = this->_web.body();
 		// Если тело сообщения получено
@@ -997,7 +997,7 @@ vector <char> awh::Http::dump() const noexcept {
 		// Устанавливаем стейт текущего запроса
 		result.insert(result.end(), (const char *) &this->_state, (const char *) &this->_state + sizeof(this->_state));
 		// Устанавливаем флаг требования шифрования данных полезной нагрузки
-		result.insert(result.end(), (const char *) &this->_crypto, (const char *) &this->_crypto + sizeof(this->_crypto));
+		result.insert(result.end(), (const char *) &this->_encryption, (const char *) &this->_encryption + sizeof(this->_encryption));
 		// Устанавливаем флаг зашифрованных данных полузной нагрузки
 		result.insert(result.end(), (const char *) &this->_crypted, (const char *) &this->_crypted + sizeof(this->_crypted));
 		// Устанавливаем флаг разрешающий передавать тело запроса чанками
@@ -1079,9 +1079,9 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_state);
 		// Выполняем получение флага зашифрованных данных
-		::memcpy((void *) &this->_crypto, data.data() + offset, sizeof(this->_crypto));
+		::memcpy((void *) &this->_encryption, data.data() + offset, sizeof(this->_encryption));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_crypto);
+		offset += sizeof(this->_encryption);
 		// Выполняем получение флага зашифрованных хранимых данных полезной нагрузки
 		::memcpy((void *) &this->_crypted, data.data() + offset, sizeof(this->_crypted));
 		// Выполняем смещение в буфере
@@ -1357,14 +1357,14 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	http._state = this->_state;
 	// Устанавливаем тип статуса авторизации
 	http._status = this->_status;
-	// Устанавливаем флаг шифрования объекта
-	http._crypto = this->_crypto;
 	// Устанавливаем флаг зашифрованной полезной нагрузки
 	http._crypted = this->_crypted;
 	// Устанавливаем флаг компрессии полезной нагрузки
 	http._inflated = this->_inflated;
 	// Устанавливаем активный метод компрессии
 	http._compress = this->_compress;
+	// Устанавливаем флаг шифрования объекта
+	http._encryption = this->_encryption;
 	// Извлекаем список заголовков
 	const auto & headers = this->_web.headers();
 	// Если заголовки получены, выполняем установку
@@ -1901,9 +1901,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
+								this->_chunking = (this->_encryption || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
+								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
@@ -1939,7 +1939,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Если запрос не содержит тела запроса
 						} else {
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
-							if((this->_chunking = (this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
+							if((this->_chunking = (this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
 								// Устанавливаем X-AWH-Encryption
 								request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
@@ -2155,9 +2155,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
+								this->_chunking = (this->_encryption || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
+								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
@@ -2528,9 +2528,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
+								this->_chunking = (this->_encryption || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))
+								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
@@ -2558,7 +2558,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Если запрос не содержит тела запроса
 						} else {
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
-							if((this->_chunking = (this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))))
+							if((this->_chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 								// Устанавливаем X-AWH-Encryption
 								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
@@ -2760,9 +2760,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
+								this->_chunking = (this->_encryption || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))
+								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
@@ -2936,28 +2936,28 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		this->_ident.version = ver;
 }
 /**
- * crypto Метод проверки на зашифрованные данные
+ * crypted Метод проверки на зашифрованные данные
  * @return флаг проверки на зашифрованные данные
  */
-bool awh::Http::crypto() const noexcept {
+bool awh::Http::crypted() const noexcept {
 	// Выводим результат проверки
 	return this->_crypted;
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::Http::crypto(const bool mode) noexcept {
+void awh::Http::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
-	this->_crypto = mode;
+	this->_encryption = mode;
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::Http::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Если пароль шифрования передан
 	if(!pass.empty()){
 		// Устанавливаем соль шифрования
@@ -2976,7 +2976,7 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log),
- _crypto(false), _crypted(false), _chunking(false), _chunk(BUFFER_CHUNK),
+ _crypted(false), _encryption(false), _chunking(false), _chunk(BUFFER_CHUNK),
  _inflated(compress_t::NONE), _compress(compress_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта

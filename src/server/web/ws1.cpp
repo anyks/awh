@@ -34,10 +34,10 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 			options->http.id(bid);
 			// Устанавливаем размер чанка
 			options->http.chunk(this->_chunkSize);
-			// Устанавливаем флаг шифрования
-			options->http.crypto(this->_crypto.mode);
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			options->http.compress(this->_scheme.compress);
+			// Устанавливаем флаг шифрования
+			options->http.encryption(this->_encryption.mode);
 			// Устанавливаем флаг перехвата контекста компрессии
 			options->server.takeover = this->_server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
@@ -230,19 +230,19 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем сброс состояния HTTP-парсера
 									options->http.clear();
 									// Получаем флаг шифрованных данных
-									options->crypto = options->http.crypto();
+									options->crypted = options->http.crypted();
 									// Если клиент согласился на шифрование данных
-									if(this->_crypto.mode){
+									if(this->_encryption.mode){
 										// Устанавливаем флаг шифрования
-										options->http.crypto(options->crypto);
+										options->http.encryption(options->crypted);
 										// Устанавливаем соль шифрования
-										options->hash.salt(this->_crypto.salt);
+										options->hash.salt(this->_encryption.salt);
 										// Устанавливаем пароль шифрования
-										options->hash.pass(this->_crypto.pass);
+										options->hash.pass(this->_encryption.pass);
 										// Устанавливаем размер шифрования
-										options->hash.cipher(this->_crypto.cipher);
+										options->hash.cipher(this->_encryption.cipher);
 										// Устанавливаем параметры шифрования
-										options->http.crypto(this->_crypto.pass, this->_crypto.salt, this->_crypto.cipher);
+										options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 									}
 									// Получаем поддерживаемый метод компрессии
 									options->compress = options->http.compress();
@@ -669,7 +669,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 				// Если данные получены
 				if(!data.empty()){
 					// Если нужно производить дешифрование
-					if(options->crypto){
+					if(options->crypted){
 						// Выполняем шифрование переданных данных
 						const auto & res = options->hash.decrypt(data.data(), data.size());
 						// Отправляем полученный результат
@@ -700,7 +700,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 			// Если функция обратного вызова установлена, выводим полученное сообщение
 			} else {
 				// Если нужно производить дешифрование
-				if(options->crypto){
+				if(options->crypted){
 					// Выполняем шифрование переданных данных
 					const auto & res = options->hash.decrypt(buffer.data(), buffer.size());
 					// Отправляем полученный результат
@@ -940,7 +940,7 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 				// Создаём объект заголовка для отправки
 				ws::frame_t::head_t head(true, false);
 				// Если нужно производить шифрование
-				if(options->crypto){
+				if(options->crypted){
 					// Выполняем шифрование переданных данных
 					const auto & payload = options->hash.encrypt(message.data(), message.size());
 					// Если данные зашифрованны
@@ -1496,56 +1496,56 @@ void awh::server::WebSocket1::bytesDetect(const scheme_t::mark_t read, const sch
 		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
- * crypto Метод получения флага шифрования
+ * crypted Метод получения флага шифрования
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::WebSocket1::crypto(const uint64_t bid) const noexcept {
+bool awh::server::WebSocket1::crypted(const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
-	if(this->_crypto.mode){
+	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr)
 			// Выводим установленный флаг шифрования
-			return options->crypto;
+			return options->crypted;
 	}
 	// Выводим результат
 	return false;
 }
 /**
- * crypto Метод активации шифрования для клиента
+ * encrypt Метод активации шифрования для клиента
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket1::crypto(const uint64_t bid, const bool mode) noexcept {
+void awh::server::WebSocket1::encrypt(const uint64_t bid, const bool mode) noexcept {
 	// Если активированно шифрование обмена сообщениями
-	if(this->_crypto.mode){
+	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
 		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr)
 			// Устанавливаем флаг шифрования для клиента
-			options->crypto = mode;
+			options->crypted = mode;
 	}
 }
 /**
- * crypto Метод активации шифрования
+ * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket1::crypto(const bool mode) noexcept {
+void awh::server::WebSocket1::encryption(const bool mode) noexcept {
 	// Устанавливаем флага шифрования
-	web_t::crypto(mode);
+	web_t::encryption(mode);
 }
 /**
- * crypto Метод установки параметров шифрования
+ * encryption Метод установки параметров шифрования
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::server::WebSocket1::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::server::WebSocket1::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования
-	web_t::crypto(pass, salt, cipher);
+	web_t::encryption(pass, salt, cipher);
 }
 /**
  * WebSocket1 Конструктор
