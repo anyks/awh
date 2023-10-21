@@ -144,7 +144,7 @@ class WebServer {
 
 				this->_awh->send(sid, bid, 200, "OK", {{"Goga", "Hello"},{"Content-Encoding", "br"}}, false);
 
-				this->_awh->send(sid, bid, body.data(), body.size(), false);
+				this->_awh->send(sid, bid, body.data(), body.size(), true);
 				
 				// Отправляем сообщение клиенту
 				// this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
