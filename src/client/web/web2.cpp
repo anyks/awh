@@ -94,26 +94,26 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Получаем статус ответа
-					awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
+					awh::http_t::status_t status = this->_scheme.proxy.http.auth();
 					// Устанавливаем ответ прокси-сервера
 					this->_proxy.answer = response.code;
 					// Если выполнять редиректы запрещено
-					if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+					if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
 						// Если ответом сервера не является запросом авторизации
 						if(response.code != 407)
 							// Запрещаем выполнять редирект
-							status = awh::http_t::stath_t::GOOD;
+							status = awh::http_t::status_t::GOOD;
 					}
 					// Выполняем проверку авторизации
 					switch(static_cast <uint8_t> (status)){
 						// Если нужно попытаться ещё раз
-						case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+						case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 							// Если попытки повторить переадресацию ещё не закончились
 							if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 								// Если адрес запроса получен
 								if(!this->_scheme.proxy.url.empty()){
 									// Если соединение является постоянным
-									if(this->_scheme.proxy.http.isAlive()){
+									if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
 										// Увеличиваем количество попыток
 										this->_attempt++;
 										// Устанавливаем новый экшен выполнения
@@ -126,7 +126,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 							}
 						} break;
 						// Если запрос выполнен удачно
-						case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+						case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
@@ -135,7 +135,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::dire
 							return 0;
 						} break;
 						// Если запрос неудачный
-						case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+						case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
 							// Устанавливаем флаг принудительной остановки
 							this->_stopped = true;
 						break;

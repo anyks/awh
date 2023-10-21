@@ -411,16 +411,23 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
+				 * crypto Метод получения флага шифрования
+				 * @param bid идентификатор брокера
+				 * @return    результат проверки
+				 */
+				bool crypto(const uint64_t bid) const noexcept;
+				/**
+				 * crypto Метод активации шифрования для клиента
+				 * @param bid  идентификатор брокера
+				 * @param mode флаг активации шифрования
+				 */
+				void crypto(const uint64_t bid, const bool mode) noexcept;
+			public:
+				/**
 				 * crypto Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
 				void crypto(const bool mode) noexcept;
-				/**
-				 * crypto Метод активации шифрования для клиента
-				 * @param bid   идентификатор брокера
-				 * @param mode флаг активации шифрования
-				 */
-				void crypto(const uint64_t bid, const bool mode) noexcept;
 				/**
 				 * crypto Метод установки параметров шифрования
 				 * @param pass   пароль шифрования передаваемых данных

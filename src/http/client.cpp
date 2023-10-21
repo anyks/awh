@@ -16,12 +16,12 @@
 #include <http/client.hpp>
 
 /**
- * checkAuth Метод проверки авторизации
- * @return результат проверки авторизации
+ * status Метод проверки текущего статуса
+ * @return результат проверки текущего статуса
  */
-awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
+awh::Http::status_t awh::client::Http::status() noexcept {
 	// Результат работы функции
-	stath_t result = stath_t::FAULT;
+	status_t result = status_t::FAULT;
 	// Получаем объект параметров запроса
 	const web_t::res_t & response = this->_web.response();
 	// Проверяем код ответа
@@ -40,13 +40,13 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 						// Устанавливаем заголовок HTTP в параметры авторизации
 						this->_auth.client.header(auth);
 						// Просим повторить авторизацию ещё раз
-						result = stath_t::RETRY;
+						result = status_t::RETRY;
 					}
 				} break;
 				// Если производится авторизация BASIC
 				case static_cast <uint8_t> (awh::auth_t::type_t::BASIC):
 					// Просим повторить авторизацию ещё раз
-					result = stath_t::RETRY;
+					result = status_t::RETRY;
 				break;
 			}
 		} break;
@@ -68,7 +68,7 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 				// Выполняем установку параметров запроса
 				this->_web.request(std::move(request));
 				// Просим повторить авторизацию ещё раз
-				result = stath_t::RETRY;
+				result = status_t::RETRY;
 			}
 		} break;
 		// Сообщаем, что авторизация прошла успешно
@@ -79,7 +79,7 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		case 203:
 		case 204:
 		case 205:
-		case 206: result = stath_t::GOOD; break;
+		case 206: result = status_t::GOOD; break;
 	}
 	// Выводим результат
 	return result;

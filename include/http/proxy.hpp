@@ -34,10 +34,10 @@ namespace awh {
 	typedef class HttpProxy : public http_t {
 		private:
 			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
+			 * status Метод проверки текущего статуса
+			 * @return результат проверки текущего статуса
 			 */
-			stath_t checkAuth() noexcept;
+			status_t status() noexcept;
 		public:
 			/**
 			 * realm Метод установки название сервера

@@ -988,10 +988,10 @@ void awh::Web::body(const vector <char> & body) noexcept {
 		this->_body.insert(this->_body.end(), body.begin(), body.end());
 }
 /**
- * rmHeader Метод удаления заголовка
+ * delHeader Метод удаления заголовка
  * @param key ключ заголовка
  */
-void awh::Web::rmHeader(const string & key) noexcept {
+void awh::Web::delHeader(const string & key) noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
 		// Выполняем перебор всех заголовков

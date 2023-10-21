@@ -24,10 +24,10 @@ const awh::server::Socks5::serv_t & awh::server::Socks5::server() const noexcept
 	return this->_server;
 }
 /**
- * resCmd Метод получения бинарного буфера ответа
+ * cmd Метод получения бинарного буфера ответа
  * @param rep код ответа сервера
  */
-void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
+void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
 	// Очищаем бинарный буфер данных
 	this->_buffer.clear();
 	// Если IP адрес или доменное имя установлены
@@ -39,7 +39,7 @@ void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
 		// Увеличиваем память на 4 октета
 		this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
 		// Устанавливаем версию протокола
-		u_short offset = this->octet(VER);
+		uint16_t offset = this->octet(VER);
 		// Устанавливаем комманду ответа
 		offset = this->octet(static_cast <uint8_t> (rep), offset);
 		// Устанавливаем RSV октет
@@ -74,12 +74,12 @@ void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
 	}
 }
 /**
- * resMethod Метод получения бинарного буфера выбора метода подключения
+ * method Метод получения бинарного буфера выбора метода подключения
  * @param methods методы авторизаций выбранныйе пользователем
  */
-void awh::server::Socks5::resMethod(const vector <uint8_t> & methods) const noexcept {
+void awh::server::Socks5::method(const vector <uint8_t> & methods) const noexcept {
 	// Создаём объект ответа
-	resMet_t response;
+	res_method_t response;
 	// Устанавливаем версию прокси-протокола
 	response.ver = VER;
 	// Устанавливаем запрещённый метод авторизации
@@ -114,16 +114,16 @@ void awh::server::Socks5::resMethod(const vector <uint8_t> & methods) const noex
 	// Увеличиваем память на 4 октета
 	this->_buffer.resize(sizeof(uint8_t) * 2, 0x0);
 	// Копируем в буфер нашу структуру ответа
-	memcpy(this->_buffer.data(), &response, sizeof(response));
+	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
 /**
- * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
+ * auth Метод получения бинарного буфера ответа на авторизацию клиента
  * @param login    логин пользователя
  * @param password пароль пользователя
  */
-void awh::server::Socks5::resAuth(const string & login, const string & password) const noexcept {
+void awh::server::Socks5::auth(const string & login, const string & password) const noexcept {
 	// Создаём объект ответа
-	resAuth_t response;
+	auth_t response;
 	// Устанавливаем версию соглашения авторизации
 	response.ver = AVER;
 	// Устанавливаем ответ отказа об авторизации
@@ -140,7 +140,7 @@ void awh::server::Socks5::resAuth(const string & login, const string & password)
 	// Увеличиваем память на 4 октета
 	this->_buffer.resize(sizeof(uint8_t) * 2, 0x0);
 	// Копируем в буфер нашу структуру ответа
-	memcpy(this->_buffer.data(), &response, sizeof(response));
+	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
 /**
  * parse Метод парсинга входящих данных
@@ -161,13 +161,13 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 					// Версия прокси-протокола
 					uint8_t version = 0x0;
 					// Выполняем чтение версии протокола
-					memcpy(&version, buffer, sizeof(version));
+					::memcpy(&version, buffer, sizeof(version));
 					// Если версия протокола соответствует
 					if(version == VER){
 						// Количество методов авторизации
 						uint8_t count = 0x0;
 						// Выполняем чтение количество методов авторизации
-						memcpy(&count, buffer + sizeof(uint8_t), sizeof(count));
+						::memcpy(&count, buffer + sizeof(uint8_t), sizeof(count));
 						// Если количество методов авторизации получено
 						if((count > 0) && (size >= (sizeof(uint16_t) + (sizeof(uint8_t) * count)))){
 							// Полученный метод авторизации
@@ -177,12 +177,12 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 							// Переходим по всем методам авторизации
 							for(uint8_t i = 0; i < count; i++){
 								// Получаем метод авторизации
-								memcpy(&method, buffer + (sizeof(uint16_t) + (sizeof(uint8_t) * i)), sizeof(method));
+								::memcpy(&method, buffer + (sizeof(uint16_t) + (sizeof(uint8_t) * i)), sizeof(method));
 								// Добавляем полученный метод авторизации в список методов
 								methods.at(i) = method;
 							}
 							// Выполняем формирование ответа клиенту
-							this->resMethod(methods);
+							this->method(methods);
 							// Проверяем метод сформированного овтета
 							switch(static_cast <uint8_t> (this->_buffer.back())){
 								// Если метод авторизации не выбран
@@ -220,7 +220,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 					// Версия прокси-протокола
 					uint8_t version = 0x0;
 					// Выполняем чтение версии соглашения авторизации
-					memcpy(&version, buffer, sizeof(version));
+					::memcpy(&version, buffer, sizeof(version));
 					// Получаем смещение в буфере
 					size_t offset = sizeof(version);
 					// Если версия соглашения авторизации соответствует
@@ -228,7 +228,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Размер логина пользователя
 						uint8_t length = 0x0;
 						// Выполняем получение длины логина пользователя
-						memcpy(&length, buffer + offset, sizeof(length));
+						::memcpy(&length, buffer + offset, sizeof(length));
 						// Если количество байт достаточно, чтобы получить логин пользователя
 						if(size >= (offset + sizeof(length) + length)){
 							// Получаем логин пользователя
@@ -238,7 +238,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 							// Если логин пользователя получен
 							if(!login.empty() && (size >= (sizeof(uint16_t) + offset))){
 								// Выполняем получение длины пароля пользователя
-								memcpy(&length, buffer + offset, sizeof(length));
+								::memcpy(&length, buffer + offset, sizeof(length));
 								// Если количество байт достаточно, чтобы получить пароль пользователя
 								if(size >= (offset + sizeof(length) + length)){
 									// Получаем пароль пользователя
@@ -246,7 +246,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 									// Если пароль получен
 									if(!password.empty()){
 										// Выполняем проверку авторизации
-										this->resAuth(login, password);
+										this->auth(login, password);
 										// Проверяем авторизацию пользователя
 										switch(static_cast <uint8_t> (this->_buffer.back())){
 											// Если авторизация не пройдена
@@ -294,7 +294,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 					// Создаём объект данных запроса
 					req_t req;
 					// Выполняем чтение данных
-					memcpy(&req, buffer, sizeof(req));
+					::memcpy(&req, buffer, sizeof(req));
 					// Если версия протокола соответствует
 					if(req.ver == static_cast <uint8_t> (VER)){
 						// Если команда запрошена поддерживаемая сервером
@@ -310,7 +310,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 										// Устанавливаем тип хоста сервера
 										this->_server.family = AF_INET;
 										// Копируем в буфер наши данные IP адреса
-										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
+										::memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
 										this->_server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
 										// Если IP адрес получен
@@ -331,7 +331,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 										// Устанавливаем тип хоста сервера
 										this->_server.family = AF_INET6;
 										// Копируем в буфер наши данные IP адреса
-										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
+										::memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
 										this->_server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
 										// Если IP адрес получен
@@ -350,13 +350,13 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 										// Извлекаем доменное имя
 										this->_server.host = this->text(buffer + sizeof(req_t), size);
 										// Получаем размер смещения
-										u_short offset = (sizeof(req_t) + sizeof(uint8_t) + this->_server.host.size());
+										uint16_t offset = (sizeof(req_t) + sizeof(uint8_t) + this->_server.host.size());
 										// Если доменное имя получено
 										if(!this->_server.host.empty() && (size >= (offset + sizeof(uint16_t)))){
 											// Создаём порт сервера
 											uint16_t port = 0;
 											// Выполняем извлечение порта сервера
-											memcpy(&port, buffer + offset, sizeof(uint16_t));
+											::memcpy(&port, buffer + offset, sizeof(uint16_t));
 											// Заменяем порт сервера
 											this->_server.port = ntohs(port);
 											// Устанавливаем стейт выполнения проверки

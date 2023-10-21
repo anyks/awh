@@ -42,17 +42,17 @@ namespace awh {
 				string _login;
 			private:
 				/**
-				 * reqCmd Метод получения бинарного буфера запроса
+				 * cmd Метод получения бинарного буфера запроса
 				 */
-				void reqCmd() const noexcept;
+				void cmd() const noexcept;
 				/**
-				 * reqAuth Метод получения бинарного буфера авторизации на сервере
+				 * auth Метод получения бинарного буфера авторизации на сервере
 				 */
-				void reqAuth() const noexcept;
+				void auth() const noexcept;
 				/**
-				 * reqMethods Метод получения бинарного буфера опроса методов подключения
+				 * methods Метод получения бинарного буфера опроса методов подключения
 				 */
-				void reqMethods() const noexcept;
+				void methods() const noexcept;
 			public:
 				/**
 				 * parse Метод парсинга входящих данных
@@ -81,7 +81,7 @@ namespace awh {
 				 * Socks5 Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _pass(""), _login("") {}
+				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _pass{""}, _login{""} {}
 				/**
 				 * ~Socks5 Деструктор
 				 */

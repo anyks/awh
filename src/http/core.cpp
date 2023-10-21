@@ -221,11 +221,11 @@ void awh::Http::inflate() noexcept {
  */
 void awh::Http::commit() noexcept {
 	// Если данные ещё не зафиксированы
-	if(this->_stath == stath_t::NONE){
+	if(this->_status == status_t::NONE){
 		// Выполняем проверку авторизации
-		this->_stath = this->checkAuth();
+		this->_status = this->status();
 		// Если ключ соответствует
-		if(this->_stath == stath_t::GOOD)
+		if(this->_status == status_t::GOOD)
 			// Устанавливаем стейт рукопожатия
 			this->_state = state_t::GOOD;
 		// Поменяем данные как бракованные
@@ -430,30 +430,10 @@ void awh::Http::clear() noexcept {
 void awh::Http::reset() noexcept {
 	// Выполняем сброс данных парсера
 	this->_web.reset();
-	// Выполняем сброс стейта авторизации
-	this->_stath = stath_t::NONE;
 	// Выполняем сброс стейта текущего запроса
 	this->_state = state_t::NONE;
-}
-/**
- * rmBlack Метод удаления заголовка из чёрного списка
- * @param key ключ заголовка
- */
-void awh::Http::rmBlack(const string & key) noexcept {
-	// Если ключ заголовка передан, удаляем его
-	if(!key.empty())
-		// Выполняем удаление заголовка из чёрного списка
-		this->_black.erase(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
-}
-/**
- * addBlack Метод добавления заголовка в чёрный список
- * @param key ключ заголовка
- */
-void awh::Http::addBlack(const string & key) noexcept {
-	// Если ключ заголовка передан, добавляем в список
-	if(!key.empty())
-		// Выполняем добавление заголовка в чёрный список
-		this->_black.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+	// Выполняем сброс стейта авторизации
+	this->_status = status_t::NONE;
 }
 /**
  * parse Метод парсинга сырых данных
@@ -599,24 +579,39 @@ void awh::Http::payload(const vector <char> & payload) noexcept {
 	this->_web.body(payload);
 }
 /**
- * clearBody Метод очистки данных тела
+ * clear Метод очистки данных HTTP-протокола
+ * @param suite тип набора к которому соответствует заголовок
  */
-void awh::Http::clearBody() const noexcept {
-	// Выполняем очистку данных тела
-	this->_web.clearBody();
-	// Снимаем флаг зашифрованной полезной нагрузки
-	const_cast <http_t *> (this)->_crypted = false;
-	// Снимаем флаг сжатой полезной нагрузки
-	const_cast <http_t *> (this)->_inflated = compress_t::NONE;
+void awh::Http::clear(const suite_t suite) noexcept {
+	// Определяем запрашиваемый набор к которому принадлежит заголовок
+	switch(static_cast <uint8_t> (suite)){
+		// Если набор соответствует телу сообщения
+		case static_cast <uint8_t> (suite_t::BODY): {
+			// Выполняем очистку данных тела
+			this->_web.clearBody();
+			// Снимаем флаг зашифрованной полезной нагрузки
+			const_cast <http_t *> (this)->_crypted = false;
+			// Снимаем флаг сжатой полезной нагрузки
+			const_cast <http_t *> (this)->_inflated = compress_t::NONE;	
+		} break;
+		// Если набор соответствует заголовку сообщения
+		case static_cast <uint8_t> (suite_t::HEADER): {
+			// Выполняем сброс флага формирования чанков
+			this->_chunking = false;
+			// Выполняем очистку списка заголовков
+			this->_web.clearHeaders();
+		} break;
+	}
 }
 /**
- * clearHeaders Метод очистки списка заголовков
+ * black Метод добавления заголовка в чёрный список
+ * @param key ключ заголовка
  */
-void awh::Http::clearHeaders() const noexcept {
-	// Выполняем сброс флага формирования чанков
-	this->_chunking = false;
-	// Выполняем очистку списка заголовков
-	this->_web.clearHeaders();
+void awh::Http::black(const string & key) noexcept {
+	// Если ключ заголовка передан, добавляем в список
+	if(!key.empty())
+		// Выполняем добавление заголовка в чёрный список
+		this->_black.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
  * body Метод получения данных тела запроса
@@ -641,14 +636,6 @@ void awh::Http::body(const vector <char> & body) noexcept {
 	this->deflate();
 	// Устанавливаем данные телал сообщения
 	this->_web.body(body);
-}
-/**
- * rmHeader Метод удаления заголовка
- * @param key ключ заголовка
- */
-void awh::Http::rmHeader(const string & key) noexcept {
-	// Выполняем удаление заголовка
-	this->_web.rmHeader(key);
 }
 /**
  * header Метод получения данных заголовка
@@ -833,20 +820,20 @@ void awh::Http::headers2(const vector <pair<string, string>> & headers) noexcept
 	}
 }
 /**
- * getAuth Метод проверки статуса авторизации
+ * auth Метод проверки статуса авторизации
  * @return результат проверки
  */
-awh::Http::stath_t awh::Http::getAuth() const noexcept {
+awh::Http::status_t awh::Http::auth() const noexcept {
 	// Выводим результат проверки
-	return this->_stath;
+	return this->_status;
 }
 /**
- * getAuth Метод извлечения строки авторизации
+ * auth Метод извлечения строки авторизации
  * @param flag флаг выполняемого процесса
  * @param prov параметры провайдера обмена сообщениями
  * @return     строка авторизации на удалённом сервере
  */
-string awh::Http::getAuth(const process_t flag, const web_t::provider_t & prov) const noexcept {
+string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -907,10 +894,10 @@ string awh::Http::getAuth(const process_t flag, const web_t::provider_t & prov) 
 	return "";
 }
 /**
- * getUrl Метод извлечения параметров запроса
+ * url Метод извлечения параметров запроса
  * @return установленные параметры запроса
  */
-const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
+const awh::uri_t::url_t & awh::Http::url() const noexcept {
 	// Выводим параметры запроса
 	return this->_web.request().url;
 }
@@ -1006,7 +993,7 @@ vector <char> awh::Http::dump() const noexcept {
 		// Устанавливаем метод компрессии отправляемых данных
 		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
 		// Устанавливаем стейт проверки авторизации
-		result.insert(result.end(), (const char *) &this->_stath, (const char *) &this->_stath + sizeof(this->_stath));
+		result.insert(result.end(), (const char *) &this->_status, (const char *) &this->_status + sizeof(this->_status));
 		// Устанавливаем стейт текущего запроса
 		result.insert(result.end(), (const char *) &this->_state, (const char *) &this->_state + sizeof(this->_state));
 		// Устанавливаем флаг требования шифрования данных полезной нагрузки
@@ -1084,9 +1071,9 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_compress);
 		// Выполняем получение стейта проверки авторизации
-		::memcpy((void *) &this->_stath, data.data() + offset, sizeof(this->_stath));
+		::memcpy((void *) &this->_status, data.data() + offset, sizeof(this->_status));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_stath);
+		offset += sizeof(this->_status);
 		// Выполняем получение стейта текущего запроса
 		::memcpy((void *) &this->_state, data.data() + offset, sizeof(this->_state));
 		// Выполняем смещение в буфере
@@ -1185,85 +1172,101 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 	}
 }
 /**
- * isEnd Метод проверки завершения обработки
- * @return результат проверки
+ * is Метод проверки активного состояния
+ * @param state состояние которое необходимо проверить
  */
-bool awh::Http::isEnd() const noexcept {
-	// Выводрим результат проверки
-	return (
-		(this->_state == state_t::GOOD) ||
-		(this->_state == state_t::BROKEN) ||
-		(this->_state == state_t::HANDSHAKE)
-	);
+bool awh::Http::is(const state_t state) const noexcept {
+	// Определяем запрашиваемое состояние
+	switch(static_cast <uint8_t> (state)){
+		// Если проверяется режим завершения сбора данных
+		case static_cast <uint8_t> (state_t::END):
+			// Выводрим результат проверки
+			return (
+				(this->_state == state_t::GOOD) ||
+				(this->_state == state_t::BROKEN) ||
+				(this->_state == state_t::HANDSHAKE)
+			);
+		// Если проверяется режим удачного выполнения запроса
+		case static_cast <uint8_t> (state_t::GOOD):
+			// Выводрим результат проверки
+			return (this->_state == state_t::GOOD);
+		// Если проверяется режим уставновки постоянного подключения
+		case static_cast <uint8_t> (state_t::ALIVE): {
+			// Запрашиваем заголовок подключения
+			const string & header = this->_web.header("connection");
+			// Если заголовок подключения найден
+			if(!header.empty())
+				// Выполняем проверку является ли соединение закрытым
+				return !this->_fmk->compare(header, "close");
+			// Если заголовок подключения не найден
+			else {
+				// Переходим по всему списку заголовков
+				for(auto & header : this->_web.headers()){
+					// Если заголовок найден
+					if(this->_fmk->compare(header.first, "connection"))
+						// Выполняем проверку является ли соединение закрытым
+						return !this->_fmk->compare(header.second, "close");
+				}
+			}
+		} break;
+		// Если проверяется режим бракованных данных
+		case static_cast <uint8_t> (state_t::BROKEN):
+			// Выводрим результат проверки
+			return (this->_state == state_t::BROKEN);
+		// Если проверяется режим выполненного рукопожатия
+		case static_cast <uint8_t> (state_t::HANDSHAKE):
+			// Выполняем проверку на удачное рукопожатие
+			return (this->_state == state_t::HANDSHAKE);
+	}
+	// Выводим результат
+	return false;
 }
 /**
- * isAlive Метод проверки на постоянное подключение
- * @return результат проверки
+ * is Метод проверки существования заголовка
+ * @param suite тип набора к которому соответствует заголовок
+ * @param key   ключ заголовка для проверки
+ * @return      результат проверки
  */
-bool awh::Http::isAlive() const noexcept {
-	// Результат работы функции
-	bool result = true;
-	// Запрашиваем заголовок подключения
-	const string & header = this->_web.header("connection");
-	// Если заголовок подключения найден
-	if(!header.empty())
-		// Выполняем проверку является ли соединение закрытым
-		result = !this->_fmk->compare(header, "close");
-	// Если заголовок подключения не найден
-	else {
-		// Переходим по всему списку заголовков
-		for(auto & header : this->_web.headers()){
-			// Если заголовок найден
-			if(this->_fmk->compare(header.first, "connection")){
-				// Выполняем проверку является ли соединение закрытым
-				result = !this->_fmk->compare(header.second, "close");
-				// Выходим из цикла
-				break;
-			}
+bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
+	// Если ключ заголовка передан
+	if(!key.empty()){
+		// Определяем запрашиваемый набор к которому принадлежит заголовок
+		switch(static_cast <uint8_t> (suite)){
+			// Если набор соответствует заголовку чёрного списка
+			case static_cast <uint8_t> (suite_t::BLACK):
+				// Выполняем проверку наличия заголовка в чёрном списке
+				return (this->_black.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) != this->_black.end());
+			// Если набор соответствует заголовку сообщения
+			case static_cast <uint8_t> (suite_t::HEADER):
+				// Выводим результат проверки
+				return this->_web.isHeader(key);
 		}
 	}
 	// Выводим результат
-	return result;
+	return false;
 }
 /**
- * isCrypto Метод проверки на зашифрованные данные
- * @return флаг проверки на зашифрованные данные
+ * rm Метод удаления установленных заголовков
+ * @param suite тип набора к которому соответствует заголовок
+ * @param key   ключ заголовка для удаления
  */
-bool awh::Http::isCrypto() const noexcept {
-	// Выводим результат проверки
-	return this->_crypted;
-}
-/**
- * isHandshake Метод проверки рукопожатия (Метод не должен быть виртуальным, так-как он должен быть переопределён в других модулях)
- * @return проверка рукопожатия
- */
-bool awh::Http::isHandshake() noexcept {
-	// Выполняем проверку на удачное рукопожатие
-	return (this->_state == state_t::HANDSHAKE);
-}
-/**
- * isBlack Метод проверки существования заголовка в чёрный списоке
- * @param key ключ заголовка для проверки
- * @return    результат проверки
- */
-bool awh::Http::isBlack(const string & key) const noexcept {
-	// Результат работы функции
-	bool result = false;
+void awh::Http::rm(const suite_t suite, const string & key) const noexcept {
 	// Если ключ заголовка передан
-	if(!key.empty())
-		// Выполняем проверку наличия заголовка в чёрном списке
-		result = (this->_black.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) != this->_black.end());
-	// Выводим результат
-	return result;
-}
-/**
- * isHeader Метод проверки существования заголовка
- * @param key ключ заголовка для проверки
- * @return    результат проверки
- */
-bool awh::Http::isHeader(const string & key) const noexcept {
-	// Выводим результат проверки
-	return this->_web.isHeader(key);
+	if(!key.empty()){
+		// Определяем запрашиваемый набор к которому принадлежит заголовок
+		switch(static_cast <uint8_t> (suite)){
+			// Если набор соответствует заголовку чёрного списка
+			case static_cast <uint8_t> (suite_t::BLACK):
+				// Выполняем удаление заголовка из чёрного списка
+				this->_black.erase(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+			break;
+			// Если набор соответствует заголовку сообщения
+			case static_cast <uint8_t> (suite_t::HEADER):
+				// Выполняем удаление заголовка
+				this->_web.delHeader(key);
+			break;
+		}
+	}
 }
 /**
  * request Метод получения объекта запроса на сервер
@@ -1343,7 +1346,7 @@ const string & awh::Http::message(const u_int code) const noexcept {
  */
 void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	// Выполняем очистку списка заголовков
-	http.clearHeaders();
+	http.clear(suite_t::HEADER);
 	// Устанавливаем идентификатор объекта
 	http.id(this->_web.id());
 	// Устанавливаем размер одного чанка
@@ -1351,7 +1354,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	// Устанавливаем активный стейт объекта
 	http._state = this->_state;
 	// Устанавливаем тип статуса авторизации
-	http._stath = this->_stath;
+	http._status = this->_status;
 	// Устанавливаем флаг шифрования объекта
 	http._crypto = this->_crypto;
 	// Устанавливаем флаг зашифрованной полезной нагрузки
@@ -1431,11 +1434,11 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		// Добавляем в чёрный список заголовок Accept
-		const_cast <http_t *> (this)->addBlack("Accept");
+		const_cast <http_t *> (this)->black("Accept");
 		// Добавляем в чёрный список заголовок Accept-Language
-		const_cast <http_t *> (this)->addBlack("Accept-Language");
+		const_cast <http_t *> (this)->black("Accept-Language");
 		// Добавляем в чёрный список заголовок Accept-Encoding
-		const_cast <http_t *> (this)->addBlack("Accept-Encoding");
+		const_cast <http_t *> (this)->black("Accept-Encoding");
 		// Если заголовок подключения ещё не существует
 		if(!this->_web.isHeader("connection"))
 			// Добавляем поддержку постоянного подключения
@@ -1463,11 +1466,11 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		// Добавляем в чёрный список заголовок Accept
-		const_cast <http_t *> (this)->addBlack("Accept");
+		const_cast <http_t *> (this)->black("Accept");
 		// Добавляем в чёрный список заголовок Accept-Language
-		const_cast <http_t *> (this)->addBlack("Accept-Language");
+		const_cast <http_t *> (this)->black("Accept-Language");
 		// Добавляем в чёрный список заголовок Accept-Encoding
-		const_cast <http_t *> (this)->addBlack("Accept-Encoding");
+		const_cast <http_t *> (this)->black("Accept-Encoding");
 		// Устанавливаем параметры REST-запроса
 		this->_auth.client.uri(this->_uri.url(req.url));
 		// Устанавливаем парарметр запроса
@@ -1512,7 +1515,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 					res.code, res.message.c_str(), res.code, res.message.c_str()
 				);
 				// Выполняем очистку тела сообщения
-				this->clearBody();
+				const_cast <http_t *> (this)->clear(suite_t::BODY);
 				// Добавляем тело сообщения
 				const_cast <http_t *> (this)->body(vector <char> (body.begin(), body.end()));
 			}
@@ -1561,7 +1564,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 					res.code, res.message.c_str(), res.code, res.message.c_str()
 				);
 				// Выполняем очистку тела сообщения
-				this->clearBody();
+				const_cast <http_t *> (this)->clear(suite_t::BODY);
 				// Добавляем тело сообщения
 				const_cast <http_t *> (this)->body(vector <char> (body.begin(), body.end()));
 			}
@@ -1672,7 +1675,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Флаг разрешающий вывода заголовка
-							bool allow = !this->isBlack(header.first);
+							bool allow = !this->is(suite_t::BLACK, header.first);
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 13; i++){
 								// Если заголовок уже найден пропускаем его
@@ -1716,23 +1719,23 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
 						}
 						// Устанавливаем Host если не передан
-						if(!available[0] && !this->isBlack("Host"))
+						if(!available[0] && !this->is(suite_t::BLACK, "Host"))
 							// Добавляем заголовок в запрос
 							request.append(this->_fmk->format("Host: %s\r\n", req.url.host.c_str()));
 						// Устанавливаем Accept если не передан
-						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept"))
+						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept"))
 							// Добавляем заголовок в запрос
 							request.append(this->_fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
 						// Устанавливаем Connection если не передан
-						if(!available[4] && !this->isBlack("Connection"))
+						if(!available[4] && !this->is(suite_t::BLACK, "Connection"))
 							// Добавляем заголовок в запрос
 							request.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						// Устанавливаем Accept-Language если не передан
-						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Language"))
+						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept-Language"))
 							// Добавляем заголовок в запрос
 							request.append(this->_fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
 						// Если нужно запросить компрессию в удобном нам виде
-						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
+						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept-Encoding")){
 							// Определяем метод сжатия который поддерживает клиент
 							switch(static_cast <uint8_t> (this->_compress)){
 								// Если клиент поддерживает методот сжатия BROTLI
@@ -1773,7 +1776,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							}
 						}
 						// Устанавливаем User-Agent если не передан
-						if(!available[3] && !this->isBlack("User-Agent")){
+						if(!available[3] && !this->is(suite_t::BLACK, "User-Agent")){
 							// Если User-Agent установлен стандартный
 							if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
 								// Название операционной системы
@@ -1830,7 +1833,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если протокол принадлежит прокси-серверу
 								case static_cast <uint8_t> (identity_t::PROXY): {
 									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->isBlack("Proxy-Authorization")){
+									if(!this->is(suite_t::BLACK, "Proxy-Authorization")){
 										// Получаем параметры авторизации
 										const string & auth = this->_auth.client.auth(method);
 										// Если данные авторизации получены
@@ -1842,7 +1845,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если протокол принадлежит к остальным сервисам
 								default: {
 									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->isBlack("Authorization")){
+									if(!this->is(suite_t::BLACK, "Authorization")){
 										// Получаем параметры авторизации
 										const string & auth = this->_auth.client.auth(method);
 										// Если данные авторизации получены
@@ -1856,7 +1859,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Если запрос является PUT, POST, PATCH
 						if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 							// Если заголовок не запрещён
-							if(!this->isBlack("Date"))
+							if(!this->is(suite_t::BLACK, "Date"))
 								// Добавляем заголовок даты в запрос
 								request.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 							// Если тело запроса существует
@@ -1898,11 +1901,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->isBlack("X-AWH-Encryption"))
+								if(this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
-								if(!this->isBlack("Content-Encoding")){
+								if(!this->is(suite_t::BLACK, "Content-Encoding")){
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
@@ -1924,21 +1927,21 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								}
 							}
 							// Если данные необходимо разбивать на чанки
-							if(this->_chunking && !this->isBlack("Transfer-Encoding"))
+							if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
 								// Устанавливаем заголовок Transfer-Encoding
 								request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->isBlack("Content-Length") && ((length > 0) || this->isHeader("Content-Length")))
+							else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 								// Устанавливаем размер передаваемого тела Content-Length
 								request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Если запрос не содержит тела запроса
 						} else {
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
-							if((this->_chunking = (this->_crypto && !this->isBlack("X-AWH-Encryption"))))
+							if((this->_chunking = (this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
 								// Устанавливаем X-AWH-Encryption
 								request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
-							if(available[9] && !this->isBlack("Content-Encoding")){
+							if(available[9] && !this->is(suite_t::BLACK, "Content-Encoding")){
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compress)){
 									// Если полезная нагрузка сжата методом BROTLI
@@ -1961,7 +1964,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								this->_chunking = (this->_compress != compress_t::NONE);
 							}
 							// Очищаем тела сообщения
-							this->clearBody();
+							const_cast <http_t *> (this)->clear(suite_t::BODY);
 						}
 					} break;
 					// Если мы работаем с сервером
@@ -2025,7 +2028,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Флаг разрешающий вывода заголовка
-							bool allow = !this->isBlack(header.first);
+							bool allow = !this->is(suite_t::BLACK, header.first);
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 12; i++){
 								// Если заголовок уже найден пропускаем его
@@ -2067,23 +2070,23 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								response.append(this->_fmk->format("%s: %s\r\n", this->_fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(), header.second.c_str()));
 						}
 						// Если заголовок не запрещён
-						if(!available[0] && !this->isBlack("Date"))
+						if(!available[0] && !this->is(suite_t::BLACK, "Date"))
 							// Добавляем заголовок даты в ответ
 							response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 						// Если заголовок не запрещён
-						if(!available[1] && !this->isBlack("Server"))
+						if(!available[1] && !this->is(suite_t::BLACK, "Server"))
 							// Добавляем название сервера в ответ
 							response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
 						// Устанавливаем Connection если не передан
-						if(!available[2] && !this->isBlack("Connection"))
+						if(!available[2] && !this->is(suite_t::BLACK, "Connection"))
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						// Устанавливаем Content-Type если не передан
-						if(!available[5] && !this->isBlack("Content-Type"))
+						if(!available[5] && !this->is(suite_t::BLACK, "Content-Type"))
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 						// Если заголовок не запрещён
-						if(!available[4] && !this->isBlack("X-Powered-By"))
+						if(!available[4] && !this->is(suite_t::BLACK, "X-Powered-By"))
 							// Добавляем название рабочей системы в ответ
 							response.append(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_ident.id.c_str(), this->_ident.version.c_str()));
 						// Если заголовок авторизации не передан
@@ -2097,14 +2100,14 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Если авторизация производится для Web-Сервера
 									case 401: {
 										// Если заголовок не запрещён
-										if(!this->isBlack("WWW-Authenticate"))
+										if(!this->is(suite_t::BLACK, "WWW-Authenticate"))
 											// Добавляем параметры авторизации
 											response.append(this->_fmk->format("WWW-Authenticate: %s\r\n", auth.c_str()));
 									} break;
 									// Если авторизация производится для Прокси-Сервера
 									case 407: {
 										// Если заголовок не запрещён
-										if(!this->isBlack("Proxy-Authenticate"))
+										if(!this->is(suite_t::BLACK, "Proxy-Authenticate"))
 											// Добавляем параметры авторизации
 											response.append(this->_fmk->format("Proxy-Authenticate: %s\r\n", auth.c_str()));
 									} break;
@@ -2152,11 +2155,11 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->isBlack("X-AWH-Encryption"))
+								if(this->_crypto && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
 									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
-								if(!this->isBlack("Content-Encoding")){
+								if(!this->is(suite_t::BLACK, "Content-Encoding")){
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
@@ -2178,15 +2181,15 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								}
 							}
 							// Если данные необходимо разбивать на чанки
-							if(this->_chunking && !this->isBlack("Transfer-Encoding"))
+							if(this->_chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
 								// Устанавливаем заголовок Transfer-Encoding
 								response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 							// Если заголовок размера передаваемого тела, не запрещён
-							else if(!this->isBlack("Content-Length") && ((length > 0) || this->isHeader("Content-Length")))
+							else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 								// Устанавливаем размер передаваемого тела Content-Length
 								response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
 						// Очищаем тела сообщения
-						} else this->clearBody();
+						} else const_cast <http_t *> (this)->clear(suite_t::BODY);
 					} break;
 				}
 				// Устанавливаем завершающий разделитель
@@ -2312,7 +2315,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если заголовок не является системным
 							if(header.first.front() != ':'){
 								// Флаг разрешающий вывода заголовка
-								bool allow = !this->isBlack(header.first);
+								bool allow = !this->is(suite_t::BLACK, header.first);
 								// Выполняем перебор всех обязательных заголовков
 								for(uint8_t i = 0; i < 13; i++){
 									// Если заголовок уже найден пропускаем его
@@ -2355,15 +2358,15 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							}
 						}
 						// Устанавливаем Accept если не передан
-						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
+						if(!available[1] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "accept"))
 							// Добавляем заголовок в запрос
 							result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
 						// Устанавливаем Accept-Language если не передан
-						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-language"))
+						if(!available[7] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "accept-language"))
 							// Добавляем заголовок в запрос
 							result.push_back(make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
 						// Если нужно запросить компрессию в удобном нам виде
-						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->isBlack("accept-encoding")){
+						if(!available[8] && (this->_compress != compress_t::NONE) && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "accept-encoding")){
 							// Определяем метод сжатия который поддерживает клиент
 							switch(static_cast <uint8_t> (this->_compress)){
 								// Если клиент поддерживает методот сжатия BROTLI
@@ -2404,7 +2407,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							}
 						}
 						// Устанавливаем User-Agent если не передан
-						if(!available[3] && !this->isBlack("user-agent")){
+						if(!available[3] && !this->is(suite_t::BLACK, "user-agent")){
 							// Если User-Agent установлен стандартный
 							if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
 								// Название операционной системы
@@ -2461,7 +2464,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если протокол принадлежит прокси-серверу
 								case static_cast <uint8_t> (identity_t::PROXY): {
 									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->isBlack("proxy-authorization")){
+									if(!this->is(suite_t::BLACK, "proxy-authorization")){
 										// Получаем параметры авторизации
 										const string & auth = this->_auth.client.auth(method);
 										// Если данные авторизации получены
@@ -2473,7 +2476,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если протокол принадлежит к остальным сервисам
 								default: {
 									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->isBlack("authorization")){
+									if(!this->is(suite_t::BLACK, "authorization")){
 										// Получаем параметры авторизации
 										const string & auth = this->_auth.client.auth(method);
 										// Если данные авторизации получены
@@ -2487,7 +2490,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Если запрос является PUT, POST, PATCH
 						if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 							// Если заголовок не запрещён
-							if(!this->isBlack("date"))
+							if(!this->is(suite_t::BLACK, "date"))
 								// Добавляем заголовок даты в запрос
 								result.push_back(make_pair("date", this->date()));
 							// Если тело запроса существует
@@ -2525,11 +2528,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->isBlack("x-awh-encryption"))
+								if(this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
-								if(!this->isBlack("content-encoding")){
+								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
@@ -2553,11 +2556,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Если запрос не содержит тела запроса
 						} else {
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
-							if((this->_chunking = (this->_crypto && !this->isBlack("x-awh-encryption"))))
+							if((this->_chunking = (this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 								// Устанавливаем X-AWH-Encryption
 								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
-							if(available[9] && !this->isBlack("content-encoding")){
+							if(available[9] && !this->is(suite_t::BLACK, "content-encoding")){
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compress)){
 									// Если полезная нагрузка сжата методом BROTLI
@@ -2580,7 +2583,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								this->_chunking = (this->_compress != compress_t::NONE);
 							}
 							// Очищаем тела сообщения
-							this->clearBody();
+							const_cast <http_t *> (this)->clear(suite_t::BODY);
 						}
 					} break;
 					// Если мы работаем с сервером
@@ -2641,7 +2644,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Флаг разрешающий вывода заголовка
-							bool allow = !this->isBlack(header.first);
+							bool allow = !this->is(suite_t::BLACK, header.first);
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 12; i++){
 								// Если заголовок уже найден пропускаем его
@@ -2680,19 +2683,19 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
 						// Если заголовок не запрещён
-						if(!available[0] && !this->isBlack("date"))
+						if(!available[0] && !this->is(suite_t::BLACK, "date"))
 							// Добавляем заголовок даты в ответ
 							result.push_back(make_pair("date", this->date()));
 						// Если заголовок не запрещён
-						if(!available[1] && !this->isBlack("server"))
+						if(!available[1] && !this->is(suite_t::BLACK, "server"))
 							// Добавляем название сервера в ответ
 							result.push_back(make_pair("server", this->_ident.name));
 						// Устанавливаем Content-Type если не передан
-						if(!available[5] && !this->isBlack("content-type"))
+						if(!available[5] && !this->is(suite_t::BLACK, "content-type"))
 							// Добавляем заголовок в ответ
 							result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 						// Если заголовок не запрещён
-						if(!available[4] && !this->isBlack("x-powered-by"))
+						if(!available[4] && !this->is(suite_t::BLACK, "x-powered-by"))
 							// Добавляем название рабочей системы в ответ
 							result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
 						// Если заголовок авторизации не передан
@@ -2706,14 +2709,14 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если авторизация производится для Web-Сервера
 									case 401: {
 										// Если заголовок не запрещён
-										if(!this->isBlack("www-authenticate"))
+										if(!this->is(suite_t::BLACK, "www-authenticate"))
 											// Добавляем параметры авторизации
 											result.push_back(make_pair("www-authenticate", auth));
 									} break;
 									// Если авторизация производится для Прокси-Сервера
 									case 407: {
 										// Если заголовок не запрещён
-										if(!this->isBlack("proxy-authenticate"))
+										if(!this->is(suite_t::BLACK, "proxy-authenticate"))
 											// Добавляем параметры авторизации
 											result.push_back(make_pair("proxy-authenticate", auth));
 									} break;
@@ -2757,11 +2760,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_chunking = (this->_crypto || (this->_compress != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if(this->_crypto && !this->isBlack("x-awh-encryption"))
+								if(this->_crypto && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
-								if(!this->isBlack("content-encoding")){
+								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compress)){
 										// Если полезная нагрузка сжата методом BROTLI
@@ -2783,7 +2786,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								}
 							}
 						// Очищаем тела сообщения
-						} else this->clearBody();
+						} else const_cast <http_t *> (this)->clear(suite_t::BODY);
 					} break;
 				}
 			}
@@ -2931,6 +2934,14 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		this->_ident.version = ver;
 }
 /**
+ * crypto Метод проверки на зашифрованные данные
+ * @return флаг проверки на зашифрованные данные
+ */
+bool awh::Http::crypto() const noexcept {
+	// Выводим результат проверки
+	return this->_crypted;
+}
+/**
  * crypto Метод активации шифрования
  * @param mode флаг активации шифрования
  */
@@ -2961,7 +2972,7 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
  * @param log объект для работы с логами
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _stath(stath_t::NONE), _state(state_t::NONE), _identity(identity_t::NONE),
+ _uri(fmk), _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log),
  _crypto(false), _crypted(false), _chunking(false), _chunk(BUFFER_CHUNK),
  _inflated(compress_t::NONE), _compress(compress_t::NONE),

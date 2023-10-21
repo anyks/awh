@@ -383,10 +383,10 @@ namespace awh {
 			void body(const vector <char> & body) noexcept;
 		public:
 			/**
-			 * rmHeader Метод удаления заголовка
+			 * delHeader Метод удаления заголовка
 			 * @param key ключ заголовка
 			 */
-			void rmHeader(const string & key) noexcept;
+			void delHeader(const string & key) noexcept;
 			/**
 			 * header Метод получения данных заголовка
 			 * @param key ключ заголовка

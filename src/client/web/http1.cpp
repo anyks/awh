@@ -127,7 +127,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 							// Выполняем парсинг полученных данных
 							size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
 							// Если все данные получены
-							if((completed = this->_http.isEnd())){
+							if((completed = this->_http.is(http_t::state_t::END))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -290,11 +290,11 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					default: return result;
 				}
 				// Если адрес для выполнения переадресации указан
-				if((result = this->_http.isHeader("location"))){
+				if((result = this->_http.is(http_t::suite_t::HEADER, "location"))){
 					// Выполняем очистку оставшихся данных
 					this->_buffer.clear();
 					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_http.getUrl();
+					const uri_t::url_t & url = this->_http.url();
 					// Если адрес запроса получен
 					if((result = !url.empty())){
 						// Увеличиваем количество попыток
@@ -349,11 +349,11 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					default: return result;
 				}
 				// Если адрес для выполнения переадресации указан
-				if((result = this->_ws1._http.isHeader("location"))){
+				if((result = this->_ws1._http.is(http_t::suite_t::HEADER, "location"))){
 					// Выполняем очистку оставшихся данных
 					this->_ws1._buffer.clear();
 					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_ws1._http.getUrl();
+					const uri_t::url_t & url = this->_ws1._http.url();
 					// Если адрес запроса получен
 					if((result = !url.empty())){
 						// Получаем количество попыток
@@ -472,20 +472,20 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 	// Получаем параметры ответа сервера
 	const auto & response = this->_http.response();
 	// Получаем статус ответа
-	awh::http_t::stath_t status = this->_http.getAuth();
+	awh::http_t::status_t status = this->_http.auth();
 	// Если выполнять редиректы запрещено
-	if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+	if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
 		// Если нужно произвести запрос заново
 		if((response.code == 201) || (response.code == 301) ||
 		   (response.code == 302) || (response.code == 303) ||
 		   (response.code == 307) || (response.code == 308))
 				// Запрещаем выполнять редирект
-				status = awh::http_t::stath_t::GOOD;
+				status = awh::http_t::status_t::GOOD;
 	}
 	// Выполняем анализ результата авторизации
 	switch(static_cast <uint8_t> (status)){
 		// Если нужно попытаться ещё раз
-		case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if((response.code == 401) && this->_callback.is("error"))
 				// Выводим функцию обратного вызова
@@ -497,7 +497,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если параметры активного запроса найдены
 				if(it != this->_requests.end()){
 					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_http.getUrl();
+					const uri_t::url_t & url = this->_http.url();
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
@@ -506,7 +506,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							(this->_fmk->compare(url.schema, it->second.url.schema))
 						);
 						// Если соединение является постоянным
-						if(schema && this->_http.isAlive()){
+						if(schema && this->_http.is(http_t::state_t::ALIVE)){
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Увеличиваем количество попыток
@@ -525,7 +525,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 					// Если URL-адрес запроса не получен
 					} else {
 						// Если соединение является постоянным
-						if(this->_http.isAlive()){
+						if(this->_http.is(http_t::state_t::ALIVE)){
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Увеличиваем количество попыток
@@ -552,7 +552,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			}
 		} break;
 		// Если запрос выполнен удачно
-		case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 			// Выполняем сброс количества попыток
 			this->_attempt = 0;
 			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -573,7 +573,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Выполняем функцию обратного вызова
 				this->_callback.call <const int32_t, const agent_t> ("handshake", sid, agent_t::HTTP);
 			// Устанавливаем размер стопбайт
-			if(!this->_http.isAlive()){
+			if(!this->_http.is(http_t::state_t::ALIVE)){
 				// Выполняем очистку оставшихся данных
 				this->_buffer.clear();
 				// Завершаем работу
@@ -585,7 +585,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			return status_t::NEXT;
 		} break;
 		// Если запрос неудачный
-		case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
+		case static_cast <uint8_t> (awh::http_t::status_t::FAULT): {
 			// Устанавливаем флаг принудительной остановки
 			this->_stopped = true;
 			// Если функция обратного вызова на на вывод ошибок установлена
@@ -680,7 +680,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			// Если метод CONNECT запрещён для прокси-сервера
 			if(!this->_proxy.connect){
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
-				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
 				if(!header.empty())
 					// Выполняем установки заголовка авторизации на прокси-сервере
@@ -848,7 +848,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 			// Тело WEB сообщения
 			vector <char> entity;
 			// Выполняем сброс данных тела
-			this->_http.clearBody();
+			this->_http.clear(http_t::suite_t::BODY);
 			// Устанавливаем тело запроса
 			this->_http.body(vector <char> (buffer, buffer + size));
 			// Получаем данные тела запроса
@@ -898,7 +898,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 			// Если метод CONNECT запрещён для прокси-сервера
 			if(!this->_proxy.connect){
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
-				const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
 				if(!header.empty())
 					// Выполняем установки заголовка авторизации на прокси-сервере

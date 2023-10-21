@@ -20,13 +20,13 @@
  */
 void awh::server::WS::commit() noexcept {
 	// Если данные ещё не зафиксированы
-	if(this->_stath == stath_t::NONE){
+	if(this->_status == status_t::NONE){
 		// Сбрасываем флаг шифрования
 		this->_crypto = false;
 		// Выполняем проверку авторизации
-		this->_stath = this->checkAuth();
+		this->_status = this->status();
 		// Если ключ соответствует
-		if(this->_stath == stath_t::GOOD)
+		if(this->_status == status_t::GOOD)
 			// Устанавливаем стейт рукопожатия
 			this->_state = state_t::GOOD;
 		// Поменяем данные как бракованные
@@ -122,48 +122,12 @@ void awh::server::WS::commit() noexcept {
 	}
 }
 /**
- * checkKey Метод проверки ключа сервера
- * @return результат проверки
+ * status Метод проверки текущего статуса
+ * @return результат проверки текущего статуса
  */
-bool awh::server::WS::checkKey() noexcept {
+awh::Http::status_t awh::server::WS::status() noexcept {
 	// Результат работы функции
-	bool result = false;
-	// Получаем параметры ключа клиента
-	const string & key = this->_web.header("sec-websocket-key");
-	// Если параметры авторизации найдены
-	if((result = !key.empty()))
-		// Устанавливаем ключ клиента
-		this->_key = key;
-	// Выводим результат
-	return result;
-}
-/**
- * checkVer Метод проверки на версию протокола
- * @return результат проверки соответствия
- */
-bool awh::server::WS::checkVer() noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Переходим по всему списку заголовков
-	for(auto & header : this->_web.headers()){
-		// Если заголовок найден
-		if(this->_fmk->compare(header.first, "sec-websocket-version")){
-			// Проверяем, совпадает ли желаемая версия протокола
-			result = (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
-			// Если версия протокола совпадает, выходим
-			if(result) break;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * checkAuth Метод проверки авторизации
- * @return результат проверки авторизации
- */
-awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
-	// Результат работы функции
-	http_t::stath_t result = http_t::stath_t::FAULT;
+	http_t::status_t result = http_t::status_t::FAULT;
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
@@ -190,12 +154,45 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 			// Выполняем проверку авторизации
 			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
-				result = http_t::stath_t::GOOD;
+				result = http_t::status_t::GOOD;
 		}
 	// Сообщаем, что авторизация прошла успешно
-	} else result = http_t::stath_t::GOOD;
+	} else result = http_t::status_t::GOOD;
 	// Выводим результат
 	return result;
+}
+/**
+ * check Метод проверки шагов рукопожатия
+ * @param flag флаг выполнения проверки
+ * @return     результат проверки соответствия
+ */
+bool awh::server::WS::check(const flag_t flag) noexcept {
+	// Определяем флаг выполнения проверки
+	switch(static_cast <uint8_t> (flag)){
+		// Если требуется выполнить проверку соответствие ключа
+		case static_cast <uint8_t> (flag_t::KEY): {
+			// Получаем параметры ключа клиента
+			this->_key = this->_web.header("sec-websocket-key");
+			// Выводим результат
+			return !this->_key.empty();
+		}
+		// Если требуется выполнить проверку версию протокола
+		case static_cast <uint8_t> (flag_t::VERSION): {
+			// Переходим по всему списку заголовков
+			for(auto & header : this->_web.headers()){
+				// Если заголовок найден
+				if(this->_fmk->compare(header.first, "sec-websocket-version"))
+					// Проверяем, совпадает ли желаемая версия протокола
+					return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
+			}
+		} break;
+		// Если требуется выполнить проверки на переключение протокола
+		case static_cast <uint8_t> (flag_t::UPGRADE):
+			// Выполняем проверку переключения протокола
+			return ws_core_t::check(flag);
+	}
+	// Выводим результат
+	return false;
 }
 /**
  * realm Метод установки название сервера
@@ -241,4 +238,15 @@ void awh::server::WS::authCallback(function <bool (const string &, const string 
 void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
 	this->_auth.server.type(type, hash);
+}
+/**
+ * WS Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
+	// Выполняем установку идентичность клиента к протоколу WebSocket
+	this->_identity = identity_t::WS;
+	// Устанавливаем тип HTTP-модуля (Сервер)
+	this->_web.hid(awh::web_t::hid_t::SERVER);
 }

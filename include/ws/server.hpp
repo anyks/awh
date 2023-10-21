@@ -43,20 +43,17 @@ namespace awh {
 				void commit() noexcept;
 			public:
 				/**
-				 * checkKey Метод проверки ключа сервера
-				 * @return результат проверки
+				 * status Метод проверки текущего статуса
+				 * @return результат проверки текущего статуса
 				 */
-				bool checkKey() noexcept;
+				status_t status() noexcept;
+			public:
 				/**
-				 * checkVer Метод проверки на версию протокола
-				 * @return результат проверки соответствия
+				 * check Метод проверки шагов рукопожатия
+				 * @param flag флаг выполнения проверки
+				 * @return     результат проверки соответствия
 				 */
-				bool checkVer() noexcept;
-				/**
-				 * checkAuth Метод проверки авторизации
-				 * @return результат проверки авторизации
-				 */
-				stath_t checkAuth() noexcept;
+				bool check(const flag_t flag) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -92,12 +89,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
-					// Выполняем установку идентичность клиента к протоколу WebSocket
-					this->_identity = identity_t::WS;
-					// Устанавливаем тип HTTP-модуля (Сервер)
-					this->_web.hid(awh::web_t::hid_t::SERVER);
-				}
+				WS(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~WS Деструктор
 				 */

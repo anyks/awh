@@ -499,7 +499,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								// Выводим функцию обратного вызова
 								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
 							// Если рукопожатие не выполнено
-							if(!reinterpret_cast <http_t &> (options->http).isHandshake()){
+							if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 								// Ответ клиенту по умолчанию успешный
 								awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
 								/**
@@ -518,13 +518,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									}
 								#endif
 								// Выполняем проверку авторизации
-								switch(static_cast <uint8_t> (options->http.getAuth())){
+								switch(static_cast <uint8_t> (options->http.auth())){
 									// Если запрос выполнен удачно
-									case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+									case static_cast <uint8_t> (http_t::status_t::GOOD): {
 										// Если рукопожатие выполнено
-										if((options->shake = options->http.isHandshake(http_t::process_t::REQUEST))){
+										if((options->shake = options->http.handshake(http_t::process_t::REQUEST))){
 											// Проверяем версию протокола
-											if(!options->http.checkVer()){
+											if(!options->http.check(ws_core_t::flag_t::VERSION)){
 												// Получаем бинарные данные REST запроса
 												response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
 												// Завершаем работу
@@ -533,7 +533,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Выполняем сброс состояния HTTP-парсера
 											options->http.clear();
 											// Получаем флаг шифрованных данных
-											options->crypto = options->http.isCrypto();
+											options->crypto = options->http.crypto();
 											// Если клиент согласился на шифрование данных
 											if(this->_crypto.mode){
 												// Устанавливаем флаг шифрования
@@ -623,7 +623,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
 									} break;
 									// Если запрос неудачный
-									case static_cast <uint8_t> (http_t::stath_t::FAULT):
+									case static_cast <uint8_t> (http_t::status_t::FAULT):
 										// Формируем ответ на запрос об авторизации
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
 									break;
@@ -1301,7 +1301,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 			// Если переключение протокола на HTTP/2 выполнено
 			else {
 				// Если рукопожатие выполнено
-				if(options->http.isHandshake(http_t::process_t::REQUEST)){
+				if(options->http.handshake(http_t::process_t::REQUEST)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2014,6 +2014,50 @@ void awh::server::WebSocket2::authType(const auth_t::type_t type, const auth_t::
 	this->_ws1.authType(type, hash);
 }
 /**
+ * crypto Метод получения флага шифрования
+ * @param bid идентификатор брокера
+ * @return    результат проверки
+ */
+bool awh::server::WebSocket2::crypto(const uint64_t bid) const noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если переключение протокола на HTTP/2 не выполнено
+			if(options->proto != engine_t::proto_t::HTTP2)
+				// Выводим установленный флаг шифрования клиента WebSocket
+				return this->_ws1.crypto(bid);
+			// Выводим установленный флаг шифрования
+			return options->crypto;
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid  идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::WebSocket2::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если переключение протокола на HTTP/2 не выполнено
+			if(options->proto != engine_t::proto_t::HTTP2)
+				// Устанавливаем флаг шифрования для клиента WebSocket
+				this->_ws1.crypto(bid, mode);
+			// Устанавливаем флаг шифрования для клиента
+			else options->crypto = mode;
+		}
+	}
+}
+/**
  * crypto Метод активации шифрования
  * @param mode флаг активации шифрования
  */
@@ -2022,24 +2066,6 @@ void awh::server::WebSocket2::crypto(const bool mode) noexcept {
 	web2_t::crypto(mode);
 	// Устанавливаем флага шифрования для WebSocket-сервера
 	this->_ws1.crypto(mode);
-}
-/**
- * crypto Метод активации шифрования для клиента
- * @param bid   идентификатор брокера
- * @param mode флаг активации шифрования
- */
-void awh::server::WebSocket2::crypto(const uint64_t bid, const bool mode) noexcept {
-	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Если переключение протокола на HTTP/2 не выполнено
-		if(options->proto != engine_t::proto_t::HTTP2)
-			// Устанавливаем флаг шифрования для клиента WebSocket
-			this->_ws1.crypto(bid, mode);
-		// Устанавливаем флаг шифрования для клиента
-		else options->crypto = mode;
-	}
 }
 /**
  * crypto Метод установки параметров шифрования

@@ -673,7 +673,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 		// Выполняем сброс количества выполненных запросов
 		} else options->requests = 0;
 		// Получаем флаг шифрованных данных
-		options->crypto = options->http.isCrypto();
+		options->crypto = options->http.crypto();
 		// Получаем поддерживаемый метод компрессии
 		options->compress = options->http.compress();
 		/**
@@ -698,9 +698,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 			}
 		#endif
 		// Выполняем проверку авторизации
-		switch(static_cast <uint8_t> (options->http.getAuth())){
+		switch(static_cast <uint8_t> (options->http.auth())){
 			// Если запрос выполнен удачно
-			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+			case static_cast <uint8_t> (http_t::status_t::GOOD): {
 				// Если заголовок WebSocket активирован
 				if(options->http.identity() == awh::http_t::identity_t::WS){
 					// Если запрашиваемый протокол соответствует WebSocket
@@ -788,7 +788,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
 			} break;
 			// Если запрос неудачный
-			case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+			case static_cast <uint8_t> (http_t::status_t::FAULT): {
 				// Выполняем сброс состояния HTTP парсера
 				options->http.clear();
 				// Выполняем сброс состояния HTTP парсера
@@ -941,16 +941,16 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 				// Ответ клиенту по умолчанию успешный
 				awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
 				// Если рукопожатие выполнено
-				if((options->shake = options->http.isHandshake(http_t::process_t::REQUEST))){
+				if((options->shake = options->http.handshake(http_t::process_t::REQUEST))){
 					// Проверяем версию протокола
-					if(!options->http.checkVer()){
+					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST запроса
 						response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
 						// Завершаем работу
 						goto End;
 					}
 					// Получаем флаг шифрованных данных
-					options->crypto = options->http.isCrypto();
+					options->crypto = options->http.crypto();
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Если клиент согласился на шифрование данных
@@ -1504,7 +1504,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 								// Тело WEB сообщения
 								vector <char> entity;
 								// Выполняем сброс данных тела
-								options->http.clearBody();
+								options->http.clear(http_t::suite_t::BODY);
 								// Устанавливаем тело запроса
 								options->http.body(vector <char> (buffer, buffer + size));
 								// Получаем данные тела запроса
@@ -2491,6 +2491,117 @@ void awh::server::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 	this->_http1.authType(type, hash);
 }
 /**
+ * crypto Метод получения флага шифрования
+ * @param bid идентификатор брокера
+ * @return    результат проверки
+ */
+bool awh::server::Http2::crypto(const uint64_t bid) const noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выводим установленный флаг шифрования
+								return this->_http1.crypto(bid);
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выводим установленный флаг шифрования
+								return options->crypto;
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выводим установленный флаг шифрования
+								return this->_ws2.crypto(bid);
+						}
+					}
+				} break;
+			}
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid  идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http2::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Устанавливаем флаг шифрования для клиента
+								this->_http1.crypto(bid, mode);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Устанавливаем флаг шифрования для клиента
+								options->crypto = mode;
+								// Устанавливаем флаг шифрования
+								options->http.crypto(options->crypto);
+							} break;
+							// Если протокол соответствует протоколу WebSocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Устанавливаем флаг шифрования для клиента
+								this->_ws2.crypto(bid, mode);
+							break;
+						}
+					}
+				} break;
+			}
+		}
+	}
+}
+/**
  * crypto Метод активации шифрования
  * @param mode флаг активации шифрования
  */
@@ -2501,60 +2612,6 @@ void awh::server::Http2::crypto(const bool mode) noexcept {
 	this->_ws2.crypto(mode);
 	// Устанавливаем флага шифрования для HTTP-сервера
 	this->_http1.crypto(mode);
-}
-/**
- * crypto Метод активации шифрования для клиента
- * @param bid   идентификатор брокера
- * @param mode флаг активации шифрования
- */
-void awh::server::Http2::crypto(const uint64_t bid, const bool mode) noexcept {
-	// Получаем параметры активного клиента
-	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Определяем протокола подключения
-		switch(static_cast <uint8_t> (options->proto)){
-			// Если протокол подключения соответствует HTTP/1.1
-			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
-				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
-				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end()){
-					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
-						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP):
-							// Устанавливаем флаг шифрования для клиента
-							this->_http1.crypto(bid, mode);
-						break;
-					}
-				}
-			} break;
-			// Если протокол подключения соответствует HTTP/2
-			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
-				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
-					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
-						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP): {
-							// Устанавливаем флаг шифрования для клиента
-							options->crypto = mode;
-							// Устанавливаем флаг шифрования
-							options->http.crypto(options->crypto);
-						} break;
-						// Если протокол соответствует протоколу WebSocket
-						case static_cast <uint8_t> (agent_t::WEBSOCKET):
-							// Устанавливаем флаг шифрования для клиента
-							this->_ws2.crypto(bid, mode);
-						break;
-					}
-				}
-			} break;
-		}
-	}
 }
 /**
  * crypto Метод установки параметров шифрования

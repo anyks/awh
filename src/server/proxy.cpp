@@ -74,7 +74,9 @@ void awh::server::Proxy::persistCallback(const size_t bid, const size_t sid, awh
 		// Если параметры активного клиента получены
 		if((options != nullptr) && ((options->method != web_t::method_t::CONNECT) || options->close) && ((!options->alive && !this->_alive) || options->close)){
 			// Если брокер давно должен был быть отключён, отключаем его
-			if(options->close || !options->srv.isAlive()) reinterpret_cast <server::core_t *> (core)->close(bid);
+			if(options->close || !options->srv.is(http_t::state_t::ALIVE))
+				// Выполняем закрытие подключение клиента
+				reinterpret_cast <server::core_t *> (core)->close(bid);
 			// Иначе проверяем прошедшее время
 			else {
 				// Получаем текущий штамп времени
@@ -329,7 +331,7 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 						// Выполняем парсинг полученных данных
 						size_t bytes = options->cli.parse(options->client.data(), options->client.size());
 						// Если все данные получены
-						if(options->cli.isEnd()){
+						if(options->cli.is(http_t::state_t::END)){
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
 								/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -474,7 +476,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 				// Выполняем парсинг полученных данных
 				size_t bytes = options->srv.parse(options->server.data(), options->server.size());
 				// Если все данные получены
-				if(options->srv.isEnd()){
+				if(options->srv.is(http_t::state_t::END)){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
@@ -506,11 +508,11 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 					// Выполняем сброс количества выполненных запросов
 					} else options->requests = 0;
 					// Выполняем проверку авторизации
-					switch(static_cast <uint8_t> (options->srv.getAuth())){
+					switch(static_cast <uint8_t> (options->srv.auth())){
 						// Если запрос выполнен удачно
-						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+						case static_cast <uint8_t> (http_t::status_t::GOOD): {
 							// Получаем флаг шифрованных данных
-							options->crypt = options->srv.isCrypto();
+							options->crypt = options->srv.crypto();
 							// Получаем поддерживаемый метод компрессии
 							options->compress = options->srv.compress();
 							// Если подключение не выполнено
@@ -561,7 +563,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 							// Если подключение выполнено
 							} else {
 								// Выполняем удаление заголовка авторизации на прокси-сервере
-								options->srv.rmHeader("proxy-authorization");
+								options->srv.rm(http_t::suite_t::HEADER, "proxy-authorization");
 								{
 									// Получаем данные запроса
 									const auto & request = options->srv.request();
@@ -675,7 +677,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 							goto Next;
 						} break;
 						// Если запрос неудачный
-						case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+						case static_cast <uint8_t> (http_t::status_t::FAULT): {
 							// Выполняем сброс состояния HTTP парсера
 							options->srv.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -689,7 +691,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 								// Тело полезной нагрузки
 								vector <char> payload;
 								// Устанавливаем флаг завершения работы
-								options->stopped = !options->srv.isAlive();
+								options->stopped = !options->srv.is(http_t::state_t::ALIVE);
 								// Отправляем ответ брокеру
 								this->_core.server.write(response.data(), response.size(), bid);
 								// Получаем данные тела запроса
@@ -874,7 +876,7 @@ void awh::server::Proxy::reject(const size_t bid, const u_int code, const string
 			// Устанавливаем заголовки ответа
 			options->srv.headers(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->_alive && !options->alive && options->srv.isAlive())
+			if(!this->_alive && !options->alive && options->srv.is(http_t::state_t::ALIVE))
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				options->srv.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
@@ -925,7 +927,7 @@ void awh::server::Proxy::response(const size_t bid, const u_int code, const stri
 			// Устанавливаем заголовки ответа
 			options->srv.headers(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->_alive && !options->alive && options->srv.isAlive())
+			if(!this->_alive && !options->alive && options->srv.is(http_t::state_t::ALIVE))
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				options->srv.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации

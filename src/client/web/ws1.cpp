@@ -57,7 +57,7 @@ void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		// Если метод CONNECT запрещён для прокси-сервера
 		if(!this->_proxy.connect){
 			// Выполняем извлечение заголовка авторизации на прокси-сервера
-			const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+			const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 			// Если заголовок авторизации получен
 			if(!header.empty())
 				// Выполняем установки заголовка авторизации на прокси-сервере
@@ -147,7 +147,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT}, event_t::READ)){
 			// Если рукопожатие не выполнено
-			if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).isHandshake())){
+			if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).is(http_t::state_t::HANDSHAKE))){
 				// Добавляем полученные данные в буфер
 				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
@@ -160,7 +160,7 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 				// Если данных в буфере больше нет, очищаем буфер собранных данных
 				else this->_buffer.clear();
 				// Если все данные получены
-				if(this->_http.isEnd()){
+				if(this->_http.is(http_t::state_t::END)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -303,11 +303,11 @@ bool awh::client::WebSocket1::redirect() noexcept {
 			default: return result;
 		}
 		// Если адрес для выполнения переадресации указан
-		if((result = this->_http.isHeader("location"))){
+		if((result = this->_http.is(http_t::suite_t::HEADER, "location"))){
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
 			// Получаем новый адрес запроса
-			const uri_t::url_t & url = this->_http.getUrl();
+			const uri_t::url_t & url = this->_http.url();
 			// Если адрес запроса получен
 			if((result = !url.empty())){
 				// Увеличиваем количество попыток
@@ -408,7 +408,7 @@ void awh::client::WebSocket1::ping(const string & message) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
+		if(this->_http.handshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.ping(message, true);
 			// Если бинарный буфер получен
@@ -426,7 +426,7 @@ void awh::client::WebSocket1::pong(const string & message) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
+		if(this->_http.handshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.pong(message, true);
 			// Если бинарный буфер получен
@@ -451,9 +451,9 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 		// Получаем параметры запроса
 		auto response = this->_http.response();
 		// Выполняем проверку авторизации
-		switch(static_cast <uint8_t> (this->_http.getAuth())){
+		switch(static_cast <uint8_t> (this->_http.auth())){
 			// Если нужно попытаться ещё раз
-			case static_cast <uint8_t> (http_t::stath_t::RETRY): {
+			case static_cast <uint8_t> (http_t::status_t::RETRY): {
 				// Если попытка повторить авторизацию ещё не проводилась
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -461,7 +461,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Выводим функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_http.getUrl();
+					const uri_t::url_t & url = this->_http.url();
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
@@ -470,7 +470,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 							(this->_fmk->compare(url.schema, this->_scheme.url.schema))
 						);
 						// Если соединение является постоянным
-						if(schema && this->_http.isAlive()){
+						if(schema && this->_http.is(http_t::state_t::ALIVE)){
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Увеличиваем количество попыток
@@ -488,7 +488,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Если URL-адрес запроса не получен
 					} else {
 						// Если соединение является постоянным
-						if(this->_http.isAlive()){
+						if(this->_http.is(http_t::state_t::ALIVE)){
 							// Выполняем сброс параметров запроса
 							this->flush();
 							// Увеличиваем количество попыток
@@ -515,15 +515,15 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::CLOSE);
 			} break;
 			// Если запрос выполнен удачно
-			case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+			case static_cast <uint8_t> (http_t::status_t::GOOD): {
 				// Если рукопожатие выполнено
-				if((this->_shake = this->_http.isHandshake(http_t::process_t::RESPONSE))){
+				if((this->_shake = this->_http.handshake(http_t::process_t::RESPONSE))){
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
 					this->_fragmes.clear();
 					// Получаем флаг шифрованных данных
-					this->_crypted = this->_http.isCrypto();
+					this->_crypted = this->_http.crypto();
 					// Получаем поддерживаемый метод компрессии
 					this->_compress = this->_http.compress();
 					// Получаем размер скользящего окна сервера
@@ -587,7 +587,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 				}
 			} break;
 			// Если запрос неудачный
-			case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+			case static_cast <uint8_t> (http_t::status_t::FAULT): {
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
 				// Создаём сообщение
@@ -939,7 +939,7 @@ void awh::client::WebSocket1::sendMessage(const vector <char> & message, const b
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
-			if(!message.empty() && this->_http.isHandshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
+			if(!message.empty() && this->_http.handshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 				/**
 				 * Если включён режим отладки
 				 */

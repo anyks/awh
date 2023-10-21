@@ -48,9 +48,18 @@ namespace awh {
 	typedef class Http {
 		public:
 			/**
+			 * Флаги наборов
+			 */
+			enum class suite_t : uint8_t {
+				NONE   = 0x00, // Набор не установлен
+				BODY   = 0x01, // Набор соответствует телу сообщения
+				BLACK  = 0x02, // Набор соответствует заголовку чёрного списка
+				HEADER = 0x03  // Набор соответствует заголовку сообщения
+			};
+			/**
 			 * Статусы проверки авторизации
 			 */
-			enum class stath_t : uint8_t {
+			enum class status_t : uint8_t {
 				NONE  = 0x00, // Проверка авторизации не проводилась
 				GOOD  = 0x01, // Авторизация прошла успешно
 				RETRY = 0x02, // Требуется повторить попытку
@@ -72,6 +81,17 @@ namespace awh {
 				WS    = 0x01, // Протокол WebSocket
 				HTTP  = 0x02, // Протокол HTTP
 				PROXY = 0x03  // Протокол Proxy
+			};
+			/**
+			 * Стейты работы модуля
+			 */
+			enum class state_t : uint8_t {
+				NONE      = 0x00, // Режим стейта не выставлен
+				END       = 0x01, // Режим завершения сбора данных
+				GOOD      = 0x02, // Режим удачного выполнения запроса
+				ALIVE     = 0x03, // Режим уставновки постоянного подключения
+				BROKEN    = 0x04, // Режим бракованных данных
+				HANDSHAKE = 0x05  // Режим выполненного рукопожатия
 			};
 			/**
 			 * Формат сжатия тела запроса
@@ -116,16 +136,6 @@ namespace awh {
 				 */
 				Auth(const fmk_t * fmk, const log_t * log) : client(fmk, log), server(fmk, log) {}
 			} auth_t;
-		protected:
-			/**
-			 * Стейты работы модуля
-			 */
-			enum class state_t : uint8_t {
-				NONE      = 0x00, // Режим стейта не выставлен
-				GOOD      = 0x01, // Режим удачного выполнения запроса
-				BROKEN    = 0x02, // Режим бракованных данных
-				HANDSHAKE = 0x03  // Режим выполненного рукопожатия
-			};
 		private:
 			/**
 			 * Список HTTP-сообщений
@@ -181,10 +191,10 @@ namespace awh {
 			// Создаём объект работы с URI
 			uri_t _uri;
 		protected:
-			// Стейт проверки авторизации
-			stath_t _stath;
 			// Стейт текущего запроса
 			state_t _state;
+			// Стейт проверки авторизации
+			status_t _status;
 		protected:
 			// Идентичность протокола
 			identity_t _identity;
@@ -262,10 +272,10 @@ namespace awh {
 			virtual void commit() noexcept;
 		protected:
 			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
+			 * status Метод проверки текущего статуса
+			 * @return результат проверки текущего статуса
 			 */
-			virtual stath_t checkAuth() noexcept = 0;
+			virtual status_t status() noexcept = 0;
 		public:
 			/**
 			 * clear Метод очистки собранных данных
@@ -275,17 +285,11 @@ namespace awh {
 			 * reset Метод сброса параметров запроса
 			 */
 			virtual void reset() noexcept;
-		public:
 			/**
-			 * rmBlack Метод удаления заголовка из чёрного списка
-			 * @param key ключ заголовка
+			 * clear Метод очистки данных HTTP-протокола
+			 * @param suite тип набора к которому соответствует заголовок
 			 */
-			void rmBlack(const string & key) noexcept;
-			/**
-			 * addBlack Метод добавления заголовка в чёрный список
-			 * @param key ключ заголовка
-			 */
-			void addBlack(const string & key) noexcept;
+			void clear(const suite_t suite) noexcept;
 		public:
 			/**
 			 * parse Метод парсинга сырых данных
@@ -307,13 +311,10 @@ namespace awh {
 			void payload(const vector <char> & payload) noexcept;
 		public:
 			/**
-			 * clearBody Метод очистки данных тела
+			 * black Метод добавления заголовка в чёрный список
+			 * @param key ключ заголовка
 			 */
-			void clearBody() const noexcept;
-			/**
-			 * clearHeaders Метод очистки списка заголовков
-			 */
-			void clearHeaders() const noexcept;
+			void black(const string & key) noexcept;
 		public:
 			/**
 			 * body Метод получения данных тела запроса
@@ -326,11 +327,6 @@ namespace awh {
 			 */
 			void body(const vector <char> & body) noexcept;
 		public:
-			/**
-			 * rmHeader Метод удаления заголовка
-			 * @param key ключ заголовка
-			 */
-			void rmHeader(const string & key) noexcept;
 			/**
 			 * header Метод получения данных заголовка
 			 * @param key ключ заголовка
@@ -368,23 +364,23 @@ namespace awh {
 			void headers2(const vector <pair<string, string>> & headers) noexcept;
 		public:
 			/**
-			 * getAuth Метод проверки статуса авторизации
+			 * auth Метод проверки статуса авторизации
 			 * @return результат проверки
 			 */
-			stath_t getAuth() const noexcept;
+			status_t auth() const noexcept;
 			/**
-			 * getAuth Метод извлечения строки авторизации
+			 * auth Метод извлечения строки авторизации
 			 * @param flag флаг выполняемого процесса
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     строка авторизации на удалённом сервере
 			 */
-			string getAuth(const process_t flag, const web_t::provider_t & prov) const noexcept;
+			string auth(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
-			 * getUrl Метод извлечения параметров запроса
+			 * url Метод извлечения параметров запроса
 			 * @return установленные параметры запроса
 			 */
-			const uri_t::url_t & getUrl() const noexcept;
+			const uri_t::url_t & url() const noexcept;
 		public:
 			/**
 			 * compression Метод извлечения метода компрессии
@@ -414,39 +410,24 @@ namespace awh {
 			void dump(const vector <char> & data) noexcept;
 		public:
 			/**
-			 * isEnd Метод проверки завершения обработки
-			 * @return результат проверки
+			 * is Метод проверки активного состояния
+			 * @param state состояние которое необходимо проверить
 			 */
-			bool isEnd() const noexcept;
+			bool is(const state_t state) const noexcept;
 			/**
-			 * isAlive Метод проверки на постоянное подключение
-			 * @return результат проверки
+			 * is Метод проверки существования заголовка
+			 * @param suite тип набора к которому соответствует заголовок
+			 * @param key   ключ заголовка для проверки
+			 * @return      результат проверки
 			 */
-			bool isAlive() const noexcept;
-			/**
-			 * isCrypto Метод проверки на зашифрованные данные
-			 * @return флаг проверки на зашифрованные данные
-			 */
-			virtual bool isCrypto() const noexcept;
+			bool is(const suite_t suite, const string & key) const noexcept;
 		public:
 			/**
-			 * isHandshake Метод проверки рукопожатия (Метод не должен быть виртуальным, так-как он должен быть переопределён в других модулях)
-			 * @return проверка рукопожатия
+			 * rm Метод удаления установленных заголовков
+			 * @param suite тип набора к которому соответствует заголовок
+			 * @param key   ключ заголовка для удаления
 			 */
-			bool isHandshake() noexcept;
-		public:
-			/**
-			 * isBlack Метод проверки существования заголовка в чёрный списоке
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
-			 */
-			bool isBlack(const string & key) const noexcept;
-			/**
-			 * isHeader Метод проверки существования заголовка
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
-			 */
-			bool isHeader(const string & key) const noexcept;
+			void rm(const suite_t suite, const string & key) const noexcept;
 		public:
 			/**
 			 * request Метод получения объекта запроса на сервер
@@ -616,6 +597,11 @@ namespace awh {
 			 */
 			void ident(const string & id, const string & name, const string & ver) noexcept;
 		public:
+			/**
+			 * crypto Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			virtual bool crypto() const noexcept;
 			/**
 			 * crypto Метод активации шифрования
 			 * @param mode флаг активации шифрования

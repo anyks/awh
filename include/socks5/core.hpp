@@ -86,6 +86,19 @@ namespace awh {
 				NOADDR    = 0x08, // Тип адреса не поддерживается
 				NOSUPPORT = 0x09  // До X'FF' не определены
 			};
+			/**
+			 * Стейты работы модуля
+			 */
+			enum class state_t : uint8_t {
+				END       = 0x00, // Режим завершения сбора данных
+				AUTH      = 0x01, // Режим ожидания прохождения аутентификации
+				METHOD    = 0x02, // Режим ожидания получения метода
+				BROKEN    = 0x03, // Режим бракованных данных
+				CONNECT   = 0x04, // Режим выполнения подключения
+				REQUEST   = 0x05, // Режим ожидания получения запроса
+				RESPONSE  = 0x06, // Режим ожидания получения ответа
+				HANDSHAKE = 0x07  // Режим выполненного рукопожатия
+			};
 		protected:
 			/**
 			 * Типы адресации socks5
@@ -114,18 +127,7 @@ namespace awh {
 				RESERVE  = 0x80, // До X'FE' преднозначено для частных методов
 				NOMETHOD = 0xFF  // Нет применимых методов
 			};
-			/**
-			 * Стейты работы модуля
-			 */
-			enum class state_t : uint8_t {
-				AUTH      = 0x01, // Режим ожидания прохождения аутентификации
-				METHOD    = 0x02, // Режим ожидания получения метода
-				BROKEN    = 0x03, // Режим бракованных данных
-				CONNECT   = 0x04, // Режим выполнения подключения
-				REQUEST   = 0x05, // Режим ожидания получения запроса
-				RESPONSE  = 0x06, // Режим ожидания получения ответа
-				HANDSHAKE = 0x07  // Режим выполненного рукопожатия
-			};
+		protected:
 			// Устанавливаем версию прокси-протокола
 			static constexpr uint8_t VER = 0x05;
 			// Устанавливаем версию соглашения авторизации
@@ -141,18 +143,18 @@ namespace awh {
 				 * ResMethod Конструктор
 				 */
 				ResMethod() noexcept : ver(0x0), method(0x0) {}
-			} __attribute__((packed)) resMet_t;
+			} __attribute__((packed)) res_method_t;
 			/**
-			 * ResAuth Структура ответа на авторизацию
+			 * Auth Структура ответа на авторизацию
 			 */
-			typedef struct ResAuth {
+			typedef struct Auth {
 				uint8_t ver;    // Версия прокси-протокола
 				uint8_t status; // Статус авторизации на сервере
 				/**
-				 * ResAuth Конструктор
+				 * Auth Конструктор
 				 */
-				ResAuth() noexcept : ver(0x0), status(0x0) {}
-			} __attribute__((packed)) resAuth_t;
+				Auth() noexcept : ver(0x0), status(0x0) {}
+			} __attribute__((packed)) auth_t;
 			/**
 			 * Req Структура запроса
 			 */
@@ -226,7 +228,7 @@ namespace awh {
 			 * @param text текст для установки
 			 * @return     текущее значение смещения
 			 */
-			u_short text(const string & text) const noexcept;
+			uint16_t text(const string & text) const noexcept;
 			/**
 			 * text Метод извлечения текстовых данных из буфера
 			 * @param buffer буфер данных для извлечения текста
@@ -241,23 +243,13 @@ namespace awh {
 			 * @param offset размер смещения в буфере
 			 * @return       текущее значение смещения
 			 */
-			u_short octet(const uint8_t octet, const u_short offset = 0) const noexcept;
+			uint16_t octet(const uint8_t octet, const uint16_t offset = 0) const noexcept;
 		public:
 			/**
-			 * isEnd Метод проверки завершения обработки
-			 * @return результат проверки
+			 * is Метод проверки активного состояния
+			 * @param state состояние которое необходимо проверить
 			 */
-			bool isEnd() const noexcept;
-			/**
-			 * isConnected Метод проверки на подключение клиента
-			 * @return результат проверки
-			 */
-			bool isConnected() const noexcept;
-			/**
-			 * isHandshake Метод проверки рукопожатия
-			 * @return проверка рукопожатия
-			 */
-			bool isHandshake() const noexcept;
+			bool is(const state_t state) const noexcept;
 		public:
 			/**
 			 * code Метод получения кода сообщения

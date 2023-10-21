@@ -84,7 +84,7 @@ void awh::server::ProxySocks5::connectClientCallback(const uint64_t bid, const u
 				// Запоминаем, что подключение выполнено
 				options->connect = true;
 				// Устанавливаем флаг разрешающий подключение
-				options->socks5.resCmd(socks5_t::rep_t::SUCCESS);
+				options->socks5.cmd(socks5_t::rep_t::SUCCESS);
 				// Получаем данные запроса
 				const auto & buffer = options->socks5.get();
 				// Если данные получены
@@ -200,7 +200,7 @@ void awh::server::ProxySocks5::disconnectClientCallback(const uint64_t bid, cons
 			// Если подключение не выполнено, отправляем ответ клиенту
 			if((options != nullptr) && !options->connect){
 				// Устанавливаем флаг запрещающий подключение
-				options->socks5.resCmd(socks5_t::rep_t::DENIED);
+				options->socks5.cmd(socks5_t::rep_t::DENIED);
 				// Получаем данные запроса
 				const auto & buffer = options->socks5.get();
 				// Если данные получены
@@ -294,7 +294,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 		// Если параметры активного клиента получены
 		if((options != nullptr) && !options->locked){			
 			// Если данные не получены
-			if(!options->connect && !options->socks5.isEnd()){
+			if(!options->connect && !options->socks5.is(socks5_t::state_t::END)){
 				// Выполняем парсинг входящих данных
 				options->socks5.parse(buffer, size);
 				// Получаем данные запроса
@@ -304,9 +304,9 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 					// Выполняем запись полученных данных на сервер
 					this->_core.server.write(buffer.data(), buffer.size(), bid);
 				// Если данные все получены
-				else if(options->socks5.isEnd()) {
+				else if(options->socks5.is(socks5_t::state_t::END)) {
 					// Если рукопожатие выполнено
-					if((options->locked = options->socks5.isConnected())){
+					if((options->locked = options->socks5.is(socks5_t::state_t::CONNECT))){
 						// Получаем данные запрашиваемого сервера
 						const auto & server = options->socks5.server();
 						// Устанавливаем порт сервера
@@ -342,7 +342,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 					// Если рукопожатие не выполнено
 					} else {
 						// Устанавливаем флаг запрещающий подключение
-						options->socks5.resCmd(awh::socks5_t::rep_t::FORBIDDEN);
+						options->socks5.cmd(awh::socks5_t::rep_t::FORBIDDEN);
 						// Получаем данные запроса
 						const auto & buffer = options->socks5.get();
 						// Если данные получены

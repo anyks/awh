@@ -112,9 +112,9 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
  * @param text текст для установки
  * @return     текущее значение смещения
  */
-u_short awh::Socks5::text(const string & text) const noexcept {
+uint16_t awh::Socks5::text(const string & text) const noexcept {
 	// Результат работы функции
-	u_short result = 0;
+	uint16_t result = 0;
 	// Если текст передан
 	if(!text.empty()){
 		// Добавляем в буфер размер текста
@@ -139,7 +139,7 @@ const string awh::Socks5::text(const char * buffer, const size_t size) const noe
 		// Размер текста
 		uint8_t length = 0;
 		// Извлекаем размер текста
-		memcpy(&length, buffer, sizeof(length));
+		::memcpy(&length, buffer, sizeof(length));
 		// Если размер текста получен, извлекаем текстовые данные
 		if(length > 0) result.assign(buffer + sizeof(length), length);
 	}
@@ -152,39 +152,38 @@ const string awh::Socks5::text(const char * buffer, const size_t size) const noe
  * @param offset размер смещения в буфере
  * @return       текущее значение смещения
  */
-u_short awh::Socks5::octet(const uint8_t octet, const u_short offset) const noexcept {
+uint16_t awh::Socks5::octet(const uint8_t octet, const uint16_t offset) const noexcept {
 	// Устанавливаем первый октет
-	memcpy(this->_buffer.data() + offset, &octet, sizeof(octet));
+	::memcpy(this->_buffer.data() + offset, &octet, sizeof(octet));
 	// Выводим размер смещения
 	return (offset + sizeof(octet));
 }
 /**
- * isEnd Метод проверки завершения обработки
- * @return результат проверки
+ * is Метод проверки активного состояния
+ * @param state состояние которое необходимо проверить
  */
-bool awh::Socks5::isEnd() const noexcept {
-	// Выполняем проверку завершения работы
-	return (
-		(this->_state == state_t::BROKEN) ||
-		(this->_state == state_t::CONNECT) ||
-		(this->_state == state_t::HANDSHAKE)
-	);
-}
-/**
- * isConnected Метод проверки на подключение клиента
- * @return результат проверки
- */
-bool awh::Socks5::isConnected() const noexcept {
-	// Выполняем проверку запроса клиента
-	return (this->_state == state_t::CONNECT);
-}
-/**
- * isHandshake Метод проверки рукопожатия
- * @return проверка рукопожатия
- */
-bool awh::Socks5::isHandshake() const noexcept{
-	// Выполняем проверку рукопожатия
-	return (this->_state == state_t::HANDSHAKE);
+bool awh::Socks5::is(const state_t state) const noexcept {
+	// Определяем запрашиваемое состояние
+	switch(static_cast <uint8_t> (state)){
+		// Если проверяется режим завершения сбора данных
+		case static_cast <uint8_t> (state_t::END):
+			// Выполняем проверку завершения сбора данных
+			return (
+				(this->_state == state_t::BROKEN) ||
+				(this->_state == state_t::CONNECT) ||
+				(this->_state == state_t::HANDSHAKE)
+			);
+		// Если проверяется режим подключения к серверу
+		case static_cast <uint8_t> (state_t::CONNECT):
+			// Выполняем проверку подключения к серверу
+			return (this->_state == state_t::CONNECT);
+		// Если проверяется режим выполненного рукопожатия
+		case static_cast <uint8_t> (state_t::HANDSHAKE):
+			// Выполняем проверку на удачное рукопожатие
+			return (this->_state == state_t::HANDSHAKE);
+	}
+	// Выводим результат
+	return false;
 }
 /**
  * code Метод получения кода сообщения

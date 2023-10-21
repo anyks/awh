@@ -16,12 +16,12 @@
 #include <http/server.hpp>
 
 /**
- * checkAuth Метод проверки авторизации
- * @return результат проверки авторизации
+ * status Метод проверки текущего статуса
+ * @return результат проверки текущего статуса
  */
-awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
+awh::Http::status_t awh::server::Http::status() noexcept {
 	// Результат работы функции
-	stath_t result = stath_t::FAULT;
+	status_t result = status_t::FAULT;
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
@@ -83,10 +83,10 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 			// Выполняем проверку авторизации
 			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
-				result = http_t::stath_t::GOOD;
+				result = http_t::status_t::GOOD;
 		}
 	// Сообщаем, что авторизация прошла успешно
-	} else result = http_t::stath_t::GOOD;
+	} else result = http_t::status_t::GOOD;
 	// Выводим результат
 	return result;
 }

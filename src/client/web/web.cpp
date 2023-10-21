@@ -173,7 +173,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
 					// Если данные не получены
-					if(!this->_scheme.proxy.socks5.isEnd()){
+					if(!this->_scheme.proxy.socks5.is(socks5_t::state_t::END)){
 						// Выполняем парсинг входящих данных
 						this->_scheme.proxy.socks5.parse(this->_buffer.data(), this->_buffer.size());
 						// Получаем данные запроса
@@ -187,11 +187,11 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Завершаем работу
 							return;
 						// Если данные все получены
-						} else if(this->_scheme.proxy.socks5.isEnd()) {
+						} else if(this->_scheme.proxy.socks5.is(socks5_t::state_t::END)) {
 							// Выполняем очистку буфера данных
 							this->_buffer.clear();
 							// Если рукопожатие выполнено
-							if(this->_scheme.proxy.socks5.isHandshake()){
+							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
 								// Выполняем переключение на работу с сервером
 								dynamic_cast <client::core_t *> (core)->switchProxy(bid);
 								// Завершаем работу
@@ -235,7 +235,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 					// Выполняем парсинг полученных данных
 					this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
 					// Если все данные получены
-					if(this->_scheme.proxy.http.isEnd()){
+					if(this->_scheme.proxy.http.is(http_t::state_t::END)){
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						/**
@@ -261,26 +261,26 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 						// Получаем параметры запроса
 						const auto & response = this->_scheme.proxy.http.response();
 						// Получаем статус ответа
-						awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
+						awh::http_t::status_t status = this->_scheme.proxy.http.auth();
 						// Устанавливаем ответ прокси-сервера
 						this->_proxy.answer = response.code;
 						// Если выполнять редиректы запрещено
-						if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+						if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
 							// Если ответом сервера не является запросом авторизации
 							if(response.code != 407)
 								// Запрещаем выполнять редирект
-								status = awh::http_t::stath_t::GOOD;
+								status = awh::http_t::status_t::GOOD;
 						}
 						// Выполняем проверку авторизации
 						switch(static_cast <uint8_t> (status)){
 							// Если нужно попытаться ещё раз
-							case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+							case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 								// Если попытки повторить переадресацию ещё не закончились
 								if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 									// Если адрес запроса получен
 									if(!this->_scheme.proxy.url.empty()){
 										// Если соединение является постоянным
-										if(this->_scheme.proxy.http.isAlive()){
+										if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
 											// Увеличиваем количество попыток
 											this->_attempt++;
 											// Устанавливаем новый экшен выполнения
@@ -293,7 +293,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								}
 							} break;
 							// Если запрос выполнен удачно
-							case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+							case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 								// Если защищённое подключение уже активированно
 								if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
 									// Выполняем переключение на работу с сервером
@@ -306,7 +306,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								return;
 							} break;
 							// Если запрос неудачный
-							case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+							case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
 								// Устанавливаем флаг принудительной остановки
 								this->_stopped = true;
 							break;

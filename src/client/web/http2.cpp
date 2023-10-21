@@ -713,9 +713,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 									default: return result;
 								}
 								// Если адрес для выполнения переадресации указан
-								if((result = it->second->http.isHeader("location"))){
+								if((result = it->second->http.is(http_t::suite_t::HEADER, "location"))){
 									// Получаем новый адрес запроса
-									const uri_t::url_t & url = it->second->http.getUrl();
+									const uri_t::url_t & url = it->second->http.url();
 									// Если адрес запроса получен
 									if((result = !url.empty())){
 										// Увеличиваем количество попыток
@@ -781,11 +781,11 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								default: return result;
 							}
 							// Если адрес для выполнения переадресации указан
-							if((result = it->second->update = this->_http1._http.isHeader("location"))){
+							if((result = it->second->update = this->_http1._http.is(http_t::suite_t::HEADER, "location"))){
 								// Выполняем очистку оставшихся данных
 								this->_http1._buffer.clear();
 								// Получаем новый адрес запроса
-								const uri_t::url_t & url = this->_http1._http.getUrl();
+								const uri_t::url_t & url = this->_http1._http.url();
 								// Если адрес запроса получен
 								if((result = it->second->update = !url.empty())){
 									// Получаем количество попыток
@@ -844,11 +844,11 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 							default: return result;
 						}
 						// Если адрес для выполнения переадресации указан
-						if((result = it->second->update = this->_ws2._http.isHeader("location"))){
+						if((result = it->second->update = this->_ws2._http.is(http_t::suite_t::HEADER, "location"))){
 							// Выполняем очистку оставшихся данных
 							this->_ws2._buffer.clear();
 							// Получаем новый адрес запроса
-							const uri_t::url_t & url = this->_ws2._http.getUrl();
+							const uri_t::url_t & url = this->_ws2._http.url();
 							// Если адрес запроса получен
 							if((result = it->second->update = !url.empty())){
 								// Получаем количество попыток
@@ -977,20 +977,20 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		// Получаем параметры запроса
 		const auto & response = it->second->http.response();
 		// Получаем статус ответа
-		awh::http_t::stath_t status = it->second->http.getAuth();
+		awh::http_t::status_t status = it->second->http.auth();
 		// Если выполнять редиректы запрещено
-		if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
+		if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
 			// Если нужно произвести запрос заново
 			if((response.code == 201) || (response.code == 301) ||
 			   (response.code == 302) || (response.code == 303) ||
 			   (response.code == 307) || (response.code == 308))
 					// Запрещаем выполнять редирект
-					status = awh::http_t::stath_t::GOOD;
+					status = awh::http_t::status_t::GOOD;
 		}
 		// Выполняем анализ результата авторизации
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
-			case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+			case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if((response.code == 401) && this->_callback.is("error"))
 					// Выводим функцию обратного вызова
@@ -1002,7 +1002,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Если параметры запроса получены
 					if((it->second->update = (jt != this->_requests.end()))){
 						// Получаем новый адрес запроса
-						const uri_t::url_t & url = it->second->http.getUrl();
+						const uri_t::url_t & url = it->second->http.url();
 						// Если адрес запроса получен
 						if(!url.empty()){
 							// Выполняем проверку соответствие протоколов
@@ -1011,7 +1011,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								(this->_fmk->compare(url.schema, jt->second->url.schema))
 							);
 							// Если соединение является постоянным
-							if(schema && it->second->http.isAlive()){
+							if(schema && it->second->http.is(http_t::state_t::ALIVE)){
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Устанавливаем новый адрес запроса
@@ -1028,7 +1028,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 						// Если URL-адрес запроса не получен
 						} else {
 							// Если соединение является постоянным
-							if(it->second->http.isAlive()){
+							if(it->second->http.is(http_t::state_t::ALIVE)){
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Отправляем повторный запрос
@@ -1045,7 +1045,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				}
 			} break;
 			// Если запрос выполнен удачно
-			case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+			case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 				// Выполняем сброс количества попыток
 				this->_attempt = 0;
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -1053,7 +1053,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Устанавливаем полученную функцию обратного вызова
 					it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 				// Устанавливаем размер стопбайт
-				if(!it->second->http.isAlive()){
+				if(!it->second->http.is(http_t::state_t::ALIVE)){
 					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 					this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 					// Выполняем удаление параметров запроса
@@ -1067,7 +1067,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				return status_t::NEXT;
 			} break;
 			// Если запрос неудачный
-			case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
+			case static_cast <uint8_t> (awh::http_t::status_t::FAULT): {
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -1251,7 +1251,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Если метод CONNECT запрещён для прокси-сервера
 							if(!this->_proxy.connect){
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
-								const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 								// Если заголовок авторизации получен
 								if(!header.empty())
 									// Выполняем установки заголовка авторизации на прокси-сервере
@@ -1442,7 +1442,7 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 				// Тело WEB сообщения
 				vector <char> entity;
 				// Выполняем сброс данных тела
-				this->_http.clearBody();
+				this->_http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
 				this->_http.body(vector <char> (buffer, buffer + size));
 				// Получаем данные тела запроса
@@ -1495,7 +1495,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 				// Если метод CONNECT запрещён для прокси-сервера
 				if(!this->_proxy.connect){
 					// Выполняем извлечение заголовка авторизации на прокси-сервера
-					const string & header = this->_scheme.proxy.http.getAuth(http_t::process_t::REQUEST, query);
+					const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 					// Если заголовок авторизации получен
 					if(!header.empty())
 						// Выполняем установки заголовка авторизации на прокси-сервере

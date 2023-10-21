@@ -51,7 +51,7 @@ namespace awh {
 					/**
 					 * Server Конструктор
 					 */
-					Server() noexcept : family(AF_INET), port(80), host("") {}
+					Server() noexcept : family(AF_INET), port(80), host{""} {}
 				} serv_t;
 			private:
 				// Параметры запрашиваемого сервера
@@ -67,21 +67,21 @@ namespace awh {
 				const serv_t & server() const noexcept;
 			public:
 				/**
-				 * resCmd Метод получения бинарного буфера ответа
+				 * cmd Метод получения бинарного буфера ответа
 				 * @param rep код ответа сервера
 				 */
-				void resCmd(const rep_t rep) const noexcept;
+				void cmd(const rep_t rep) const noexcept;
 				/**
-				 * resMethod Метод получения бинарного буфера выбора метода подключения
+				 * method Метод получения бинарного буфера выбора метода подключения
 				 * @param methods методы авторизаций выбранныйе пользователем
 				 */
-				void resMethod(const vector <uint8_t> & methods) const noexcept;
+				void method(const vector <uint8_t> & methods) const noexcept;
 				/**
-				 * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
+				 * auth Метод получения бинарного буфера ответа на авторизацию клиента
 				 * @param login    логин пользователя
 				 * @param password пароль пользователя
 				 */
-				void resAuth(const string & login, const string & password) const noexcept;
+				void auth(const string & login, const string & password) const noexcept;
 			public:
 				/**
 				 * parse Метод парсинга входящих данных

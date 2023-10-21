@@ -21,27 +21,27 @@
  */
 void awh::WCore::init(const process_t flag) noexcept {
 	// Удаляем заголовок сабпратоколов
-	this->rmHeader("Sec-WebSocket-Protocol");
+	this->rm(suite_t::HEADER, "Sec-WebSocket-Protocol");
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
 			// Удаляем заголовок Accept
-			this->rmHeader("Accept");
+			this->rm(suite_t::HEADER, "Accept");
 			// Удаляем заголовок отключения кеширования
-			this->rmHeader("Pragma");
+			this->rm(suite_t::HEADER, "Pragma");
 			// Удаляем заголовок отключения кеширования
-			this->rmHeader("Cache-Control");
+			this->rm(suite_t::HEADER, "Cache-Control");
 			// Удаляем заголовок типа запроса
-			this->rmHeader("Sec-Fetch-Mode");
+			this->rm(suite_t::HEADER, "Sec-Fetch-Mode");
 			// Удаляем заголовок места назначения запроса
-			this->rmHeader("Sec-Fetch-Dest");
+			this->rm(suite_t::HEADER, "Sec-Fetch-Dest");
 			// Удаляем заголовок требования сжимать содержимое ответов
-			this->rmHeader("Accept-Encoding");
+			this->rm(suite_t::HEADER, "Accept-Encoding");
 			// Удаляем заголовок поддерживаемых языков
-			this->rmHeader("Accept-Language");
+			this->rm(suite_t::HEADER, "Accept-Language");
 			// Удаляем заголовок версии WebSocket
-			this->rmHeader("Sec-WebSocket-Version");
+			this->rm(suite_t::HEADER, "Sec-WebSocket-Version");
 			// Если список поддерживаемых сабпротоколов установлен
 			if(!this->_supportedProtocols.empty()){
 				// Если количество поддерживаемых сабпротоколов больше 5-ти
@@ -91,7 +91,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 		// Если нужно сформировать данные ответа
 		case static_cast <uint8_t> (process_t::RESPONSE): {
 			// Добавляем в чёрный список заголовок Content-Type
-			this->addBlack("Content-Type");
+			this->black("Content-Type");
 			// Получаем объект ответа клиенту
 			const web_t::res_t & res = this->_web.response();
 			// Если ответ сервера положительный
@@ -99,9 +99,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Выполняем применение расширений
 				this->applyExtensions(flag);
 				// Добавляем в чёрный список заголовок Content-Encoding
-				this->addBlack("Content-Encoding");
+				this->black("Content-Encoding");
 				// Добавляем в чёрный список заголовок X-AWH-Encryption
-				this->addBlack("X-AWH-Encryption");
+				this->black("X-AWH-Encryption");
 			}
 			// Если список выбранных сабпротоколов установлен
 			if(!this->_selectedProtocols.empty()){
@@ -141,7 +141,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	// Список поддверживаемых расширений
 	vector <vector <string>> extensions;
 	// Удаляем заголовок расширений
-	this->rmHeader("Sec-WebSocket-Extensions");
+	this->rm(suite_t::HEADER, "Sec-WebSocket-Extensions");
 	// Определяем тип активной компрессии
 	switch(static_cast <uint8_t> (this->_compress)){
 		// Если метод компрессии выбран GZip
@@ -507,14 +507,6 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	return result;
 }
 /**
- * isCrypto Метод проверки на зашифрованные данные
- * @return флаг проверки на зашифрованные данные
- */
-bool awh::WCore::isCrypto() const noexcept {
-	// Выводим флаг шифрования данных
-	return this->_crypto;
-}
-/**
  * dump Метод получения бинарного дампа
  * @return бинарный дамп данных
  */
@@ -773,32 +765,11 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
 	else this->_extensions.clear();
 }
 /**
- * checkUpgrade Метод получения флага переключения протокола
- * @return флага переключения протокола
- */
-bool awh::WCore::checkUpgrade() const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Получаем значение заголовка Upgrade
-	const string & upgrade = this->_web.header("upgrade");
-	// Получаем значение заголовка Connection
-	const string & connection = this->_web.header("connection");
-	// Если заголовки расширений найдены
-	if(!upgrade.empty() && !connection.empty()){
-		// Переводим значение заголовка Connection в нижний регистр
-		this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
-		// Если заголовки соответствуют
-		result = (this->_fmk->compare(upgrade, "websocket") && this->_fmk->exists("upgrade", connection));
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * isHandshake Метод выполнения проверки рукопожатия
+ * handshake Метод выполнения проверки рукопожатия
  * @param flag флаг выполняемого процесса
  * @return     результат выполнения проверки рукопожатия
  */
-bool awh::WCore::isHandshake(const process_t flag) noexcept {
+bool awh::WCore::handshake(const process_t flag) noexcept {
 	// Результат работы функции
 	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
@@ -819,11 +790,11 @@ bool awh::WCore::isHandshake(const process_t flag) noexcept {
 			break;
 		}
 		// Выполняем проверку на удачное завершение запроса
-		result = (this->_stath == stath_t::GOOD);
+		result = (this->_status == status_t::GOOD);
 		// Если результат удачный
 		if(result)
 			// Выполняем проверку версии протокола
-			result = this->checkVer();
+			result = this->check(ws_core_t::flag_t::VERSION);
 		// Если подключение не выполнено
 		else return result;
 		// Если результат удачный
@@ -831,7 +802,7 @@ bool awh::WCore::isHandshake(const process_t flag) noexcept {
 			// Если версия протокола ниже 2.0
 			if(version < 2.0f)
 				// Проверяем произошло ли переключение протокола
-				result = this->checkUpgrade();
+				result = this->check(ws_core_t::flag_t::UPGRADE);
 		// Если версия протокола не соответствует
 		} else {
 			// Выводим сообщение об ошибке
@@ -844,7 +815,7 @@ bool awh::WCore::isHandshake(const process_t flag) noexcept {
 			// Если результат удачный
 			if(result)
 				// Проверяем ключ клиента
-				result = this->checkKey();
+				result = this->check(ws_core_t::flag_t::KEY);
 			// Если протокол не был переключён
 			else {
 				// Выводим сообщение об ошибке
@@ -862,6 +833,32 @@ bool awh::WCore::isHandshake(const process_t flag) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * check Метод проверки шагов рукопожатия
+ * @param flag флаг выполнения проверки
+ * @return     результат проверки соответствия
+ */
+bool awh::WCore::check(const flag_t flag) noexcept {
+	// Определяем флаг выполнения проверки
+	switch(static_cast <uint8_t> (flag)){
+		// Если требуется выполнить проверки на переключение контекста
+		case static_cast <uint8_t> (flag_t::UPGRADE): {
+			// Получаем значение заголовка Upgrade
+			const string & upgrade = this->_web.header("upgrade");
+			// Получаем значение заголовка Connection
+			const string & connection = this->_web.header("connection");
+			// Если заголовки расширений найдены
+			if(!upgrade.empty() && !connection.empty()){
+				// Переводим значение заголовка Connection в нижний регистр
+				this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
+				// Если заголовки соответствуют
+				return (this->_fmk->compare(upgrade, "websocket") && this->_fmk->exists("upgrade", connection));
+			}
+		} break;
+	}
+	// Выводим результат
+	return false;
 }
 /**
  * wbit Метод получения размер скользящего окна
@@ -923,13 +920,13 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				// Генерируем ключ клиента
 				const_cast <ws_core_t *> (this)->_key = this->key();
 				// Удаляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->rmHeader("Upgrade");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Upgrade");
 				// Удаляем заголовок протокола подключения
-				const_cast <ws_core_t *> (this)->rmHeader(":protocol");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, ":protocol");
 				// Удаляем заголовок подключения
-				const_cast <ws_core_t *> (this)->rmHeader("Connection");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Connection");
 				// Удаляем заголовок ключ клиента
-				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Key");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Sec-WebSocket-Key");
 				// Добавляем заголовок апгрейд
 				const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
 				// Добавляем заголовок подключения
@@ -953,13 +950,13 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			// Если параметры запроса получены
 			if(res.version >= 2.0f ? res.code != 101 : res.code != 200){
 				// Удаляем статус ответа
-				const_cast <ws_core_t *> (this)->rmHeader(":status");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, ":status");
 				// Удаляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->rmHeader("Upgrade");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Upgrade");
 				// Удаляем заголовок подключения
-				const_cast <ws_core_t *> (this)->rmHeader("Connection");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Connection");
 				// Удаляем заголовок хеша ключа
-				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Accept");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Sec-WebSocket-Accept");
 				// Если ответ сервера положительный
 				if(res.version >= 2.0f ? res.code == 200 : res.code == 101){
 					// Добавляем заголовок подключения
@@ -1013,13 +1010,13 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.method == web_t::method_t::CONNECT)){
 				// Удаляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->rmHeader("Upgrade");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Upgrade");
 				// Удаляем заголовок протокола подключения
-				const_cast <ws_core_t *> (this)->rmHeader(":protocol");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, ":protocol");
 				// Удаляем заголовок подключения
-				const_cast <ws_core_t *> (this)->rmHeader("Connection");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Connection");
 				// Удаляем заголовок ключ клиента
-				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Key");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Sec-WebSocket-Key");
 				// Добавляем заголовок протокола подключения
 				const_cast <ws_core_t *> (this)->header(":protocol", "websocket");
 				// Устанавливаем парарметры запроса
@@ -1039,13 +1036,13 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 			// Если параметры запроса получены
 			if(res.code != 101){
 				// Удаляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->rmHeader("Upgrade");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Upgrade");
 				// Удаляем статус ответа
-				const_cast <ws_core_t *> (this)->rmHeader(":status");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, ":status");
 				// Удаляем заголовок подключения
-				const_cast <ws_core_t *> (this)->rmHeader("Connection");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Connection");
 				// Удаляем заголовок хеша ключа
-				const_cast <ws_core_t *> (this)->rmHeader("Sec-WebSocket-Accept");
+				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Sec-WebSocket-Accept");
 				// Устанавливаем параметры ответа
 				this->_web.response(res);
 			// Если данные переданы неверные
@@ -1129,4 +1126,30 @@ void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
 			this->_server.takeover = flag;
 		break;
 	}
+}
+/**
+ * crypto Метод проверки на зашифрованные данные
+ * @return флаг проверки на зашифрованные данные
+ */
+bool awh::WCore::crypto() const noexcept {
+	// Выводим флаг шифрования данных
+	return this->_crypto;
+}
+/**
+ * crypto Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::WCore::crypto(const bool mode) noexcept {
+	// Выполняем установку флага шифрования у родительского модуля
+	http_t::crypto(mode);
+}
+/**
+ * crypto Метод установки параметров шифрования
+ * @param pass   пароль шифрования передаваемых данных
+ * @param salt   соль шифрования передаваемых данных
+ * @param cipher размер шифрования передаваемых данных
+ */
+void awh::WCore::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Выполняем установку параметров шифрования у родительского модуля
+	http_t::crypto(pass, salt, cipher);
 }

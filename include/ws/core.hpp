@@ -48,6 +48,16 @@ namespace awh {
 			static constexpr short GZIP_MIN_WBITS = 8;
 			// Размер максимального значения окна для сжатия данных GZIP
 			static constexpr short GZIP_MAX_WBITS = 15;
+		public:
+			/**
+			 * Флаги проверок переключения протокола
+			 */
+			enum class flag_t : uint8_t {
+				NONE    = 0x00, // Флаг не установлен
+				KEY     = 0x01, // Флаг проверки соответствия ключа запроса
+				VERSION = 0x02, // Флаг проверки версии протокола
+				UPGRADE = 0x03  // Флаг выполнения переключения протокола
+			};
 		protected:
 			/**
 			 * Partner Структура партнёра
@@ -116,26 +126,10 @@ namespace awh {
 			virtual void commit() noexcept = 0;
 		public:
 			/**
-			 * checkKey Метод проверки ключа сервера
-			 * @return результат проверки
+			 * status Метод проверки текущего статуса
+			 * @return результат проверки текущего статуса
 			 */
-			virtual bool checkKey() noexcept = 0;
-			/**
-			 * checkVer Метод проверки на версию протокола
-			 * @return результат проверки соответствия
-			 */
-			virtual bool checkVer() noexcept = 0;
-			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
-			 */
-			virtual stath_t checkAuth() noexcept = 0;
-		public:
-			/**
-			 * isCrypto Метод проверки на зашифрованные данные
-			 * @return флаг проверки на зашифрованные данные
-			 */
-			bool isCrypto() const noexcept;
+			virtual status_t status() noexcept = 0;
 		public:
 			/**
 			 * dump Метод получения бинарного дампа
@@ -176,16 +170,18 @@ namespace awh {
 			void extensions(const vector <vector <string>> & extensions) noexcept;
 		public:
 			/**
-			 * checkUpgrade Метод получения флага переключения протокола
-			 * @return флага переключения протокола
-			 */
-			bool checkUpgrade() const noexcept;
-			/**
-			 * isHandshake Метод выполнения проверки рукопожатия
+			 * handshake Метод выполнения проверки рукопожатия
 			 * @param flag флаг выполняемого процесса
 			 * @return     результат выполнения проверки рукопожатия
 			 */
-			bool isHandshake(const process_t flag) noexcept;
+			bool handshake(const process_t flag) noexcept;
+		public:
+			/**
+			 * check Метод проверки шагов рукопожатия
+			 * @param flag флаг выполнения проверки
+			 * @return     результат проверки соответствия
+			 */
+			virtual bool check(const flag_t flag) noexcept;
 		public:
 			/**
 			 * wbit Метод получения размер скользящего окна
@@ -250,6 +246,24 @@ namespace awh {
 			 * @param flag флаг запрета переиспользования контекста компрессии
 			 */
 			void takeover(const web_t::hid_t hid, const bool flag) noexcept;
+		public:
+			/**
+			 * crypto Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			bool crypto() const noexcept;
+			/**
+			 * crypto Метод активации шифрования
+			 * @param mode флаг активации шифрования
+			 */
+			void crypto(const bool mode) noexcept;
+			/**
+			 * crypto Метод установки параметров шифрования
+			 * @param pass   пароль шифрования передаваемых данных
+			 * @param salt   соль шифрования передаваемых данных
+			 * @param cipher размер шифрования передаваемых данных
+			 */
+			void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
 			 * WCore Конструктор

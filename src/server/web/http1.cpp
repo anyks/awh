@@ -155,7 +155,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 					// Выполняем парсинг полученных данных
 					size_t bytes = options->http.parse(options->buffer.data(), options->buffer.size());
 					// Если все данные получены
-					if(options->http.isEnd()){
+					if(options->http.is(http_t::state_t::END)){
 						// Если включён режим отладки
 						#if defined(DEBUG_MODE)
 							{
@@ -189,15 +189,15 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 						// Выполняем сброс количества выполненных запросов
 						} else options->requests = 0;
 						// Получаем флаг шифрованных данных
-						options->crypto = options->http.isCrypto();
+						options->crypto = options->http.crypto();
 						// Получаем поддерживаемый метод компрессии
 						options->compress = options->http.compress();
 						// Выполняем проверку авторизации
-						switch(static_cast <uint8_t> (options->http.getAuth())){
+						switch(static_cast <uint8_t> (options->http.auth())){
 							// Если запрос выполнен удачно
-							case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+							case static_cast <uint8_t> (http_t::status_t::GOOD): {
 								// Если заголовок Upgrade установлен
-								if(options->http.isHeader("upgrade")){
+								if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
 									// Выполняем извлечение заголовка Upgrade
 									const string & header = options->http.header("upgrade");
 									// Если запрашиваемый протокол соответствует WebSocket
@@ -289,7 +289,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								goto Next;
 							} break;
 							// Если запрос неудачный
-							case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+							case static_cast <uint8_t> (http_t::status_t::FAULT): {
 								// Выполняем сброс состояния HTTP парсера
 								options->http.clear();
 								// Выполняем сброс состояния HTTP парсера
@@ -494,18 +494,18 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 				// Метод компрессии данных
 				http_t::compress_t compress = http_t::compress_t::NONE;
 				// Если рукопожатие выполнено
-				if(options->http.isHandshake(http_t::process_t::REQUEST)){
+				if(options->http.handshake(http_t::process_t::REQUEST)){
 					// Получаем метод компрессии HTML данных
 					compress = options->http.compression();
 					// Проверяем версию протокола
-					if(!options->http.checkVer()){
+					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST ответа
 						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
 						// Завершаем работу
 						goto End;
 					}
 					// Проверяем ключ брокера
-					if(!options->http.checkKey()){
+					if(!options->http.check(ws_core_t::flag_t::KEY)){
 						// Получаем бинарные данные REST ответа
 						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Wrong client key"));
 						// Завершаем работу
@@ -514,7 +514,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.clear();
 					// Получаем флаг шифрованных данных
-					options->crypto = options->http.isCrypto();
+					options->crypto = options->http.crypto();
 					// Если клиент согласился на шифрование данных
 					if(this->_crypto.mode){
 						// Устанавливаем флаг шифрования
@@ -616,7 +616,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
 						#endif
 						// Устанавливаем флаг закрытия подключения
-						options->stopped = (!web->http.isAlive() && web->http.body().empty());
+						options->stopped = (!web->http.is(http_t::state_t::ALIVE) && web->http.body().empty());
 						// Выполняем отправку чанков
 						dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 					}
@@ -741,7 +741,7 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 					// Если параметры активного клиента получены
 					if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
 						// Если брокер давно должен был быть отключён, отключаем его
-						if(options->close || !options->http.isAlive())
+						if(options->close || !options->http.is(http_t::state_t::ALIVE))
 							// Выполняем отключение клиента от сервера
 							const_cast <server::core_t *> (this->_core)->close(agent.first);
 						// Иначе проверяем прошедшее время
@@ -844,7 +844,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 				// Тело WEB сообщения
 				vector <char> entity;
 				// Выполняем сброс данных тела
-				options->http.clearBody();
+				options->http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
 				options->http.body(vector <char> (buffer, buffer + size));
 				// Получаем данные тела запроса
@@ -951,7 +951,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 				// Устанавливаем заголовки ответа
 				options->http.headers(headers);
 				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_service.alive && !options->alive && options->http.isAlive())
+				if(!this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
 					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 					options->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 				// Если сообщение ответа не установлено
@@ -1481,25 +1481,46 @@ void awh::server::Http1::bytesDetect(const scheme_t::mark_t read, const scheme_t
 		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
+ * crypto Метод получения флага шифрования
+ * @param bid идентификатор брокера
+ * @return    результат проверки
+ */
+bool awh::server::Http1::crypto(const uint64_t bid) const noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr)
+			// Выводим установленный флаг шифрования
+			return options->crypto;
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * crypto Метод активации шифрования для клиента
+ * @param bid  идентификатор брокера
+ * @param mode флаг активации шифрования
+ */
+void awh::server::Http1::crypto(const uint64_t bid, const bool mode) noexcept {
+	// Если активированно шифрование обмена сообщениями
+	if(this->_crypto.mode){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr)
+			// Устанавливаем флаг шифрования для клиента
+			options->crypto = mode;
+	}
+}
+/**
  * crypto Метод активации шифрования
  * @param mode флаг активации шифрования
  */
 void awh::server::Http1::crypto(const bool mode) noexcept {
 	// Устанавливаем флага шифрования
 	web_t::crypto(mode);
-}
-/**
- * crypto Метод активации шифрования для клиента
- * @param bid   идентификатор брокера
- * @param mode флаг активации шифрования
- */
-void awh::server::Http1::crypto(const uint64_t bid, const bool mode) noexcept {
-	// Получаем параметры активного клиента
-	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr)
-		// Устанавливаем флаг шифрования для клиента
-		options->crypto = mode;
 }
 /**
  * crypto Метод установки параметров шифрования
