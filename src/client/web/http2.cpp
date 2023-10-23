@@ -1308,6 +1308,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						if(!request.compressors.empty())
 							// Устанавливаем список поддерживаемых компрессоров
 							this->_http1._compressors = request.compressors;
+						// Устанавливаем список поддерживаемых компрессоров
+						else this->_http1._compressors = this->_compressors;
 						// Если список запросов уже заполнен
 						if(!this->_http1._requests.empty())
 							// Выполняем замену активного запроса
