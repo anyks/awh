@@ -231,8 +231,14 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									options->http.clear();
 									// Получаем флаг шифрованных данных
 									options->crypted = options->http.crypted();
+
+									cout << " @@@@@@@@@@@@@@@@@@@@ GET " << options->crypted << endl;
+
 									// Если клиент согласился на шифрование данных
 									if(this->_encryption.mode){
+										
+										cout << " @@@@@@@@@@@@@@@@@@@@ SET " << options->crypted << endl;
+										
 										// Устанавливаем флаг шифрования
 										options->http.encryption(options->crypted);
 										// Устанавливаем соль шифрования
