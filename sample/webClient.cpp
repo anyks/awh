@@ -180,7 +180,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем пароль шифрования
 	awh.encryption(string{"PASS"});
 	// Устанавливаем логин и пароль пользователя
-	// awh.user("user", "password");
+	awh.user("user", "password");
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение
@@ -216,7 +216,7 @@ int main(int argc, char * argv[]){
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
