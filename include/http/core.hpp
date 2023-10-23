@@ -607,20 +607,20 @@ namespace awh {
 			 * crypted Метод проверки на зашифрованные данные
 			 * @return флаг проверки на зашифрованные данные
 			 */
-			bool crypted() const noexcept;
+			virtual bool crypted() const noexcept;
 		public:
 			/**
 			 * encryption Метод активации шифрования
 			 * @param mode флаг активации шифрования
 			 */
-			void encryption(const bool mode) noexcept;
+			virtual void encryption(const bool mode) noexcept;
 			/**
 			 * encryption Метод установки параметров шифрования
 			 * @param pass   пароль шифрования передаваемых данных
 			 * @param salt   соль шифрования передаваемых данных
 			 * @param cipher размер шифрования передаваемых данных
 			 */
-			void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+			virtual void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
 			 * Http Конструктор
