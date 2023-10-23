@@ -31,9 +31,9 @@
 #include <sys/log.hpp>
 #include <sys/hold.hpp>
 #include <net/uri.hpp>
+#include <http/http2.hpp>
 #include <http/client.hpp>
 #include <core/client.hpp>
-#include <http/nghttp2.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -99,13 +99,13 @@ namespace awh {
 				typedef struct Request {
 					uri_t::url_t url;                            // URL-запроса запроса
 					web_t::method_t method;                      // Метод запроса
-					http_t::compress_t compress;                 // Метод компрессии данных
 					vector <char> entity;                        // Тело запроса
+					vector <http_t::compress_t> compressors;     // Список поддерживаемых компрессоров
 					unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : method(web_t::method_t::NONE), compress(http_t::compress_t::NONE) {}
+					Request() noexcept : method(web_t::method_t::NONE) {}
 				} request_t;
 			protected:
 				/**
@@ -187,14 +187,14 @@ namespace awh {
 				// Ядро для локального таймера
 				awh::core_t _timer;
 			protected:
-				// Метод компрессии данных
-				http_t::compress_t _compress;
-			protected:
 				// Объект буфера данных
 				vector <char> _buffer;
 			protected:
 				// Список рабочих событий
 				stack <event_t> _events;
+			protected:
+				// Список поддерживаемых компрессоров
+				vector <http_t::compress_t> _compressors;
 			protected:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -297,11 +297,11 @@ namespace awh {
 				virtual status_t prepare(const int32_t id, const uint64_t bid, client::core_t * core) noexcept = 0;
 			public:
 				/**
-				 * init Метод инициализации WEB клиента
-				 * @param dest     адрес назначения удалённого сервера
-				 * @param compress метод компрессии передаваемых сообщений
+				 * init Метод инициализации клиента
+				 * @param dest        адрес назначения удалённого сервера
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & dest, const http_t::compress_t compress = http_t::compress_t::ALL_COMPRESS) noexcept;
+				void init(const string & dest, const vector <awh::http_t::compress_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -419,17 +419,17 @@ namespace awh {
 				 */
 				virtual void core(const client::core_t * core) noexcept;
 				/**
-				 * compress Метод установки метода компрессии
-				 * @param compress метод компрессии сообщений
-				 */
-				void compress(const http_t::compress_t compress) noexcept;
-				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
 				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
@@ -549,8 +549,8 @@ namespace awh {
 			protected:
 				// Объект идентификации сервиса
 				ident_t _ident;
-				// Объект работы с фреймами NgHttp2
-				nghttp2_t _nghttp2;
+				// Объект работы с фреймами Http2
+				http2_t _http2;
 			protected:
 				// Логин пользователя для авторизации на сервере
 				string _login;
@@ -581,7 +581,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameProxySignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -590,7 +590,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2

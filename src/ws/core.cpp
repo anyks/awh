@@ -143,7 +143,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	// Удаляем заголовок расширений
 	this->rm(suite_t::HEADER, "Sec-WebSocket-Extensions");
 	// Определяем тип активной компрессии
-	switch(static_cast <uint8_t> (this->_compress)){
+	switch(static_cast <uint8_t> (this->_compressor.selected)){
 		// Если метод компрессии выбран GZip
 		case static_cast <uint8_t> (compress_t::GZIP):
 			// Добавляем метод сжатия GZip
@@ -357,16 +357,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::DEFLATE;
+					this->_compressor.selected = compress_t::DEFLATE;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
-					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS))
-						// Выполняем сброс типа компрессии
-						this->_compress = compress_t::NONE;
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					else this->_compress = compress_t::DEFLATE;
+					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+					if(this->_fmk->findInMap(compress_t::DEFLATE, this->_compressor.supports) != this->_compressor.supports.end())
+						// Устанавливаем флаг метода компрессии
+						this->_compressor.selected = compress_t::DEFLATE;
+					// Выполняем сброс типа компрессии
+					else this->_compressor.selected = compress_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
@@ -376,16 +376,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::GZIP;
+					this->_compressor.selected = compress_t::GZIP;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
-					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::GZIP) && (this->_compress != compress_t::ALL_COMPRESS))
-						// Выполняем сброс типа компрессии
-						this->_compress = compress_t::NONE;
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					else this->_compress = compress_t::GZIP;
+					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+					if(this->_fmk->findInMap(compress_t::GZIP, this->_compressor.supports) != this->_compressor.supports.end())
+						// Устанавливаем флаг метода компрессии
+						this->_compressor.selected = compress_t::GZIP;
+					// Выполняем сброс типа компрессии
+					else this->_compressor.selected = compress_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
@@ -395,16 +395,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compress = compress_t::BROTLI;
+					this->_compressor.selected = compress_t::BROTLI;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
-					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::BROTLI) && (this->_compress != compress_t::ALL_COMPRESS))
-						// Выполняем сброс типа компрессии
-						this->_compress = compress_t::NONE;
-					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					else this->_compress = compress_t::BROTLI;
+					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+					if(this->_fmk->findInMap(compress_t::BROTLI, this->_compressor.supports) != this->_compressor.supports.end())
+						// Устанавливаем флаг метода компрессии
+						this->_compressor.selected = compress_t::BROTLI;
+					// Выполняем сброс типа компрессии
+					else this->_compressor.selected = compress_t::NONE;
 				} break;
 			}
 		// Если размер скользящего окна для клиента получен
@@ -423,18 +423,15 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Устанавливаем размер скользящего окна
-					if(this->_compress != compress_t::NONE){
-						// Устанавливаем размер скользящего окна
-						this->_client.wbit = static_cast <short> (::stoi(extension.substr(23)));
-						// Если размер скользящего окна установлен слишком маленький
-						if(this->_client.wbit < GZIP_MIN_WBITS)
-							// Выполняем корректировку размера скользящего окна
-							this->_client.wbit = GZIP_MIN_WBITS;
-						// Если размер скользящего окна установлен слишком высоким
-						else if(this->_client.wbit > GZIP_MAX_WBITS)
-							// Выполняем корректировку размера скользящего окна
-							this->_client.wbit = GZIP_MAX_WBITS;
-					}
+					this->_client.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					// Если размер скользящего окна установлен слишком маленький
+					if(this->_client.wbit < GZIP_MIN_WBITS)
+						// Выполняем корректировку размера скользящего окна
+						this->_client.wbit = GZIP_MIN_WBITS;
+					// Если размер скользящего окна установлен слишком высоким
+					else if(this->_client.wbit > GZIP_MAX_WBITS)
+						// Выполняем корректировку размера скользящего окна
+						this->_client.wbit = GZIP_MAX_WBITS;
 				} break;
 			}
 		// Если разрешено использовать максимальный размер скользящего окна для клиента
@@ -447,12 +444,10 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					this->_client.wbit = GZIP_MAX_WBITS;
 				break;
 				// Если флаг текущего модуля соответствует серверу
-				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+				case static_cast <uint8_t> (web_t::hid_t::SERVER):
 					// Устанавливаем максимальный размер скользящего окна
-					if(this->_compress != compress_t::NONE)
-						// Устанавливаем максимальный размер скользящего окна
-						this->_client.wbit = GZIP_MAX_WBITS;
-				} break;
+					this->_client.wbit = GZIP_MAX_WBITS;
+				break;
 			}
 		// Если размер скользящего окна для сервера получен
 		} else if((result = this->_fmk->exists("server_max_window_bits=", extension))) {
@@ -470,18 +465,15 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Устанавливаем размер скользящего окна
-					if(this->_compress != compress_t::NONE){
-						// Устанавливаем размер скользящего окна
-						this->_server.wbit = static_cast <short> (::stoi(extension.substr(23)));
-						// Если размер скользящего окна установлен слишком маленький
-						if(this->_server.wbit < GZIP_MIN_WBITS)
-							// Выполняем корректировку размера скользящего окна
-							this->_server.wbit = GZIP_MIN_WBITS;
-						// Если размер скользящего окна установлен слишком высоким
-						else if(this->_server.wbit > GZIP_MAX_WBITS)
-							// Выполняем корректировку размера скользящего окна
-							this->_server.wbit = GZIP_MAX_WBITS;
-					}
+					this->_server.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					// Если размер скользящего окна установлен слишком маленький
+					if(this->_server.wbit < GZIP_MIN_WBITS)
+						// Выполняем корректировку размера скользящего окна
+						this->_server.wbit = GZIP_MIN_WBITS;
+					// Если размер скользящего окна установлен слишком высоким
+					else if(this->_server.wbit > GZIP_MAX_WBITS)
+						// Выполняем корректировку размера скользящего окна
+						this->_server.wbit = GZIP_MAX_WBITS;
 				} break;
 			}
 		// Если разрешено использовать максимальный размер скользящего окна для сервера
@@ -494,12 +486,10 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 					this->_server.wbit = GZIP_MAX_WBITS;
 				break;
 				// Если флаг текущего модуля соответствует серверу
-				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+				case static_cast <uint8_t> (web_t::hid_t::SERVER):
 					// Устанавливаем максимальный размер скользящего окна
-					if(this->_compress != compress_t::NONE)
-						// Устанавливаем максимальный размер скользящего окна
-						this->_server.wbit = GZIP_MAX_WBITS;
-				} break;
+					this->_server.wbit = GZIP_MAX_WBITS;
+				break;
 			}
 		}
 	}
@@ -516,38 +506,44 @@ vector <char> awh::WCore::dump() const noexcept {
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
-		// Выполняем получение дампа основного класса
-		const auto & dump = reinterpret_cast <http_t *> (const_cast <ws_core_t *> (this))->dump();
-		// Получаем размер дамп бинарных данных модуля
-		length = dump.size();
-		// Устанавливаем размер дампа бинарных данных модуля
-		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
-		// Добавляем дамп бинарных данных модуля
-		result.insert(result.end(), dump.begin(), dump.end());
 		// Устанавливаем параметры партнёра клиента
-		result.insert(result.end(), (const char *) &this->_client, (const char *) &this->_client + sizeof(this->_client));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_client), reinterpret_cast <const char *> (&this->_client) + sizeof(this->_client));
 		// Устанавливаем параметры партнёра сервера
-		result.insert(result.end(), (const char *) &this->_server, (const char *) &this->_server + sizeof(this->_server));
-		// Устанавливаем метод сжатия данных запроса/ответа
-		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_server), reinterpret_cast <const char *> (&this->_server) + sizeof(this->_server));
+		// Устанавливаем метод компрессии отправляемых данных
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressor.selected), reinterpret_cast <const char *> (&this->_compressor.selected) + sizeof(this->_compressor.selected));
+		// Получаем количество поддерживаемых компрессоров
+		count = this->_compressor.supports.size();
+		// Устанавливаем количество поддерживаемых компрессоров
+		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		// Если список поддерживаемых компрессоров не пустой
+		if(!this->_compressor.supports.empty()){
+			// Выполняем перебор всех поддерживаемых компрессоров
+			for(auto & compressor : this->_compressor.supports){
+				// Выполняем установку веска компрессора
+				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.first), reinterpret_cast <const char *> (&compressor.first) + sizeof(compressor.first));
+				// Выполняем установку идентификатора компрессора
+				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.second), reinterpret_cast <const char *> (&compressor.second) + sizeof(compressor.second));
+			}
+		}
 		// Получаем количество расширений
-		length = this->_extensions.size();
+		count = this->_extensions.size();
 		// Устанавливаем количество расширений
-		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 		// Если расширения установлены
 		if(!this->_extensions.empty()){
 			// Выполняем перебор всего списка расширений
 			for(auto & extensions : this->_extensions){
 				// Получаем количество расширений
-				length = extensions.size();
+				count = extensions.size();
 				// Устанавливаем количество расширений
-				result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+				result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 				// Выполняем перебор всего количества расширений
 				for(auto & extension : extensions){
 					// Получаем размер текущего расширения
 					length = extension.size();
 					// Устанавливаем количество расширений
-					result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+					result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 					// Устанавливаем значение полученного расширения
 					result.insert(result.end(), extension.begin(), extension.end());
 				}
@@ -556,34 +552,43 @@ vector <char> awh::WCore::dump() const noexcept {
 		// Получаем размер ключа клиента
 		length = this->_key.size();
 		// Устанавливаем размер ключа клиента
-		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		// Добавляем ключ клиента
 		result.insert(result.end(), this->_key.begin(), this->_key.end());
 		// Получаем количество выбранных сабпротоколов
 		count = this->_selectedProtocols.size();
 		// Устанавливаем количество выбранных сабпротоколов
-		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
+		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 		// Выполняем перебор всех выбранных сабпротоколов
 		for(auto & subprotocol : this->_selectedProtocols){
 			// Получаем размер выбранному сабпротокола
 			length = subprotocol.size();
 			// Устанавливаем размер выбранному сабпротокола
-			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 			// Устанавливаем данные выбранному сабпротокола
 			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
 		}
 		// Получаем количество поддерживаемых сабпротоколов
 		count = this->_supportedProtocols.size();
 		// Устанавливаем количество поддерживаемых сабпротоколов
-		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
+		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 		// Выполняем перебор всех поддерживаемых сабпротоколов
 		for(auto & subprotocol : this->_supportedProtocols){
 			// Получаем размер поддерживаемого сабпротокола
 			length = subprotocol.size();
 			// Устанавливаем размер поддерживаемого сабпротокола
-			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 			// Устанавливаем данные поддерживаемого сабпротокола
 			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
+		}{
+			// Выполняем получение дампа основного класса
+			const auto & dump = http_t::dump();
+			// Получаем размер дамп бинарных данных модуля
+			length = dump.size();
+			// Устанавливаем размер дампа бинарных данных модуля
+			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			// Добавляем дамп бинарных данных модуля
+			result.insert(result.end(), dump.begin(), dump.end());
 		}
 	}
 	// Выводим результат
@@ -598,32 +603,43 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
-		// Выполняем получение размера дампа бинарных данных модуля
-		::memcpy((void *) &length, data.data() + offset, sizeof(length));
-		// Выполняем смещение в буфере
-		offset += sizeof(length);
-		// Создаём бинарный буфер дампа
-		vector <char> dump(length, 0);
-		// Выполняем получение бинарного буфера дампа
-		::memcpy((void *) dump.data(), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
-		// Выполняем установку бинарного буфера данных
-		reinterpret_cast <http_t *> (const_cast <ws_core_t *> (this))->dump(dump);
 		// Выполняем получение параметров партнёра клиента
-		::memcpy((void *) &this->_client, data.data() + offset, sizeof(this->_client));
+		::memcpy(reinterpret_cast <void *> (&this->_client), data.data() + offset, sizeof(this->_client));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_client);
 		// Выполняем получение параметров партнёра сервера
-		::memcpy((void *) &this->_server, data.data() + offset, sizeof(this->_server));
+		::memcpy(reinterpret_cast <void *> (&this->_server), data.data() + offset, sizeof(this->_server));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_server);
-		// Выполняем получение метода сжатия данных запроса/ответа
-		::memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
+		// Выполняем получение метода компрессии отправляемых данных
+		::memcpy(reinterpret_cast <void *> (&this->_compressor.selected), data.data() + offset, sizeof(this->_compressor.selected));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_compress);
+		offset += sizeof(this->_compressor.selected);
+		// Выполняем получение количества поддерживаемых компрессоров
+		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+		// Выполняем смещение в буфере
+		offset += sizeof(count);
+		// Выполняем очистку списку поддерживаемых компрессоров
+		this->_compressor.supports.clear();
+		// Выполняем последовательную установку всех компрессоров
+		for(size_t i = 0; i < count; i++){
+			// Вес компрессора
+			float weight = .0f;
+			// Идентификатор компрессора
+			compress_t compressor = compress_t::NONE;
+			// Выполняем получение веса компрессора
+			::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
+			// Выполняем смещение в буфере
+			offset += sizeof(weight);
+			// Выполняем получение идентификатора компрессора
+			::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
+			// Выполняем смещение в буфере
+			offset += sizeof(compressor);
+			// Выполняем установку метода компрессора
+			this->_compressor.supports.emplace(weight, compressor);
+		}
 		// Выполняем получение количества расширений
-		::memcpy((void *) &count, data.data() + offset, sizeof(count));
+		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Если количество расширений получено
@@ -633,7 +649,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			// Выполняем перебор всех групп расширений
 			for(size_t i = 0; i < this->_extensions.size(); i++){
 				// Выполняем получение количества групп расширений
-				::memcpy((void *) &count, data.data() + offset, sizeof(count));
+				::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 				// Выполняем смещение в буфере
 				offset += sizeof(count);
 				// Выполняем инициализацию списка групп расширений
@@ -641,30 +657,30 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем перебор всех расширений
 				for(size_t j = 0; j < this->_extensions.at(i).size(); j++){
 					// Выполняем получение размера расширения
-					::memcpy((void *) &length, data.data() + offset, sizeof(length));
+					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Выполняем инициализацию расширения
 					this->_extensions.at(i).at(j).resize(length);
 					// Выполняем копирование полученного расширения
-					::memcpy((void *) this->_extensions.at(i).at(j).data(), this->_extensions.at(i).at(j).data() + offset, length);
+					::memcpy(reinterpret_cast <void *> (this->_extensions.at(i).at(j).data()), this->_extensions.at(i).at(j).data() + offset, length);
 					// Выполняем смещение в буфере
 					offset += length;
 				}
 			}
 		}
 		// Выполняем получение размера ключа клиента
-		::memcpy((void *) &length, data.data() + offset, sizeof(length));
+		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
 		// Выполняем выделение памяти для ключа клиента
 		this->_key.resize(length, 0);
 		// Выполняем получение ключа клиента
-		::memcpy((void *) this->_key.data(), data.data() + offset, length);
+		::memcpy(reinterpret_cast <void *> (this->_key.data()), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем получение количества выбранных сабпротоколов
-		::memcpy((void *) &count, data.data() + offset, sizeof(count));
+		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс списка выбранных сабпротоколов
@@ -672,13 +688,13 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		// Выполняем последовательную загрузку всех выбранных сабпротоколов
 		for(size_t i = 0; i < count; i++){
 			// Выполняем получение размера поддерживаемого сабпротокола
-			::memcpy((void *) &length, data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для поддерживаемого сабпротокола
 			string subprotocol(length, 0);
 			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy((void *) subprotocol.data(), data.data() + offset, length);
+			::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
@@ -687,7 +703,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				this->_selectedProtocols.emplace(std::move(subprotocol));
 		}
 		// Выполняем получение количества поддерживаемых сабпротоколов
-		::memcpy((void *) &count, data.data() + offset, sizeof(count));
+		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс списка поддерживаемых сабпротоколов
@@ -695,19 +711,32 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
 		for(size_t i = 0; i < count; i++){
 			// Выполняем получение размера поддерживаемого сабпротокола
-			::memcpy((void *) &length, data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Выделяем память для поддерживаемого сабпротокола
 			string subprotocol(length, 0);
 			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy((void *) subprotocol.data(), data.data() + offset, length);
+			::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
 			if(!subprotocol.empty())
 				// Выполняем установку списка поддерживаемых сабпротоколов
 				this->_supportedProtocols.emplace(std::move(subprotocol));
+		}{
+			// Выполняем получение размера дампа бинарных данных модуля
+			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Создаём бинарный буфер дампа
+			vector <char> dump(length, 0);
+			// Выполняем получение бинарного буфера дампа
+			::memcpy(reinterpret_cast <void *> (dump.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Выполняем установку бинарного буфера данных
+			http_t::dump(dump);
 		}
 	}
 }
@@ -737,20 +766,40 @@ bool awh::WCore::crypted() const noexcept {
 	return this->_encryption;
 }
 /**
- * compress Метод получения метода компрессии
- * @return метод компрессии сообщений
+ * compression Метод извлечения выбранного метода компрессии
+ * @return метод компрессии
  */
-awh::Http::compress_t awh::WCore::compress() const noexcept {
-	// Выводим метод компрессии сообщений
-	return this->_compress;
+awh::Http::compress_t awh::WCore::compression() const noexcept {
+	// Выполняем извлечение выбранного метода компрессии
+	return this->_compressor.selected;
 }
 /**
- * compress Метод установки метода компрессии
- * @param compress метод компрессии сообщений
+ * compression Метод установки выбранного метода компрессии
+ * @param compress метод компрессии
  */
-void awh::WCore::compress(const compress_t compress) noexcept {
-	// Устанавливаем метод компрессии сообщений
-	this->_compress = compress;
+void awh::WCore::compression(const compress_t compress) noexcept {
+	// Выполняем установку выбранного метода компрессии
+	this->_compressor.selected = compress;
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compress методы компрессии данных полезной нагрузки
+ */
+void awh::WCore::compressors(const vector <compress_t> & compressors) noexcept {
+	// Если список архиваторов передан
+	if(!compressors.empty()){
+		// Вес запрашиваемого компрессора
+		float weight = 1.0f;
+		// Выполняем перебор списка запрашиваемых компрессоров
+		for(auto & compressor : compressors){
+			// Выполняем установку полученного компрессера
+			this->_compressor.supports.emplace(weight, compressor);
+			// Выполняем уменьшение веса компрессора
+			weight -= .1f;
+		}
+		// Устанавливаем флаг метода компрессии
+		this->_compressor.selected = this->_compressor.supports.rbegin()->second;
+	}
 }
 /**
  * extensions Метод извлечения списка расширений

@@ -25,10 +25,10 @@ void awh::server::SchemeProxy::clear() noexcept {
 	this->pairs.clear();
 	// Очищаем список параметров активных клиентов
 	this->_options.clear();
+	// Очищаем доступный список доступных компрессоров
+	this->compressors.clear();
 	// Освобождаем выделенную память
 	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
-	// Сбрасываем тип компрессии
-	this->compress = http_t::compress_t::NONE;
 }
 /**
  * set Метод создания параметров активного клиента
@@ -39,9 +39,9 @@ void awh::server::SchemeProxy::set(const uint64_t bid) noexcept {
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
 		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
-		// Устанавливаем метод сжатия
-		ret.first->second->cli.compress(this->compress);
-		ret.first->second->srv.compress(this->compress);
+		// Устанавливаем список доступных компрессоров
+		ret.first->second->cli.compressors(this->compressors);
+		ret.first->second->srv.compressors(this->compressors);
 	}
 }
 /**

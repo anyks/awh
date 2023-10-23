@@ -48,12 +48,12 @@ void awh::client::WebSocket::pause() noexcept {
 }
 /**
  * init Метод инициализации клиента
- * @param dest     адрес назначения удалённого сервера
- * @param compress метод компрессии передаваемых сообщений
+ * @param dest        адрес назначения удалённого сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::WebSocket::init(const string & dest, const awh::http_t::compress_t compress) noexcept {
+void awh::client::WebSocket::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
 	// Выполняем инициализацию клиента
-	this->_ws.init(dest, compress);
+	this->_ws.init(dest, compressors);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -269,14 +269,6 @@ void awh::client::WebSocket::mode(const set <web_t::flag_t> & flags) noexcept {
 	this->_ws.mode(flags);
 }
 /**
- * compress Метод установки метода компрессии
- * @param compress метод компрессии сообщений
- */
-void awh::client::WebSocket::compress(const awh::http_t::compress_t compress) noexcept {
-	// Выполняем установку метода компрессии
-	this->_ws.compress(compress);
-}
-/**
  * user Метод установки параметров авторизации
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
@@ -294,6 +286,14 @@ void awh::client::WebSocket::user(const string & login, const string & password)
 void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку жизни подключения
 	this->_ws.keepAlive(cnt, idle, intvl);
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::client::WebSocket::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+	// Выполняем установку списка поддерживаемых компрессоров
+	this->_ws.compressors(compressors);
 }
 /**
  * multiThreads Метод активации многопоточности в WebSocket

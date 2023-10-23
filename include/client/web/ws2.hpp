@@ -134,6 +134,9 @@ namespace awh {
 				// Объект функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:
+				// Метод компрессии данных
+				http_t::compress_t _compress;
+			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
 				// Полученные HTTP заголовки
@@ -195,7 +198,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameSignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера

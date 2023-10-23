@@ -42,8 +42,8 @@ void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		if(!this->_headers.empty())
 			// Выполняем установку HTTP-заголовков
 			this->_http.headers(this->_headers);
-		// Устанавливаем метод сжатия
-		this->_http.compress(this->_compress);
+		// Устанавливаем список поддерживаемых компрессоров
+		this->_http.compressors(this->_compressors);
 		// Разрешаем перехватывать контекст компрессии
 		this->_hash.takeoverCompress(this->_client.takeover);
 		// Разрешаем перехватывать контекст декомпрессии
@@ -525,7 +525,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
-					this->_compress = this->_http.compress();
+					this->_compress = this->_http.compression();
 					// Получаем размер скользящего окна сервера
 					this->_server.wbit = this->_http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -1465,7 +1465,7 @@ void awh::client::WebSocket1::encryption(const string & pass, const string & sal
  */
 awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных
@@ -1479,7 +1479,7 @@ awh::client::WebSocket1::WebSocket1(const fmk_t * fmk, const log_t * log) noexce
  */
 awh::client::WebSocket1::WebSocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.on(std::bind(&ws1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию записи данных

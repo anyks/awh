@@ -40,8 +40,8 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 				options->http.id(bid);
 				// Устанавливаем размер чанка
 				options->http.chunk(this->_chunkSize);
-				// Устанавливаем метод компрессии поддерживаемый сервером
-				options->http.compress(this->_scheme.compress);
+				// Устанавливаем список компрессоров поддерживаемый сервером
+				options->http.compressors(this->_scheme.compressors);
 				// Устанавливаем данные сервиса
 				options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 				// Если требуется установить параметры шифрования
@@ -79,10 +79,10 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
-			// Устанавливаем метод компрессии поддерживаемый сервером
-			this->_http1._scheme.compress = this->_scheme.compress;
 			// Выполняем установку сетевого ядра
 			this->_http1._core = dynamic_cast <server::core_t *> (core);
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			this->_http1._scheme.compressors = this->_scheme.compressors;
 			// Выполняем переброс вызова коннекта на клиент WebSocket
 			this->_http1.connectCallback(bid, sid, core);
 		}
@@ -322,11 +322,11 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
  * @param flags  флаг полученного фрейма
  * @return       статус полученных данных
  */
-int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
-		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
+		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
 				// Получаем параметры активного клиента
@@ -383,7 +383,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 			}
 		} break;
 		// Если производится получения фрейма с сервера
-		case static_cast <uint8_t> (nghttp2_t::direct_t::RECV): {
+		case static_cast <uint8_t> (awh::http2_t::direct_t::RECV): {
 			// Получаем параметры активного клиента
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -675,7 +675,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 		// Получаем флаг шифрованных данных
 		options->crypted = options->http.crypted();
 		// Получаем поддерживаемый метод компрессии
-		options->compress = options->http.compress();
+		options->compress = options->http.compression();
 		/**
 		 * Если включён режим отладки
 		 */
@@ -899,7 +899,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 				// Выполняем установку размера фрейма
 				options->frame.size = this->_ws2._frameSize;
 			// Устанавливаем метод компрессии поддерживаемый сервером
-			options->http.compress(this->_scheme.compress);
+			options->http.compressors(this->_scheme.compressors);
 			// Если сервер требует авторизацию
 			if(this->_service.type != auth_t::type_t::NONE){
 				// Определяем тип авторизации
@@ -967,7 +967,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}
 					// Получаем поддерживаемый метод компрессии
-					options->compress = options->http.compress();
+					options->compress = options->http.compression();
 					// Получаем размер скользящего окна сервера
 					options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -1008,7 +1008,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						// Если активная сессия найдена
 						if(it != this->_sessions.end()){
 							// Выполняем создание нового объекта сессии HTTP/2
-							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
+							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
 							// Выполняем копирование контекста сессии HTTP/2
 							(* ret.first->second.get()) = (* it->second.get());
 						}
@@ -1334,26 +1334,26 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 }
 /**
  * init Метод инициализации WebSocket-сервера
- * @param socket   unix-сокет для биндинга
- * @param compress метод сжатия передаваемых сообщений
+ * @param socket      unix-сокет для биндинга
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http2::init(const string & socket, const http_t::compress_t compress) noexcept {
-	// Устанавливаем тип компрессии
-	this->_scheme.compress = compress;
+void awh::server::Http2::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем писок поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
-	web2_t::init(socket, compress);
+	web2_t::init(socket, compressors);
 }
 /**
  * init Метод инициализации WebSocket-сервера
- * @param port     порт сервера
- * @param host     хост сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param port        порт сервера
+ * @param host        хост сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http2::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
-	// Устанавливаем тип компрессии
-	this->_scheme.compress = compress;
+void awh::server::Http2::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем писок поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
-	web2_t::init(port, host, compress);
+	web2_t::init(port, host, compressors);
 }
 /**
  * sendError Метод отправки сообщения об ошибке
@@ -2262,14 +2262,6 @@ void awh::server::Http2::clusterAutoRestart(const bool mode) noexcept {
 		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
- * compress Метод установки метода сжатия
- * @param метод сжатия сообщений
- */
-void awh::server::Http2::compress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод компрессии
-	this->_scheme.compress = compress;
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
@@ -2282,6 +2274,14 @@ void awh::server::Http2::keepAlive(const int cnt, const int idle, const int intv
 	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
 	this->_scheme.keepAlive.intvl = intvl;
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::server::Http2::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список компрессоров
+	this->_scheme.compressors = compressors;
 }
 /**
  * mode Метод установки флагов настроек модуля

@@ -17,22 +17,22 @@
 
 /**
  * init Метод инициализации WEB-сервера
- * @param socket   unix-сокет для биндинга
- * @param compress метод сжатия передаваемых сообщений
+ * @param socket      unix-сокет для биндинга
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::AWH::init(const string & socket, const http_t::compress_t compress) noexcept {
+void awh::server::AWH::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
 	// Выполняем инициализацию WEB-сервера
-	this->_http.init(socket, compress);
+	this->_http.init(socket, compressors);
 }
 /**
  * init Метод инициализации WEB-сервера
- * @param port     порт сервера
- * @param host     хост сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param port        порт сервера
+ * @param host        хост сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::AWH::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
+void awh::server::AWH::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
 	// Выполняем инициализацию WEB-сервера
-	this->_http.init(port, host, compress);
+	this->_http.init(port, host, compressors);
 }
 /**
  * sendError Метод отправки сообщения об ошибке
@@ -353,14 +353,6 @@ void awh::server::AWH::clusterAutoRestart(const bool mode) noexcept {
 	this->_http.clusterAutoRestart(mode);
 }
 /**
- * compress Метод установки метода сжатия
- * @param метод сжатия сообщений
- */
-void awh::server::AWH::compress(const http_t::compress_t compress) noexcept {
-	// Выполняем установку метода сжатия
-	this->_http.compress(compress);
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
@@ -369,6 +361,14 @@ void awh::server::AWH::compress(const http_t::compress_t compress) noexcept {
 void awh::server::AWH::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку жизни подключения
 	this->_http.keepAlive(cnt, idle, intvl);
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::server::AWH::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+	// Выполняем установку списка поддерживаемых компрессоров
+	this->_http.compressors(compressors);
 }
 /**
  * mode Метод установки флагов настроек модуля

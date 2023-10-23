@@ -179,10 +179,10 @@ void awh::server::Proxy::connectServerCallback(const size_t bid, const size_t si
 			else options->cli.on(std::bind(&proxy_t::chunking, this, _1, _2, _3));
 			// Устанавливаем функцию обработки вызова для получения чанков
 			options->srv.on(std::bind(&proxy_t::chunking, this, _1, _2, _3));
-			// Устанавливаем метод компрессии поддерживаемый клиентом
-			options->cli.compress(this->_scheme.compress);
-			// Устанавливаем метод компрессии поддерживаемый сервером
-			options->srv.compress(this->_scheme.compress);
+			// Устанавливаем список поддерживаемых компрессоров клиентом
+			options->cli.compressors(this->_scheme.compressors);
+			// Устанавливаем список поддерживаемых компрессоров сервером
+			options->srv.compressors(this->_scheme.compressors);
 			// Если данные будем передавать в зашифрованном виде
 			if(this->_crypt){
 				// Устанавливаем параметры шифрования
@@ -514,7 +514,7 @@ void awh::server::Proxy::prepare(const size_t bid, const size_t sid) noexcept {
 							// Получаем флаг шифрованных данных
 							options->crypt = options->srv.crypted();
 							// Получаем поддерживаемый метод компрессии
-							options->compress = options->srv.compress();
+							options->compress = options->srv.compression();
 							// Если подключение не выполнено
 							if(!options->connect){
 								// Получаем данные запроса
@@ -753,10 +753,10 @@ void awh::server::Proxy::garbage(const u_short tid, awh::core_t * core) noexcept
 }
 /**
  * init Метод инициализации WebSocket брокера
- * @param socket   unix-сокет для биндинга
- * @param compress метод сжатия передаваемых сообщений
+ * @param socket      unix-сокет для биндинга
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Proxy::init(const string & socket, const http_t::compress_t compress) noexcept {
+void awh::server::Proxy::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -768,14 +768,16 @@ void awh::server::Proxy::init(const string & socket, const http_t::compress_t co
 		// Устанавливаем тип сокета unix-сокет
 		this->_core.server.family(scheme_t::family_t::NIX);
 	#endif
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 }
 /**
  * init Метод инициализации WebSocket брокера
- * @param port     порт сервера
- * @param host     хост сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param port        порт сервера
+ * @param host        хост сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
+void awh::server::Proxy::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
 	// Устанавливаем порт сервера
 	this->_port = port;
 	// Устанавливаем хост сервера
@@ -789,6 +791,8 @@ void awh::server::Proxy::init(const u_int port, const string & host, const http_
 		// Удаляем unix-сокет ранее установленный
 		this->_core.server.removeUnixSocket();
 	#endif
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -1265,20 +1269,20 @@ void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
 	this->_core.server.clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
- * compress Метод установки метода сжатия
- * @param метод сжатия сообщений
- */
-void awh::server::Proxy::compress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод компрессии
-	this->_scheme.compress = compress;
-}
-/**
  * signalInterception Метод активации перехвата сигналов
  * @param mode флаг активации
  */
 void awh::server::Proxy::signalInterception(const awh::core_t::signals_t mode) noexcept {
 	// Выполняем активацию перехвата сигналов
 	this->_core.server.signalInterception(mode);
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::server::Proxy::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 }
 /**
  * serv Метод установки данных сервиса

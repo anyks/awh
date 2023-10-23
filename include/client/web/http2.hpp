@@ -147,7 +147,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера

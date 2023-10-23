@@ -376,16 +376,14 @@ void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 }
 /**
  * init Метод инициализации WEB клиента
- * @param dest     адрес назначения удалённого сервера
- * @param compress метод компрессии передаваемых сообщений
+ * @param dest        адрес назначения удалённого сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::Web::init(const string & dest, const http_t::compress_t compress) noexcept {
+void awh::client::Web::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
 	// Если unix-сокет установлен
 	if((this->_core != nullptr) && (this->_core->family() == scheme_t::family_t::NIX)){
 		// Выполняем очистку схемы сети
 		this->_scheme.clear();
-		// Устанавливаем метод компрессии сообщений
-		this->_compress = compress;
 		// Устанавливаем unix-сокет адрес в файловой системе
 		this->_scheme.url = this->_uri.parse(this->_fmk->format("unix:%s.sock", dest.c_str()));
 		/**
@@ -412,8 +410,8 @@ void awh::client::Web::init(const string & dest, const http_t::compress_t compre
 			#endif
 		}
 	}
-	// Устанавливаем метод компрессии сообщений
-	this->_compress = compress;
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_compressors = compressors;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -683,14 +681,6 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 	}
 }
 /**
- * compress Метод установки метода компрессии
- * @param compress метод компрессии сообщений
- */
-void awh::client::Web::compress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод компрессии
-	this->_compress = compress;
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
@@ -703,6 +693,14 @@ void awh::client::Web::keepAlive(const int cnt, const int idle, const int intvl)
 	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
 	this->_scheme.keepAlive.intvl = intvl;
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::client::Web::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_compressors = compressors;
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса
@@ -766,8 +764,8 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callback(log), _scheme(fmk, log), _unbind(true),
- _active(false), _stopped(false), _redirects(false), _attempt(0), _attempts(15),
- _timer(fmk, log), _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(nullptr) {
+ _active(false), _stopped(false), _redirects(false), _attempt(0),
+ _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
@@ -796,8 +794,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
  _unbind(true), _active(false), _stopped(false), _redirects(false),
- _attempt(0), _attempts(15), _timer(fmk, log),
- _compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log), _core(core) {
+ _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента

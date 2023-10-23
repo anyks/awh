@@ -34,7 +34,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
  * @param flags  флаг полученного фрейма
  * @return       статус полученных данных
  */
-int awh::client::Web2::frameProxySignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
 		// Выполняем определение типа фрейма
@@ -213,7 +213,7 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 		// Если система была остановлена
 		if(status == awh::core_t::status_t::STOP)
 			// Выполняем удаление сессии
-			this->_nghttp2.close();
+			this->_http2.close();
 		// Выполняем передачу события в родительский объект
 		web_t::eventsCallback(status, core);
 	}
@@ -269,7 +269,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 							// Выполняем инициализацию сессии HTTP/2
 							this->implementation(bid, dynamic_cast <client::core_t *> (core));
 							// Если флаг инициализации сессии HTTP/2 установлен
-							if(this->_nghttp2.is()){
+							if(this->_http2.is()){
 								// Создаём объек запроса
 								awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
 								/**
@@ -286,7 +286,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
 								// Выполняем заголовки запроса на сервер
-								this->_proxy.sid = this->_nghttp2.sendHeaders(-1, headers, true);
+								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, true);
 								// Если запрос не получилось отправить
 								if(this->_proxy.sid < 0){
 									// Выполняем закрытие подключения
@@ -352,7 +352,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 					// Если протокол подключения является HTTP/2
 					if(core->proto(bid) == engine_t::proto_t::HTTP2){
 						// Если прочитать данные фрейма не удалось, выходим из функции
-						if(!this->_nghttp2.frame((const uint8_t *) buffer, size))
+						if(!this->_http2.frame((const uint8_t *) buffer, size))
 							// Выходим из функции
 							return;
 					// Если активирован режим работы с HTTP/1.1 протоколом
@@ -371,7 +371,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
  */
 void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if(!this->_nghttp2.is() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
+	if(!this->_http2.is() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём параметры сессии подключения с HTTP/2 сервером
@@ -408,23 +408,23 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 				}
 			}
 			// Выполняем установку функции обратного вызова начала открытии потока
-			this->_nghttp2.on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1));
+			this->_http2.on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			this->_nghttp2.on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, _1, _2));
+			this->_http2.on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			this->_nghttp2.on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
+			this->_http2.on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			this->_nghttp2.on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
+			this->_http2.on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			this->_nghttp2.on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3));
+			this->_http2.on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			this->_nghttp2.on((function <int (const int32_t, const nghttp2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			this->_http2.on((function <int (const int32_t, const http2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
-				this->_nghttp2.on(this->_callback.get <void (const log_t::flag_t, const http::error_t, const string &)> ("error"));
+				this->_http2.on(this->_callback.get <void (const log_t::flag_t, const http::error_t, const string &)> ("error"));
 			// Выполняем инициализацию модуля NgHttp2
-			this->_nghttp2.init(nghttp2_t::mode_t::CLIENT, std::move(iv));
+			this->_http2.init(http2_t::mode_t::CLIENT, std::move(iv));
 		}
 	}
 }
@@ -438,7 +438,7 @@ bool awh::client::Web2::ping() noexcept {
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND))
 		// Выполняем пинг удалённого сервера
-		return this->_nghttp2.ping();
+		return this->_http2.ping();
 	// Выводим результат
 	return false;
 }
@@ -460,7 +460,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
-			if(!(result = this->_nghttp2.sendData(id, (const uint8_t *) buffer, size, end))){
+			if(!(result = this->_http2.sendData(id, (const uint8_t *) buffer, size, end))){
 				// Выполняем закрытие подключения
 				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Выходим из функции
@@ -488,7 +488,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер
-			result = this->_nghttp2.sendHeaders(id, headers, end);
+			result = this->_http2.sendHeaders(id, headers, end);
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выполняем закрытие подключения
@@ -630,7 +630,7 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
  * @param log объект для работы с логами
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _nghttp2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
+ web_t(fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }
@@ -641,7 +641,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _nghttp2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
+ web_t(core, fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(BUFFER_CHUNK) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }

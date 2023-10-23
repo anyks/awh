@@ -151,10 +151,12 @@ void awh::server::Web::disconected(const uint16_t tid, awh::core_t * core) noexc
 }
 /**
  * init Метод инициализации WEB брокера
- * @param socket   unix-сокет для биндинга
- * @param compress метод сжатия передаваемых сообщений
+ * @param socket      unix-сокет для биндинга
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const string & socket, const http_t::compress_t compress) noexcept {
+void awh::server::Web::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+	// Отключаем неиспользуемую переменную
+	(void) compressors;
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -163,15 +165,23 @@ void awh::server::Web::init(const string & socket, const http_t::compress_t comp
 		if(this->_core != nullptr)
 			// Выполняем установку unix-сокет
 			const_cast <server::core_t *> (this->_core)->unixSocket(socket);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Отключаем неиспользуемую переменную
+		(void) socket;
 	#endif
 }
 /**
  * init Метод инициализации WEB брокера
- * @param port     порт сервера
- * @param host     хост сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param port        порт сервера
+ * @param host        хост сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
+void awh::server::Web::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+	// Отключаем неиспользуемую переменную
+	(void) compressors;
 	// Устанавливаем порт сервера
 	this->_service.port = port;
 	// Устанавливаем хост сервера

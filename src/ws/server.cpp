@@ -21,8 +21,6 @@
 void awh::server::WS::commit() noexcept {
 	// Если данные ещё не зафиксированы
 	if(this->_status == status_t::NONE){
-		// Сбрасываем флаг шифрования
-		this->_encryption = false;
 		// Выполняем проверку авторизации
 		this->_status = this->status();
 		// Если ключ соответствует
@@ -31,94 +29,114 @@ void awh::server::WS::commit() noexcept {
 			this->_state = state_t::GOOD;
 		// Поменяем данные как бракованные
 		else this->_state = state_t::BROKEN;
-		// Список доступных расширений
-		vector <string> extensions;
-		// Переходим по всему списку заголовков
-		for(auto & header : this->_web.headers()){
-			// Если заголовок получен с описанием методов компрессии
-			if(this->_fmk->compare(header.first, "accept-encoding")){
-				// Если конкретный метод сжатия не запрашивается
-				if(this->_fmk->compare(header.second, "*"))
-					// Переключаем метод компрессии на BROTLI
-					http_t::_compress = compress_t::BROTLI;
-				// Если запрашиваются конкретные методы сжатия
-				else {
-					// Если найден запрашиваемый метод компрессии BROTLI
-					if(this->_fmk->exists("br", header.second))
-						// Переключаем метод компрессии на BROTLI
-						http_t::_compress = compress_t::BROTLI;
-					// Если найден запрашиваемый метод компрессии GZip
-					else if(this->_fmk->exists("gzip", header.second))
-						// Переключаем метод компрессии на GZIP
-						http_t::_compress = compress_t::GZIP;
-					// Если найден запрашиваемый метод компрессии Deflate
-					else if(this->_fmk->exists("deflate", header.second))
-						// Переключаем метод компрессии на DEFLATE
-						http_t::_compress = compress_t::DEFLATE;
-					// Отключаем поддержку сжатия на сервере
-					else http_t::_compress = compress_t::NONE;
-				}
-				// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
-				http_t::_inflated = http_t::_compress;
-			// Если заголовок сабпротокола найден
-			} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
-				// Проверяем, соответствует ли желаемый подпротокол нашему установленному
-				if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
-					// Устанавливаем выбранный подпротокол
-					this->_selectedProtocols.emplace(header.second);
-			// Если заголовок расширения найден
-			} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
-				// Запись названия расширения
-				string extension = "";
-				// Выполняем перебор записи расширения
-				for(auto & letter : header.second){
-					// Определяем чему соответствует буква
-					switch(letter){
-						// Если буква соответствует разделителю расширения
-						case ';': {
-							// Если слово собранно
-							if(!extension.empty() && !this->extractExtension(extension))
-								// Выполняем добавление слова в список записей
-								extensions.push_back(std::move(extension));
-							// Выполняем очистку слова записи
-							extension.clear();
-							// Если список записей собран
-							if(!extensions.empty()){
-								// Выполняем добавление списка записей в список расширений
-								this->_extensions.push_back(std::move(extensions));
-								// Выполняем очистку списка расширений
-								extensions.clear();
+		{
+			// Список доступных расширений
+			vector <string> extensions;
+			// Сбрасываем флаг шифрования
+			this->_encryption = false;
+			// Отключаем сжатие ответа с сервера
+			this->_compressor.selected = compress_t::NONE;
+			// Отключаем сжатие тела сообщения
+			http_t::_compressor.selected = compress_t::NONE;
+			// Переходим по всему списку заголовков
+			for(auto & header : this->_web.headers()){
+				// Если заголовок получен с описанием методов компрессии
+				if(this->_fmk->compare(header.first, "accept-encoding")){
+					// Если список поддерживаемых протоколов установлен
+					if(!http_t::_compressor.supports.empty()){
+						// Если конкретный метод сжатия не запрашивается
+						if(this->_fmk->compare(header.second, "*"))
+							// Устанавливаем флаг метода компрессии
+							http_t::_compressor.selected = http_t::_compressor.supports.rbegin()->second;
+						// Если запрашиваются конкретные методы сжатия
+						else {
+							// Если найден запрашиваемый метод компрессии Brotli
+							if(this->_fmk->exists("br", header.second)){
+								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+								if(this->_fmk->findInMap(compress_t::BROTLI, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+									// Устанавливаем флаг метода компрессии
+									http_t::_compressor.selected = compress_t::BROTLI;
+								// Выполняем сброс типа компрессии
+								else http_t::_compressor.selected = compress_t::NONE;
+							// Если найден запрашиваемый метод компрессии GZip
+							} else if(this->_fmk->exists("gzip", header.second)) {
+								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+								if(this->_fmk->findInMap(compress_t::GZIP, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+									// Устанавливаем флаг метода компрессии
+									http_t::_compressor.selected = compress_t::GZIP;
+								// Выполняем сброс типа компрессии
+								else http_t::_compressor.selected = compress_t::NONE;
+							// Если найден запрашиваемый метод компрессии Deflate
+							} else if(this->_fmk->exists("deflate", header.second)) {
+								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+								if(this->_fmk->findInMap(compress_t::DEFLATE, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+									// Устанавливаем флаг метода компрессии
+									http_t::_compressor.selected = compress_t::DEFLATE;
+								// Выполняем сброс типа компрессии
+								else http_t::_compressor.selected = compress_t::NONE;
 							}
-						} break;
-						// Если буква соответствует разделителю группы расширений
-						case ',': {
-							// Если слово собранно
-							if(!extension.empty() && !this->extractExtension(extension))
-								// Выполняем добавление слова в список записей
-								extensions.push_back(std::move(extension));
-							// Выполняем очистку слова записи
-							extension.clear();
-						} break;
-						// Если буква соответствует пробелу
-						case ' ': break;
-						// Если буква соответствует знаку табуляции
-						case '\t': break;
-						// Если буква соответствует букве
-						default: extension.append(1, letter);
+						}
 					}
+				// Если заголовок сабпротокола найден
+				} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
+					// Проверяем, соответствует ли желаемый подпротокол нашему установленному
+					if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
+						// Устанавливаем выбранный подпротокол
+						this->_selectedProtocols.emplace(header.second);
+				// Если заголовок расширения найден
+				} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
+					// Запись названия расширения
+					string extension = "";
+					// Выполняем перебор записи расширения
+					for(auto & letter : header.second){
+						// Определяем чему соответствует буква
+						switch(letter){
+							// Если буква соответствует разделителю расширения
+							case ';': {
+								// Если слово собранно
+								if(!extension.empty() && !this->extractExtension(extension))
+									// Выполняем добавление слова в список записей
+									extensions.push_back(std::move(extension));
+								// Выполняем очистку слова записи
+								extension.clear();
+								// Если список записей собран
+								if(!extensions.empty()){
+									// Выполняем добавление списка записей в список расширений
+									this->_extensions.push_back(std::move(extensions));
+									// Выполняем очистку списка расширений
+									extensions.clear();
+								}
+							} break;
+							// Если буква соответствует разделителю группы расширений
+							case ',': {
+								// Если слово собранно
+								if(!extension.empty() && !this->extractExtension(extension))
+									// Выполняем добавление слова в список записей
+									extensions.push_back(std::move(extension));
+								// Выполняем очистку слова записи
+								extension.clear();
+							} break;
+							// Если буква соответствует пробелу
+							case ' ': break;
+							// Если буква соответствует знаку табуляции
+							case '\t': break;
+							// Если буква соответствует букве
+							default: extension.append(1, letter);
+						}
+					}
+					// Если слово собранно
+					if(!extension.empty() && !this->extractExtension(extension))
+						// Выполняем добавление слова в список записей
+						extensions.push_back(std::move(extension));
+					// Выполняем очистку слова записи
+					extension.clear();
 				}
-				// Если слово собранно
-				if(!extension.empty() && !this->extractExtension(extension))
-					// Выполняем добавление слова в список записей
-					extensions.push_back(std::move(extension));
-				// Выполняем очистку слова записи
-				extension.clear();
 			}
+			// Если список записей собран
+			if(!extensions.empty())
+				// Выполняем добавление списка записей в список расширений
+				this->_extensions.push_back(std::move(extensions));
 		}
-		// Если список записей собран
-		if(!extensions.empty())
-			// Выполняем добавление списка записей в список расширений
-			this->_extensions.push_back(std::move(extensions));
 	}
 }
 /**
@@ -245,8 +263,14 @@ void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
  * @param log объект для работы с логами
  */
 awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
+	// Выполняем установку списка поддерживаемых компрессоров
+	http_t::compressors({
+		compress_t::BROTLI,
+		compress_t::GZIP,
+		compress_t::DEFLATE
+	});
 	// Выполняем установку идентичность клиента к протоколу WebSocket
 	this->_identity = identity_t::WS;
 	// Устанавливаем тип HTTP-модуля (Сервер)
-	this->_web.hid(awh::web_t::hid_t::SERVER);
+	this->_web.hid(awh::web_t::hid_t::SERVER);	
 }

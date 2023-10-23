@@ -79,8 +79,8 @@ namespace awh {
 			// Объект партнёра сервера
 			partner_t _server;
 		protected:
-			// Метод сжатия данных запроса/ответа
-			compress_t _compress;
+			// Компрессор для жатия данных
+			compressor_t _compressor;
 		protected:
 			// Список выбранных сабпротоколов
 			set <string> _selectedProtocols;
@@ -154,15 +154,20 @@ namespace awh {
 			bool crypted() const noexcept;
 		public:
 			/**
-			 * compress Метод получения метода компрессии
-			 * @return метод компрессии сообщений
+			 * compression Метод извлечения выбранного метода компрессии
+			 * @return метод компрессии
 			 */
-			compress_t compress() const noexcept;
+			compress_t compression() const noexcept;
 			/**
-			 * compress Метод установки метода компрессии
-			 * @param compress метод компрессии сообщений
+			 * compression Метод установки выбранного метода компрессии
+			 * @param compress метод компрессии
 			 */
-			void compress(const compress_t compress) noexcept;
+			void compression(const compress_t compress) noexcept;
+			/**
+			 * compressors Метод установки списка поддерживаемых компрессоров
+			 * @param compress методы компрессии данных полезной нагрузки
+			 */
+			void compressors(const vector <compress_t> & compressors) noexcept;
 		public:
 			/**
 			 * extensions Метод извлечения списка расширений
@@ -258,7 +263,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			WCore(const fmk_t * fmk, const log_t * log) noexcept : http_t(fmk, log), _key{""}, _compress(compress_t::DEFLATE) {}
+			WCore(const fmk_t * fmk, const log_t * log) noexcept : http_t(fmk, log), _key{""} {}
 			/**
 			 * ~WCore Деструктор
 			 */

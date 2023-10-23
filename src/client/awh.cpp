@@ -82,12 +82,12 @@ void awh::client::AWH::pause() noexcept {
 }
 /**
  * init Метод инициализации клиента
- * @param dest     адрес назначения удалённого сервера
- * @param compress метод компрессии передаваемых сообщений
+ * @param dest        адрес назначения удалённого сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::AWH::init(const string & dest, const awh::http_t::compress_t compress) noexcept {
+void awh::client::AWH::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
 	// Выполняем инициализацию клиента
-	this->_http.init(dest, compress);
+	this->_http.init(dest, compressors);
 }
 /**
  * GET Метод запроса в формате HTTP методом GET
@@ -451,7 +451,11 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				headers = std::forward <const unordered_multimap <string, string>> (data);
 		});
 		// Выполняем инициализацию подключения
-		this->init(this->_uri.origin(url));
+		this->init(this->_uri.origin(url), {
+			awh::http_t::compress_t::BROTLI,
+			awh::http_t::compress_t::GZIP,
+			awh::http_t::compress_t::DEFLATE
+		});
 		// Выполняем запуск работы
 		this->start();
 	}
@@ -678,14 +682,6 @@ void awh::client::AWH::attempts(const uint8_t attempts) noexcept {
 	this->_http.attempts(attempts);
 }
 /**
- * compress Метод установки метода компрессии
- * @param compress метод компрессии сообщений
- */
-void awh::client::AWH::compress(const awh::http_t::compress_t compress) noexcept {
-	// Выполняем установку метода компрессии
-	this->_http.compress(compress);
-}
-/**
  * user Метод установки параметров авторизации
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
@@ -703,6 +699,14 @@ void awh::client::AWH::user(const string & login, const string & password) noexc
 void awh::client::AWH::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку жизни подключения
 	this->_http.keepAlive(cnt, idle, intvl);
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::client::AWH::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+	// Выполняем установку списка поддерживаемых компрессоров
+	this->_http.compressors(compressors);
 }
 /**
  * multiThreads Метод активации многопоточности в WebSocket

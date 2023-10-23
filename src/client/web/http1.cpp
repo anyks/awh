@@ -659,12 +659,12 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			this->_http.clear();
 			// Выполняем очистку функций обратного вызова
 			this->_resultCallback.clear();
-			// Если метод компрессии установлен
-			if(request.compress != http_t::compress_t::NONE)
-				// Устанавливаем метод компрессии переданный пользователем
-				this->_http.compress(request.compress);
-			// Устанавливаем метод компрессии
-			else this->_http.compress(this->_compress);
+			// Если список компрессоров передан
+			if(!request.compressors.empty())
+				// Устанавливаем список поддерживаемых компрессоров
+				this->_http.compressors(request.compressors);
+			// Устанавливаем список поддерживаемых компрессоров
+			else this->_http.compressors(this->_compressors);
 			// Если список заголовков получен
 			if(!request.headers.empty())
 				// Устанавливаем заголовоки запроса
@@ -786,12 +786,12 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 							if(!request.headers.empty())
 								// Выполняем установку HTTP-заголовков
 								this->_ws1.setHeaders(request.headers);
-							// Если метод компрессии установлен
-							if(request.compress != http_t::compress_t::NONE)
-								// Устанавливаем метод компрессии переданный пользователем
-								this->_ws1._compress = request.compress;
-							// Устанавливаем метод компрессии
-							else this->_ws1._compress = this->_compress;
+							// Если список доступных компрессоров установлен
+							if(!request.compressors.empty())
+								// Устанавливаем список поддерживаемых компрессоров
+								this->_ws1._compressors = request.compressors;
+							// Устанавливаем список поддерживаемых компрессоров
+							else this->_ws1._compressors = this->_compressors;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_ws1._scheme.url, request.url);
 							// Выполняем установку подключения с WebSocket-сервером

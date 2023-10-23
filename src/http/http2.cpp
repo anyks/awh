@@ -1,5 +1,5 @@
 /**
- * @file: nghttp2.cpp
+ * @file: http2.cpp
  * @date: 2023-09-27
  * @license: GPL-3.0
  *
@@ -13,14 +13,14 @@
  */
 
 // Подключаем заголовочный файл
-#include <http/nghttp2.hpp>
+#include <http/http2.hpp>
 
 /**
  * debug Функция обратного вызова при получении отладочной информации
  * @param format формат вывода отладочной информации
  * @param args   список аргументов отладочной информации
  */
-void awh::NgHttp2::debug(const char * format, va_list args) noexcept {
+void awh::Http2::debug(const char * format, va_list args) noexcept {
 	// Буфер данных для логирования
 	string buffer(1024, '\0');
 	// Выполняем перебор всех аргументов
@@ -71,17 +71,17 @@ void awh::NgHttp2::debug(const char * format, va_list args) noexcept {
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученных данных
  */
-int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Выполняем определение типа фрейма
 	switch(frame->hd.type){
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS:{
 			// Получаем объект родительского объекта
-			nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+			http2_t * self = reinterpret_cast <http2_t *> (ctx);
 			// Определяем идентификатор сервиса
 			switch(static_cast <uint8_t> (self->_mode)){
 				// Если сервис идентифицирован как клиент
@@ -135,11 +135,11 @@ int awh::NgHttp2::begin(nghttp2_session * session, const nghttp2_frame * frame, 
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученных данных
  */
-int awh::NgHttp2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
@@ -154,11 +154,11 @@ int awh::NgHttp2::frameRecv(nghttp2_session * session, const nghttp2_frame * fra
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученных данных
  */
-int awh::NgHttp2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
@@ -174,9 +174,9 @@ int awh::NgHttp2::frameSend(nghttp2_session * session, const nghttp2_frame * fra
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученного события
  */
-int awh::NgHttp2::close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
+int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	/**
 	 * Если включён режим отладки
 	 */
@@ -205,12 +205,12 @@ int awh::NgHttp2::close(nghttp2_session * session, const int32_t sid, const uint
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученных данных
  */
-int awh::NgHttp2::chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("chunk"))
 		// Выводим функцию обратного вызова
@@ -230,7 +230,7 @@ int awh::NgHttp2::chunk(nghttp2_session * session, const uint8_t flags, const in
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус полученных данных
  */
-int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
+int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
@@ -239,7 +239,7 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS:{
 			// Получаем объект родительского объекта
-			nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+			http2_t * self = reinterpret_cast <http2_t *> (ctx);
 			// Определяем идентификатор сервиса
 			switch(static_cast <uint8_t> (self->_mode)){
 				// Если сервис идентифицирован как клиент
@@ -277,12 +277,12 @@ int awh::NgHttp2::header(nghttp2_session * session, const nghttp2_frame * frame,
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept {
+ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
 	// Получаем объект родительского объекта
-	nghttp2_t * self = reinterpret_cast <nghttp2_t *> (ctx);
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
 		// Выводим функцию обратного вызова
@@ -301,7 +301,7 @@ ssize_t awh::NgHttp2::send(nghttp2_session * session, const uint8_t * buffer, co
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
+ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) sid;
 	(void) ctx;
@@ -350,7 +350,7 @@ ssize_t awh::NgHttp2::read(nghttp2_session * session, const int32_t sid, uint8_t
  * completed Метод завершения выполнения операции
  * @param event событие выполненной операции
  */
-void awh::NgHttp2::completed(const event_t event) noexcept {
+void awh::Http2::completed(const event_t event) noexcept {
 	// Если выполненное событие соответствует последнему событию
 	if(event == this->_event){
 		// Выполняем сброс активного события
@@ -372,7 +372,7 @@ void awh::NgHttp2::completed(const event_t event) noexcept {
  * ping Метод выполнения пинга
  * @return результат работы пинга
  */
-bool awh::NgHttp2::ping() noexcept {
+bool awh::Http2::ping() noexcept {
 	// Результат выполнения поерации
 	int rv = -1;
 	// Выполняем установку активного события
@@ -420,7 +420,7 @@ bool awh::NgHttp2::ping() noexcept {
  * @param size   размер буфера бинарных данных
  * @return       результат чтения данных фрейма
  */
-bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
+bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::RECV_FRAME;
 	// Если данные для чтения переданы
@@ -473,7 +473,7 @@ bool awh::NgHttp2::frame(const uint8_t * buffer, const size_t size) noexcept {
  * sendOrigin Метод отправки списка разрешенных источников
  * @param origins список разрешённых источников
  */
-bool awh::NgHttp2::sendOrigin(const vector <string> & origins) noexcept {
+bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ORIGIN;
 	// Если список источников передан
@@ -528,7 +528,7 @@ bool awh::NgHttp2::sendOrigin(const vector <string> & origins) noexcept {
  * @param end    флаг завершения потока передачи данных
  * @return       результат отправки данных фрейма
  */
-bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size_t size, const bool end) noexcept {
+bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t size, const bool end) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
@@ -624,7 +624,7 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
 		// Устанавливаем файловый дескриптор
 		data.source.fd = fds[0];
 		// Устанавливаем функцию обратного вызова
-		data.read_callback = &nghttp2_t::read;
+		data.read_callback = &http2_t::read;
 		// Если сессия HTTP/2 инициализированна
 		if(this->_session != nullptr){
 			// Результат фиксации сессии
@@ -676,7 +676,7 @@ bool awh::NgHttp2::sendData(const int32_t id, const uint8_t * buffer, const size
  * @param end     размер сообщения в байтах
  * @return        флаг завершения потока передачи данных
  */
-int32_t awh::NgHttp2::sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
+int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -741,7 +741,7 @@ int32_t awh::NgHttp2::sendHeaders(const int32_t id, const vector <pair <string, 
 /**
  * free Метод очистки активной сессии
  */
-void awh::NgHttp2::free() noexcept {
+void awh::Http2::free() noexcept {
 	// Если сессия HTTP/2 создана удачно
 	if(this->_session != nullptr){
 		// Выполняем удаление сессии
@@ -753,7 +753,7 @@ void awh::NgHttp2::free() noexcept {
 /**
  * close Метод закрытия подключения
  */
-void awh::NgHttp2::close() noexcept {
+void awh::Http2::close() noexcept {
 	// Если активное событие не установлено
 	if(!(this->_close = (this->_event != event_t::NONE))){
 		// Если сессия HTTP/2 создана удачно
@@ -778,7 +778,7 @@ void awh::NgHttp2::close() noexcept {
  * is Метод проверки инициализации модуля
  * @return результат проверки инициализации
  */
-bool awh::NgHttp2::is() const noexcept {
+bool awh::Http2::is() const noexcept {
 	// Выводим результат проверки
 	return (this->_session != nullptr);
 }
@@ -788,7 +788,7 @@ bool awh::NgHttp2::is() const noexcept {
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept {
+bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы
@@ -800,7 +800,7 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 		 */
 		#if defined(DEBUG_MODE)
 			// Выполняем установку функции для вывода отладочной информации
-			nghttp2_set_debug_vprintf_callback(&nghttp2_t::debug);
+			nghttp2_set_debug_vprintf_callback(&http2_t::debug);
 		#endif
 		// Выполняем установку идентификатора сессии
 		this->_mode = mode;
@@ -809,19 +809,19 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
 		// Выполняем инициализацию сессию функций обратного вызова
 		nghttp2_session_callbacks_new(&callbacks);
 		// Выполняем установку функции обратного вызова при подготовки данных для отправки
-		nghttp2_session_callbacks_set_send_callback(callbacks, &nghttp2_t::send);
+		nghttp2_session_callbacks_set_send_callback(callbacks, &http2_t::send);
 		// Выполняем установку функции обратного вызова при получении заголовка
-		nghttp2_session_callbacks_set_on_header_callback(callbacks, &nghttp2_t::header);
+		nghttp2_session_callbacks_set_on_header_callback(callbacks, &http2_t::header);
 		// Выполняем установку функции обратного вызова закрытия подключения
-		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &nghttp2_t::close);
+		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &http2_t::close);
 		// Выполняем установку функции обратного вызова начала получения фрейма заголовков
-		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &nghttp2_t::begin);
+		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &http2_t::begin);
 		// Выполняем установку функции обратного вызова при получении фрейма заголовков
-		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &nghttp2_t::frameRecv);
+		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &http2_t::frameRecv);
 		// Выполняем установку функции обратного вызова при отправки фрейма заголовков
-		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &nghttp2_t::frameSend);
+		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
-		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &nghttp2_t::chunk);
+		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
@@ -871,7 +871,7 @@ bool awh::NgHttp2::init(const mode_t mode, const vector <nghttp2_settings_entry>
  * on Метод установки функции обратного вызова триггера выполнения операции
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <void (void)> callback) noexcept {
+void awh::Http2::on(function <void (void)> callback) noexcept {
 	// Если функция обратного вызова передана
 	if(callback != nullptr){
 		// Если активное событие не установлено
@@ -886,7 +886,7 @@ void awh::NgHttp2::on(function <void (void)> callback) noexcept {
  * on Метод установки функции обратного вызова начала открытии потока
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <int (const int32_t)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t)> ("begin", callback);
 }
@@ -894,7 +894,7 @@ void awh::NgHttp2::on(function <int (const int32_t)> callback) noexcept {
  * on Метод установки функции обратного вызова при закрытии потока
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <int (const int32_t, const uint32_t)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t, const uint32_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t, const uint32_t)> ("close", callback);
 }
@@ -902,7 +902,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const uint32_t)> callback) n
  * on Метод установки функции обратного вызова при отправки сообщения
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
+void awh::Http2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint8_t *, const size_t)> ("send", callback);
 }
@@ -910,7 +910,7 @@ void awh::NgHttp2::on(function <void (const uint8_t *, const size_t)> callback) 
  * on Метод установки функции обратного вызова при получении чанка
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", callback);
 }
@@ -918,7 +918,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const uint8_t *, const size_
  * on Метод установки функции обратного вызова при получении данных заголовка
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <int (const int32_t, const string &, const string &)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t, const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t, const string &, const string &)> ("header", callback);
 }
@@ -926,7 +926,7 @@ void awh::NgHttp2::on(function <int (const int32_t, const string &, const string
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+void awh::Http2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
@@ -934,35 +934,35 @@ void awh::NgHttp2::on(function <void (const log_t::flag_t, const http::error_t, 
  * on Метод установки функции обратного вызова при обмене фреймами
  * @param callback функция обратного вызова
  */
-void awh::NgHttp2::on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> ("frame", callback);
 }
 /**
- * Оператор [=] зануления фрейма NgHttp2
- * @return сформированный объект NgHttp2
+ * Оператор [=] зануления фрейма Http2
+ * @return сформированный объект Http2
  */
-awh::NgHttp2 & awh::NgHttp2::operator = (std::nullptr_t) noexcept {
+awh::Http2 & awh::Http2::operator = (std::nullptr_t) noexcept {
 	// Выполняем копирование сессии подключения
 	this->_session = nullptr;
 	// Выводим текущий объект в качестве результата
 	return (* this);
 }
 /**
- * Оператор [=] копирования объекта фрейма NgHttp2
- * @param ctx объект фрейма NgHttp2
- * @return    сформированный объект NgHttp2
+ * Оператор [=] копирования объекта фрейма Http2
+ * @param ctx объект фрейма Http2
+ * @return    сформированный объект Http2
  */
-awh::NgHttp2 & awh::NgHttp2::operator = (const NgHttp2 & ctx) noexcept {
+awh::Http2 & awh::Http2::operator = (const http2_t & ctx) noexcept {
 	// Выполняем копирование сессии подключения
 	this->_session = ctx._session;
 	// Выводим текущий объект в качестве результата
 	return (* this);
 }
 /**
- * ~NgHttp2 Деструктор
+ * ~Http2 Деструктор
  */
-awh::NgHttp2::~NgHttp2() noexcept {
+awh::Http2::~Http2() noexcept {
 	// Выполняем удаление созданную ранее сессию
 	this->free();
 }

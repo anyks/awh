@@ -138,6 +138,9 @@ namespace awh {
 				// Объект функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:
+				// Метод компрессии данных
+				http_t::compress_t _compress;
+			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
 				// Полученные HTTP заголовки

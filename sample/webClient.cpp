@@ -203,9 +203,14 @@ int main(int argc, char * argv[]){
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
-	
+	/*
 	// Устанавливаем тип компрессии
-	// awh.compress(http_t::compress_t::ALL_COMPRESS);
+	awh.compress({
+		http_t::compress_t::BROTLI,
+		http_t::compress_t::GZIP,
+		http_t::compress_t::DEFLATE
+	});
+	*/
 	// Устанавливаем тип авторизации прокси-сервера
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

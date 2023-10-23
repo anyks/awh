@@ -301,7 +301,7 @@ namespace awh {
 							 * @param b второе число для сравнения
 							 * @return  результат выполненной проверки
 							 */
-							bool compare(const int a, const int b) const noexcept {
+							bool compare(const B a, const B b) const noexcept {
 								// Выполняем сравнение
 								return (a != b);
 							}

@@ -1,5 +1,5 @@
 /**
- * @file: nghtt2.hpp
+ * @file: htt2.hpp
  * @date: 2023-09-27
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_NGHTTP2__
-#define __AWH_NGHTTP2__
+#ifndef __AWH_HTTP2__
+#define __AWH_HTTP2__
 
 /**
  * Стандартная библиотека
@@ -55,9 +55,9 @@
  */
 namespace awh {
 	/**
-	 * NgHttp2 Класс работы с фреймами NgHttp2
+	 * Http2 Класс работы с фреймами Http2
 	 */
-	typedef class NgHttp2 {
+	typedef class Http2 {
 		public:
 			/**
 			 * Идентификации сервиса
@@ -303,30 +303,30 @@ namespace awh {
 			void on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept;
 		public:
 			/**
-			 * Оператор [=] зануления фрейма NgHttp2
-			 * @return сформированный объект NgHttp2
+			 * Оператор [=] зануления фрейма Http2
+			 * @return сформированный объект Http2
 			 */
-			NgHttp2 & operator = (std::nullptr_t) noexcept;
+			Http2 & operator = (std::nullptr_t) noexcept;
 			/**
-			 * Оператор [=] копирования объекта фрейма NgHttp2
-			 * @param ctx объект фрейма NgHttp2
-			 * @return    сформированный объект NgHttp2
+			 * Оператор [=] копирования объекта фрейма Http2
+			 * @param ctx объект фрейма Http2
+			 * @return    сформированный объект Http2
 			 */
-			NgHttp2 & operator = (const NgHttp2 & ctx) noexcept;
+			Http2 & operator = (const Http2 & ctx) noexcept;
 		public:
 			/**
-			 * NgHttp2 Конструктор
+			 * Http2 Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			NgHttp2(const fmk_t * fmk, const log_t * log) noexcept :
+			Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
 			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
-			 * ~NgHttp2 Деструктор
+			 * ~Http2 Деструктор
 			 */
-			~NgHttp2() noexcept;
-	} nghttp2_t;
+			~Http2() noexcept;
+	} http2_t;
 };
 
-#endif // __AWH_NGHTTP2__
+#endif // __AWH_HTTP2__

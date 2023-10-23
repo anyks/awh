@@ -29,9 +29,9 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <net/uri.hpp>
+#include <http/http2.hpp>
 #include <http/server.hpp>
 #include <core/server.hpp>
-#include <http/nghttp2.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -262,17 +262,17 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации WEB брокера
-				 * @param socket   unix-сокет для биндинга
-				 * @param compress метод сжатия передаваемых сообщений
+				 * @param socket      unix-сокет для биндинга
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				virtual void init(const string & socket, const vector <http_t::compress_t> & compressors = {}) noexcept;
 				/**
 				 * init Метод инициализации WEB брокера
-				 * @param port     порт сервера
-				 * @param host     хост сервера
-				 * @param compress метод сжатия передаваемых сообщений
+				 * @param port        порт сервера
+				 * @param host        хост сервера
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
+				virtual void init(const u_int port, const string & host = "", const vector <http_t::compress_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -477,17 +477,17 @@ namespace awh {
 				 */
 				virtual void clusterAutoRestart(const bool mode) noexcept = 0;
 				/**
-				 * compress Метод установки метода сжатия
-				 * @param метод сжатия сообщений
-				 */
-				virtual void compress(const http_t::compress_t compress) noexcept = 0;
-				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
 				virtual void keepAlive(const int cnt, const int idle, const int intvl) noexcept = 0;
+				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				virtual void compressors(const vector <http_t::compress_t> & compressors) noexcept = 0;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера
@@ -584,7 +584,7 @@ namespace awh {
 				map <settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				map <uint64_t, unique_ptr <nghttp2_t>> _sessions;
+				map <uint64_t, unique_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
@@ -640,7 +640,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint64_t bid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера

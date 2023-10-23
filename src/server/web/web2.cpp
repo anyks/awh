@@ -96,7 +96,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 				}
 			}
 			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(bid, unique_ptr <nghttp2_t> (new nghttp2_t(this->_fmk, this->_log)));
+			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова начала открытии потока
 			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
@@ -108,13 +108,13 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const nghttp2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
 				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
 			// Если инициализация модуля NgHttp2 не выполнена
-			if(!ret.first->second->init(nghttp2_t::mode_t::SERVER, std::move(iv)))
+			if(!ret.first->second->init(http2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
 			// Если инициализация модуля NgHttp2 прошла успешно и список ресурсов с которым должен работать сервер установлен

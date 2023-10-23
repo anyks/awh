@@ -35,8 +35,8 @@ void awh::client::WebSocket2::send(const uint64_t bid, client::core_t * core) no
 	if(!this->_headers.empty())
 		// Выполняем установку HTTP-заголовков
 		this->_http.headers(this->_headers);
-	// Устанавливаем метод сжатия
-	this->_http.compress(this->_compress);
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_http.compressors(this->_compressors);
 	// Разрешаем перехватывать контекст для клиента
 	this->_http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeover);
 	// Разрешаем перехватывать контекст для сервера
@@ -100,7 +100,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(bid, sid, core);
 		// Если флаг инициализации сессии HTTP/2 установлен
-		if(this->_nghttp2.is()){
+		if(this->_http2.is()){
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Выполняем отправку запроса на удалённый сервер
@@ -117,10 +117,10 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 			this->_sid = 1;
 			// Выполняем установку идентификатора объекта
 			this->_ws1._http.id(bid);
-			// Устанавливаем метод сжатия
-			this->_ws1._compress = this->_compress;
 			// Выполняем установку данных URL-адреса
 			this->_ws1._scheme.url = this->_scheme.url;
+			// Устанавливаем список поддерживаемых компрессоров
+			this->_ws1._compressors = this->_compressors;
 			// Выполняем установку сетевого ядра
 			this->_ws1._core = dynamic_cast <client::core_t *> (core);
 			// Если HTTP-заголовки установлены
@@ -157,7 +157,7 @@ void awh::client::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 	// Выполняем сброс идентификатора потока
 	this->_sid = -1;
 	// Выполняем удаление подключения
-	this->_nghttp2.close();
+	this->_http2.close();
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
@@ -213,9 +213,9 @@ void awh::client::WebSocket2::readCallback(const char * buffer, const size_t siz
 				// Выходим из функции
 				return;
 			// Если прочитать данные фрейма не удалось, выходим из функции
-			if(!this->_nghttp2.frame((const uint8_t *) buffer, size)){
+			if(!this->_http2.frame((const uint8_t *) buffer, size)){
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
+				this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
 				// Выходим из функции
 				return;
 			}
@@ -295,11 +295,11 @@ int awh::client::WebSocket2::chunkSignal(const int32_t sid, const uint8_t * buff
  * @param flags  флаг полученного фрейма
  * @return       статус полученных данных
  */
-int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::client::WebSocket2::frameSignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
-		case static_cast <uint8_t> (nghttp2_t::direct_t::SEND): {
+		case static_cast <uint8_t> (http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags & NGHTTP2_FLAG_END_STREAM){
 				// Если необходимо выполнить закрыть подключение
@@ -307,9 +307,9 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 					// Устанавливаем флаг закрытия подключения
 					this->_close = !this->_close;
 					// Выполняем закрытие подключения
-					this->_nghttp2.close();
+					this->_http2.close();
 					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-					this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+					this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
@@ -318,7 +318,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const nghttp2_t::dir
 			}
 		} break;
 		// Если производится получения фрейма с сервера
-		case static_cast <uint8_t> (nghttp2_t::direct_t::RECV): {
+		case static_cast <uint8_t> (http2_t::direct_t::RECV): {
 			// Если подключение производится через, прокси-сервер
 			if(this->_scheme.isProxy())
 				// Выполняем обработку полученных данных фрейма для прокси-сервера
@@ -647,9 +647,9 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 		} break;
 	}
 	// Если флаг инициализации сессии HTTP/2 установлен
-	if((this->_core != nullptr) && (error > 0x00) && this->_nghttp2.is())
+	if((this->_core != nullptr) && (error > 0x00) && this->_http2.is())
 		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-		this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+		this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callback.is("stream"))
 		// Выводим функцию обратного вызова
@@ -841,7 +841,7 @@ void awh::client::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
 			// Если рукопожатие уже выполнено и пинг не прошёл
 			} else if(!web2_t::ping())
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_nghttp2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+				this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 		}
 	}
 }
@@ -964,7 +964,7 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
-					this->_compress = this->_http.compress();
+					this->_compress = this->_http.compression();
 					// Получаем размер скользящего окна сервера
 					this->_server.wbit = this->_http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -1937,8 +1937,10 @@ void awh::client::WebSocket2::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(-1), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
+ web2_t(fmk, log), _sid(-1), _close(false), _shake(false),
+ _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -1949,8 +1951,10 @@ awh::client::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket2::WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(-1), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log) {
+ web2_t(core, fmk, log), _sid(-1), _close(false), _shake(false),
+ _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
+ _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

@@ -23,8 +23,8 @@ void awh::server::SchemeWEB::clear() noexcept {
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
 	this->_options.clear();
-	// Сбрасываем тип компрессии
-	this->compress = http_t::compress_t::NONE;
+	// Очищаем доступный список доступных компрессоров
+	this->compressors.clear();
 	// Освобождаем выделенную память
 	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
 }
@@ -37,8 +37,8 @@ void awh::server::SchemeWEB::set(const uint64_t bid) noexcept {
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
 		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
-		// Устанавливаем метод сжатия
-		ret.first->second->http.compress(this->compress);
+		// Устанавливаем список доступных компрессоров
+		ret.first->second->http.compressors(this->compressors);
 		// Устанавливаем контрольную точку
 		ret.first->second->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 	}

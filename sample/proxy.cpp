@@ -149,9 +149,9 @@ int main(int argc, char * argv[]){
 	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	// proxy.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию прокси-сервера
-	// proxy.init(2222, "", http_t::compress_t::GZIP);
-	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
-	// proxy.init("anyks", http_t::compress_t::GZIP);
+	// proxy.init(2222, "", {http_t::compress_t::GZIP});
+	proxy.init(2222, "127.0.0.1", {http_t::compress_t::GZIP});
+	// proxy.init("anyks", {http_t::compress_t::GZIP});
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
 	/*

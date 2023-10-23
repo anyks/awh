@@ -34,14 +34,14 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 			options->http.id(bid);
 			// Устанавливаем размер чанка
 			options->http.chunk(this->_chunkSize);
-			// Устанавливаем метод компрессии поддерживаемый сервером
-			options->http.compress(this->_scheme.compress);
 			// Устанавливаем флаг шифрования
 			options->http.encryption(this->_encryption.mode);
 			// Устанавливаем флаг перехвата контекста компрессии
 			options->server.takeover = this->_server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
 			options->client.takeover = this->_client.takeover;
+			// Устанавливаем список компрессоров поддерживаемый сервером
+			options->http.compressors(this->_scheme.compressors);
 			// Разрешаем перехватывать контекст компрессии
 			options->hash.takeoverCompress(this->_server.takeover);
 			// Разрешаем перехватывать контекст декомпрессии
@@ -182,7 +182,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						// Устанавливаем правила закрытия подключения
 						http.header("Сonnection", "close");
 						// Устанавливаем метод компрессии данных ответа
-						http.compress(options->http.compression());
+						http.compression(options->http.compression());
 						/**
 						 * Если включён режим отладки
 						 */
@@ -245,7 +245,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 									}
 									// Получаем поддерживаемый метод компрессии
-									options->compress = options->http.compress();
+									options->compress = options->http.compression();
 									// Получаем размер скользящего окна сервера
 									options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
 									// Получаем размер скользящего окна клиента
@@ -839,26 +839,26 @@ void awh::server::WebSocket1::pinging(const uint16_t tid, awh::core_t * core) no
 }
 /**
  * init Метод инициализации WebSocket-сервера
- * @param socket   unix-сокет для биндинга
- * @param compress метод сжатия передаваемых сообщений
+ * @param socket      unix-сокет для биндинга
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::WebSocket1::init(const string & socket, const http_t::compress_t compress) noexcept {
-	// Устанавливаем тип компрессии
-	this->_scheme.compress = compress;
+void awh::server::WebSocket1::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
-	web_t::init(socket, compress);
+	web_t::init(socket, compressors);
 }
 /**
  * init Метод инициализации WebSocket-сервера
- * @param port     порт сервера
- * @param host     хост сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param port        порт сервера
+ * @param host        хост сервера
+ * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::WebSocket1::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
-	// Устанавливаем тип компрессии
-	this->_scheme.compress = compress;
+void awh::server::WebSocket1::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
-	web_t::init(port, host, compress);
+	web_t::init(port, host, compressors);
 }
 /**
  * sendError Метод отправки сообщения об ошибке
@@ -1365,14 +1365,6 @@ void awh::server::WebSocket1::clusterAutoRestart(const bool mode) noexcept {
 		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
- * compress Метод установки метода сжатия
- * @param метод сжатия сообщений
- */
-void awh::server::WebSocket1::compress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод компрессии
-	this->_scheme.compress = compress;
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
@@ -1385,6 +1377,14 @@ void awh::server::WebSocket1::keepAlive(const int cnt, const int idle, const int
 	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
 	this->_scheme.keepAlive.intvl = intvl;
+}
+/**
+ * compressors Метод установки списка поддерживаемых компрессоров
+ * @param compressors список поддерживаемых компрессоров
+ */
+void awh::server::WebSocket1::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+	// Устанавливаем список поддерживаемых компрессоров
+	this->_scheme.compressors = compressors;
 }
 /**
  * mode Метод установки флагов настроек модуля

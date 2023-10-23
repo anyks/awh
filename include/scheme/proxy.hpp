@@ -112,8 +112,8 @@ namespace awh {
 				// Список параметров активных клиентов
 				map <uint64_t, unique_ptr <options_t>> _options;
 			public:
-				// Флаги работы с сжатыми данными
-				awh::http_t::compress_t compress;
+				// Список доступных компрессоров
+				vector <awh::http_t::compress_t> compressors;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -147,8 +147,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				SchemeProxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
+				SchemeProxy(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeProxy Деструктор
 				 */

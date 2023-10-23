@@ -97,14 +97,10 @@ namespace awh {
 			 * Формат сжатия тела запроса
 			 */
 			enum class compress_t : uint8_t {
-				NONE           = 0x00, // -
-				GZIP           = 0x01, // gzip
-				BROTLI         = 0x02, // br
-				DEFLATE        = 0x03, // deflate
-				GZIP_BROTLI    = 0x04, // gzip, br
-				GZIP_DEFLATE   = 0x05, // gzip, deflate
-				ALL_COMPRESS   = 0x06, // gzip, deflate, br
-				DEFLATE_BROTLI = 0x07  // deflate, br
+				NONE    = 0x00, // Метод компрессии не установлен
+				GZIP    = 0x01, // Метод компрессии GZip
+				BROTLI  = 0x02, // Метод компрессии Brotli
+				DEFLATE = 0x03  // Метод компрессии Deflate
 			};
 		public:
 			/**
@@ -123,6 +119,18 @@ namespace awh {
 				Ident() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
 			} ident_t;
 		protected:
+			/**
+			 * Compressor Структура параметров компрессора
+			 */
+			typedef struct Compressor {
+				compress_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
+				compress_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
+				map <float, compress_t> supports; // Список поддерживаемых компрессоров
+				/**
+				 * Compressor Конструктор
+				 */
+				Compressor() noexcept : current(compress_t::NONE), selected(compress_t::NONE) {}
+			} compressor_t;
 			/**
 			 * Auth Структура объекта авторизации
 			 */
@@ -224,10 +232,8 @@ namespace awh {
 			// Идентификация сервиса
 			ident_t _ident;
 		protected:
-			// Флаг компрессии полезной нагрузки
-			compress_t _inflated;
-			// Метод компрессии полезной нагрузки
-			compress_t _compress;
+			// Компрессор для жатия данных
+			compressor_t _compressor;
 		private:
 			// User-Agent для HTTP запроса
 			mutable string _userAgent;
@@ -247,7 +253,7 @@ namespace awh {
 			 * @param web    объект HTTP парсера
 			 */
 			void chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
-		private:
+		protected:
 			/**
 			 * encrypt Метод выполнения шифрования полезной нагрузки
 			 */
@@ -256,15 +262,15 @@ namespace awh {
 			 * decrypt Метод выполнения дешифровани полезной нагрузки
 			 */
 			void decrypt() noexcept;
-		private:
+		protected:
 			/**
-			 * inflate Метод выполнения декомпрессии полезной нагрузки
+			 * compress Метод выполнения декомпрессии полезной нагрузки
 			 */
-			void inflate() noexcept;
+			void compress() noexcept;
 			/**
-			 * deflate Метод выполнения компрессии полезной нагрузки
+			 * decompress Метод выполнения компрессии полезной нагрузки
 			 */
-			void deflate() noexcept;
+			void decompress() noexcept;
 		public:
 			/**
 			 * commit Метод применения полученных результатов
@@ -383,20 +389,20 @@ namespace awh {
 			const uri_t::url_t & url() const noexcept;
 		public:
 			/**
-			 * compression Метод извлечения метода компрессии
+			 * compression Метод извлечения выбранного метода компрессии
 			 * @return метод компрессии
 			 */
 			compress_t compression() const noexcept;
 			/**
-			 * compress Метод получения метода компрессии
-			 * @return метод компрессии сообщений
+			 * compression Метод установки выбранного метода компрессии
+			 * @param compress метод компрессии
 			 */
-			virtual compress_t compress() const noexcept;
+			void compression(const compress_t compress) noexcept;
 			/**
-			 * compress Метод установки метода компрессии
-			 * @param compress метод компрессии сообщений
+			 * compressors Метод установки списка поддерживаемых компрессоров
+			 * @param compress методы компрессии данных полезной нагрузки
 			 */
-			virtual void compress(const compress_t compress) noexcept;
+			void compressors(const vector <compress_t> & compressors) noexcept;
 		public:
 			/**
 			 * dump Метод получения бинарного дампа

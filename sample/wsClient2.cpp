@@ -379,7 +379,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	// awh.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем тип компрессии
-	// awh.compress(http_t::compress_t::ALL_COMPRESS);
+	// awh.compress({http_t::compress_t::DEFLATE});
 	// Устанавливаем тип авторизации прокси-сервера
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

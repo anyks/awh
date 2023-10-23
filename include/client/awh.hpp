@@ -100,10 +100,10 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации клиента
-				 * @param dest     адрес назначения удалённого сервера
-				 * @param compress метод компрессии передаваемых сообщений
+				 * @param dest        адрес назначения удалённого сервера
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & dest, const awh::http_t::compress_t compress = awh::http_t::compress_t::ALL_COMPRESS) noexcept;
+				void init(const string & dest, const vector <awh::http_t::compress_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * GET Метод запроса в формате HTTP методом GET
@@ -378,11 +378,6 @@ namespace awh {
 				 */
 				void attempts(const uint8_t attempts) noexcept;
 				/**
-				 * compress Метод установки метода компрессии
-				 * @param compress метод компрессии сообщений
-				 */
-				void compress(const awh::http_t::compress_t compress) noexcept;
-				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
@@ -395,6 +390,11 @@ namespace awh {
 				 * @param intvl интервал времени в секундах между попытками
 				 */
 				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности в WebSocket

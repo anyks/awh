@@ -129,7 +129,7 @@ namespace awh {
 				 * @param flags  флаг полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const uint64_t bid, const nghttp2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
@@ -205,17 +205,17 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации WebSocket-сервера
-				 * @param socket   unix-сокет для биндинга
-				 * @param compress метод сжатия передаваемых сообщений
+				 * @param socket      unix-сокет для биндинга
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
+				void init(const string & socket, const vector <http_t::compress_t> & compressors = {http_t::compress_t::DEFLATE}) noexcept;
 				/**
 				 * init Метод инициализации WebSocket-сервера
-				 * @param port     порт сервера
-				 * @param host     хост сервера
-				 * @param compress метод сжатия передаваемых сообщений
+				 * @param port        порт сервера
+				 * @param host        хост сервера
+				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
+				void init(const u_int port, const string & host = "", const vector <http_t::compress_t> & compressors = {http_t::compress_t::DEFLATE}) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -417,17 +417,17 @@ namespace awh {
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
 				/**
-				 * compress Метод установки метода сжатия
-				 * @param метод сжатия сообщений
-				 */
-				void compress(const http_t::compress_t compress) noexcept;
-				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
 				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <http_t::compress_t> & compressors) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

@@ -77,8 +77,8 @@ namespace awh {
 					~Options() noexcept {}
 				} options_t;
 			public:
-				// Флаги работы с сжатыми данными
-				awh::http_t::compress_t compress;
+				// Список доступных компрессоров
+				vector <awh::http_t::compress_t> compressors;
 			private:
 				// Список параметров активных клиентов
 				map <uint64_t, unique_ptr <options_t>> _options;
@@ -121,8 +121,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				SchemeWEB(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), compress(http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
+				SchemeWEB(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeWEB Деструктор
 				 */
