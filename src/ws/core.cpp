@@ -824,6 +824,8 @@ bool awh::WCore::crypted() const noexcept {
 void awh::WCore::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
 	this->_encryption = mode;
+	// Устанавливаем флаг шифрования у родительского модуля
+	http_t::encryption(mode);
 }
 /**
  * encryption Метод установки параметров шифрования
@@ -832,7 +834,7 @@ void awh::WCore::encryption(const bool mode) noexcept {
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::WCore::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Устанавливаем параметры шифрования
+	// Устанавливаем параметры шифрования у родительского модуля
 	http_t::encryption(pass, salt, cipher);
 }
 /**
