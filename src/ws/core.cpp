@@ -820,6 +820,9 @@ void awh::WCore::clean() noexcept {
  * @return флаг проверки на зашифрованные данные
  */
 bool awh::WCore::crypted() const noexcept {
+	
+	cout << " ###################### GET " << this->_encryption << endl;
+	
 	// Выводим флаг шифрования данных
 	return this->_encryption;
 }
@@ -831,7 +834,7 @@ void awh::WCore::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
 	this->_encryption = mode;
 
-	cout << " ###################### " << this->_encryption << endl;
+	cout << " ###################### SET " << this->_encryption << endl;
 
 	// Устанавливаем флаг шифрования у родительского модуля
 	// http_t::encryption(mode);
