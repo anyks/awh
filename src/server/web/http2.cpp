@@ -955,8 +955,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					options->http.clear();
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode){
-						// Устанавливаем флаг шифрования
-						options->http.encryption(web->crypted);
 						// Устанавливаем соль шифрования
 						options->hash.salt(this->_encryption.salt);
 						// Устанавливаем пароль шифрования

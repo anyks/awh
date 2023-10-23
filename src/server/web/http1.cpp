@@ -516,12 +516,9 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Получаем флаг шифрованных данных
 					options->crypted = options->http.crypted();
 					// Если клиент согласился на шифрование данных
-					if(this->_encryption.mode){
-						// Устанавливаем флаг шифрования
-						options->http.encryption(web->crypted);
+					if(this->_encryption.mode)
 						// Устанавливаем параметры шифрования
 						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
-					}
 					// Получаем поддерживаемый метод компрессии
 					options->compress = options->http.compression();
 					// Получаем размер скользящего окна сервера
