@@ -245,9 +245,6 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 			}
 		} break;
 	}
-
-	cout << " ***************** ENCRYPTION " << this->_encryption << endl;
-
 	// Если данные должны быть зашифрованны
 	if(this->_encryption)
 		// Выполняем установку указанного метода шифрования
@@ -820,9 +817,6 @@ void awh::WCore::clean() noexcept {
  * @return флаг проверки на зашифрованные данные
  */
 bool awh::WCore::crypted() const noexcept {
-	
-	cout << " ###################### GET " << this->_encryption << endl;
-	
 	// Выводим флаг шифрования данных
 	return this->_encryption;
 }
@@ -833,11 +827,8 @@ bool awh::WCore::crypted() const noexcept {
 void awh::WCore::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
 	this->_encryption = mode;
-
-	cout << " ###################### SET " << this->_encryption << endl;
-
 	// Устанавливаем флаг шифрования у родительского модуля
-	// http_t::encryption(mode);
+	http_t::encryption(mode);
 }
 /**
  * encryption Метод установки параметров шифрования
