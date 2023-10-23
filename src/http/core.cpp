@@ -372,6 +372,10 @@ void awh::Http::commit() noexcept {
 						}
 						// Выполняем удаление заголовка
 						this->_web.delHeader("transfer-encoding");
+						// Если активирован режим чанкинга
+						if(this->_te.chunking)
+							// Выполняем корректировку значения заголовка
+							this->_web.header("Transfer-Encoding", "chunked");
 					}
 				}
 				// Если тело полезной нагрузки получено в сжатом виде
@@ -581,6 +585,34 @@ void awh::Http::commit() noexcept {
 						}
 						// Выполняем удаление заголовка
 						this->_web.delHeader("te");
+						// Выполняем извлечение данных заголовка подключения
+						string connection = this->_web.header("connection");
+						// Если заголовок подключения получен
+						if(!connection.empty()){
+							// Переводим значение в нижний регистр
+							this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
+							// Выполняем поиск заголовка TE
+							const pos = connection.find("te");
+							// Если заголовок найден
+							if(pos != string::npos){
+								// Выполняем удаление значение TE из заголовка
+								connection.erase(pos, 2);
+								// Если первый символ является запятой, удаляем
+								if(connection.front() == ',')
+									// Удаляем запятую
+									connection.erase(0, 1);
+								// Выполняем удаление лишних пробелов
+								this->_fmk->transform(connection, fmk_t::transform_t::TRIM);
+								// Выполняем удаление заголовка
+								this->_web.delHeader("connection");
+								// Если значение подключение получено
+								if(!connection.empty())
+									// Устанавливаем отредактированное подключение
+									this->_web.header("Connection", connection);
+								// Иначе заменяем значение подключение по умолчанию
+								else this->_web.header("Connection", "Keep-Alive");
+							}
+						}
 					}
 				}
 			} break;
