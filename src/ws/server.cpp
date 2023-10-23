@@ -32,8 +32,6 @@ void awh::server::WS::commit() noexcept {
 		{
 			// Список доступных расширений
 			vector <string> extensions;
-			// Сбрасываем флаг шифрования
-			this->_encryption = false;
 			// Отключаем сжатие ответа с сервера
 			this->_compressor.selected = compress_t::NONE;
 			// Отключаем сжатие тела сообщения
@@ -130,6 +128,20 @@ void awh::server::WS::commit() noexcept {
 						extensions.push_back(std::move(extension));
 					// Выполняем очистку слова записи
 					extension.clear();
+				// Если заголовок получен зашифрованных данных
+				} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
+					// Если заголовок найден
+					if((http_t::_crypted = !header.second.empty())){
+						// Определяем размер шифрования
+						switch(static_cast <uint16_t> (::stoi(header.second))){
+							// Если шифрование произведено 128 битным ключём
+							case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
+							// Если шифрование произведено 192 битным ключём
+							case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
+							// Если шифрование произведено 256 битным ключём
+							case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+						}
+					}
 				}
 			}
 			// Если список записей собран

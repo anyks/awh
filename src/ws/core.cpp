@@ -81,12 +81,64 @@ void awh::WCore::init(const process_t flag) noexcept {
 			this->header("Sec-Fetch-Mode", "WebSocket");
 			// Добавляем заголовок места назначения запроса
 			this->header("Sec-Fetch-Dest", "WebSocket");
-			// Добавляем заголовок требования сжимать содержимое ответов
-			this->header("Accept-Encoding", "gzip, deflate, br");
 			// Добавляем заголовок поддерживаемых языков
 			this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 			// Добавляем заголовок версии WebSocket
 			this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
+			// Если компрессор уже выбран
+			if(http_t::_compressor.selected != compress_t::NONE){
+				// Определяем метод сжатия который поддерживает клиент
+				switch(static_cast <uint8_t> (http_t::_compressor.selected)){
+					// Если клиент поддерживает методот сжатия BROTLI
+					case static_cast <uint8_t> (compress_t::BROTLI):
+						// Добавляем заголовок требования сжимать содержимое ответов
+						this->header("Accept-Encoding", "br");
+					break;
+					// Если клиент поддерживает методот сжатия GZIP
+					case static_cast <uint8_t> (compress_t::GZIP):
+						// Добавляем заголовок требования сжимать содержимое ответов
+						this->header("Accept-Encoding", "gzip");
+					break;
+					// Если клиент поддерживает методот сжатия DEFLATE
+					case static_cast <uint8_t> (compress_t::DEFLATE):
+						// Добавляем заголовок требования сжимать содержимое ответов
+						this->header("Accept-Encoding", "deflate");
+					break;
+				}
+			// Если список компрессоров установлен
+			} else if(!http_t::_compressor.supports.empty()) {
+				// Строка со списком компрессоров
+				string compressors = "";
+				// Выполняем перебор всего списка компрессоров
+				for(auto it = http_t::_compressor.supports.rbegin(); it != http_t::_compressor.supports.rend(); ++it){
+					// Если список компрессоров уже не пустой
+					if(!compressors.empty())
+						// Выполняем добавление разделителя
+						compressors.append(", ");
+					// Определяем метод сжатия который поддерживает клиент
+					switch(static_cast <uint8_t> (it->second)){
+						// Если клиент поддерживает методот сжатия BROTLI
+						case static_cast <uint8_t> (compress_t::BROTLI):
+							// Добавляем компрессор в список
+							compressors.append("br");
+						break;
+						// Если клиент поддерживает методот сжатия GZIP
+						case static_cast <uint8_t> (compress_t::GZIP):
+							// Добавляем компрессор в список
+							compressors.append("gzip");
+						break;
+						// Если клиент поддерживает методот сжатия DEFLATE
+						case static_cast <uint8_t> (compress_t::DEFLATE):
+							// Добавляем компрессор в список
+							compressors.append("deflate");
+						break;
+					}
+				}
+				// Если список компрессоров получен
+				if(!compressors.empty())
+					// Добавляем заголовок требования сжимать содержимое ответов
+					this->header("Accept-Encoding", compressors);
+			}
 		} break;
 		// Если нужно сформировать данные ответа
 		case static_cast <uint8_t> (process_t::RESPONSE): {
@@ -764,6 +816,24 @@ void awh::WCore::clean() noexcept {
 bool awh::WCore::crypted() const noexcept {
 	// Выводим флаг шифрования данных
 	return this->_encryption;
+}
+/**
+ * encryption Метод активации шифрования
+ * @param mode флаг активации шифрования
+ */
+void awh::WCore::encryption(const bool mode) noexcept {
+	// Устанавливаем флаг шифрования
+	this->_encryption = mode;
+}
+/**
+ * encryption Метод установки параметров шифрования
+ * @param pass   пароль шифрования передаваемых данных
+ * @param salt   соль шифрования передаваемых данных
+ * @param cipher размер шифрования передаваемых данных
+ */
+void awh::WCore::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+	// Устанавливаем параметры шифрования
+	http_t::encryption(pass, salt, cipher);
 }
 /**
  * compression Метод извлечения выбранного метода компрессии

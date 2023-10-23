@@ -607,7 +607,7 @@ namespace awh {
 			 * crypted Метод проверки на зашифрованные данные
 			 * @return флаг проверки на зашифрованные данные
 			 */
-			virtual bool crypted() const noexcept;
+			bool crypted() const noexcept;
 		public:
 			/**
 			 * encryption Метод активации шифрования

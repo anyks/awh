@@ -32,8 +32,6 @@ void awh::client::WS::commit() noexcept {
 		{
 			// Список доступных расширений
 			vector <string> extensions;
-			// Сбрасываем флаг шифрования
-			this->_encryption = false;
 			// Отключаем сжатие ответа с сервера
 			this->_compressor.selected = compress_t::NONE;
 			// Отключаем сжатие тела сообщения
@@ -136,6 +134,20 @@ void awh::client::WS::commit() noexcept {
 					if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
 						// Устанавливаем выбранный подпротокол
 						this->_selectedProtocols.emplace(header.second);
+				// Если заголовок получен зашифрованных данных
+				} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
+					// Если заголовок найден
+					if((http_t::_crypted = !header.second.empty())){
+						// Определяем размер шифрования
+						switch(static_cast <uint16_t> (::stoi(header.second))){
+							// Если шифрование произведено 128 битным ключём
+							case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
+							// Если шифрование произведено 192 битным ключём
+							case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
+							// Если шифрование произведено 256 битным ключём
+							case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+						}
+					}
 				}
 			}
 			// Если список записей собран
@@ -268,6 +280,12 @@ void awh::client::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
  * @param log объект для работы с логами
  */
 awh::client::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
+	// Выполняем установку списка поддерживаемых компрессоров
+	http_t::compressors({
+		compress_t::BROTLI,
+		compress_t::GZIP,
+		compress_t::DEFLATE
+	});
 	// Выполняем установку идентичность клиента к протоколу WebSocket
 	this->_identity = identity_t::WS;
 	// Устанавливаем тип HTTP-модуля (Клиент)
