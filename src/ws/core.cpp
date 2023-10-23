@@ -245,6 +245,9 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 			}
 		} break;
 	}
+
+	cout << " ***************** ENCRYPTION " << this->_encryption << endl;
+
 	// Если данные должны быть зашифрованны
 	if(this->_encryption)
 		// Выполняем установку указанного метода шифрования
@@ -372,6 +375,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	if(!extension.empty()){
 		// Если нужно производить шифрование данных
 		if((result = this->_encryption = this->_fmk->exists("permessage-encrypt=", extension))){
+			
+			cout << " ***************************** " << this->_encryption << endl;
+			
 			// Определяем размер шифрования
 			switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 				// Если шифрование произведено 128 битным ключём
@@ -824,8 +830,11 @@ bool awh::WCore::crypted() const noexcept {
 void awh::WCore::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
 	this->_encryption = mode;
+
+	cout << " ###################### " << this->_encryption << endl;
+
 	// Устанавливаем флаг шифрования у родительского модуля
-	http_t::encryption(mode);
+	// http_t::encryption(mode);
 }
 /**
  * encryption Метод установки параметров шифрования
