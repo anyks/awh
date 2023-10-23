@@ -591,8 +591,8 @@ void awh::Http::commit() noexcept {
 						if(!connection.empty()){
 							// Переводим значение в нижний регистр
 							this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
-							// Выполняем поиск заголовка TE
-							const pos = connection.find("te");
+							// Выполняем поиск заголовка Transfer-Encoding
+							const size_t pos = connection.find("te");
 							// Если заголовок найден
 							if(pos != string::npos){
 								// Выполняем удаление значение TE из заголовка
