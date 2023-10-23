@@ -153,8 +153,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -264,7 +264,7 @@ int main(int argc, char * argv[]){
 	// Формируем GET запрос
 	// const auto & body = awh.GET(url);
 	// const auto & body = awh.GET(url, {{"Connection", "close"}});
-	const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"},{"connection", "close"}});
 	// Подготавливаем тело запроса
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер

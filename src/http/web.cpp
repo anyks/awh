@@ -331,7 +331,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Запрашиваем заголовок подключения
 							const string & header = this->header("connection");
 							// Если заголовок подключения найден
-							if(header.empty() || !this->_fmk->compare(header, "close")){
+							if(header.empty() || !this->_fmk->exists("close", header)){
 								// Тело в запросе не передано
 								this->_state = state_t::END;
 								// Выходим из функции

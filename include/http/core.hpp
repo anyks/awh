@@ -120,6 +120,18 @@ namespace awh {
 			} ident_t;
 		protected:
 			/**
+			 * TransferEncoding Параметры запроса для Transfer-Encoding
+			 */
+			typedef struct TransferEncoding {
+				bool enabled;  // Флаг активирования передачи ответа Transfer-Encoding
+				bool trailers; // Флаг разрешающий передавать трейлеры
+				bool chunking; // Флаг разрешающий передавать тело чанками
+				/**
+				 * TransferEncoding Конструктор
+				 */
+				TransferEncoding() noexcept : enabled(false), trailers(false), chunking(false) {}
+			} __attribute__((packed)) te_t;
+			/**
 			 * Compressor Структура параметров компрессора
 			 */
 			typedef struct Compressor {
@@ -198,17 +210,12 @@ namespace awh {
 		protected:
 			// Создаём объект работы с URI
 			uri_t _uri;
-		protected:
-			// Стейт текущего запроса
-			state_t _state;
-			// Стейт проверки авторизации
-			status_t _status;
-		protected:
-			// Идентичность протокола
-			identity_t _identity;
 		private:
 			// Объявляем функции обратного вызова
 			fn_t _callback;
+		private:
+			// Объект для работы с Transfer-Encoding
+			mutable te_t _te;
 		protected:
 			// Создаём объект HTTP парсера
 			mutable web_t _web;
@@ -223,14 +230,19 @@ namespace awh {
 			// Флаг зашифрованных данных
 			bool _encryption;
 		private:
-			// Флаг разрешающий передавать тело чанками
-			mutable bool _chunking;
-		private:
 			// Размер одного чанка
 			size_t _chunk;
 		private:
 			// Идентификация сервиса
 			ident_t _ident;
+		protected:
+			// Стейт текущего запроса
+			state_t _state;
+			// Стейт проверки авторизации
+			status_t _status;
+		protected:
+			// Идентичность протокола
+			identity_t _identity;
 		protected:
 			// Компрессор для жатия данных
 			compressor_t _compressor;
