@@ -144,6 +144,7 @@ class WebServer {
 					this->_awh->trailer(bid, "Goga", "Hello");
 					this->_awh->trailer(bid, "Hello", "World");
 					this->_awh->trailer(bid, "Anyks", "Best of the best");
+					this->_awh->trailer(bid, "MD5", this->_fmk->hash(body, fmk_t::hash_t::MD5));
 				}
 				// Отправляем сообщение клиенту
 				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
