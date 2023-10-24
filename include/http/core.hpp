@@ -511,10 +511,10 @@ namespace awh {
 			 */
 			vector <char> trailer() const noexcept;
 			/**
-			 * trailer2 Метод получения буфера отправляемого трейлера (для протокола HTTP/2)
+			 * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> trailer2() const noexcept;
+			vector <pair <string, string>> trailers2() const noexcept;
 		public:
 			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере

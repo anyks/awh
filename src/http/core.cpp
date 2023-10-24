@@ -1756,10 +1756,10 @@ vector <char> awh::Http::trailer() const noexcept {
 	return result;
 }
 /**
- * trailer2 Метод получения буфера отправляемого трейлера HTTP/2)
+ * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
  * @return буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::Http::trailer2() const noexcept {
+vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 	// Результат работы функции
 	vector <pair <string, string>> result;
 	// Если разрешено добавление трейлеров

@@ -24,7 +24,7 @@
 void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
-		// Выполняем отправку заголовков запроса клиенту
+		// Выполняем отправку заголовков ответа клиенту
 		const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
 }
 /**
@@ -140,10 +140,38 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
 	return false;
 }
 /**
+ * send Метод отправки трейлеров
+ * @param id      идентификатор потока HTTP/2
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @return        результат отправки данных указанному клиенту
+ */
+bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if((result = (it != this->_sessions.end()))){
+			// Выполняем отправку трейлеров
+			if(!(result = it->second->sendTrailers(id, headers))){
+				// Выполняем закрытие подключения
+				const_cast <server::core_t *> (this->_core)->close(bid);
+				// Выходим из функции
+				return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * send Метод отправки сообщения клиенту
  * @param id     идентификатор потока HTTP/2
  * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param buffer буфер бинарных данных передаваемых
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
@@ -157,8 +185,8 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if((result = (it != this->_sessions.end()))){
-			// Выполняем отправку тела запроса на сервер
-			if(!(result = it->second->sendData(id, (const uint8_t *) buffer, size, end))){
+			// Выполняем отправку тела ответа
+			if(!(result = it->second->sendData(id, (const uint8_t *) buffer, size, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -170,10 +198,10 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 	return result;
 }
 /**
- * send Метод отправки заголовков на сервер
+ * send Метод отправки заголовков
  * @param id      идентификатор потока HTTP/2
  * @param bid     идентификатор брокера
- * @param headers заголовки отправляемые на сервер
+ * @param headers заголовки отправляемые
  * @param end     размер сообщения в байтах
  * @return        флаг последнего сообщения после которого поток закрывается
  */
@@ -186,8 +214,8 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
-			// Если запрос не получилось отправить
-			if((result = it->second->sendHeaders(id, headers, end)) < 0){
+			// Если ответ не получилось отправить
+			if((result = it->second->sendHeaders(id, headers, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE)) < 0){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции

@@ -75,17 +75,26 @@ namespace awh {
 				SEND = 0x01, // Направление отправки
 				RECV = 0x02  // Направление получения
 			};
+			/**
+			 * Флаги передачи данных
+			 */
+			enum class flag_t : uint8_t {
+				NONE       = 0x00, // Флаг не установлен
+				END_HEADER = 0x01, // Флаг завершения передачи заголовков
+				END_STREAM = 0x02  // Флаг завершения передачи потока
+			};
 		private:
 			/**
 			 * Событие обмена данными
 			 */
 			enum class event_t : uint8_t {
-				NONE         = 0x00, // Событие не установлено
-				SEND_PING    = 0x01, // Событие отправки пинга
-				SEND_DATA    = 0x02, // Событие отправки данных
-				RECV_FRAME   = 0x03, // События получения данных
-				SEND_ORIGIN  = 0x04, // События отправки доверенных источников
-				SEND_HEADERS = 0x05  // Событие отправки заголовков
+				NONE          = 0x00, // Событие не установлено
+				SEND_PING     = 0x01, // Событие отправки пинга
+				SEND_DATA     = 0x02, // Событие отправки данных
+				RECV_FRAME    = 0x03, // События получения данных
+				SEND_ORIGIN   = 0x04, // События отправки доверенных источников
+				SEND_HEADERS  = 0x05, // Событие отправки заголовков
+				SEND_TRAILERS = 0x06  // Событие отправки трейлеров
 			};
 		private:
 			// Флаг требования закрыть подключение
@@ -221,22 +230,29 @@ namespace awh {
 			 */
 			bool sendOrigin(const vector <string> & origins) noexcept;
 			/**
-			 * sendData Метод отправки бинарных данных на сервер
+			 * sendTrailers Метод отправки трейлеров
+			 * @param id      идентификатор потока
+			 * @param headers заголовки отправляемые
+			 * @return        результат отправки данных фрейма
+			 */
+			bool sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept;
+			/**
+			 * sendData Метод отправки бинарных данных
 			 * @param id     идентификатор потока
-			 * @param buffer буфер бинарных данных передаваемых на сервер
+			 * @param buffer буфер бинарных данных передаваемых
 			 * @param size   размер передаваемых данных в байтах
-			 * @param end    флаг завершения потока передачи данных
+			 * @param flag   флаг передаваемого потока по сети
 			 * @return       результат отправки данных фрейма
 			 */
-			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const bool end) noexcept;
+			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
 			/**
-			 * sendHeaders Метод отправки заголовков на сервер
+			 * sendHeaders Метод отправки заголовков
 			 * @param id      идентификатор потока
-			 * @param headers заголовки отправляемые на сервер
-			 * @param end     размер сообщения в байтах
+			 * @param headers заголовки отправляемые
+			 * @param flag    флаг передаваемого потока по сети
 			 * @return        флаг завершения потока передачи данных
 			 */
-			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept;
+			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
 		public:
 			/**
 			 * free Метод очистки активной сессии
@@ -277,7 +293,7 @@ namespace awh {
 			 */
 			void on(function <int (const int32_t, const uint32_t)> callback) noexcept;
 			/**
-			 * on Метод установки функции обратного вызова при отправки сообщения на сервер
+			 * on Метод установки функции обратного вызова при отправки сообщения
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const uint8_t *, const size_t)> callback) noexcept;

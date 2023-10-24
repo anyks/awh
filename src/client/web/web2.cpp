@@ -286,7 +286,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
 								// Выполняем заголовки запроса на сервер
-								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, true);
+								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, http2_t::flag_t::END_STREAM);
 								// Если запрос не получилось отправить
 								if(this->_proxy.sid < 0){
 									// Выполняем закрытие подключения
@@ -460,7 +460,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
-			if(!(result = this->_http2.sendData(id, (const uint8_t *) buffer, size, end))){
+			if(!(result = this->_http2.sendData(id, (const uint8_t *) buffer, size, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE))){
 				// Выполняем закрытие подключения
 				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Выходим из функции
@@ -488,7 +488,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер
-			result = this->_http2.sendHeaders(id, headers, end);
+			result = this->_http2.sendHeaders(id, headers, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE);
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выполняем закрытие подключения

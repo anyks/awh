@@ -756,7 +756,16 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку тела запроса на сервер
-									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
+									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+										// Выходим из функции
+										return;
+								}
+								// Если список трейлеров установлен
+								if(options->http.trailers() > 0){
+									// Выполняем извлечение трейлеров
+									const auto & trailers = options->http.trailers2();
+									// Выполняем отправку трейлеров
+									if(!this->send(options->sid, bid, trailers))
 										// Выходим из функции
 										return;
 								}
@@ -836,7 +845,16 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+								// Выходим из функции
+								return;
+						}
+						// Если список трейлеров установлен
+						if(options->http.trailers() > 0){
+							// Выполняем извлечение трейлеров
+							const auto & trailers = options->http.trailers2();
+							// Выполняем отправку трейлеров
+							if(!this->send(options->sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
@@ -1081,7 +1099,16 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+								// Выходим из функции
+								return;
+						}
+						// Если список трейлеров установлен
+						if(options->http.trailers() > 0){
+							// Выполняем извлечение трейлеров
+							const auto & trailers = options->http.trailers2();
+							// Выполняем отправку трейлеров
+							if(!this->send(options->sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
@@ -1556,6 +1583,61 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 	}
 }
 /**
+ * send Метод отправки трейлеров
+ * @param id      идентификатор потока HTTP/2
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @return        результат отправки данных указанному клиенту
+ */
+bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы верные
+	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Название выводимого заголовка
+								string name = "";
+								// Выводим заголовок трейлеров
+								cout << "Trailers:" << endl;
+								// Выполняем перебор всего списка отправляемых трейлеров
+								for(auto & trailer : headers){
+									// Получаем название заголовка
+									name = trailer.first;
+									// Переводим заголовок в нормальный режим
+									this->_fmk->transform(name, fmk_t::transform_t::SMART);
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl << endl;
+								}
+							#endif
+							// Выполняем отправку трейлеров
+							result = web2_t::send(id, bid, headers);
+						} break;
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return result;
+}
+/**
  * send Метод отправки тела сообщения клиенту
  * @param id     идентификатор потока HTTP
  * @param bid    идентификатор брокера
@@ -1616,7 +1698,16 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку данных на удалённый сервер
-									result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty()));
+									result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty() && (options->http.trailers() == 0)));
+								}
+								// Если список трейлеров установлен
+								if(result && (options->http.trailers() > 0)){
+									// Выполняем извлечение трейлеров
+									const auto & trailers = options->http.trailers2();
+									// Выполняем отправку трейлеров
+									if((result = !this->send(id, bid, trailers)))
+										// Выходим из функции
+										return result;
 								}
 							} break;
 						}
@@ -1792,7 +1883,11 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										// Выполняем ответ подключившемуся клиенту
 										int32_t sid = web2_t::send(options->sid, bid, headers, options->http.body().empty());
 										// Если запрос не получилось отправить, выходим из функции
-										if(sid < 0) return;
+										if(sid < 0)
+											// Выходим из функции
+											return;
+										// Устанавливаем идентификатор потока
+										options->sid = (options->sid > -1 ? options->sid : sid);
 										// Если тело запроса существует
 										if(!options->http.body().empty()){
 											// Тело WEB запроса
@@ -1807,7 +1902,16 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 												#endif
 												// Выполняем отправку тела запроса на сервер
-												if(!web2_t::send((options->sid > -1 ? options->sid : sid), bid, entity.data(), entity.size(), options->http.body().empty()))
+												if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+													// Выходим из функции
+													return;
+											}
+											// Если список трейлеров установлен
+											if(options->http.trailers() > 0){
+												// Выполняем извлечение трейлеров
+												const auto & trailers = options->http.trailers2();
+												// Выполняем отправку трейлеров
+												if(!this->send(options->sid, bid, trailers))
 													// Выходим из функции
 													return;
 											}

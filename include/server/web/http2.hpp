@@ -221,6 +221,15 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 */
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+			private:
+				/**
+				 * send Метод отправки трейлеров
+				 * @param id      идентификатор потока HTTP/2
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @return        результат отправки данных указанному клиенту
+				 */
+				bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту

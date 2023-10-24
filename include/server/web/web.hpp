@@ -664,20 +664,28 @@ namespace awh {
 				bool ping(const uint64_t bid) noexcept;
 			public:
 				/**
+				 * send Метод отправки трейлеров
+				 * @param id      идентификатор потока HTTP/2
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @return        результат отправки данных указанному клиенту
+				 */
+				virtual bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				/**
 				 * send Метод отправки сообщения клиенту
 				 * @param id     идентификатор потока HTTP/2
 				 * @param bid    идентификатор брокера
-				 * @param buffer буфер бинарных данных передаваемых на сервер
+				 * @param buffer буфер бинарных данных передаваемых
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 * @return       результат отправки данных указанному клиенту
 				 */
 				virtual bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
-				 * send Метод отправки заголовков на сервер
+				 * send Метод отправки заголовков
 				 * @param id      идентификатор потока HTTP/2
 				 * @param bid     идентификатор брокера
-				 * @param headers заголовки отправляемые на сервер
+				 * @param headers заголовки отправляемые
 				 * @param end     размер сообщения в байтах
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
