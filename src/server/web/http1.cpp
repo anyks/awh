@@ -261,7 +261,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
+														cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
 													#endif
 													// Устанавливаем флаг закрытия подключения
 													options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
@@ -372,7 +372,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
+												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
 											#endif
 											// Выполняем отправку трейлера клиенту
 											dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
@@ -693,7 +693,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
+								cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
 							#endif
 							// Устанавливаем флаг закрытия подключения
 							options->stopped = (!web->http.is(http_t::state_t::ALIVE) && (options->http.trailers() == 0));
@@ -1010,7 +1010,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str()) << endl;
+							cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str());
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (end && (options->http.trailers() == 0));
@@ -1167,7 +1167,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
+							cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
