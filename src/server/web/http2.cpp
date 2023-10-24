@@ -738,6 +738,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							#endif
 							// Флаг отправляемого фрейма
 							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+							// Если тело запроса не существует
+							if(options->http.body().empty())
+								// Устанавливаем флаг завершения потока
+								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем заголовки запроса на сервер
 							const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 							// Если запрос не получилось отправить
@@ -853,6 +857,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					#endif
 					// Флаг отправляемого фрейма
 					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+					// Если тело запроса не существует
+					if(options->http.body().empty())
+						// Устанавливаем флаг завершения потока
+						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем заголовки запроса на сервер
 					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 					// Если запрос не получилось отправить
@@ -1135,6 +1143,10 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					#endif
 					// Флаг отправляемого фрейма
 					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+					// Если тело запроса не существует
+					if(options->http.body().empty())
+						// Устанавливаем флаг завершения потока
+						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем ответ подключившемуся клиенту
 					if(web2_t::send(options->sid, bid, headers, flag) < 0)
 						// Выходим из функции
@@ -1744,12 +1756,12 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
 								vector <char> entity;
-								// Флаг отправляемого фрейма
-								awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 								// Выполняем сброс данных тела
 								options->http.clear(http_t::suite_t::BODY);
 								// Устанавливаем тело запроса
 								options->http.body(vector <char> (buffer, buffer + size));
+								// Флаг отправляемого фрейма
+								awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 								// Получаем данные тела запроса
 								while(!(entity = options->http.payload()).empty()){
 									/**
@@ -1968,7 +1980,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										#endif
 										// Флаг отправляемого фрейма
 										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-										// Если нужно установить флаг закрытия потока
+										// Если тело запроса не существует
 										if(options->http.body().empty())
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;

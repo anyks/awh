@@ -696,18 +696,18 @@ namespace awh {
 				 * @param id     идентификатор потока HTTP/2
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
-				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				virtual bool send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const int32_t id, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 				/**
 				 * send Метод отправки заголовков на сервер
 				 * @param id      идентификатор потока HTTP/2
 				 * @param headers заголовки отправляемые на сервер
-				 * @param end     размер сообщения в байтах
+				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				virtual int32_t send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept;
+				int32_t send(const int32_t id, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

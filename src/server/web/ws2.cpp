@@ -655,6 +655,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									#endif
 									// Флаг отправляемого фрейма
 									http2_t::flag_t flag = http2_t::flag_t::NONE;
+									// Если тело запроса не существует
+									if(options->http.body().empty())
+										// Устанавливаем флаг завершения потока
+										flag = http2_t::flag_t::END_STREAM;
 									// Выполняем заголовки запроса на сервер
 									const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 									// Если запрос не получилось отправить

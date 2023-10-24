@@ -447,10 +447,10 @@ bool awh::client::Web2::ping() noexcept {
  * @param id     идентификатор потока HTTP/2
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
- * @param end    флаг последнего сообщения после которого поток закрывается
+ * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
@@ -460,7 +460,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
-			if(!(result = this->_http2.sendData(id, (const uint8_t *) buffer, size, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE))){
+			if(!(result = this->_http2.sendData(id, reinterpret_cast <const uint8_t *> (buffer), size, flag))){
 				// Выполняем закрытие подключения
 				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				// Выходим из функции
@@ -475,10 +475,10 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
  * send Метод отправки заголовков на сервер
  * @param id      идентификатор потока HTTP/2
  * @param headers заголовки отправляемые на сервер
- * @param end     размер сообщения в байтах
+ * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, string>> & headers, const bool end) noexcept {
+int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -488,7 +488,7 @@ int32_t awh::client::Web2::send(const int32_t id, const vector <pair <string, st
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер
-			result = this->_http2.sendHeaders(id, headers, end ? http2_t::flag_t::END_STREAM : http2_t::flag_t::NONE);
+			result = this->_http2.sendHeaders(id, headers, flag);
 			// Если запрос не получилось отправить
 			if(result < 0){
 				// Выполняем закрытие подключения

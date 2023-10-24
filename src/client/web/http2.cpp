@@ -1306,8 +1306,14 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							#endif
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+							// Флаг отправляемого фрейма
+							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+							// Если тело запроса не существует
+							if(request.entity.empty())
+								// Устанавливаем флаг завершения потока
+								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем заголовки запроса на сервер
-							result = web2_t::send(-1, headers, request.entity.empty());
+							result = web2_t::send(-1, headers, flag);
 							// Если запрос не получилось отправить
 							if(result < 0)
 								// Выходим из функции
@@ -1329,8 +1335,12 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 										// Выводим сообщение о выводе чанка тела
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
+									// Если нужно установить флаг закрытия потока
+									if(this->_http.body().empty())
+										// Устанавливаем флаг завершения потока
+										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку тела запроса на сервер
-									if(!web2_t::send(result, entity.data(), entity.size(), this->_http.body().empty()))
+									if(!web2_t::send(result, entity.data(), entity.size(), flag))
 										// Выходим из функции
 										return -1;
 								}
@@ -1483,6 +1493,8 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 				this->_http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
 				this->_http.body(vector <char> (buffer, buffer + size));
+				// Флаг отправляемого фрейма
+				awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 				// Получаем данные тела запроса
 				while(!(entity = this->_http.payload()).empty()){
 					/**
@@ -1492,8 +1504,12 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 						// Выводим сообщение о выводе чанка тела
 						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
+					// Если нужно установить флаг закрытия потока
+					if(end && this->_http.body().empty())
+						// Устанавливаем флаг завершения потока
+						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем отправку данных на удалённый сервер
-					result = web2_t::send(id, entity.data(), entity.size(), (end && this->_http.body().empty()));
+					result = web2_t::send(id, entity.data(), entity.size(), flag);
 				}
 			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
 			} else result = this->_http1.send(buffer, size, end);
@@ -1555,7 +1571,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif
 					// Выполняем заголовки запроса на сервер
-					result = web2_t::send(id, headers, end);
+					result = web2_t::send(id, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
 				}
 			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
 			} else result = this->_http1.send(url, method, headers, end);

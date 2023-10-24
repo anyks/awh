@@ -70,7 +70,7 @@ void awh::client::WebSocket2::send(const uint64_t bid, client::core_t * core) no
 	// Выполняем запрос на получение заголовков
 	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
 	// Выполняем запрос на удалённый сервер	
-	this->_sid = web2_t::send(-1, headers, false);
+	this->_sid = web2_t::send(-1, headers, http2_t::flag_t::NONE);
 	// Если запрос не получилось отправить
 	if(this->_sid < 0)
 		// Выполняем отключение от сервера
@@ -859,7 +859,7 @@ void awh::client::WebSocket2::ping(const string & message) noexcept {
 			// Если бинарный буфер получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения на сервер
-				web2_t::send(this->_sid, buffer.data(), buffer.size(), false);
+				web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
 		}
 	}
 }
@@ -877,7 +877,7 @@ void awh::client::WebSocket2::pong(const string & message) noexcept {
 			// Если бинарный буфер получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения на сервер
-				web2_t::send(this->_sid, buffer.data(), buffer.size(), false);
+				web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
 		}
 	}
 }
@@ -1317,7 +1317,7 @@ void awh::client::WebSocket2::sendError(const ws::mess_t & mess) noexcept {
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
 						// Выполняем отправку сообщения на сервер
-						web2_t::send(this->_sid, buffer.data(), buffer.size(), true);
+						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						// Выходим из функции
 						return;
 					}
@@ -1432,7 +1432,7 @@ void awh::client::WebSocket2::sendMessage(const vector <char> & message, const b
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на сервер
-								web2_t::send(this->_sid, payload.data(), payload.size(), false);
+								web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 							// Выполняем сброс RSV1
 							head.rsv[0] = false;
 							// Устанавливаем опкод сообщения
@@ -1447,7 +1447,7 @@ void awh::client::WebSocket2::sendMessage(const vector <char> & message, const b
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Выполняем отправку сообщения на сервер
-							web2_t::send(this->_sid, payload.data(), payload.size(), false);
+							web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 					}
 				}
 				// Выполняем разблокировку отправки сообщения
