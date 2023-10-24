@@ -1075,7 +1075,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Выполняем сохранение параметров ответа
 		this->_web.response(std::move(response));
 	// Если ключ соответствует обычным заголовкам
-	else this->header(key, val);
+	} else this->header(key, val);
 }
 /**
  * headers2 Метод установки списка заголовков в формате HTTP/2
