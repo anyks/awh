@@ -254,7 +254,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+														cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 													#endif
 												}
 												// Устанавливаем флаг закрытия подключения
@@ -351,7 +351,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+												cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 											#endif
 										}
 										// Выполняем отправку трейлера клиенту
@@ -658,7 +658,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+								cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 							#endif
 						}
 						// Устанавливаем флаг закрытия подключения
@@ -938,7 +938,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("Trailer:\r\n", string(entity.begin(), entity.end()).c_str()) << endl << endl;
+							cout << this->_fmk->format("Trailer:\r\n%s", string(entity.begin(), entity.end()).c_str()) << endl << endl;
 						#endif
 					}
 					// Устанавливаем флаг закрытия подключения
@@ -1081,7 +1081,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+							cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 						#endif
 					}
 					// Устанавливаем флаг закрытия подключения

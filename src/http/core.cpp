@@ -946,6 +946,21 @@ const unordered_multimap <string, string> & awh::Http::headers() const noexcept 
 void awh::Http::headers(const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем заголовки сообщения
 	this->_web.headers(headers);
+	// Если мы работаем с клиентом
+	if(this->_web.hid() == web_t::hid_t::SERVER){
+		// Если список трейлеров установлен
+		if(this->_te.trailers && !this->_trailers.empty()){
+			// Название трейлера для добавления
+			string name = "";
+			// Выполняем перебор всех трейлеров
+			for(auto & trailer : this->_trailers){
+				// Выполняем получение названия трейлера
+				name = trailer.first;
+				// Добавляем заголовок названия трейлера
+				this->_web.header("Trailer", this->_fmk->transform(name, fmk_t::transform_t::SMART));
+			}
+		}
+	}
 }
 /**
  * header2 Метод добавления заголовка в формате HTTP/2
@@ -1728,9 +1743,6 @@ vector <char> awh::Http::trailer() const noexcept {
 			if(this->_trailers.empty())
 				// Выполняем добавление конца запроса
 				response.append("\r\n");
-			
-			cout << " ++++++++++++++= " << response << endl;
-
 			// Устанавливаем результат
 			result.assign(response.begin(), response.end());
 		}
