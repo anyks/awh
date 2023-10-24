@@ -45,6 +45,12 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * trailers Метод получения запроса на передачу трейлеров
+				 * @param bid идентификатор брокера
+				 * @return    флаг запроса клиентом передачи трейлеров
+				 */
+				bool trailers(const uint64_t bid) const noexcept;
+				/**
 				 * trailer Метод установки трейлера
 				 * @param bid идентификатор брокера
 				 * @param key ключ заголовка

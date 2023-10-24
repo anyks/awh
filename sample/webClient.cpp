@@ -262,9 +262,9 @@ int main(int argc, char * argv[]){
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	// const auto & body = awh.GET(url);
+	const auto & body = awh.GET(url);
 	// const auto & body = awh.GET(url, {{"Connection", "close"}});
-	const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"}});
+	// const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"}});
 	// Подготавливаем тело запроса
 	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер

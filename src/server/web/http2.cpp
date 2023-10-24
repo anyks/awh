@@ -1331,6 +1331,56 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	}
 }
 /**
+ * trailers Метод получения запроса на передачу трейлеров
+ * @param bid идентификатор брокера
+ * @return    флаг запроса клиентом передачи трейлеров
+ */
+bool awh::server::Http2::trailers(const uint64_t bid) const noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем получение флага запроса клиента на передачу трейлеров
+								return this->_http1.trailers(bid);
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем получение флага запроса клиента на передачу трейлеров
+								return options->http.is(http_t::state_t::TRAILERS);
+						}
+					}
+				} break;
+			}
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
  * trailer Метод установки трейлера
  * @param bid идентификатор брокера
  * @param key ключ заголовка

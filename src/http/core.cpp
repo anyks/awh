@@ -1507,6 +1507,10 @@ bool awh::Http::is(const state_t state) const noexcept {
 		case static_cast <uint8_t> (state_t::HANDSHAKE):
 			// Выполняем проверку на удачное рукопожатие
 			return (this->_state == state_t::HANDSHAKE);
+		// Если проверяется режим флага запраса трейлеров
+		case static_cast <uint8_t> (state_t::TRAILERS):
+			// Выводим проверку на установку флага запроса передачи трейлеров
+			return this->_te.trailers;
 	}
 	// Выводим результат
 	return false;
@@ -1599,13 +1603,13 @@ const string awh::Http::date(const time_t stamp) const noexcept {
 	// Создаём буфер данных
 	char buffer[1000];
 	// Получаем текущее время
-	time_t date = (stamp > 0 ? stamp : time(nullptr));
+	time_t date = (stamp > 0 ? stamp : ::time(nullptr));
 	// Извлекаем текущее время
-	struct tm tm = (* gmtime(&date));
+	struct tm tm = (* ::gmtime(&date));
 	// Зануляем буфер
 	::memset(buffer, 0, sizeof(buffer));
 	// Получаем формат времени
-	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+	::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	// Выводим результат
 	return buffer;
 }

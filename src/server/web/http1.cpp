@@ -811,6 +811,29 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	}
 }
 /**
+ * trailers Метод получения запроса на передачу трейлеров
+ * @param bid идентификатор брокера
+ * @return    флаг запроса клиентом передачи трейлеров
+ */
+bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(bid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры активного клиента
+			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			// Если параметры активного клиента получены
+			if(options != nullptr)
+				// Выполняем получение флага запроса клиента на передачу трейлеров
+				return options->http.is(http_t::state_t::TRAILERS);
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
  * trailer Метод установки трейлера
  * @param bid идентификатор брокера
  * @param key ключ заголовка

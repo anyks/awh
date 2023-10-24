@@ -16,6 +16,15 @@
 #include <server/awh.hpp>
 
 /**
+ * trailers Метод получения запроса на передачу трейлеров
+ * @param bid идентификатор брокера
+ * @return    флаг запроса клиентом передачи трейлеров
+ */
+bool awh::server::AWH::trailers(const uint64_t bid) const noexcept {
+	// Выводим флаг запроса клиентом на передачу трейлеров
+	return this->_http.trailers(bid);
+}
+/**
  * trailer Метод установки трейлера
  * @param bid идентификатор брокера
  * @param key ключ заголовка
