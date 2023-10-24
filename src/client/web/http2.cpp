@@ -1291,7 +1291,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 									 */
 									#if defined(DEBUG_MODE)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку тела запроса на сервер
 									if(!web2_t::send(result, entity.data(), entity.size(), this->_http.body().empty()))
@@ -1454,7 +1454,7 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
 					// Выполняем отправку данных на удалённый сервер
 					result = web2_t::send(id, entity.data(), entity.size(), (end && this->_http.body().empty()));

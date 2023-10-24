@@ -16,6 +16,16 @@
 #include <server/awh.hpp>
 
 /**
+ * trailer Метод установки трейлера
+ * @param bid идентификатор брокера
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::server::AWH::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+	// Выполняем установку трейлера
+	this->_http.trailer(bid, key, val);
+}
+/**
  * init Метод инициализации WEB-сервера
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров

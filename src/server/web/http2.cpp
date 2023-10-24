@@ -753,7 +753,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 									 */
 									#if defined(DEBUG_MODE)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку тела запроса на сервер
 									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
@@ -833,7 +833,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Выполняем отправку тела запроса на сервер
 							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
@@ -1078,7 +1078,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Выполняем отправку тела запроса на сервер
 							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty()))
@@ -1331,6 +1331,57 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	}
 }
 /**
+ * trailer Метод установки трейлера
+ * @param bid идентификатор брокера
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::server::Http2::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем установку трейлера
+								this->_http1.trailer(bid, key, val);
+							break;
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем установку трейлера
+								options->http.trailer(key, val);
+							break;
+						}
+					}
+				} break;
+			}
+		}
+	}
+}
+/**
  * init Метод инициализации WebSocket-сервера
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
@@ -1512,7 +1563,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 									 */
 									#if defined(DEBUG_MODE)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Выполняем отправку данных на удалённый сервер
 									result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty()));
@@ -1703,7 +1754,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 												 */
 												#if defined(DEBUG_MODE)
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 												#endif
 												// Выполняем отправку тела запроса на сервер
 												if(!web2_t::send((options->sid > -1 ? options->sid : sid), bid, entity.data(), entity.size(), options->http.body().empty()))

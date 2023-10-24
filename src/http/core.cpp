@@ -629,6 +629,8 @@ void awh::Http::clear() noexcept {
 	this->_web.clear();
 	// Выполняем сброс чёрного списка HTTP заголовков
 	this->_black.clear();
+	// Очищаем список установленных трейлеров
+	this->_trailers.clear();
 	// Снимаем флаг зашифрованной полезной нагрузки
 	this->_crypted = false;
 	// Выполняем сброс флага формирования чанков
@@ -741,8 +743,23 @@ const vector <char> awh::Http::payload() const noexcept {
 					chunk.append("\r\n");
 					// Формируем тело чанка
 					chunk.insert(chunk.end(), body->begin(), body->end());
-					// Добавляем конец запроса
-					chunk.append("\r\n0\r\n\r\n");
+					// Определяем тип HTTP модуля
+					switch(static_cast <uint8_t> (this->_web.hid())){
+						// Если мы работаем с клиентом
+						case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+							// Добавляем конец запроса
+							chunk.append("\r\n0\r\n\r\n");
+						break;
+						// Если мы работаем с сервером
+						case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+							// Если нужно отправить трейлеры
+							if(this->_te.trailers)
+								// Добавляем конец запроса
+								chunk.append("\r\n0\r\n");
+							// Добавляем конец запроса
+							else chunk.append("\r\n0\r\n\r\n");
+						} break;
+					}
 					// Очищаем данные тела
 					body->clear();
 					// Освобождаем память
@@ -848,6 +865,41 @@ void awh::Http::body(const vector <char> & body) noexcept {
 	this->decompress();
 	// Устанавливаем данные телал сообщения
 	this->_web.body(body);
+}
+/**
+ * trailers Метод получения списка установленных трейлеров
+ * @return количество установленных трейлеров
+ */
+size_t awh::Http::trailers() const noexcept {
+	// Выводим список установленных трейлеров
+	return this->_trailers.size();
+}
+/**
+ * trailer Метод установки трейлера
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::Http::trailer(const string & key, const string & val) noexcept {
+	// Если ключ и значение заголовка переданы
+	if(!key.empty() && !val.empty()){
+		// Определяем тип HTTP модуля
+		switch(static_cast <uint8_t> (this->_web.hid())){
+			// Если мы работаем с клиентом
+			case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+				// Выводим сообщение, что клиент не может отправлять трейлеры
+				this->_log->print("Add trailer [%s=%s] failed because the client cannot send trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
+			break;
+			// Если мы работаем с сервером
+			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+				// Если разрешено добавление трейлеров
+				if(this->_te.trailers)
+					// Выполняем добавление заголовка в список трейлеров
+					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
+				// Выводим предупреждение что трейлер нельзя добавить
+				else this->_log->print("Trailer [%s=%s] cannot be added, since the transfer of trailers was not initiated by the client", log_t::flag_t::WARNING, key.c_str(), val.c_str());
+			} break;
+		}	
+	}
 }
 /**
  * header Метод получения данных заголовка
@@ -1646,6 +1698,59 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	}
 }
 /**
+ * trailer Метод получения буфера отправляемого трейлера
+ * @return буфер данных ответа в бинарном виде
+ */
+vector <char> awh::Http::trailer() const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	// Если разрешено добавление трейлеров
+	if(this->_te.trailers){
+		// Если список трейлеров получен
+		if(!this->_trailers.empty()){
+			// Получаем первый трейлер из списка
+			auto it = this->_trailers.begin();
+			// Получаем название заголовка
+			const string name = it->first;
+			// Переводим заголовок в нормальный режим
+			this->_fmk->transform(name, fmk_t::transform_t::SMART);
+			// Сформированный отправляемый ответ
+			string response = this->_fmk->format("%s: %s\r\n", name.c_str(), it->second.c_str());
+			// Выполняем удаление отправляемого трейлера из списка
+			const_cast <http_t *> (this)->_trailers.erase(it);
+			// Если трейлеров в списке больше нет
+			if(this->_trailers.empty())
+				// Выполняем добавление конца запроса
+				response.append("\r\n");
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * trailer2 Метод получения буфера отправляемого трейлера HTTP/2)
+ * @return буфер данных ответа в бинарном виде
+ */
+vector <pair <string, string>> awh::Http::trailer2() const noexcept {
+	// Результат работы функции
+	vector <pair <string, string>> result;
+	// Если разрешено добавление трейлеров
+	if(this->_te.trailers){
+		// Если список трейлеров получен
+		if(!this->_trailers.empty()){
+			// Переходим по всему списку доступных трейлеров
+			for(auto it = this->_trailers.begin(); it != this->_trailers.end();){
+				// Устанавливаем трейлер в список для отправки
+				result.push_back(make_pair(it->first, it->second));
+				// Выполняем удаление отправляемого трейлера из списка
+				it = const_cast <http_t *> (this)->_trailers.erase(it);
+			}		
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * proxy Метод создания запроса для авторизации на прокси-сервере
  * @param req объект параметров REST-запроса
  * @return    буфер данных запроса в бинарном виде
@@ -2441,7 +2546,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Выполняем шифрование полезной нагрузки
 								const_cast <http_t *> (this)->encrypt();
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_te.chunking = (this->_crypted || (this->_compressor.current != compress_t::NONE));
+								this->_te.chunking = (this->_crypted || this->_te.trailers || (this->_compressor.current != compress_t::NONE));
 								// Заменяем размер тела данных
 								if(!this->_te.chunking)
 									// Устанавливаем размер тела сообщения
@@ -2492,7 +2597,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
-								this->_te.chunking = (this->_encryption || (this->_compressor.selected != compress_t::NONE));
+								this->_te.chunking = (this->_encryption || this->_te.trailers || (this->_compressor.selected != compress_t::NONE));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption

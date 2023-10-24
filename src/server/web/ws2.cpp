@@ -678,7 +678,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+												cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 											#endif
 											// Выполняем отправку тела запроса на сервер
 											if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty())){

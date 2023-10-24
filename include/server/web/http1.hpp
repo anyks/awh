@@ -114,6 +114,14 @@ namespace awh {
 				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			public:
 				/**
+				 * trailer Метод установки трейлера
+				 * @param bid идентификатор брокера
+				 * @param key ключ заголовка
+				 * @param val значение заголовка
+				 */
+				void trailer(const uint64_t bid, const string & key, const string & val) noexcept;
+			public:
+				/**
 				 * init Метод инициализации WEB-сервера
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров

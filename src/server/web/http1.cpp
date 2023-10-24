@@ -229,20 +229,37 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											#endif
 											// Отправляем ответ брокеру
 											dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
-											// Получаем данные тела запроса
+											// Получаем тело полезной нагрузки ответа
 											while(!(payload = options->http.payload()).empty()){
 												/**
 												 * Если включён режим отладки
 												 */
 												#if defined(DEBUG_MODE)
 													// Выводим сообщение о выводе чанка полезной нагрузки
-													cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
+													cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 												#endif
 												// Если тела данных для отправки больше не осталось
-												if(options->http.body().empty())
+												if(options->http.body().empty() && (options->http.trailers() == 0))
 													// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 													options->stopped = (!this->_service.alive && !options->alive);
-												// Отправляем тело клиенту
+												// Выполняем отправку тела ответа клиенту
+												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+											}
+											// Если список трейлеров установлен
+											if(options->http.trailers() > 0){
+												// Получаем отправляемые трейлеры
+												while(!(payload = options->http.trailer()).empty()){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение о выводе чанка тела
+														cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+													#endif
+												}
+												// Устанавливаем флаг закрытия подключения
+												options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+												// Выполняем отправку трейлера клиенту
 												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 											}
 										// Выполняем отключение брокера
@@ -313,16 +330,31 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									#endif
 									// Отправляем ответ брокеру
 									dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
-									// Получаем данные тела запроса
+									// Получаем данные полезной нагрузки ответа
 									while(!(payload = options->http.payload()).empty()){
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка полезной нагрузки
-											cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
+											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 										#endif
-										// Отправляем тело клиенту
+										// Отправляем тело ответа клиенту
+										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+									}
+									// Если список трейлеров установлен
+									if(options->http.trailers() > 0){
+										// Получаем отправляемые трейлеры
+										while(!(payload = options->http.trailer()).empty()){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о выводе чанка тела
+												cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+											#endif
+										}
+										// Выполняем отправку трейлера клиенту
 										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 									}
 								// Выполняем отключение брокера
@@ -610,11 +642,28 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
+							cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 						#endif
 						// Устанавливаем флаг закрытия подключения
-						options->stopped = (!web->http.is(http_t::state_t::ALIVE) && web->http.body().empty());
-						// Выполняем отправку чанков
+						options->stopped = (!web->http.is(http_t::state_t::ALIVE) && web->http.body().empty() && (options->http.trailers() == 0));
+						// Выполняем отправку ответа клиенту
+						dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+					}
+					// Если список трейлеров установлен
+					if(options->http.trailers() > 0){
+						// Получаем отправляемые трейлеры
+						while(!(payload = options->http.trailer()).empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение о выводе чанка тела
+								cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+							#endif
+						}
+						// Устанавливаем флаг закрытия подключения
+						options->stopped = (!web->http.is(http_t::state_t::ALIVE) && (options->http.trailers() == 0));
+						// Выполняем отправку трейлера клиенту
 						dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 					}
 					// Если получение данных нужно остановить
@@ -762,6 +811,28 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	}
 }
 /**
+ * trailer Метод установки трейлера
+ * @param bid идентификатор брокера
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::server::Http1::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(bid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры активного клиента
+			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			// Если параметры активного клиента получены
+			if(options != nullptr)
+				// Выполняем установку трейлера
+				options->http.trailer(key, val);
+		}
+	}
+}
+/**
  * init Метод инициализации WEB-сервера
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
@@ -844,18 +915,35 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 				options->http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
 				options->http.body(vector <char> (buffer, buffer + size));
-				// Получаем данные тела запроса
+				// Получаем данные тела полезной нагрузки
 				while(!(entity = options->http.payload()).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
 					// Устанавливаем флаг закрытия подключения
-					options->stopped = (end && options->http.body().empty());
-					// Выполняем отправку тела запроса на сервер
+					options->stopped = (end && options->http.body().empty() && (options->http.trailers() == 0));
+					// Выполняем отправку ответа клиенту
+					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
+				}
+				// Если список трейлеров установлен
+				if(options->http.trailers() > 0){
+					// Получаем отправляемые трейлеры
+					while(!(entity = options->http.trailer()).empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение о выводе чанка тела
+							cout << this->_fmk->format("Trailer:\r\n", string(entity.begin(), entity.end()).c_str()) << endl << endl;
+						#endif
+					}
+					// Устанавливаем флаг закрытия подключения
+					options->stopped = (end && (options->http.trailers() == 0));
+					// Выполняем отправку трейлера клиенту
 					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 				}
 			}
@@ -970,18 +1058,35 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					options->stopped = (!this->_service.alive && !options->alive);
 				// Отправляем серверу сообщение
 				const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
-				// Получаем данные полезной нагрузки ответа
+				// Получаем данные тела полезной нагрузки
 				while(!(payload = options->http.payload()).empty()){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl << endl;
+						cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 					#endif
 					// Если тела данных для отправки больше не осталось
-					if(options->http.body().empty())
+					if(options->http.body().empty() && (options->http.trailers() == 0))
 						// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 						options->stopped = (!this->_service.alive && !options->alive);
-					// Отправляем тело клиенту
+					// Отправляем тело ответа клиенту
+					const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+				}
+				// Если список трейлеров установлен
+				if(options->http.trailers() > 0){
+					// Получаем отправляемые трейлеры
+					while(!(payload = options->http.trailer()).empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение о выводе чанка тела
+							cout << this->_fmk->format("Trailer:\r\n", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+						#endif
+					}
+					// Устанавливаем флаг закрытия подключения
+					options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+					// Выполняем отправку трейлера клиенту
 					const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
 				}
 				// Если установлена функция отлова завершения запроса

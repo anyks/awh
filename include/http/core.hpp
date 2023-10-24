@@ -253,6 +253,9 @@ namespace awh {
 			// Чёрный список заголовков
 			mutable unordered_set <string> _black;
 		protected:
+			// Список отправляемых трейлеров
+			unordered_map <string, string> _trailers;
+		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
@@ -344,6 +347,18 @@ namespace awh {
 			 * @param body буфер тела для установки
 			 */
 			void body(const vector <char> & body) noexcept;
+		public:
+			/**
+			 * trailers Метод получения списка установленных трейлеров
+			 * @return количество установленных трейлеров
+			 */
+			size_t trailers() const noexcept;
+			/**
+			 * trailer Метод установки трейлера
+			 * @param key ключ заголовка
+			 * @param val значение заголовка
+			 */
+			void trailer(const string & key, const string & val) noexcept;
 		public:
 			/**
 			 * header Метод получения данных заголовка
@@ -488,6 +503,17 @@ namespace awh {
 			 * @param http объект для маппинга
 			 */
 			void mapping(const process_t flag, Http & http) noexcept;
+		public:
+			/**
+			 * trailer Метод получения буфера отправляемого трейлера
+			 * @return буфер данных ответа в бинарном виде
+			 */
+			vector <char> trailer() const noexcept;
+			/**
+			 * trailer2 Метод получения буфера отправляемого трейлера (для протокола HTTP/2)
+			 * @return буфер данных ответа в бинарном виде
+			 */
+			vector <pair <string, string>> trailer2() const noexcept;
 		public:
 			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере

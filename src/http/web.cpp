@@ -91,12 +91,70 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				for(size_t i = 0; i < size; i++){
 					// Определяем стейт чанка
 					switch(static_cast <uint8_t> (this->_chunk.state)){
+						// Если мы собираем трейделы переданные сервером
+						case static_cast <uint8_t> (process_t::TRAILERS): {
+							// Устанавливаем смещение
+							offset = (i + 1);
+							// Запоминаем количество обработанных байт
+							result = offset;
+							// Если мы получили последний символ получения трейлеров
+							if(buffer[i] == '\n'){
+								// Если трейлеров в списке больше нет
+								if(this->_trailers.empty())
+									// Меняем стейт чанка на завершение сбора данных
+									this->_chunk.state = process_t::STOP_BODY;
+							// Если мы получили возврат каретки
+							} else if(buffer[i] == '\r') {
+								// Получаем заголовок переданного трейлера
+								const string header(this->_chunk.data.begin(), this->_chunk.data.end());
+								// Выполняем поиск разделителя заголовка
+								const size_t pos = header.find(':');
+								// Если позиция разделителя найдена
+								if(pos != string::npos){
+									// Получаем ключ заголовка
+									string key = header.substr(0, pos);
+									// Получаем значение заголовка
+									string val = header.substr(pos + 1);
+									// Добавляем заголовок в список
+									this->_headers.emplace(
+										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+									);
+									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+									if(this->_callback.is("header"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+									// Выполняем поиск ключа заголовка в списке трейлеров
+									auto it = this->_trailers.find(key);
+									// Если трейлер найден в списке
+									if(it != this->_trailers.end())
+										// Выполняем удаление полученного трейлера
+										this->_trailers.erase(it);
+									// Если трейлер не соответствует
+									else {
+										// Устанавливаем код внутренней ошибки сервера
+										this->_res.code = 500;
+										// Стираем сообщение ответа сервера
+										this->_res.message = this->_fmk->format("Trailer \"%s\" does not exist", key.c_str());
+										// Выполняем очистку списка трейлеров
+										this->_trailers.clear();
+										// Выводим сообщение об ошибке, что трейлер не существует
+										this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, key.c_str());
+										// Выполняем переход к ошибке
+										goto Stop;
+									}
+								}
+								// Выполняем сброс тела данных
+								this->_chunk.data.clear();
+							// Выполняем сборку трейлера, выполняем сборку размера чанка
+							} else this->_chunk.data.push_back(buffer[i]);
+						} break;
 						// Если мы ожидаем получения размера тела чанка
-						case static_cast <uint8_t> (cstate_t::SIZE): {
+						case static_cast <uint8_t> (process_t::SIZE): {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r'){
 								// Меняем стейт чанка
-								this->_chunk.state = cstate_t::ENDSIZE;
+								this->_chunk.state = process_t::END_SIZE;
 								// Получаем размер чанка
 								this->_chunk.size = this->_fmk->atoi(string(
 									this->_chunk.data.begin(),
@@ -117,7 +175,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
-						case static_cast <uint8_t> (cstate_t::ENDSIZE): {
+						case static_cast <uint8_t> (process_t::END_SIZE): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -125,15 +183,25 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
-								if(this->_chunk.size == 0)
-									// Меняем стейт чанка
-									this->_chunk.state = cstate_t::STOPBODY;
+								if(this->_chunk.size == 0){
+									// Если список трейлеров собран
+									if(!this->_trailers.empty()){
+										// Если мы работаем с клиентом
+										if(this->_hid == hid_t::CLIENT){
+											// Выполняем сброс тела данных
+											this->_chunk.data.clear();
+											// Меняем стейт чанка на получение трейлеров
+											this->_chunk.state = process_t::TRAILERS;
+										// Выводим сообщение об ошибке
+										} else this->_log->print("Client cannot transfer trailers", log_t::flag_t::WARNING);
+									// Меняем стейт чанка на завершение сбора данных
+									} else this->_chunk.state = process_t::STOP_BODY;
 								// Если данные собраны не полностью
-								else {
+								} else {
 									// Если количества байт достаточно для сбора тела чанка
 									if((size - offset) >= this->_chunk.size){
 										// Меняем стейт чанка
-										this->_chunk.state = cstate_t::STOPBODY;
+										this->_chunk.state = process_t::STOP_BODY;
 										// Определяем конец буфера
 										size_t end = (offset + this->_chunk.size);
 										// Собираем тело чанка
@@ -147,7 +215,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если количества байт не достаточно для сбора тела
 									} else {
 										// Меняем стейт чанка
-										this->_chunk.state = cstate_t::BODY;
+										this->_chunk.state = process_t::BODY;
 										// Собираем тело чанка
 										this->_chunk.data.insert(this->_chunk.data.end(), buffer + offset, buffer + size);
 										// Запоминаем количество обработанных байт
@@ -165,13 +233,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем сбора тела чанка
-						case static_cast <uint8_t> (cstate_t::BODY): {
+						case static_cast <uint8_t> (process_t::BODY): {
 							// Определяем количество необходимых байт
 							size_t rem = (this->_chunk.size - this->_chunk.data.size());
 							// Если количества байт достаточно для сбора тела чанка
 							if(size >= rem){
 								// Меняем стейт чанка
-								this->_chunk.state = cstate_t::STOPBODY;
+								this->_chunk.state = process_t::STOP_BODY;
 								// Собираем тело чанка
 								this->_chunk.data.insert(this->_chunk.data.end(), buffer, buffer + rem);
 								// Выполняем смещение итератора
@@ -191,7 +259,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем перевод строки после сбора данных тела чанка
-						case static_cast <uint8_t> (cstate_t::STOPBODY): {
+						case static_cast <uint8_t> (process_t::STOP_BODY): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -199,7 +267,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r')
 								// Меняем стейт чанка
-								this->_chunk.state = cstate_t::ENDBODY;
+								this->_chunk.state = process_t::END_BODY;
 							// Если символ отличается, значит ошибка
 							else {
 								// Устанавливаем символ ошибки
@@ -209,7 +277,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора данных тела чанка
-						case static_cast <uint8_t> (cstate_t::ENDBODY): {
+						case static_cast <uint8_t> (process_t::END_BODY): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -319,43 +387,51 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Выводим функцию обратного вызова
 								this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
-					}
-					// Получаем размер тела
-					auto it = this->_headers.find("content-length");
-					// Если размер запроса передан
-					if(it != this->_headers.end()){
-						// Запоминаем размер тела сообщения
-						this->_bodySize = static_cast <size_t> (::stoull(it->second));
-						// Если размер тела не получен
-						if(this->_bodySize == 0){
-							// Запрашиваем заголовок подключения
-							const string & header = this->header("connection");
-							// Если заголовок подключения найден
-							if(header.empty() || !this->_fmk->exists("close", header)){
-								// Тело в запросе не передано
-								this->_state = state_t::END;
-								// Выходим из функции
-								return;
-							}
-						}
-						// Устанавливаем стейт поиска тела запроса
-						this->_state = state_t::BODY;
-						// Продолжаем работу
-						goto end;
-					// Если тело приходит
-					} else {
+					}{
 						// Получаем размер тела
-						it = this->_headers.find("transfer-encoding");
+						auto it = this->_headers.find("content-length");
 						// Если размер запроса передан
 						if(it != this->_headers.end()){
-							// Если нужно получать размер тела чанками
-							if(this->_fmk->exists("chunked", it->second)){
-								// Устанавливаем стейт поиска тела запроса
-								this->_state = state_t::BODY;
-								// Продолжаем работу
-								goto end;
+							// Запоминаем размер тела сообщения
+							this->_bodySize = static_cast <size_t> (::stoull(it->second));
+							// Если размер тела не получен
+							if(this->_bodySize == 0){
+								// Запрашиваем заголовок подключения
+								const string & header = this->header("connection");
+								// Если заголовок подключения найден
+								if(header.empty() || !this->_fmk->exists("close", header)){
+									// Тело в запросе не передано
+									this->_state = state_t::END;
+									// Выходим из функции
+									return;
+								}
+							}
+							// Устанавливаем стейт поиска тела запроса
+							this->_state = state_t::BODY;
+							// Продолжаем работу
+							goto end;
+						// Если тело приходит
+						} else {
+							// Выполняем извлечение списка параметров передачи данных
+							const auto & range = this->_headers.equal_range("transfer-encoding");
+							// Выполняем перебор всего списка указанных заголовков
+							for(auto it = range.first; it != range.second; ++it){
+								// Если нужно получать размер тела чанками
+								if(this->_fmk->exists("chunked", it->second)){
+									// Устанавливаем стейт поиска тела запроса
+									this->_state = state_t::BODY;
+									// Продолжаем работу
+									goto end;
+								}
 							}
 						}
+					}{
+						// Выполняем извлечение списка трейлеров
+						const auto & range = this->_headers.equal_range("trailer");
+						// Выполняем перебор всего списка указанных заголовков
+						for(auto it = range.first; it != range.second; ++it)
+							// Выполняем сбор трейлеров
+							this->_trailers.emplace(it->second);
 					}
 					// Тело в запросе не передано
 					this->_state = state_t::END;
@@ -876,6 +952,8 @@ void awh::Web::clear() noexcept {
 	this->_chunk.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->_headers.clear();
+	// Выполняем сброс списка трейлеров
+	this->_trailers.clear();
 	// Выполняем сброс параметров запроса
 	this->_req = req_t();
 	// Выполняем сброс параметров ответа

@@ -203,14 +203,15 @@ namespace awh {
 			} res_t;
 		private:
 			/**
-			 * Стейты работы чанка
+			 * Идентификаторы актуального процесса парсинга
 			 */
-			enum class cstate_t : uint8_t {
-				SIZE     = 0x01, // Ожидание получения размера
-				BODY     = 0x02, // Ожидание сбора тела данных
-				ENDSIZE  = 0x03, // Ожидание получения перевода строки после получения размера чанка
-				ENDBODY  = 0x04, // Ожидание получения перевода строки после получения тела чанка
-				STOPBODY = 0x05  // Ожидание получения возврата каретки после получения тела чанка
+			enum class process_t : uint8_t {
+				SIZE      = 0x01, // Ожидание получения размера
+				BODY      = 0x02, // Ожидание сбора тела данных
+				TRAILERS  = 0x03, // Ожидание получения трейлера
+				END_SIZE  = 0x04, // Ожидание получения перевода строки после получения размера чанка
+				END_BODY  = 0x05, // Ожидание получения перевода строки после получения тела чанка
+				STOP_BODY = 0x06  // Ожидание получения возврата каретки после получения тела чанка
 			};
 			/**
 			 * Chunk Структура собираемого чанка
@@ -218,7 +219,7 @@ namespace awh {
 			typedef struct Chunk {
 				public:
 					size_t size;        // Размер чанка
-					cstate_t state;     // Стейт чанка
+					process_t state;    // Стейт чанка
 					vector <char> data; // Данные чанка
 				public:
 					/**
@@ -230,13 +231,13 @@ namespace awh {
 						// Обнуляем буфер данных
 						this->data.clear();
 						// Выполняем сброс стейта чанка
-						this->state = cstate_t::SIZE;
+						this->state = process_t::SIZE;
 					}
 				public:
 					/**
 					 * Chunk Конструктор
 					 */
-					Chunk() noexcept : size(0), state(cstate_t::SIZE) {}
+					Chunk() noexcept : size(0), state(process_t::SIZE) {}
 			} chunk_t;
 		private:
 			// Идентификатор объекта
@@ -269,6 +270,9 @@ namespace awh {
 		private:
 			// Полученное тело HTTP запроса
 			vector <char> _body;
+		private:
+			// Загруженные трейлеры
+			unordered_set <string> _trailers;
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> _headers;
 		private:
