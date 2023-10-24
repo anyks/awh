@@ -216,7 +216,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Проверяем версию протокола
 									if(!options->http.check(ws_core_t::flag_t::VERSION)){
 										// Получаем бинарные данные REST ответа
-										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
+										buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Unsupported protocol version"));
 										// Завершаем работу
 										break;
 									}
@@ -336,7 +336,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 							} break;
 							// Если результат определить не получилось
-							default: buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Unknown request"));
+							default: buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (506), "Unknown request"));
 						}
 						// Если бинарные данные запроса получены, отправляем клиенту
 						if(!buffer.empty()){

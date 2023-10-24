@@ -526,7 +526,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Проверяем версию протокола
 											if(!options->http.check(ws_core_t::flag_t::VERSION)){
 												// Получаем бинарные данные REST запроса
-												response = awh::web_t::res_t(2.0f, static_cast <u_int> (400), "Unsupported protocol version");
+												response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Unsupported protocol version");
 												// Завершаем работу
 												break;
 											}
@@ -585,7 +585,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 													}
 												#endif
 												// Выполняем ответ подключившемуся клиенту
-												int32_t sid = web2_t::send(options->sid, bid, headers, false);
+												int32_t sid = web2_t::send(options->sid, bid, headers, http2_t::flag_t::NONE);
 												// Если запрос не получилось отправить
 												if(sid < 0){
 													// Если мы получили флаг завершения потока
@@ -626,7 +626,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
 									break;
 									// Если результат определить не получилось
-									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (500), "Unknown request");
+									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (506), "Unknown request");
 								}
 								// Выполняем очистку данных HTTP-парсера
 								options->http.clear();
@@ -653,8 +653,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												cout << string(buffer.begin(), buffer.end()) << endl << endl;
 										}
 									#endif
+									// Флаг отправляемого фрейма
+									http2_t::flag_t flag = http2_t::flag_t::NONE;
 									// Выполняем заголовки запроса на сервер
-									const int32_t sid = web2_t::send(options->sid, bid, headers, false);
+									const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 									// Если запрос не получилось отправить
 									if(sid < 0){
 										// Если мы получили флаг завершения потока
@@ -680,8 +682,12 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												// Выводим сообщение о выводе чанка тела
 												cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 											#endif
+											// Если нужно установить флаг закрытия потока
+											if(options->http.body().empty())
+												// Устанавливаем флаг завершения потока
+												flag = http2_t::flag_t::END_STREAM;
 											// Выполняем отправку тела запроса на сервер
-											if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty())){
+											if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag)){
 												// Если мы получили флаг завершения потока
 												if(flags & NGHTTP2_FLAG_END_STREAM){
 													// Если установлена функция отлова завершения запроса
@@ -1023,7 +1029,7 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 					// Если данные сообщения получены
 					if((options->stopped = !data.empty()))
 						// Выполняем отправку сообщения клиенту
-						web2_t::send(options->sid, bid, data.data(), data.size(), true);
+						web2_t::send(options->sid, bid, data.data(), data.size(), http2_t::flag_t::END_STREAM);
 					// Завершаем работу
 					else const_cast <server::core_t *> (this->_core)->close(bid);
 				}
@@ -1065,7 +1071,7 @@ void awh::server::WebSocket2::pong(const uint64_t bid, awh::core_t * core, const
 			// Если буфер данных получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения клиенту
-				web2_t::send(options->sid, bid, buffer.data(), buffer.size(), false);
+				web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
 		}
 	}
 }
@@ -1087,7 +1093,7 @@ void awh::server::WebSocket2::ping(const uint64_t bid, awh::core_t * core, const
 			// Если буфер данных получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения клиенту
-				web2_t::send(options->sid, bid, buffer.data(), buffer.size(), false);
+				web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
 		}
 	}
 }
@@ -1266,7 +1272,7 @@ void awh::server::WebSocket2::sendError(const uint64_t bid, const ws::mess_t & m
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
 						// Выполняем отправку сообщения клиенту
-						web2_t::send(options->sid, bid, buffer.data(), buffer.size(), true);
+						web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						// Выходим из функции
 						return;
 					}
@@ -1382,7 +1388,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на клиенту
-								web2_t::send(options->sid, bid, payload.data(), payload.size(), false);
+								web2_t::send(options->sid, bid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 							// Иначе просто выходим
 							else break;
 							// Выполняем сброс RSV1
@@ -1399,7 +1405,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Выполняем отправку сообщения на клиенту
-							web2_t::send(options->sid, bid, payload.data(), payload.size(), false);
+							web2_t::send(options->sid, bid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 					}
 				}
 			}

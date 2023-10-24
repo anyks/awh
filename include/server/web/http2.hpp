@@ -221,7 +221,7 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 */
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
-			private:
+			public:
 				/**
 				 * send Метод отправки трейлеров
 				 * @param id      идентификатор потока HTTP/2

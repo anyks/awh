@@ -670,26 +670,26 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				virtual bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения клиенту
 				 * @param id     идентификатор потока HTTP/2
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых
 				 * @param size   размер сообщения в байтах
-				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				virtual bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 				/**
 				 * send Метод отправки заголовков
 				 * @param id      идентификатор потока HTTP/2
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
-				 * @param end     размер сообщения в байтах
+				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				virtual int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const bool end) noexcept;
+				int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешённых источников

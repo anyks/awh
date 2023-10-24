@@ -213,7 +213,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										// Выполняем очистку буфера полученных данных
 										options->buffer.clear();
 										// Формируем запрос авторизации
-										const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (500), "Requested protocol is not supported by this server"));
+										const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
 										// Если ответ получен
 										if(!response.empty()){
 											// Тело полезной нагрузки
@@ -560,7 +560,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Проверяем версию протокола
 					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST ответа
-						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (400), "Unsupported protocol version"));
+						buffer = web->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Unsupported protocol version"));
 						// Завершаем работу
 						goto End;
 					}

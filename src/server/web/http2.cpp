@@ -714,7 +714,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						// Выполняем сброс состояния HTTP парсера
 						options->http.reset();
 						// Формируем ответ на запрос об авторизации
-						const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (500), "Requested protocol is not supported by this server");
+						const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Requested protocol is not supported by this server");
 						// Получаем заголовки ответа удалённому клиенту
 						const auto & headers = options->http.reject2(response);
 						// Если бинарные данные ответа получены
@@ -736,8 +736,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										cout << string(buffer.begin(), buffer.end()) << endl << endl;
 								}
 							#endif
+							// Флаг отправляемого фрейма
+							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 							// Выполняем заголовки запроса на сервер
-							const int32_t sid = web2_t::send(options->sid, bid, headers, false);
+							const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 							// Если запрос не получилось отправить
 							if(sid < 0)
 								// Выходим из функции
@@ -755,8 +757,12 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										// Выводим сообщение о выводе чанка тела
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
+									// Если нужно установить флаг закрытия потока
+									if(options->http.body().empty() && (options->http.trailers() == 0))
+										// Устанавливаем флаг завершения потока
+										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку тела запроса на сервер
-									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 										// Выходим из функции
 										return;
 								}
@@ -764,8 +770,28 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								if(options->http.trailers() > 0){
 									// Выполняем извлечение трейлеров
 									const auto & trailers = options->http.trailers2();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Название выводимого заголовка
+										string name = "";
+										// Выводим заголовок трейлеров
+										cout << "<Trailers>" << endl << endl;
+										// Выполняем перебор всего списка отправляемых трейлеров
+										for(auto & trailer : trailers){
+											// Получаем название заголовка
+											name = trailer.first;
+											// Переводим заголовок в нормальный режим
+											this->_fmk->transform(name, fmk_t::transform_t::SMART);
+											// Выводим сообщение о выводе чанка тела
+											cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+										}
+										// Выводим завершение вывода информации
+										cout << endl << endl;
+									#endif
 									// Выполняем отправку трейлеров
-									if(!this->send(options->sid, bid, trailers))
+									if(!web2_t::send(options->sid, bid, trailers))
 										// Выходим из функции
 										return;
 								}
@@ -825,8 +851,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 						}
 					#endif
+					// Флаг отправляемого фрейма
+					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 					// Выполняем заголовки запроса на сервер
-					const int32_t sid = web2_t::send(options->sid, bid, headers, false);
+					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 					// Если запрос не получилось отправить
 					if(sid < 0)
 						// Выходим из функции
@@ -844,8 +872,12 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
+							// Если нужно установить флаг закрытия потока
+							if(options->http.body().empty() && (options->http.trailers() == 0))
+								// Устанавливаем флаг завершения потока
+								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
 						}
@@ -853,8 +885,28 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						if(options->http.trailers() > 0){
 							// Выполняем извлечение трейлеров
 							const auto & trailers = options->http.trailers2();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Название выводимого заголовка
+								string name = "";
+								// Выводим заголовок трейлеров
+								cout << "<Trailers>" << endl << endl;
+								// Выполняем перебор всего списка отправляемых трейлеров
+								for(auto & trailer : trailers){
+									// Получаем название заголовка
+									name = trailer.first;
+									// Переводим заголовок в нормальный режим
+									this->_fmk->transform(name, fmk_t::transform_t::SMART);
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+								}
+								// Выводим завершение вывода информации
+								cout << endl << endl;
+							#endif
 							// Выполняем отправку трейлеров
-							if(!this->send(options->sid, bid, trailers))
+							if(!web2_t::send(options->sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
@@ -1031,7 +1083,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = dynamic_cast <server::core_t *> (core);
 						// Выполняем ответ подключившемуся клиенту
-						if(web2_t::send(options->sid, bid, headers, false) < 0)
+						if(web2_t::send(options->sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 							// Выходим из функции
 							return;
 						// Выполняем извлечение параметров запроса
@@ -1081,8 +1133,10 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 						}
 					#endif
+					// Флаг отправляемого фрейма
+					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 					// Выполняем ответ подключившемуся клиенту
-					if(web2_t::send(options->sid, bid, headers, false) < 0)
+					if(web2_t::send(options->sid, bid, headers, flag) < 0)
 						// Выходим из функции
 						return;
 					// Если тело запроса существует
@@ -1098,8 +1152,12 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
+							// Если нужно установить флаг закрытия потока
+							if(options->http.body().empty() && (options->http.trailers() == 0))
+								// Устанавливаем флаг завершения потока
+								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
 						}
@@ -1107,8 +1165,28 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						if(options->http.trailers() > 0){
 							// Выполняем извлечение трейлеров
 							const auto & trailers = options->http.trailers2();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Название выводимого заголовка
+								string name = "";
+								// Выводим заголовок трейлеров
+								cout << "<Trailers>" << endl << endl;
+								// Выполняем перебор всего списка отправляемых трейлеров
+								for(auto & trailer : trailers){
+									// Получаем название заголовка
+									name = trailer.first;
+									// Переводим заголовок в нормальный режим
+									this->_fmk->transform(name, fmk_t::transform_t::SMART);
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+								}
+								// Выводим завершение вывода информации
+								cout << endl << endl;
+							#endif
 							// Выполняем отправку трейлеров
-							if(!this->send(options->sid, bid, trailers))
+							if(!web2_t::send(options->sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
@@ -1607,30 +1685,10 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 					// Определяем тип активного протокола
 					switch(static_cast <uint8_t> (it->second)){
 						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP): {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Название выводимого заголовка
-								string name = "";
-								// Выводим заголовок трейлеров
-								cout << "<Trailers>" << endl << endl;
-								// Выполняем перебор всего списка отправляемых трейлеров
-								for(auto & trailer : headers){
-									// Получаем название заголовка
-									name = trailer.first;
-									// Переводим заголовок в нормальный режим
-									this->_fmk->transform(name, fmk_t::transform_t::SMART);
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
-								}
-								// Выводим завершение вывода информации
-								cout << endl << endl;
-							#endif
+						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
 							result = web2_t::send(id, bid, headers);
-						} break;
+						break;
 					}
 				}
 			}
@@ -1686,6 +1744,8 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
 								vector <char> entity;
+								// Флаг отправляемого фрейма
+								awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 								// Выполняем сброс данных тела
 								options->http.clear(http_t::suite_t::BODY);
 								// Устанавливаем тело запроса
@@ -1699,15 +1759,39 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 										// Выводим сообщение о выводе чанка тела
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
+									// Если нужно установить флаг закрытия потока
+									if(end && options->http.body().empty() && (options->http.trailers() == 0))
+										// Устанавливаем флаг завершения потока
+										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку данных на удалённый сервер
-									result = web2_t::send(id, bid, entity.data(), entity.size(), (end && options->http.body().empty() && (options->http.trailers() == 0)));
+									result = web2_t::send(id, bid, entity.data(), entity.size(), flag);
 								}
 								// Если список трейлеров установлен
 								if(result && (options->http.trailers() > 0)){
 									// Выполняем извлечение трейлеров
 									const auto & trailers = options->http.trailers2();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Название выводимого заголовка
+										string name = "";
+										// Выводим заголовок трейлеров
+										cout << "<Trailers>" << endl << endl;
+										// Выполняем перебор всего списка отправляемых трейлеров
+										for(auto & trailer : trailers){
+											// Получаем название заголовка
+											name = trailer.first;
+											// Переводим заголовок в нормальный режим
+											this->_fmk->transform(name, fmk_t::transform_t::SMART);
+											// Выводим сообщение о выводе чанка тела
+											cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+										}
+										// Выводим завершение вывода информации
+										cout << endl << endl;
+									#endif
 									// Выполняем отправку трейлеров
-									if((result = !this->send(id, bid, trailers)))
+									if((result = !web2_t::send(id, bid, trailers)))
 										// Выходим из функции
 										return result;
 								}
@@ -1797,7 +1881,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 										}
 									#endif
 									// Выполняем заголовки запроса на сервер
-									result = web2_t::send(id, bid, headers, end);
+									result = web2_t::send(id, bid, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
 								}
 							} break;
 						}
@@ -1882,8 +1966,14 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 													cout << string(buffer.begin(), buffer.end()) << endl << endl;
 											}
 										#endif
+										// Флаг отправляемого фрейма
+										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+										// Если нужно установить флаг закрытия потока
+										if(options->http.body().empty())
+											// Устанавливаем флаг завершения потока
+											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем ответ подключившемуся клиенту
-										int32_t sid = web2_t::send(options->sid, bid, headers, options->http.body().empty());
+										int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 										// Если запрос не получилось отправить, выходим из функции
 										if(sid < 0)
 											// Выходим из функции
@@ -1903,8 +1993,12 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 													// Выводим сообщение о выводе чанка тела
 													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 												#endif
+												// Если нужно установить флаг закрытия потока
+												if(options->http.body().empty() && (options->http.trailers() == 0))
+													// Устанавливаем флаг завершения потока
+													flag = awh::http2_t::flag_t::END_STREAM;
 												// Выполняем отправку тела запроса на сервер
-												if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), options->http.body().empty() && (options->http.trailers() == 0)))
+												if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 													// Выходим из функции
 													return;
 											}
@@ -1912,8 +2006,28 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 											if(options->http.trailers() > 0){
 												// Выполняем извлечение трейлеров
 												const auto & trailers = options->http.trailers2();
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Название выводимого заголовка
+													string name = "";
+													// Выводим заголовок трейлеров
+													cout << "<Trailers>" << endl << endl;
+													// Выполняем перебор всего списка отправляемых трейлеров
+													for(auto & trailer : trailers){
+														// Получаем название заголовка
+														name = trailer.first;
+														// Переводим заголовок в нормальный режим
+														this->_fmk->transform(name, fmk_t::transform_t::SMART);
+														// Выводим сообщение о выводе чанка тела
+														cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+													}
+													// Выводим завершение вывода информации
+													cout << endl << endl;
+												#endif
 												// Выполняем отправку трейлеров
-												if(!this->send(options->sid, bid, trailers))
+												if(!web2_t::send(options->sid, bid, trailers))
 													// Выходим из функции
 													return;
 											}
