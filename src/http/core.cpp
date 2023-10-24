@@ -486,131 +486,140 @@ void awh::Http::commit() noexcept {
 				}
 				// Если заголовок с параметрами передачи данных Transfer-Encoding существует
 				if((this->_te.enabled = this->_web.isHeader("te"))){
-					// Получаем список доступных заголовков
-					const auto & headers = this->_web.headers();
-					// Если список заголовков получен
-					if(!headers.empty()){
-						// Список запрашиваемых компрессоров клиентом
-						multimap <float, compress_t> requested;
-						// Выполняем извлечение списка нужных заголовков
-						const auto & range = headers.equal_range("te");
-						// Выполняем перебор всего списка указанных заголовков
-						for(auto it = range.first; it != range.second; ++it){
-							// Список параметров запроса для Transfer-Encoding
-							vector <string> params;
-							// Выполняем извлечение списка параметров
-							this->_fmk->split(it->second, ",", params);
-							// Если список параметров получен
-							if(!params.empty()){
-								// Вес запрашиваемого компрессора
-								float weight = 1.0f;
-								// Выполняем перебор списка параметров
-								for(auto & param : params){
-									// Если найден вес компрессора
-									if(this->_fmk->exists(";q=", param)){
-										// Выполняем поиск разделителя
-										const size_t pos = param.rfind(';');
-										// Если разделитель найден
-										if((pos != string::npos) && (param.size() >= (pos + 4))){
-											// Получаем вес компрессора
-											const string & second = param.substr(pos + 3);
-											// Если вес указан верный
-											if(!second.empty() && (this->_fmk->is(second, fmk_t::check_t::DECIMAL) || this->_fmk->is(second, fmk_t::check_t::NUMBER))){
-												// Изавлекаем название компрессора
-												const string & first = param.substr(0, pos);
-												// Если данные пришли сжатые методом Brotli
-												if(this->_fmk->compare(first, "br"))
-													// Добавляем в список полученный компрессор
-													requested.emplace(::stof(second), compress_t::BROTLI);
-												// Если данные пришли сжатые методом GZip
-												else if(this->_fmk->compare(first, "gzip"))
-													// Добавляем в список полученный компрессор
-													requested.emplace(::stof(second), compress_t::GZIP);
-												// Если данные пришли сжатые методом Deflate
-												else if(this->_fmk->compare(first, "deflate"))
-													// Добавляем в список полученный компрессор
-													requested.emplace(::stof(second), compress_t::DEFLATE);
-												// Если получен параметр разрешающий использовать трейлеры
-												else if(this->_fmk->compare(first, "trailers"))
-													// Выполняем активации получение трейлеров
-													this->_te.trailers = true;
-												// Если получен параметр разрешающий обмениваться чанками
-												else if(this->_fmk->compare(first, "chunked"))
-													// Выполняем активацию передачу данных чанками
-													this->_te.chunking = true;
-											// Если вес компрессора указан не является числом
-											} else this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, param.substr(0, pos).c_str(), second.c_str());
-										// Если мы получили данные в неверном формате
-										} else this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, param.c_str());
-									// Если вес компрессора не установлен
-									} else {
-										// Если данные пришли сжатые методом Brotli
-										if(this->_fmk->compare(param, "br"))
-											// Добавляем в список полученный компрессор
-											requested.emplace(weight, compress_t::BROTLI);
-										// Если данные пришли сжатые методом GZip
-										else if(this->_fmk->compare(param, "gzip"))
-											// Добавляем в список полученный компрессор
-											requested.emplace(weight, compress_t::GZIP);
-										// Если данные пришли сжатые методом Deflate
-										else if(this->_fmk->compare(param, "deflate"))
-											// Добавляем в список полученный компрессор
-											requested.emplace(weight, compress_t::DEFLATE);
-										// Если получен параметр разрешающий использовать трейлеры
-										else if(this->_fmk->compare(param, "trailers"))
-											// Выполняем активации получение трейлеров
-											this->_te.trailers = true;
-										// Если получен параметр разрешающий обмениваться чанками
-										else if(this->_fmk->compare(param, "chunked"))
-											// Выполняем активацию передачу данных чанками
-											this->_te.chunking = true;
-										// Выполняем уменьшение веса выбранного компрессора
-										weight -= .1f;
+					// Если версия протокола подключения выше чем HTTP/1.1
+					if(this->_web.request().version > 1.1f){
+						// Выполняем активации получение трейлеров
+						this->_te.trailers = true;
+						// Выполняем активацию передачу данных чанками
+						this->_te.chunking = true;
+					// Если версия протокола подключения не выше HTTP/1.1
+					} else {
+						// Получаем список доступных заголовков
+						const auto & headers = this->_web.headers();
+						// Если список заголовков получен
+						if(!headers.empty()){
+							// Список запрашиваемых компрессоров клиентом
+							multimap <float, compress_t> requested;
+							// Выполняем извлечение списка нужных заголовков
+							const auto & range = headers.equal_range("te");
+							// Выполняем перебор всего списка указанных заголовков
+							for(auto it = range.first; it != range.second; ++it){
+								// Список параметров запроса для Transfer-Encoding
+								vector <string> params;
+								// Выполняем извлечение списка параметров
+								this->_fmk->split(it->second, ",", params);
+								// Если список параметров получен
+								if(!params.empty()){
+									// Вес запрашиваемого компрессора
+									float weight = 1.0f;
+									// Выполняем перебор списка параметров
+									for(auto & param : params){
+										// Если найден вес компрессора
+										if(this->_fmk->exists(";q=", param)){
+											// Выполняем поиск разделителя
+											const size_t pos = param.rfind(';');
+											// Если разделитель найден
+											if((pos != string::npos) && (param.size() >= (pos + 4))){
+												// Получаем вес компрессора
+												const string & second = param.substr(pos + 3);
+												// Если вес указан верный
+												if(!second.empty() && (this->_fmk->is(second, fmk_t::check_t::DECIMAL) || this->_fmk->is(second, fmk_t::check_t::NUMBER))){
+													// Изавлекаем название компрессора
+													const string & first = param.substr(0, pos);
+													// Если данные пришли сжатые методом Brotli
+													if(this->_fmk->compare(first, "br"))
+														// Добавляем в список полученный компрессор
+														requested.emplace(::stof(second), compress_t::BROTLI);
+													// Если данные пришли сжатые методом GZip
+													else if(this->_fmk->compare(first, "gzip"))
+														// Добавляем в список полученный компрессор
+														requested.emplace(::stof(second), compress_t::GZIP);
+													// Если данные пришли сжатые методом Deflate
+													else if(this->_fmk->compare(first, "deflate"))
+														// Добавляем в список полученный компрессор
+														requested.emplace(::stof(second), compress_t::DEFLATE);
+													// Если получен параметр разрешающий использовать трейлеры
+													else if(this->_fmk->compare(first, "trailers"))
+														// Выполняем активации получение трейлеров
+														this->_te.trailers = true;
+													// Если получен параметр разрешающий обмениваться чанками
+													else if(this->_fmk->compare(first, "chunked"))
+														// Выполняем активацию передачу данных чанками
+														this->_te.chunking = true;
+												// Если вес компрессора указан не является числом
+												} else this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, param.substr(0, pos).c_str(), second.c_str());
+											// Если мы получили данные в неверном формате
+											} else this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, param.c_str());
+										// Если вес компрессора не установлен
+										} else {
+											// Если данные пришли сжатые методом Brotli
+											if(this->_fmk->compare(param, "br"))
+												// Добавляем в список полученный компрессор
+												requested.emplace(weight, compress_t::BROTLI);
+											// Если данные пришли сжатые методом GZip
+											else if(this->_fmk->compare(param, "gzip"))
+												// Добавляем в список полученный компрессор
+												requested.emplace(weight, compress_t::GZIP);
+											// Если данные пришли сжатые методом Deflate
+											else if(this->_fmk->compare(param, "deflate"))
+												// Добавляем в список полученный компрессор
+												requested.emplace(weight, compress_t::DEFLATE);
+											// Если получен параметр разрешающий использовать трейлеры
+											else if(this->_fmk->compare(param, "trailers"))
+												// Выполняем активации получение трейлеров
+												this->_te.trailers = true;
+											// Если получен параметр разрешающий обмениваться чанками
+											else if(this->_fmk->compare(param, "chunked"))
+												// Выполняем активацию передачу данных чанками
+												this->_te.chunking = true;
+											// Выполняем уменьшение веса выбранного компрессора
+											weight -= .1f;
+										}
 									}
 								}
 							}
-						}
-						// Если список запрашиваемых компрессоров получен
-						if(!requested.empty()){
-							// Выполняем перебор списка запрашиваемых компрессоров
-							for(auto it = requested.rbegin(); it != requested.rend(); ++it){
-								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(it->second, this->_compressor.supports) != this->_compressor.supports.end()){
-									// Устанавливаем флаг метода компрессии
-									this->_compressor.selected = it->second;
-									// Выходим из цикла
-									break;
+							// Если список запрашиваемых компрессоров получен
+							if(!requested.empty()){
+								// Выполняем перебор списка запрашиваемых компрессоров
+								for(auto it = requested.rbegin(); it != requested.rend(); ++it){
+									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
+									if(this->_fmk->findInMap(it->second, this->_compressor.supports) != this->_compressor.supports.end()){
+										// Устанавливаем флаг метода компрессии
+										this->_compressor.selected = it->second;
+										// Выходим из цикла
+										break;
+									}
 								}
 							}
-						}
-						// Выполняем удаление заголовка
-						this->_web.delHeader("te");
-						// Выполняем извлечение данных заголовка подключения
-						string connection = this->_web.header("connection");
-						// Если заголовок подключения получен
-						if(!connection.empty()){
-							// Переводим значение в нижний регистр
-							this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
-							// Выполняем поиск заголовка Transfer-Encoding
-							const size_t pos = connection.find("te");
-							// Если заголовок найден
-							if(pos != string::npos){
-								// Выполняем удаление значение TE из заголовка
-								connection.erase(pos, 2);
-								// Если первый символ является запятой, удаляем
-								if(connection.front() == ',')
-									// Удаляем запятую
-									connection.erase(0, 1);
-								// Выполняем удаление лишних пробелов
-								this->_fmk->transform(connection, fmk_t::transform_t::TRIM);
-								// Выполняем удаление заголовка
-								this->_web.delHeader("connection");
-								// Если значение подключение получено
-								if(!connection.empty())
-									// Устанавливаем отредактированное подключение
-									this->_web.header("Connection", connection);
-								// Иначе заменяем значение подключение по умолчанию
-								else this->_web.header("Connection", "Keep-Alive");
+							// Выполняем удаление заголовка
+							this->_web.delHeader("te");
+							// Выполняем извлечение данных заголовка подключения
+							string connection = this->_web.header("connection");
+							// Если заголовок подключения получен
+							if(!connection.empty()){
+								// Переводим значение в нижний регистр
+								this->_fmk->transform(connection, fmk_t::transform_t::LOWER);
+								// Выполняем поиск заголовка Transfer-Encoding
+								const size_t pos = connection.find("te");
+								// Если заголовок найден
+								if(pos != string::npos){
+									// Выполняем удаление значение TE из заголовка
+									connection.erase(pos, 2);
+									// Если первый символ является запятой, удаляем
+									if(connection.front() == ',')
+										// Удаляем запятую
+										connection.erase(0, 1);
+									// Выполняем удаление лишних пробелов
+									this->_fmk->transform(connection, fmk_t::transform_t::TRIM);
+									// Выполняем удаление заголовка
+									this->_web.delHeader("connection");
+									// Если значение подключение получено
+									if(!connection.empty())
+										// Устанавливаем отредактированное подключение
+										this->_web.header("Connection", connection);
+									// Иначе заменяем значение подключение по умолчанию
+									else this->_web.header("Connection", "Keep-Alive");
+								}
 							}
 						}
 					}
@@ -753,7 +762,7 @@ const vector <char> awh::Http::payload() const noexcept {
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 							// Если нужно отправить трейлеры
-							if(this->_te.trailers)
+							if(!this->_trailers.empty())
 								// Добавляем конец запроса
 								chunk.append("\r\n0\r\n");
 							// Добавляем конец запроса
@@ -895,8 +904,6 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 				if(this->_te.trailers)
 					// Выполняем добавление заголовка в список трейлеров
 					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
-				// Выводим предупреждение что трейлер нельзя добавить
-				else this->_log->print("Trailer [%s=%s] cannot be added, since the transfer of trailers was not initiated by the client", log_t::flag_t::WARNING, key.c_str(), val.c_str());
 			} break;
 		}	
 	}
@@ -1067,10 +1074,6 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		response.message = this->message(response.code);
 		// Выполняем сохранение параметров ответа
 		this->_web.response(std::move(response));
-	// Если ключ соответствует активации работы трейлеров
-	} else if(this->_fmk->compare(key, "te"))
-		// Выполняем активирование работы трейлеров
-		this->_te.trailers = this->_fmk->exists("trailers", val);
 	// Если ключ соответствует обычным заголовкам
 	else this->header(key, val);
 }

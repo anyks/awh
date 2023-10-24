@@ -138,6 +138,10 @@ class WebServer {
 				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
+				// Устанавливаем тестовые трейлеры
+				this->_awh->trailer(bid, "Goga", "Hello");
+				this->_awh->trailer(bid, "Hello", "World");
+				this->_awh->trailer(bid, "Anyks", "Best of the best");
 				// Отправляем сообщение клиенту
 				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
