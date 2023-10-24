@@ -252,7 +252,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 												 */
 												#if defined(DEBUG_MODE)
 													// Выводим заголовок трейлеров
-													cout << "Trailers:" << endl;
+													cout << "<Trailers>" << endl << endl;
 												#endif
 												// Получаем отправляемые трейлеры
 												while(!(payload = options->http.trailer()).empty()){
@@ -261,13 +261,20 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+														cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
 													#endif
 													// Устанавливаем флаг закрытия подключения
 													options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
 													// Выполняем отправку трейлера клиенту
 													dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 												}
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим завершение вывода информации
+													cout << endl << endl;
+												#endif
 											}
 										// Выполняем отключение брокера
 										} else dynamic_cast <server::core_t *> (core)->close(bid);
@@ -356,7 +363,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим заголовок трейлеров
-											cout << "Trailers:" << endl;
+											cout << "<Trailers>" << endl << endl;
 										#endif
 										// Получаем отправляемые трейлеры
 										while(!(payload = options->http.trailer()).empty()){
@@ -365,11 +372,18 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
 											#endif
 											// Выполняем отправку трейлера клиенту
 											dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 										}
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим завершение вывода информации
+											cout << endl << endl;
+										#endif
 									}
 								// Выполняем отключение брокера
 								} else dynamic_cast <server::core_t *> (core)->close(bid);
@@ -670,7 +684,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок трейлеров
-							cout << "Trailers:" << endl;
+							cout << "<Trailers>" << endl << endl;
 						#endif
 						// Получаем отправляемые трейлеры
 						while(!(payload = options->http.trailer()).empty()){
@@ -679,13 +693,20 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+								cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
 							#endif
 							// Устанавливаем флаг закрытия подключения
 							options->stopped = (!web->http.is(http_t::state_t::ALIVE) && (options->http.trailers() == 0));
 							// Выполняем отправку трейлера клиенту
 							dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим завершение вывода информации
+							cout << endl << endl;
+						#endif
 					}
 					// Если получение данных нужно остановить
 					if(options->stopped)
@@ -980,7 +1001,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок трейлеров
-						cout << "Trailers:" << endl;
+						cout << "<Trailers>" << endl << endl;
 					#endif
 					// Получаем отправляемые трейлеры
 					while(!(entity = options->http.trailer()).empty()){
@@ -989,13 +1010,20 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str()) << endl << endl;
+							cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str()) << endl;
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (end && (options->http.trailers() == 0));
 						// Выполняем отправку трейлера клиенту
 						const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 					}
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим завершение вывода информации
+						cout << endl << endl;
+					#endif
 				}
 			}
 		}
@@ -1130,7 +1158,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок трейлеров
-						cout << "Trailers:" << endl;
+						cout << "<Trailers>" << endl << endl;
 					#endif
 					// Получаем отправляемые трейлеры
 					while(!(payload = options->http.trailer()).empty()){
@@ -1139,13 +1167,20 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
+							cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << endl;
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
 						// Выполняем отправку трейлера клиенту
 						const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
 					}
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим завершение вывода информации
+						cout << endl << endl;
+					#endif
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))

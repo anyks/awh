@@ -325,6 +325,38 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 									if(flags & NGHTTP2_FLAG_END_HEADERS){
+										// Флаг полученных трейлеров из ответа сервера
+										bool trailers = false;
+										// Если трейлеры получены в ответе сервера
+										if((trailers = it->second->http.is(http_t::suite_t::HEADER, "trailer"))){
+											// Выполняем извлечение списка заголовков трейлеров
+											const auto & range = it->second->http.headers().equal_range("trailer");
+											// Выполняем перебор всех полученных заголовков трейлеров
+											for(auto jt = range.first; jt != range.second; ++jt){
+												// Если такой заголовок трейлера не получен
+												if(!it->second->http.is(http_t::suite_t::HEADER, jt->second)){
+													// Если мы получили флаг завершения потока
+													if(flags & NGHTTP2_FLAG_END_STREAM){
+														// Выводим сообщение об ошибке, что трейлер не существует
+														this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, jt->second.c_str());
+														// Если функция обратного вызова на на вывод ошибок установлена
+														if(this->_callback.is("error"))
+															// Выводим функцию обратного вызова
+															this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, this->_fmk->format("Trailer \"%s\" does not exist", jt->second.c_str()));
+														// Выполняем удаление выполненного воркера
+														this->_workers.erase(sid);
+														// Если установлена функция отлова завершения запроса
+														if(this->_callback.is("end"))
+															// Выводим функцию обратного вызова
+															this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+													}
+													// Завершаем работу
+													return 0;
+												}
+											}
+											// Выполняем удаление заголовка трейлеров
+											it->second->http.rm(http_t::suite_t::HEADER, "trailer");
+										}
 										/**
 										 * Если включён режим отладки
 										 */
@@ -348,8 +380,12 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										if(this->_callback.is("headers"))
 											// Выводим функцию обратного вызова
 											this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
+										// Если трейлеры получены с сервера
+										if(trailers)
+											// Выполняем извлечение полученных данных полезной нагрузки
+											return this->frameSignal(sid, awh::http2_t::direct_t::RECV, NGHTTP2_DATA, flags);
 										// Если мы получили флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM){
+										else if(flags & NGHTTP2_FLAG_END_STREAM) {
 											// Выполняем препарирование полученных данных
 											switch(static_cast <uint8_t> (this->prepare(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
 												// Если необходимо выполнить пропуск обработки данных

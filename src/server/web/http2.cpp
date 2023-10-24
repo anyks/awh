@@ -1615,7 +1615,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 								// Название выводимого заголовка
 								string name = "";
 								// Выводим заголовок трейлеров
-								cout << "Trailers:" << endl;
+								cout << "<Trailers>" << endl << endl;
 								// Выполняем перебор всего списка отправляемых трейлеров
 								for(auto & trailer : headers){
 									// Получаем название заголовка
@@ -1623,8 +1623,10 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 									// Переводим заголовок в нормальный режим
 									this->_fmk->transform(name, fmk_t::transform_t::SMART);
 									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl << endl;
+									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
 								}
+								// Выводим завершение вывода информации
+								cout << endl << endl;
 							#endif
 							// Выполняем отправку трейлеров
 							result = web2_t::send(id, bid, headers);
