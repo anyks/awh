@@ -89,6 +89,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				size_t offset = 0;
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
+					
+					cout << " ---------------- " << (u_short) this->_chunk.state << endl;
+					
 					// Определяем стейт чанка
 					switch(static_cast <uint8_t> (this->_chunk.state)){
 						// Если мы собираем трейделы переданные сервером
@@ -97,6 +100,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
 							result = offset;
+							
+							cout << " **************** " << string(1, buffer[i]) << endl;
+
 							// Если мы получили последний символ получения трейлеров
 							if(buffer[i] == '\n'){
 								// Если трейлеров в списке больше нет
@@ -188,6 +194,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									if(!this->_trailers.empty()){
 										// Если мы работаем с клиентом
 										if(this->_hid == hid_t::CLIENT){
+											
+											cout << " ---------------!!! " << endl; 
+											
 											// Выполняем сброс тела данных
 											this->_chunk.data.clear();
 											// Меняем стейт чанка на получение трейлеров
@@ -387,51 +396,43 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Выводим функцию обратного вызова
 								this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
-					}{
-						// Получаем размер тела
-						auto it = this->_headers.find("content-length");
-						// Если размер запроса передан
-						if(it != this->_headers.end()){
-							// Запоминаем размер тела сообщения
-							this->_bodySize = static_cast <size_t> (::stoull(it->second));
-							// Если размер тела не получен
-							if(this->_bodySize == 0){
-								// Запрашиваем заголовок подключения
-								const string & header = this->header("connection");
-								// Если заголовок подключения найден
-								if(header.empty() || !this->_fmk->exists("close", header)){
-									// Тело в запросе не передано
-									this->_state = state_t::END;
-									// Выходим из функции
-									return;
-								}
-							}
-							// Устанавливаем стейт поиска тела запроса
-							this->_state = state_t::BODY;
-							// Продолжаем работу
-							goto end;
-						// Если тело приходит
-						} else {
-							// Выполняем извлечение списка параметров передачи данных
-							const auto & range = this->_headers.equal_range("transfer-encoding");
-							// Выполняем перебор всего списка указанных заголовков
-							for(auto it = range.first; it != range.second; ++it){
-								// Если нужно получать размер тела чанками
-								if(this->_fmk->exists("chunked", it->second)){
-									// Устанавливаем стейт поиска тела запроса
-									this->_state = state_t::BODY;
-									// Продолжаем работу
-									goto end;
-								}
+					}
+					// Получаем размер тела
+					auto it = this->_headers.find("content-length");
+					// Если размер запроса передан
+					if(it != this->_headers.end()){
+						// Запоминаем размер тела сообщения
+						this->_bodySize = static_cast <size_t> (::stoull(it->second));
+						// Если размер тела не получен
+						if(this->_bodySize == 0){
+							// Запрашиваем заголовок подключения
+							const string & header = this->header("connection");
+							// Если заголовок подключения найден
+							if(header.empty() || !this->_fmk->exists("close", header)){
+								// Тело в запросе не передано
+								this->_state = state_t::END;
+								// Выходим из функции
+								return;
 							}
 						}
-					}{
-						// Выполняем извлечение списка трейлеров
-						const auto & range = this->_headers.equal_range("trailer");
+						// Устанавливаем стейт поиска тела запроса
+						this->_state = state_t::BODY;
+						// Продолжаем работу
+						goto end;
+					// Если тело приходит
+					} else {
+						// Выполняем извлечение списка параметров передачи данных
+						const auto & range = this->_headers.equal_range("transfer-encoding");
 						// Выполняем перебор всего списка указанных заголовков
-						for(auto it = range.first; it != range.second; ++it)
-							// Выполняем сбор трейлеров
-							this->_trailers.emplace(it->second);
+						for(auto it = range.first; it != range.second; ++it){
+							// Если нужно получать размер тела чанками
+							if(this->_fmk->exists("chunked", it->second)){
+								// Устанавливаем стейт поиска тела запроса
+								this->_state = state_t::BODY;
+								// Продолжаем работу
+								goto end;
+							}
+						}
 					}
 					// Тело в запросе не передано
 					this->_state = state_t::END;
@@ -611,7 +612,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
 										break;
 									}
-								}
+								// Если название заголовка соответствует трейлеру
+								} else if(this->_fmk->compare(key, "trailer"))
+									// Выполняем сбор трейлеров
+									this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(val, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
 								// Добавляем заголовок в список
 								this->_headers.emplace(
 									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
