@@ -901,9 +901,12 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 			// Если мы работаем с сервером
 			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 				// Если разрешено добавление трейлеров
-				if(this->_te.trailers)
+				if(this->_te.trailers){
+					// Добавляем заголовок названия трейлера
+					this->_web.header("Trailer", val);
 					// Выполняем добавление заголовка в список трейлеров
 					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
+				}
 			} break;
 		}	
 	}
