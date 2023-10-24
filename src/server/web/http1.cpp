@@ -256,11 +256,11 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 														// Выводим сообщение о выводе чанка тела
 														cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 													#endif
+													// Устанавливаем флаг закрытия подключения
+													options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+													// Выполняем отправку трейлера клиенту
+													dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 												}
-												// Устанавливаем флаг закрытия подключения
-												options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
-												// Выполняем отправку трейлера клиенту
-												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 											}
 										// Выполняем отключение брокера
 										} else dynamic_cast <server::core_t *> (core)->close(bid);
@@ -353,9 +353,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 												// Выводим сообщение о выводе чанка тела
 												cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 											#endif
+											// Выполняем отправку трейлера клиенту
+											dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 										}
-										// Выполняем отправку трейлера клиенту
-										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 									}
 								// Выполняем отключение брокера
 								} else dynamic_cast <server::core_t *> (core)->close(bid);
@@ -660,11 +660,11 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 							#endif
+							// Устанавливаем флаг закрытия подключения
+							options->stopped = (!web->http.is(http_t::state_t::ALIVE) && (options->http.trailers() == 0));
+							// Выполняем отправку трейлера клиенту
+							dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 						}
-						// Устанавливаем флаг закрытия подключения
-						options->stopped = (!web->http.is(http_t::state_t::ALIVE) && (options->http.trailers() == 0));
-						// Выполняем отправку трейлера клиенту
-						dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 					}
 					// Если получение данных нужно остановить
 					if(options->stopped)
@@ -940,11 +940,11 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 							// Выводим сообщение о выводе чанка тела
 							cout << this->_fmk->format("Trailer:\r\n%s", string(entity.begin(), entity.end()).c_str()) << endl << endl;
 						#endif
+						// Устанавливаем флаг закрытия подключения
+						options->stopped = (end && (options->http.trailers() == 0));
+						// Выполняем отправку трейлера клиенту
+						const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 					}
-					// Устанавливаем флаг закрытия подключения
-					options->stopped = (end && (options->http.trailers() == 0));
-					// Выполняем отправку трейлера клиенту
-					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 				}
 			}
 		}
@@ -1083,11 +1083,11 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 							// Выводим сообщение о выводе чанка тела
 							cout << this->_fmk->format("Trailer:\r\n%s", string(payload.begin(), payload.end()).c_str()) << endl << endl;
 						#endif
+						// Устанавливаем флаг закрытия подключения
+						options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+						// Выполняем отправку трейлера клиенту
+						const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
 					}
-					// Устанавливаем флаг закрытия подключения
-					options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
-					// Выполняем отправку трейлера клиенту
-					const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
