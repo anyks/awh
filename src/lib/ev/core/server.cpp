@@ -1007,6 +1007,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
  * @param bid    идентификатор брокера
  */
 void awh::server::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	
+	cout << " ***********************0 " << size << endl;
+	
 	// Если данные переданы
 	if(this->working() && (bid > 0) && (buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение брокера
