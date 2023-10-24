@@ -903,7 +903,7 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 				// Если разрешено добавление трейлеров
 				if(this->_te.trailers){
 					// Добавляем заголовок названия трейлера
-					this->_web.header("Trailer", val);
+					this->_web.header("Trailer", key);
 					// Выполняем добавление заголовка в список трейлеров
 					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
 				}
@@ -1728,6 +1728,9 @@ vector <char> awh::Http::trailer() const noexcept {
 			if(this->_trailers.empty())
 				// Выполняем добавление конца запроса
 				response.append("\r\n");
+			
+			cout << " ++++++++++++++= " << response << endl;
+
 			// Устанавливаем результат
 			result.assign(response.begin(), response.end());
 		}
