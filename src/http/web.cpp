@@ -89,9 +89,6 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				size_t offset = 0;
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
-					
-					cout << " ---------------- " << (u_short) this->_chunk.state << endl;
-					
 					// Определяем стейт чанка
 					switch(static_cast <uint8_t> (this->_chunk.state)){
 						// Если мы собираем трейделы переданные сервером
@@ -100,9 +97,6 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
 							result = offset;
-							
-							cout << " **************** " << string(1, buffer[i]) << endl;
-
 							// Если мы получили последний символ получения трейлеров
 							if(buffer[i] == '\n'){
 								// Если трейлеров в списке больше нет
@@ -194,9 +188,6 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									if(!this->_trailers.empty()){
 										// Если мы работаем с клиентом
 										if(this->_hid == hid_t::CLIENT){
-											
-											cout << " ---------------!!! " << endl; 
-											
 											// Выполняем сброс тела данных
 											this->_chunk.data.clear();
 											// Меняем стейт чанка на получение трейлеров
@@ -612,19 +603,31 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
 										break;
 									}
+									// Добавляем заголовок в список
+									this->_headers.emplace(
+										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+									);
+									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+									if(this->_callback.is("header"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
 								// Если название заголовка соответствует трейлеру
-								} else if(this->_fmk->compare(key, "trailer"))
+								} else if(this->_fmk->compare(key, "trailer")) 
 									// Выполняем сбор трейлеров
 									this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(val, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
-								// Добавляем заголовок в список
-								this->_headers.emplace(
-									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
-									this->_fmk->transform(val, fmk_t::transform_t::TRIM)
-								);
-								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
-								if(this->_callback.is("header"))
-									// Выводим функцию обратного вызова
-									this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+								// Все остальные заголовки добавляем как есть
+								else {
+									// Добавляем заголовок в список
+									this->_headers.emplace(
+										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+									);
+									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+									if(this->_callback.is("header"))
+										// Выводим функцию обратного вызова
+										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+								}
 							}
 						} break;
 					}

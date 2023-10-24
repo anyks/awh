@@ -1007,9 +1007,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
  * @param bid    идентификатор брокера
  */
 void awh::server::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
-	
-	cout << " ***********************0 " << size << endl;
-	
 	// Если данные переданы
 	if(this->working() && (bid > 0) && (buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение брокера
@@ -1042,14 +1039,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						left = (size - offset);
 						// Определяем размер отправляемых данных
 						actual = (left >= max ? max : left);
-
-						cout << " ***********************1 " << string(buffer, actual) << endl;
-
 						// Выполняем отправку сообщения клиенту
 						bytes = adj->_ectx.write(buffer + offset, actual);
-
-						cout << " ***********************2 " << bytes << endl;
-
 						// Если данные небыли записаны
 						if(bytes <= 0){
 							// Если запись не выполнена, закрываем подключение
