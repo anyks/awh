@@ -1707,10 +1707,19 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 vector <char> awh::Http::trailer() const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	
+	cout << " *************1 " << endl;
+
 	// Если разрешено добавление трейлеров
 	if(this->_te.trailers){
+		
+		cout << " *************2 " << endl;
+		
 		// Если список трейлеров получен
 		if(!this->_trailers.empty()){
+			
+			cout << " *************3 " << endl;
+			
 			// Получаем первый трейлер из списка
 			auto it = this->_trailers.begin();
 			// Получаем название заголовка
@@ -1725,6 +1734,10 @@ vector <char> awh::Http::trailer() const noexcept {
 			if(this->_trailers.empty())
 				// Выполняем добавление конца запроса
 				response.append("\r\n");
+			// Устанавливаем результат
+			result.assign(response.begin(), response.end());
+
+			cout << " *************4 " << response << endl;
 		}
 	}
 	// Выводим результат
