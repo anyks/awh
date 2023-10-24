@@ -906,7 +906,8 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 					this->_web.header("Trailer", key);
 					// Выполняем добавление заголовка в список трейлеров
 					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
-				}
+				// Выводим сообщение о невозможности установки трейлера
+				} else this->_log->print("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
 			} break;
 		}	
 	}
