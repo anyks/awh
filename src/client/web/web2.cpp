@@ -374,8 +374,8 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 	if(!this->_http2.is() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
-			// Создаём параметры сессии подключения с HTTP/2 сервером
-			vector <nghttp2_settings_entry> iv;
+			// Создаём параметры сессии и активируем запрет использования той самой неудачной системы приоритизации из первой итерации HTTP/2.
+			vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
 			// Выполняем переход по всему списку настроек
 			for(auto & setting : this->_settings){
 				// Определяем тип настройки
@@ -387,7 +387,10 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 					break;
 					// Если мы получили максимальный размер фрейма
 					case static_cast <uint8_t> (settings_t::FRAME_SIZE):
-						// Устанавливаем максимальный размер фрейма
+						/**
+						 * Устанавливаем максимальный размер кадра в октетах, который собеседнику разрешено отправлять.
+						 * Значение по умолчанию, оно же минимальное — 16 384=214 октетов.
+						 */
 						iv.push_back({NGHTTP2_SETTINGS_MAX_FRAME_SIZE, setting.second});
 					break;
 					// Если мы получили максимальный размер таблицы заголовков
@@ -397,12 +400,16 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 					break;
 					// Если мы получили максимальный размер окна полезной нагрузки
 					case static_cast <uint8_t> (settings_t::WINDOW_SIZE):
-						// Устанавливаем максимальный размер окна полезной нагрузки
+						// Устанавливаем элемент управления потоком (flow control)
 						iv.push_back({NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, setting.second});
 					break;
 					// Если мы получили максимальное количество потоков
 					case static_cast <uint8_t> (settings_t::STREAMS):
-						// Устанавливаем максимальное количество потоков
+						/**
+						 * Устанавливаем максимальное количество потоков, которое собеседнику разрешается использовать одновременно.
+						 * Считаются только открытые потоки, то есть по которым что-то ещё передаётся.
+						 * Можно указать значение 0: тогда собеседник не сможет отправлять новые сообщения, пока сторона его снова не увеличит.
+						 */
 						iv.push_back({NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, setting.second});
 					break;
 				}

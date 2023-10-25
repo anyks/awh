@@ -2508,6 +2508,19 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 8:
 										case 9: allow = !available[i]; break;
 									}
+									// Если ответ является информационным
+									if((res.code >= 100) && (res.code < 200)){
+										// Запрещяем указанным заголовкам формирование
+										switch(i){
+											case 5:
+											case 6:
+											case 7:
+											case 8:
+											case 9:
+											case 10:
+											case 11: allow = false; break;
+										}
+									}
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
@@ -2533,7 +2546,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						// Устанавливаем Content-Type если не передан
-						if(!available[5] && !this->is(suite_t::BLACK, "Content-Type"))
+						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "Content-Type"))
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 						// Если заголовок не запрещён
@@ -3186,6 +3199,19 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										case 8:
 										case 9: allow = !available[i]; break;
 									}
+									// Если ответ является информационным
+									if((res.code >= 100) && (res.code < 200)){
+										// Запрещяем указанным заголовкам формирование
+										switch(i){
+											case 5:
+											case 6:
+											case 7:
+											case 8:
+											case 9:
+											case 10:
+											case 11: allow = false; break;
+										}
+									}
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
@@ -3202,7 +3228,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Добавляем название сервера в ответ
 							result.push_back(make_pair("server", this->_ident.name));
 						// Устанавливаем Content-Type если не передан
-						if(!available[5] && !this->is(suite_t::BLACK, "content-type"))
+						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "content-type"))
 							// Добавляем заголовок в ответ
 							result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 						// Если заголовок не запрещён

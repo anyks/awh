@@ -183,8 +183,6 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 						Stop:
 						// Если получение данных выполнено
 						if(completed){
-							// Выполняем очистку параметров HTTP запроса
-							this->_http.clear();
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выводим функцию обратного вызова
@@ -195,12 +193,16 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 								this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
 							// Выполняем очистку функций обратного вызова
 							this->_resultCallback.clear();
+							// Получаем параметры запроса
+							const u_int code = this->_http.response().code;
 							// Если установлена функция отлова завершения запроса
-							if(this->_callback.is("end"))
+							if((code >= 200) && this->_callback.is("end"))
 								// Выводим функцию обратного вызова
 								this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+							// Выполняем очистку параметров HTTP запроса
+							this->_http.clear();
 							// Если подключение выполнено и список запросов не пустой
-							if((this->_bid > 0) && !this->_requests.empty())
+							if((code >= 200) && (this->_bid > 0) && !this->_requests.empty())
 								// Выполняем запрос на удалённый сервер
 								this->submit(this->_requests.begin()->second);
 						}
@@ -559,8 +561,8 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			if(!this->_http.body().empty() && this->_callback.is("entity"))
 				// Устанавливаем полученную функцию обратного вызова
 				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
-			// Если объект ещё не удалён
-			if(!this->_requests.empty()){
+			// Если объект ещё не удалён и получен окончательный ответ
+			if((response.code >= 200) && !this->_requests.empty()){
 				// Выполняем поиск указанного запроса
 				auto it = this->_requests.find(sid);
 				// Если параметры активного запроса найдены
@@ -569,7 +571,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 					this->_requests.erase(it);
 			}
 			// Если функция обратного вызова на получение удачного ответа установлена
-			if(this->_callback.is("handshake"))
+			if((response.code >= 200) && this->_callback.is("handshake"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <const int32_t, const agent_t> ("handshake", sid, agent_t::HTTP);
 			// Устанавливаем размер стопбайт
