@@ -2508,6 +2508,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 8:
 										case 9: allow = !available[i]; break;
 									}
+									/*
 									// Если ответ является информационным
 									if((res.code >= 100) && (res.code < 200)){
 										// Запрещяем указанным заголовкам формирование
@@ -2521,6 +2522,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 											case 11: allow = false; break;
 										}
 									}
+									*/
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
