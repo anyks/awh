@@ -375,6 +375,19 @@ void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 	}
 }
 /**
+ * errors Метод вывода полученных ошибок протокола
+ * @param bid     идентификатор брокера
+ * @param flag    флаг типа сообщения
+ * @param error   тип полученной ошибки
+ * @param message сообщение полученной ошибки
+ */
+void awh::client::Web::errors(const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept {
+	// Если функция обратного вызова на на вывод ошибок установлена
+	if(this->_callback.is("error"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, flag, error, message);
+}
+/**
  * init Метод инициализации WEB клиента
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров

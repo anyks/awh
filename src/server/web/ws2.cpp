@@ -58,6 +58,10 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 				options->http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 				// Устанавливаем данные сервиса
 				options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Устанавливаем функцию обратного вызова для вывода ошибок
+					options->http.on((function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)>) this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
 				// Если сабпротоколы установлены
 				if(!this->_subprotocols.empty())
 					// Устанавливаем поддерживаемые сабпротоколы

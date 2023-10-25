@@ -51,10 +51,11 @@ namespace awh {
 			 * Флаги наборов
 			 */
 			enum class suite_t : uint8_t {
-				NONE   = 0x00, // Набор не установлен
-				BODY   = 0x01, // Набор соответствует телу сообщения
-				BLACK  = 0x02, // Набор соответствует заголовку чёрного списка
-				HEADER = 0x03  // Набор соответствует заголовку сообщения
+				NONE     = 0x00, // Набор не установлен
+				BODY     = 0x01, // Набор соответствует телу сообщения
+				BLACK    = 0x02, // Набор соответствует заголовку чёрного списка
+				HEADER   = 0x03, // Набор соответствует заголовку сообщения
+				STANDARD = 0x04  // Набор соответствует стандартному заголовку
 			};
 			/**
 			 * Статусы проверки авторизации
@@ -211,7 +212,6 @@ namespace awh {
 		protected:
 			// Создаём объект работы с URI
 			uri_t _uri;
-		private:
 			// Объявляем функции обратного вызова
 			fn_t _callback;
 		private:
@@ -320,6 +320,13 @@ namespace awh {
 			 * @return       размер обработанных данных
 			 */
 			size_t parse(const char * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * proto Метод извлечения список протоколов к которому принадлежит заголовок
+			 * @param key ключ заголовка
+			 * @return    список протоколов
+			 */
+			set <web_t::proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * payload Метод чтения чанка полезной нагрузки
@@ -578,6 +585,12 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const uint64_t, const vector <char> &, const Http *)> callback) noexcept;
+		public:
+			/**
+			 * on Метод установки функции обратного вызова на событие получения ошибки
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 		public:
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера

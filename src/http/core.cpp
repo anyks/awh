@@ -46,7 +46,14 @@ void awh::Http::encrypt() noexcept {
 				// Формируем новое тело сообщения
 				this->_web.body(result);
 			// Если шифрование не выполнено
-			} else this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
+			} else {
+				// Выводим сообщение об ошибке
+				this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Encryption module has failed");
+			}
 		}
 	}
 }
@@ -69,7 +76,14 @@ void awh::Http::decrypt() noexcept {
 				// Формируем новое тело сообщения
 				this->_web.body(result);
 			// Если дешифрование не выполнено
-			} else this->_log->print("Decryption module has failed", log_t::flag_t::WARNING);
+			} else {
+				// Выводим сообщение об ошибке
+				this->_log->print("Decryption module has failed", log_t::flag_t::WARNING);
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Decryption module has failed");
+			}
 		}
 	}
 }
@@ -98,7 +112,14 @@ void awh::Http::compress() noexcept {
 						// Устанавливаем флаг компрессии
 						this->_compressor.current = compress_t::BROTLI;
 					// Если компрессия не выполнена
-					} else this->_log->print("BROTLI compression module has failed", log_t::flag_t::WARNING);
+					} else {
+						// Выводим сообщение об ошибке
+						this->_log->print("BROTLI compression module has failed", log_t::flag_t::WARNING);
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI compression module has failed");
+					}
 				} break;
 				// Если полезную нагрузку необходимо сжать методом GZIP
 				case static_cast <uint8_t> (compress_t::GZIP): {
@@ -113,7 +134,14 @@ void awh::Http::compress() noexcept {
 						// Устанавливаем флаг компрессии
 						this->_compressor.current = compress_t::GZIP;
 					// Если компрессия не выполнена
-					} else this->_log->print("GZIP compression module has failed", log_t::flag_t::WARNING);
+					} else {
+						// Выводим сообщение об ошибке
+						this->_log->print("GZIP compression module has failed", log_t::flag_t::WARNING);
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP compression module has failed");
+					}
 				} break;
 				// Если полезную нагрузку необходимо сжать методом DEFLATE
 				case static_cast <uint8_t> (compress_t::DEFLATE): {
@@ -130,7 +158,14 @@ void awh::Http::compress() noexcept {
 						// Устанавливаем флаг компрессии
 						this->_compressor.current = compress_t::DEFLATE;
 					// Если компрессия не выполнена
-					} else this->_log->print("DEFLATE compression module has failed", log_t::flag_t::WARNING);
+					} else {
+						// Выводим сообщение об ошибке
+						this->_log->print("DEFLATE compression module has failed", log_t::flag_t::WARNING);
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE compression module has failed");
+					}
 				} break;
 			}
 		}
@@ -198,20 +233,32 @@ void awh::Http::decompress() noexcept {
 			// Определяем метод компрессии полезной нагрузки
 			switch(static_cast <uint8_t> (this->_compressor.current)){
 				// Если метод компрессии не изменился и остался BROTLI
-				case static_cast <uint8_t> (compress_t::BROTLI):
+				case static_cast <uint8_t> (compress_t::BROTLI): {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("BROTLI decompression module has failed", log_t::flag_t::WARNING);
-				break;
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI decompression module has failed");
+				} break;
 				// Если метод компрессии не изменился и остался GZIP
-				case static_cast <uint8_t> (compress_t::GZIP):
+				case static_cast <uint8_t> (compress_t::GZIP): {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("GZIP decompression module has failed", log_t::flag_t::WARNING);
-				break;
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP decompression module has failed");
+				} break;
 				// Если метод компрессии не изменился и остался DEFLATE
-				case static_cast <uint8_t> (compress_t::DEFLATE):
+				case static_cast <uint8_t> (compress_t::DEFLATE): {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("DEFLATE decompression module has failed", log_t::flag_t::WARNING);
-				break;
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE decompression module has failed");
+				} break;
 			}
 		}
 	}
@@ -444,9 +491,23 @@ void awh::Http::commit() noexcept {
 															// Добавляем в список полученный компрессор
 															requested.emplace(::stof(second), compress_t::DEFLATE);
 													// Если вес компрессора указан не является числом
-													} else this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, compressor.substr(0, pos).c_str(), second.c_str());
+													} else {
+														// Выводим сообщение об ошибке
+														this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, compressor.substr(0, pos).c_str(), second.c_str());
+														// Если функция обратного вызова на на вывод ошибок установлена
+														if(this->_callback.is("error"))
+															// Выводим функцию обратного вызова
+															this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
+													}
 												// Если мы получили данные в неверном формате
-												} else this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, compressor.c_str());
+												} else {
+													// Выводим сообщение об ошибке
+													this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, compressor.c_str());
+													// Если функция обратного вызова на на вывод ошибок установлена
+													if(this->_callback.is("error"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
+												}
 											// Если вес компрессора не установлен
 											} else {
 												// Если данные пришли сжатые методом Brotli
@@ -547,9 +608,23 @@ void awh::Http::commit() noexcept {
 														// Выполняем активацию передачу данных чанками
 														this->_te.chunking = true;
 												// Если вес компрессора указан не является числом
-												} else this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, param.substr(0, pos).c_str(), second.c_str());
+												} else {
+													// Выводим сообщение об ошибке
+													this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, param.substr(0, pos).c_str(), second.c_str());
+													// Если функция обратного вызова на на вывод ошибок установлена
+													if(this->_callback.is("error"))
+														// Выводим функцию обратного вызова
+														this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", param.substr(0, pos).c_str(), second.c_str()));
+												}
 											// Если мы получили данные в неверном формате
-											} else this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, param.c_str());
+											} else {
+												// Выводим сообщение об ошибке
+												this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, param.c_str());
+												// Если функция обратного вызова на на вывод ошибок установлена
+												if(this->_callback.is("error"))
+													// Выводим функцию обратного вызова
+													this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", param.c_str()));
+											}
 										// Если вес компрессора не установлен
 										} else {
 											// Если данные пришли сжатые методом Brotli
@@ -678,6 +753,15 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	}
 	// Выводим реузльтат
 	return result;
+}
+/**
+ * proto Метод извлечения список протоколов к которому принадлежит заголовок
+ * @param key ключ заголовка
+ * @return    список протоколов
+ */
+set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
+	// Выполняем извлечение списка протоколов к которому принадлежит заголовок
+	return this->_web.proto(key);
 }
 /**
  * payload Метод чтения чанка полезной нагрузки
@@ -894,10 +978,14 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 		// Определяем тип HTTP модуля
 		switch(static_cast <uint8_t> (this->_web.hid())){
 			// Если мы работаем с клиентом
-			case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+			case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 				// Выводим сообщение, что клиент не может отправлять трейлеры
 				this->_log->print("Add trailer [%s=%s] failed because the client cannot send trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
-			break;
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Add trailer [%s=%s] failed because the client cannot send trailers", key.c_str(), val.c_str()));
+			} break;
 			// Если мы работаем с сервером
 			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 				// Если разрешено добавление трейлеров
@@ -906,8 +994,15 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 					this->_web.header("Trailer", key);
 					// Выполняем добавление заголовка в список трейлеров
 					this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
-				// Выводим сообщение о невозможности установки трейлера
-				} else this->_log->print("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
+				// Если добавление трейлеров не запрашивалось клиентом
+				} else {
+					// Выводим сообщение о невозможности установки трейлера
+					this->_log->print("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", key.c_str(), val.c_str()));
+				}
 			} break;
 		}	
 	}
@@ -1534,6 +1629,10 @@ bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
 			case static_cast <uint8_t> (suite_t::HEADER):
 				// Выводим результат проверки
 				return this->_web.isHeader(key);
+			// Если набор соответствует стандартному заголовку
+			case static_cast <uint8_t> (suite_t::STANDARD):
+				// Выводим результат проверки
+				return this->_web.isStandard(key);
 		}
 	}
 	// Выводим результат
@@ -2534,10 +2633,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							}
 						}
 						// Если заголовок не запрещён
-						if(!available[0] && !this->is(suite_t::BLACK, "Date"))
-							// Добавляем заголовок даты в ответ
-							response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
-						// Если заголовок не запрещён
 						if(!available[1] && !this->is(suite_t::BLACK, "Server"))
 							// Добавляем название сервера в ответ
 							response.append(this->_fmk->format("Server: %s\r\n", this->_ident.name.c_str()));
@@ -2588,6 +2683,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								const_cast <http_t *> (this)->encrypt();
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_te.chunking = (this->_crypted || this->_te.trailers || (this->_compressor.current != compress_t::NONE));
+								// Если заголовок не запрещён
+								if(!available[0] && !this->is(suite_t::BLACK, "Date"))
+									// Добавляем заголовок даты в ответ
+									response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 								// Заменяем размер тела данных
 								if(!this->_te.chunking)
 									// Устанавливаем размер тела сообщения
@@ -2639,6 +2738,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_te.chunking = (this->_encryption || this->_te.trailers || (this->_compressor.selected != compress_t::NONE));
+								// Если заголовок не запрещён
+								if(!available[0] && !this->is(suite_t::BLACK, "Date"))
+									// Добавляем заголовок даты в ответ
+									response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
@@ -3220,10 +3323,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
 						// Если заголовок не запрещён
-						if(!available[0] && !this->is(suite_t::BLACK, "date"))
-							// Добавляем заголовок даты в ответ
-							result.push_back(make_pair("date", this->date()));
-						// Если заголовок не запрещён
 						if(!available[1] && !this->is(suite_t::BLACK, "server"))
 							// Добавляем название сервера в ответ
 							result.push_back(make_pair("server", this->_ident.name));
@@ -3270,6 +3369,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								const_cast <http_t *> (this)->encrypt();
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_te.chunking = (this->_crypted || (this->_compressor.current != compress_t::NONE));
+								// Если заголовок не запрещён
+								if(!available[0] && !this->is(suite_t::BLACK, "date"))
+									// Добавляем заголовок даты в ответ
+									result.push_back(make_pair("date", this->date()));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
@@ -3296,6 +3399,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
 								this->_te.chunking = (this->_encryption || (this->_compressor.selected != compress_t::NONE));
+								// Если заголовок не запрещён
+								if(!available[0] && !this->is(suite_t::BLACK, "date"))
+									// Добавляем заголовок даты в ответ
+									result.push_back(make_pair("date", this->date()));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
@@ -3365,6 +3472,16 @@ void awh::Http::on(function <void (const uint64_t, const vector <char> &, const 
 	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для перехвата ошибок
+	this->_web.on(callback);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /** 
  * on Метод установки функции вывода полученного тела данных с сервера

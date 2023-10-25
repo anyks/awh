@@ -1152,6 +1152,8 @@ void awh::client::WebSocket1::on(function <void (const uint64_t, const vector <c
 void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
+	// Устанавливаем функцию обратного вызова для вывода ошибок
+	this->_http.on(std::bind(&ws1_t::errors, this, _1, _2, _3, _4));
 }
 /**
  * on Метод установки функция обратного вызова активности потока

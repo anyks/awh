@@ -33,6 +33,7 @@
 #include <sys/log.hpp>
 #include <net/uri.hpp>
 #include <net/net.hpp>
+#include <http/errors.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -53,6 +54,17 @@ namespace awh {
 				NONE   = 0x00, // HTTP модуль не инициализирован
 				CLIENT = 0x01, // HTTP модуль является клиентом
 				SERVER = 0x02  // HTTP модуль является сервером
+			};
+			/**
+			 * Версии протоколов соответствия
+			 */
+			enum class proto_t : uint8_t {
+				NONE      = 0x00, // Протокол не установлен
+				HTTP1     = 0x01, // Протокол принадлежит HTTP/1.0
+				HTTP2     = 0x02, // Протокол принадлежит HTTP/2
+				HTTP1_1   = 0x03, // Протокол принадлежит HTTP/1.1
+				PROXY     = 0x04, // Протокол принадлежит Proxy
+				WEBSOCKET = 0x05  // Протокол принадлежит WebSocket
 			};
 			/**
 			 * Стейты работы модуля
@@ -275,6 +287,8 @@ namespace awh {
 			unordered_set <string> _trailers;
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> _headers;
+			// Список стандартных заголовков
+			unordered_map <string, set <proto_t>> _standardHeaders;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -365,6 +379,12 @@ namespace awh {
 			 * @return    результат проверки
 			 */
 			bool isHeader(const string & key) const noexcept;
+			/**
+			 * isStandard Проверка заголовка является ли он стандартным
+			 * @param key ключ заголовка для проверки
+			 * @return    результат проверки
+			 */
+			bool isStandard(const string & key) const noexcept;
 		public:
 			/**
 			 * clearBody Метод очистки данных тела
@@ -385,6 +405,13 @@ namespace awh {
 			 * @param body буфер тела для установки
 			 */
 			void body(const vector <char> & body) noexcept;
+		public:
+			/**
+			 * proto Метод извлечения список протоколов к которому принадлежит заголовок
+			 * @param key ключ заголовка
+			 * @return    список протоколов
+			 */
+			set <proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * delHeader Метод удаления заголовка
@@ -465,6 +492,12 @@ namespace awh {
 			 */
 			void on(function <void (const uint64_t, const vector <char> &, const Web *)> callback) noexcept;
 		public:
+			/**
+			 * on Метод установки функции обратного вызова на событие получения ошибки
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
+		public:
 			/** 
 			 * on Метод установки функции вывода полученного тела данных с сервера
 			 * @param callback функция обратного вызова
@@ -492,9 +525,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Web(const fmk_t * fmk, const log_t * log) noexcept :
-			 _separator('\0'), _pos{-1,-1}, _bodySize(-1), _uri(fmk), _callback(log),
-			 _hid(hid_t::NONE), _state(state_t::QUERY), _fmk(fmk), _log(log) {}
+			Web(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Web Деструктор
 			 */

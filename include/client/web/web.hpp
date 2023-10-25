@@ -276,6 +276,15 @@ namespace awh {
 				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
+				 * errors Метод вывода полученных ошибок протокола
+				 * @param bid     идентификатор брокера
+				 * @param flag    флаг типа сообщения
+				 * @param error   тип полученной ошибки
+				 * @param message сообщение полученной ошибки
+				 */
+				void errors(const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept;
+			protected:
+				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				virtual void flush() noexcept = 0;

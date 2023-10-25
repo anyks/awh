@@ -140,6 +140,10 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										this->_trailers.clear();
 										// Выводим сообщение об ошибке, что трейлер не существует
 										this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, key.c_str());
+										// Если функция обратного вызова на на вывод ошибок установлена
+										if(this->_callback.is("error"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_res.message.c_str());
 										// Выполняем переход к ошибке
 										goto Stop;
 									}
@@ -192,8 +196,15 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 											this->_chunk.data.clear();
 											// Меняем стейт чанка на получение трейлеров
 											this->_chunk.state = process_t::TRAILERS;
-										// Выводим сообщение об ошибке
-										} else this->_log->print("Client cannot transfer trailers", log_t::flag_t::WARNING);
+										// Если мы работаем с сервером
+										} else {
+											// Выводим сообщение об ошибке
+											this->_log->print("Client cannot transfer trailers", log_t::flag_t::WARNING);
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callback.is("error"))
+												// Выводим функцию обратного вызова
+												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Client cannot transfer trailers");
+										}
 									// Меняем стейт чанка на завершение сбора данных
 									} else this->_chunk.state = process_t::STOP_BODY;
 								// Если данные собраны не полностью
@@ -330,9 +341,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Тело в запросе не передано
 				this->_state = state_t::END;
 				// Если мы получили ошибку обработки данных
-				if(error != '\0')
+				if(error != '\0'){
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("Body chunk contains errors, [\\%c] is expected", log_t::flag_t::WARNING, error);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Body chunk contains errors, [\\%c] is expected", error));
+				}
 			}
 		}
 	}
@@ -473,6 +489,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
 										this->_log->print("Broken response server", log_t::flag_t::WARNING);
+										// Если функция обратного вызова на на вывод ошибок установлена
+										if(this->_callback.is("error"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken response server");
 									}
 								} break;
 								// Если мы работаем с сервером
@@ -547,6 +567,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
 										this->_log->print("Broken request client", log_t::flag_t::WARNING);
+										// Если функция обратного вызова на на вывод ошибок установлена
+										if(this->_callback.is("error"))
+											// Выводим функцию обратного вызова
+											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request client");
 									}
 								} break;
 							}
@@ -1041,6 +1065,19 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 	return result;
 }
 /**
+ * isStandard Проверка заголовка является ли он стандартным
+ * @param key ключ заголовка для проверки
+ * @return    результат проверки
+ */
+bool awh::Web::isStandard(const string & key) const noexcept {
+	// Если ключ передан
+	if(!key.empty())
+		// Выполняем проверку заголовка
+		return (this->_standardHeaders.count(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) > 0);
+	// Выводим результат
+	return false;
+}
+/**
  * clearBody Метод очистки данных тела
  */
 void awh::Web::clearBody() noexcept {
@@ -1071,6 +1108,24 @@ void awh::Web::body(const vector <char> & body) noexcept {
 	if(!body.empty())
 		// Выполняем установку данных тела
 		this->_body.insert(this->_body.end(), body.begin(), body.end());
+}
+/**
+ * proto Метод извлечения список протоколов к которому принадлежит заголовок
+ * @param key ключ заголовка
+ * @return    список протоколов
+ */
+set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
+	// Если ключ передан
+	if(!key.empty()){
+		// Выполняем поиск заголовка
+		auto it = this->_standardHeaders.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		// Если заголовок найден выводим результат
+		if(it != this->_standardHeaders.end())
+			// Выводим результат
+			return it->second;
+	}
+	// Выводим результат
+	return set <awh::Web::proto_t> ();
 }
 /**
  * delHeader Метод удаления заголовка
@@ -1208,6 +1263,14 @@ void awh::Web::on(function <void (const uint64_t, const vector <char> &, const W
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", callback);
 }
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::Web::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
+}
 /** 
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
@@ -1239,4 +1302,96 @@ void awh::Web::on(function <void (const uint64_t, const u_int, const string &, c
 void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", callback);
+}
+/**
+ * Web Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
+ _separator('\0'), _pos{-1, -1}, _bodySize(-1), _uri(fmk), _callback(log),
+ _hid(hid_t::NONE), _state(state_t::QUERY), _fmk(fmk), _log(log) {
+	// Выполняем заполнение списка стандартных заголовков
+	this->_standardHeaders.insert({
+		{"via", {proto_t::PROXY}},
+		{"date", {proto_t::HTTP1}},
+		{"link", {proto_t::HTTP1}},
+		{"age", {proto_t::HTTP1_1}},
+		{"dnt", {proto_t::HTTP1_1}},
+		{"allow", {proto_t::HTTP1}},
+		{"host", {proto_t::HTTP1_1}},
+		{"etag", {proto_t::HTTP1_1}},
+		{"from", {proto_t::HTTP1_1}},
+		{"vary", {proto_t::HTTP1_1}},
+		{"server", {proto_t::HTTP1}},
+		{"accept", {proto_t::HTTP1}},
+		{"cookie", {proto_t::HTTP1}},
+		{"pragma", {proto_t::HTTP1}},
+		{"range", {proto_t::HTTP1_1}},
+		{"referer", {proto_t::HTTP1}},
+		{"expires", {proto_t::HTTP1}},
+		{"origin", {proto_t::HTTP1_1}},
+		{"location", {proto_t::HTTP1}},
+		{"upgrade", {proto_t::HTTP1_1}},
+		{"warning", {proto_t::HTTP1_1}},
+		{"if-match", {proto_t::HTTP1_1}},
+		{"if-range", {proto_t::HTTP1_1}},
+		{"user-agent", {proto_t::HTTP1}},
+		{"content-md5", {proto_t::NONE}},
+		{"accept-ch", {proto_t::HTTP1_1}},
+		{"negotiate", {proto_t::HTTP1_1}},
+		{"retry-after", {proto_t::HTTP1}},
+		{"set-cookie", {proto_t::HTTP1_1}},
+		{"alternates", {proto_t::HTTP1_1}},
+		{"connection", {proto_t::HTTP1_1}},
+		{"content-type", {proto_t::HTTP1}},
+		{"set-cookie2", {proto_t::HTTP1_1}},
+		{"last-modified", {proto_t::HTTP1}},
+		{"authorization", {proto_t::HTTP1}},
+		{"max-forwards", {proto_t::HTTP1_1}},
+		{"accept-charset", {proto_t::HTTP1}},
+		{"content-length", {proto_t::HTTP1}},
+		{"variant-vary", {proto_t::HTTP1_1}},
+		{"content-range", {proto_t::HTTP1_1}},
+		{"accept-ranges", {proto_t::HTTP1_1}},
+		{"cache-control", {proto_t::HTTP1_1}},
+		{"last-event-id", {proto_t::HTTP1_1}},
+		{"if-none-match", {proto_t::HTTP1_1}},
+		{"accept-encoding", {proto_t::HTTP1}},
+		{"accept-language", {proto_t::HTTP1}},
+		{"x-requested-with", {proto_t::NONE}},
+		{"content-encoding", {proto_t::HTTP1}},
+		{"content-language", {proto_t::HTTP1}},
+		{"www-authenticate", {proto_t::HTTP1}},
+		{"accept-features", {proto_t::HTTP1_1}},
+		{"x-frame-options", {proto_t::HTTP1_1}},
+		{"if-modified-since", {proto_t::HTTP1}},
+		{"content-location", {proto_t::HTTP1_1}},
+		{"proxy-authenticate", {proto_t::HTTP1}},
+		{"transfer-encoding", {proto_t::HTTP1_1}},
+		{"proxy-authorization", {proto_t::HTTP1}},
+		{"te", {proto_t::HTTP2, proto_t::HTTP1_1}},
+		{"x-content-duration", {proto_t::HTTP1_1}},
+		{"tcn", {proto_t::HTTP2, proto_t::HTTP1_1}},
+		{"if-unmodified-since", {proto_t::HTTP1_1}},
+		{"sec-websocket-key", {proto_t::WEBSOCKET}},
+		{"x-dnsprefetch-control", {proto_t::HTTP1_1}},
+		{"sec-Websocket-origin", {proto_t::WEBSOCKET}},
+		{"access-control-max-age", {proto_t::HTTP1_1}},
+		{"expect", {proto_t::HTTP2, proto_t::HTTP1_1}},
+		{"content-security-policy", {proto_t::HTTP1_1}},
+		{"sec-websocket-version", {proto_t::WEBSOCKET}},
+		{"trailer", {proto_t::HTTP2, proto_t::HTTP1_1}},
+		{"sec-websocket-protocol", {proto_t::WEBSOCKET}},
+		{"x-content-security-policy", {proto_t::HTTP1_1}},
+		{"strict-transport-security", {proto_t::HTTP1_1}},
+		{"sec-websocket-extensions", {proto_t::WEBSOCKET}},
+		{"access-control-allow-origin", {proto_t::HTTP1_1}},
+		{"access-control-allow-methods", {proto_t::HTTP1_1}},
+		{"access-control-allow-headers", {proto_t::HTTP1_1}},
+		{"access-control-expose-headers", {proto_t::HTTP1_1}},
+		{"access-control-request-method", {proto_t::HTTP1_1}},
+		{"access-control-request-meaders", {proto_t::HTTP1_1}},
+		{"access-control-allow-credentials", {proto_t::HTTP1_1}}
+	});
 }

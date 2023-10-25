@@ -1454,6 +1454,10 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Устанавливаем параметры шифрования для HTTP-клиента
 						ret.first->second->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Устанавливаем функцию обратного вызова для вывода ошибок
+						ret.first->second->http.on(std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
@@ -1653,6 +1657,8 @@ void awh::client::Http2::on(function <void (const log_t::flag_t, const http::err
 	this->_ws2.on(callback);
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on(callback);
+	// Устанавливаем функцию обратного вызова для вывода ошибок
+	this->_http.on(std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 }
 /**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)

@@ -1573,6 +1573,8 @@ void awh::client::WebSocket2::on(function <void (const log_t::flag_t, const http
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента
 	this->_ws1.on(callback);
+	// Устанавливаем функцию обратного вызова для вывода ошибок
+	this->_http.on(std::bind(&ws2_t::errors, this, _1, _2, _3, _4));
 }
 /**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)

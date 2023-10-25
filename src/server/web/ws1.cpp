@@ -64,6 +64,10 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 			if(this->_frameSize > 0)
 				// Выполняем установку размера фрейма
 				options->frame.size = this->_frameSize;
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Устанавливаем функцию обратного вызова для вывода ошибок
+				options->http.on((function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)>) this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков
