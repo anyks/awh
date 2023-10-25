@@ -2508,9 +2508,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 8:
 										case 9: allow = !available[i]; break;
 									}
-									/*
 									// Если ответ является информационным
-									if((res.code >= 100) && (res.code < 200)){
+									if((res.code >= 100) && (res.code < 200) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
 											case 5:
@@ -2522,7 +2521,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 											case 11: allow = false; break;
 										}
 									}
-									*/
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
@@ -3202,7 +3200,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										case 9: allow = !available[i]; break;
 									}
 									// Если ответ является информационным
-									if((res.code >= 100) && (res.code < 200)){
+									if((res.code >= 100) && (res.code < 200) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
 											case 5:
