@@ -804,12 +804,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										return;
 								}
 							}
-						}/*
 						// Если сообщение о закрытии подключения не отправлено
 						} else if(!web2_t::reject(sid, bid, 500))
 							// Выполняем отключение брокера
 							dynamic_cast <server::core_t *> (core)->close(bid);
-						*/
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выводим функцию обратного вызова
@@ -888,6 +886,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
+							
+							cout << " *****************************1 " << endl;
+							
 							// Если нужно установить флаг закрытия потока
 							if(options->http.body().empty() && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
@@ -896,6 +897,8 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
+							
+							cout << " *****************************2 " << endl;
 						}
 						// Если список трейлеров установлен
 						if(options->http.trailers() > 0){
@@ -927,13 +930,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								return;
 						}
 					}
-				}
-				/*
 				// Если сообщение о закрытии подключения не отправлено
 				} else if(!web2_t::reject(sid, bid, 500))
 					// Выполняем отключение брокера
 					dynamic_cast <server::core_t *> (core)->close(bid);
-				*/
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
