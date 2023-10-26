@@ -413,11 +413,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 										// Если функция обратного вызова активности потока установлена
 										if(this->_callback.is("stream"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::CLOSE);
+											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
 									}
 								} break;
 								// Если мы получили входящие данные заголовков ответа
@@ -431,7 +431,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 										if(this->_callback.is("request"))
 											// Выводим функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", options->sid, bid, request.method, request.url);
+											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", sid, bid, request.method, request.url);
 										// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 										if(this->_callback.is("headers"))
 											// Выводим функцию обратного вызова
@@ -443,11 +443,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 											// Если функция обратного вызова активности потока установлена
 											if(this->_callback.is("stream"))
 												// Выводим функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::CLOSE);
+												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
+												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
 										// Если заголовок WebSocket активирован
 										} else if(options->http.identity() == awh::http_t::identity_t::WS)
 											// Выполняем обработку полученных данных
@@ -805,7 +805,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								}
 							}
 						// Если сообщение о закрытии подключения не отправлено
-						} else if(!web2_t::reject(sid, bid, 500))
+						} else if(!web2_t::reject(options->sid, bid, 500))
 							// Выполняем отключение брокера
 							dynamic_cast <server::core_t *> (core)->close(bid);
 						// Если функция обратного вызова на на вывод ошибок установлена
@@ -868,7 +868,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем заголовки запроса на сервер
-					const int32_t sid = web2_t::send(sid, bid, headers, flag);
+					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 					// Если запрос не получилось отправить
 					if(sid < 0)
 						// Выходим из функции
@@ -891,7 +891,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
 						}
@@ -920,13 +920,13 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								cout << endl << endl;
 							#endif
 							// Выполняем отправку трейлеров
-							if(!web2_t::send(sid, bid, trailers))
+							if(!web2_t::send(options->sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
 					}
 				// Если сообщение о закрытии подключения не отправлено
-				} else if(!web2_t::reject(sid, bid, 500))
+				} else if(!web2_t::reject(options->sid, bid, 500))
 					// Выполняем отключение брокера
 					dynamic_cast <server::core_t *> (core)->close(bid);
 				// Если функция обратного вызова на на вывод ошибок установлена

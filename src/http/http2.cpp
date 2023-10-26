@@ -877,9 +877,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			if(flag == flag_t::END_STREAM)
 				// Устанавливаем флаг фрейма передаваемого по сети
 				flags = NGHTTP2_FLAG_END_STREAM;
-			
-			cout << " ++++++++++++++++++++++++++++++++++++ " << this->_session << " == " << (u_short) flags << " == " << (u_short) NGHTTP2_FLAG_END_STREAM << " == " << id << " == " << buffer << " == " << size << endl;
-			
 			// Выполняем формирование данных фрейма для отправки
 			if((rv = nghttp2_submit_data(this->_session, flags, id, &data)) != 0){
 				// Выводим сообщение об полученной ошибке
