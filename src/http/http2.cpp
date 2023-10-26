@@ -246,7 +246,7 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 				case static_cast <uint8_t> (mode_t::CLIENT): {
 					// Определяем флаг ответа сервера
 					switch(static_cast <uint8_t> (frame->headers.cat)){
-						// Если мы получили заголовки трейлеров с сервера
+						// Если мы получили сырые заголовки с сервера
 						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
 						// Если мы получили заголовки ответа с сервера
 						case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
@@ -262,11 +262,16 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 				// Если сервис идентифицирован как сервер
 				case static_cast <uint8_t> (mode_t::SERVER): {
 					// Если мы получили запрос клиента
-					if((frame->headers.cat == NGHTTP2_HCAT_REQUEST)){
-						// Если функция обратного вызова установлена
-						if(self->_callback.is("header"))
-							// Выводим функцию обратного вызова
-							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
+					switch(static_cast <uint8_t> (frame->headers.cat)){
+						// Если мы получили сырые заголовки с клиента
+						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
+						// Если мы получили заголовки ответа с клиента
+						case static_cast <uint8_t> (NGHTTP2_HCAT_REQUEST): {
+							// Если функция обратного вызова установлена
+							if(self->_callback.is("header"))
+								// Выводим функцию обратного вызова
+								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
+						} break;
 					}
 				} break;
 			}
