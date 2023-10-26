@@ -58,7 +58,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём параметры сессии и активируем запрет использования той самой неудачной системы приоритизации из первой итерации HTTP/2.
-			vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
+			vector <nghttp2_settings_entry> iv;// = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
 			// Выполняем переход по всему списку настроек
 			for(auto & setting : this->_settings){
 				// Определяем тип настройки
