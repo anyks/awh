@@ -249,9 +249,9 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 						// Если мы получили заголовки трейлеров с сервера
 						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
 						// Если мы получили заголовки ответа с сервера
-						case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE): {
+						case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
 						// Если мы получили заголовки промисов с сервера
-						// case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE): {
+						case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE): {
 							// Если функция обратного вызова установлена
 							if(self->_callback.is("header"))
 								// Выводим функцию обратного вызова
