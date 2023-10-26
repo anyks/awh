@@ -940,6 +940,9 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 		vector <nghttp2_nv> nva;
 		// Выполняем перебор всех заголовков запроса
 		for(auto & header : headers){
+			
+			cout << " =================1 " << header.first << " == " << header.second << endl;
+			
 			// Выполняем добавление метода запроса
 			nva.push_back({
 				(uint8_t *) header.first.c_str(),
@@ -964,6 +967,9 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 				flags = NGHTTP2_FLAG_END_STREAM;
 			break;
 		}
+
+		cout << " =================2 " << this->_session << " == " << (u_short) flags << " == " << id << endl;
+
 		// Выполняем пуш-уведомление клиенту
 		result = nghttp2_submit_push_promise(this->_session, flags, id, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить
