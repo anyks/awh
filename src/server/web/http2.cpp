@@ -804,10 +804,12 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										return;
 								}
 							}
+						}/*
 						// Если сообщение о закрытии подключения не отправлено
 						} else if(!web2_t::reject(sid, bid, 500))
 							// Выполняем отключение брокера
 							dynamic_cast <server::core_t *> (core)->close(bid);
+						*/
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выводим функцию обратного вызова
@@ -925,10 +927,13 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								return;
 						}
 					}
+				}
+				/*
 				// Если сообщение о закрытии подключения не отправлено
 				} else if(!web2_t::reject(sid, bid, 500))
 					// Выполняем отключение брокера
 					dynamic_cast <server::core_t *> (core)->close(bid);
+				*/
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
