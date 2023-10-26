@@ -138,7 +138,6 @@ class WebServer {
 				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
-				/*
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
 					// Выполняем отправку пуш-уведомлений
@@ -146,7 +145,7 @@ class WebServer {
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 				}
-				*/
+				/*
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
 					// Устанавливаем тестовые трейлеры
@@ -157,6 +156,7 @@ class WebServer {
 				}
 				// Отправляем сообщение клиенту
 				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
+				*/
 			}
 		}
 		/**
@@ -276,7 +276,7 @@ int main(int argc, char * argv[]){
 	// awh.opaque("keySession");
 	// Устанавливаем тип авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	/*
 	awh.init(2222, "127.0.0.1", {
@@ -322,7 +322,7 @@ int main(int argc, char * argv[]){
 		{server::web2_t::settings_t::ENABLE_PUSH, 1}
 	});
 	// Устанавливаем функцию извлечения пароля
-	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
+	// awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
