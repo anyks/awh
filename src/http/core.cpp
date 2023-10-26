@@ -2611,6 +2611,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									if((res.code >= 100) && (res.code < 200) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
+											case 0:
 											case 5:
 											case 6:
 											case 7:
@@ -3306,6 +3307,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									if((res.code >= 100) && (res.code < 200) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
+											case 0:
 											case 5:
 											case 6:
 											case 7:

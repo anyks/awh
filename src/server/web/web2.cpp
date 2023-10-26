@@ -234,6 +234,35 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 	return result;
 }
 /**
+ * promise Метод отправки обещаний
+ * @param id      идентификатор потока HTTP/2
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::Web2::promise(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end()){
+			// Если ответ не получилось отправить
+			if((result = it->second->sendPromise(id, headers, flag)) < 0){
+				// Выполняем закрытие подключения
+				const_cast <server::core_t *> (this->_core)->close(bid);
+				// Выходим из функции
+				return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * setOrigin Метод установки списка разрешённых источников
  * @param origins список разрешённых источников
  */

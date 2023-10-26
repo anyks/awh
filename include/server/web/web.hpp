@@ -692,6 +692,16 @@ namespace awh {
 				int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
+				 * promise Метод отправки обещаний
+				 * @param id      идентификатор потока HTTP/2
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @param flag    флаг передаваемого потока по сети
+				 * @return        флаг последнего сообщения после которого поток закрывается
+				 */
+				int32_t promise(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+			public:
+				/**
 				 * setOrigin Метод установки списка разрешённых источников
 				 * @param origins список разрешённых источников
 				 */

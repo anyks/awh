@@ -244,22 +244,29 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 			switch(static_cast <uint8_t> (self->_mode)){
 				// Если сервис идентифицирован как клиент
 				case static_cast <uint8_t> (mode_t::CLIENT): {
-					// Если мы получили ответ сервера
-					if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) || (frame->headers.cat == NGHTTP2_HCAT_HEADERS)){
-						// Если функция обратного вызова установлена
-						if(self->_callback.is("header"))
-							// Выводим функцию обратного вызова
-							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+					// Определяем флаг ответа сервера
+					switch(static_cast <uint8_t> (frame->headers.cat)){
+						// Если мы получили заголовки трейлеров с сервера
+						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
+						// Если мы получили заголовки ответа с сервера
+						case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
+						// Если мы получили заголовки промисов с сервера
+						case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE): {
+							// Если функция обратного вызова установлена
+							if(self->_callback.is("header"))
+								// Выводим функцию обратного вызова
+								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
+						} break;
 					}
 				} break;
 				// Если сервис идентифицирован как сервер
 				case static_cast <uint8_t> (mode_t::SERVER): {
 					// Если мы получили запрос клиента
-					if((frame->headers.cat == NGHTTP2_HCAT_REQUEST) || (frame->headers.cat == NGHTTP2_HCAT_HEADERS)){
+					if((frame->headers.cat == NGHTTP2_HCAT_REQUEST)){
 						// Если функция обратного вызова установлена
 						if(self->_callback.is("header"))
 							// Выводим функцию обратного вызова
-							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string((const char *) key, keySize), string((const char *) val, valSize));
+							return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
 					}
 				} break;
 			}
@@ -267,6 +274,22 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 	}
 	// Выводим результат
 	return 0;
+}
+/**
+ * extension Функция обратного вызова при отправке расширений
+ * @param session объект сессии HTTP/2
+ * @param buffer  буфер данных которые следует отправить
+ * @param size    размер буфера данных для отправки
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        количество отправленных байт
+ */
+ssize_t awh::Http2::extension(nghttp2_session * session, uint8_t * buffer, size_t size, const nghttp2_frame * frame, void * ctx) noexcept {
+
+	// frame->ext.payload
+
+	return static_cast <ssize_t> (size);
+
 }
 /**
  * send Функция обратного вызова при подготовки данных для отправки
@@ -415,6 +438,52 @@ bool awh::Http2::ping() noexcept {
 	return true;
 }
 /**
+ * shutdown Метод отправки клиенту сообщения корректного завершения
+ * @return результат выполнения операции
+ */
+bool awh::Http2::shutdown() noexcept {
+	// Результат выполнения поерации
+	int rv = -1;
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_SHUTDOWN;
+	// Если сессия HTTP/2 инициализированна
+	if(this->_session != nullptr){
+		// Выполняем отправку клиенту сообщения о завершении работы
+		if((rv = nghttp2_submit_shutdown_notice(this->_session)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_PING, nghttp2_strerror(rv));
+			// Выполняем вызов метода выполненного события
+			this->completed(event_t::SEND_SHUTDOWN);
+			// Выходим из функции
+			return false;
+		}
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Фиксируем отправленный результат
+			if((rv = nghttp2_session_send(this->_session)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_SHUTDOWN);
+				// Выходим из функции
+				return false;
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_SHUTDOWN);
+	// Выводим результат
+	return true;
+}
+/**
  * frame Метод чтения данных фрейма из бинарного буфера
  * @param buffer буфер бинарных данных для чтения фрейма
  * @param size   размер буфера бинарных данных
@@ -470,8 +539,136 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	return false;
 }
 /**
+ * reject Метод выполнения сброса подключения
+ * @param sid   идентификатор потока
+ * @param error код отправляемой ошибки
+ * @return      результат отправки сообщения
+ */
+bool awh::Http2::reject(const int32_t sid, const uint32_t error) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_REJECT;
+	// Если сессия HTTP/2 инициализированна
+	if(this->_session != nullptr){
+		// Результат выполнения поерации
+		int rv = -1;
+		// Выполняем сброс подключения клиента
+		if((rv = nghttp2_submit_rst_stream(this->_session, NGHTTP2_FLAG_NONE, sid, error)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выполняем вызов метода выполненного события
+			this->completed(event_t::SEND_REJECT);
+			// Выходим из функции
+			return false;
+		}
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Фиксируем отправленный результат
+			if((rv = nghttp2_session_send(this->_session)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_REJECT);
+				// Выходим из функции
+				return false;
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_REJECT);
+	// Выводим результат
+	return false;
+}
+/**
+ * windowUpdate Метод обновления размера окна фрейма
+ * @param sid  идентификатор потока
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::WINDOW_UPDATE;
+	// Если размер окна фрейма передан
+	if(size > 0){
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Результат выполнения поерации
+			int rv = -1;
+			// Выполняем установку нового размера окна фрейма
+			if((rv = nghttp2_submit_window_update(this->_session, NGHTTP2_FLAG_NONE, sid, size)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::WINDOW_UPDATE);
+				// Выходим из функции
+				return false;
+			}
+			// Если сессия HTTP/2 инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::WINDOW_UPDATE);
+					// Выходим из функции
+					return false;
+				}
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::WINDOW_UPDATE);
+	// Выводим результат
+	return false;
+}
+/**
+ * altsvc Метод отправки фрейма альтернативного сервиса RFC7383
+ * @param sid    идентификатор потока
+ * @param origin название сервиса
+ * @param field  поле сервиса
+ * @return       результат отправки фрейма 
+ */
+bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string & field) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_ALTSVC;
+	// Если размер окна фрейма передан
+	if(!origin.empty() && !field.empty()){
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Результат выполнения поерации
+			int rv = -1;
+			// Выполняем отправку альтернативного сервиса
+			if((rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, reinterpret_cast <const uint8_t *> (origin.c_str()), origin.size(), reinterpret_cast <const uint8_t *> (field.c_str()), field.size())) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_ALTSVC);
+				// Выходим из функции
+				return false;
+			}
+			// Если сессия HTTP/2 инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_ALTSVC);
+					// Выходим из функции
+					return false;
+				}
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_ALTSVC);
+	// Выводим результат
+	return false;
+}
+/**
  * sendOrigin Метод отправки списка разрешенных источников
  * @param origins список разрешённых источников
+ * @return        результат отправки данных фрейма
  */
 bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
 	// Выполняем установку активного события
@@ -818,6 +1015,132 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 	return result;
 }
 /**
+ * sendPromise Метод отправки промисов
+ * @param id      идентификатор потока
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг завершения потока передачи данных
+ */
+int32_t awh::Http2::sendPromise(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_PROMISE;
+	// Если заголовки для отправки переданы и сессия HTTP/2 инициализированна
+	if(!headers.empty() && (this->_session != nullptr)){
+		// Список заголовков для запроса
+		vector <nghttp2_nv> nva;
+		// Выполняем перебор всех заголовков HTTP/2 запроса
+		for(auto & header : headers){
+			// Выполняем добавление метода запроса
+			nva.push_back({
+				(uint8_t *) header.first.c_str(),
+				(uint8_t *) header.second.c_str(),
+				header.first.size(),
+				header.second.size(),
+				NGHTTP2_NV_FLAG_NONE
+			});
+		}
+		// Флаги фрейма передаваемого по сети
+		uint8_t flags = NGHTTP2_FLAG_NONE;
+		// Определяем флаг переданный в запросе
+		switch(static_cast <uint8_t> (flag)){
+			// Если требуется завершить передачу заголовков
+			case static_cast <uint8_t> (flag_t::END_HEADER):
+				// Выполняем установку флагов
+				flags = NGHTTP2_FLAG_END_HEADERS;
+			break;
+			// Если требуется завершить поток после передачи фрейма
+			case static_cast <uint8_t> (flag_t::END_STREAM):
+				// Устанавливаем флаг фрейма передаваемого по сети
+				flags = NGHTTP2_FLAG_END_STREAM;
+			break;
+		}
+		// Выполняем запрос на удалённый сервер			
+		result = nghttp2_submit_push_promise(this->_session, flags, id, nva.data(), nva.size(), nullptr);
+		// Если запрос не получилось отправить
+		if(result < 0){
+			// Выводим в лог сообщение
+			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(result));
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(result));
+			// Выполняем вызов метода выполненного события
+			this->completed(event_t::SEND_PROMISE);
+			// Выходим из функции
+			return result;
+		}
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Результат фиксации сессии
+			int rv = -1;
+			// Фиксируем отправленный результат
+			if((rv = nghttp2_session_send(this->_session)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_PROMISE);
+				// Выходим из функции
+				return result;
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_PROMISE);
+	// Выводим результат
+	return result;
+}
+/**
+ * goaway Метод отправки сообщения закрытия всех потоков
+ * @param last   идентификатор последнего потока
+ * @param error  код отправляемой ошибки
+ * @param buffer буфер отправляемых данных если требуется
+ * @param size   размер отправляемого буфера данных
+ * @return       результат отправки данных фрейма
+ */
+bool awh::Http2::goaway(const int32_t last, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_GOAWAY;
+	// Если размер окна фрейма передан
+	if(last > 0){
+		// Если сессия HTTP/2 инициализированна
+		if(this->_session != nullptr){
+			// Результат выполнения поерации
+			int rv = -1;
+			// Выполняем отправку сообщения закрытия всех проектов
+			if((rv = nghttp2_submit_goaway(this->_session, NGHTTP2_FLAG_NONE, last, error, buffer, size)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_GOAWAY);
+				// Выходим из функции
+				return false;
+			}
+			// Если сессия HTTP/2 инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_session)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_GOAWAY);
+					// Выходим из функции
+					return false;
+				}
+			}
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_GOAWAY);
+	// Выводим результат
+	return false;
+}
+/**
  * free Метод очистки активной сессии
  */
 void awh::Http2::free() noexcept {
@@ -901,6 +1224,9 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
+
+		nghttp2_session_callbacks_set_pack_extension_callback(callbacks, &http2_t::extension);
+
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент

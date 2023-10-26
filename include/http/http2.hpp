@@ -92,9 +92,15 @@ namespace awh {
 				SEND_PING     = 0x01, // Событие отправки пинга
 				SEND_DATA     = 0x02, // Событие отправки данных
 				RECV_FRAME    = 0x03, // События получения данных
-				SEND_ORIGIN   = 0x04, // События отправки доверенных источников
-				SEND_HEADERS  = 0x05, // Событие отправки заголовков
-				SEND_TRAILERS = 0x06  // Событие отправки трейлеров
+				SEND_ALTSVC   = 0x04, // Событие отправки альтернативного сервиса
+				SEND_GOAWAY   = 0x05, // Событие отправки сообщения закрытия потоков
+				SEND_ORIGIN   = 0x06, // События отправки доверенных источников
+				SEND_REJECT   = 0x07, // Событие отправки сброса подключения
+				SEND_PROMISE  = 0x08, // События отправки промисов
+				SEND_HEADERS  = 0x09, // Событие отправки заголовков
+				SEND_TRAILERS = 0x0A, // Событие отправки трейлеров
+				SEND_SHUTDOWN = 0x0B, // Событие отправки сообщения о завершении работы
+				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
 			};
 		private:
 			// Флаг требования закрыть подключение
@@ -181,6 +187,17 @@ namespace awh {
 			static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
+			 * extension Функция обратного вызова при отправке расширений
+			 * @param session объект сессии HTTP/2
+			 * @param buffer  буфер данных которые следует отправить
+			 * @param size    размер буфера данных для отправки
+			 * @param frame   объект фрейма заголовков HTTP/2
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        количество отправленных байт
+			 */
+			static ssize_t extension(nghttp2_session * session, uint8_t * buffer, size_t size, const nghttp2_frame * frame, void * ctx) noexcept;
+		private:
+			/**
 			 * send Функция обратного вызова при подготовки данных для отправки
 			 * @param session объект сессии HTTP/2
 			 * @param buffer  буфер данных которые следует отправить
@@ -217,6 +234,12 @@ namespace awh {
 			bool ping() noexcept;
 		public:
 			/**
+			 * shutdown Метод отправки клиенту сообщения корректного завершения
+			 * @return результат выполнения операции
+			 */
+			bool shutdown() noexcept;
+		public:
+			/**
 			 * frame Метод чтения данных фрейма из бинарного буфера
 			 * @param buffer буфер бинарных данных для чтения фрейма
 			 * @param size   размер буфера бинарных данных
@@ -225,8 +248,34 @@ namespace awh {
 			bool frame(const uint8_t * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * reject Метод выполнения сброса подключения
+			 * @param sid   идентификатор потока
+			 * @param error код отправляемой ошибки
+			 * @return      результат отправки сообщения
+			 */
+			bool reject(const int32_t sid, const uint32_t error) noexcept;
+		public:
+			/**
+			 * windowUpdate Метод обновления размера окна фрейма
+			 * @param sid  идентификатор потока
+			 * @param size размер нового окна
+			 * @return     результат установки размера офна фрейма
+			 */
+			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
+		public:
+			/**
+			 * altsvc Метод отправки фрейма альтернативного сервиса RFC7383
+			 * @param sid    идентификатор потока
+			 * @param origin название сервиса
+			 * @param field  поле сервиса
+			 * @return       результат отправки фрейма 
+			 */
+			bool altsvc(const int32_t sid, const string & origin, const string & field) noexcept;
+		public:
+			/**
 			 * sendOrigin Метод отправки списка разрешенных источников
 			 * @param origins список разрешённых источников
+			 * @return        результат отправки данных фрейма
 			 */
 			bool sendOrigin(const vector <string> & origins) noexcept;
 			/**
@@ -253,6 +302,24 @@ namespace awh {
 			 * @return        флаг завершения потока передачи данных
 			 */
 			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			/**
+			 * sendPromise Метод отправки промисов
+			 * @param id      идентификатор потока
+			 * @param headers заголовки отправляемые
+			 * @param flag    флаг передаваемого потока по сети
+			 * @return        флаг завершения потока передачи данных
+			 */
+			int32_t sendPromise(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+		public:
+			/**
+			 * goaway Метод отправки сообщения закрытия всех потоков
+			 * @param last   идентификатор последнего потока
+			 * @param error  код отправляемой ошибки
+			 * @param buffer буфер отправляемых данных если требуется
+			 * @param size   размер отправляемого буфера данных
+			 * @return       результат отправки данных фрейма
+			 */
+			bool goaway(const int32_t last, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 		public:
 			/**
 			 * free Метод очистки активной сессии
