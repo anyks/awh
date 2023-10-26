@@ -141,7 +141,7 @@ class WebServer {
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
 					// Выполняем отправку пуш-уведомлений
-					if(this->_awh->push2(sid, bid, {{":status", "100"},{"ANYKS", {"Hello!!!"}}}, awh::http2_t::flag_t::NONE) < 0)
+					if(this->_awh->push2(sid, bid, {{":status", "200"},{"ANYKS", {"Hello!!!"}}}, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 				}
