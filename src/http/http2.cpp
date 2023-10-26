@@ -147,6 +147,9 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
+	
+	cout << " ####################### FRAME " << << endl;
+	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -1225,6 +1228,30 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
+
+		// nghttp2_session_callbacks_set_before_frame_send_callback
+		// nghttp2_session_callbacks_set_data_source_read_length_callback
+		// nghttp2_session_callbacks_set_error_callback
+		// nghttp2_session_callbacks_set_error_callback2
+		// nghttp2_session_callbacks_set_on_begin_frame_callback
+		// nghttp2_session_callbacks_set_on_extension_chunk_recv_callback
+		// nghttp2_session_callbacks_set_on_frame_not_send_callback
+		// nghttp2_session_callbacks_set_on_header_callback2
+		// nghttp2_session_callbacks_set_on_invalid_frame_recv_callback
+		// nghttp2_session_callbacks_set_on_invalid_header_callback
+		// nghttp2_session_callbacks_set_on_invalid_header_callback2
+		// nghttp2_session_callbacks_set_pack_extension_callback
+		// nghttp2_session_callbacks_set_recv_callback
+		// nghttp2_session_callbacks_set_select_padding_callback
+		// nghttp2_session_callbacks_set_send_data_callback
+		// nghttp2_session_callbacks_set_unpack_extension_callback
+
+		// nghttp2_on_frame_send_callback
+		
+
+		// nghttp2_session_check_request_allowed
+		// nghttp2_session_check_server_session
+
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент

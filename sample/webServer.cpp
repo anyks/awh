@@ -141,7 +141,7 @@ class WebServer {
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
 					// Выполняем отправку заголовковй временного овтета
-					vector <pair <string, string>> headers = {{":status", "100"},{"ANYKS", {"Hello!!!"}}};
+					vector <pair <string, string>> headers = {{"Result", "100"},{"ANYKS", {"Hello!!!"}}};
 					// Выполняем отправку пуш-уведомлений
 					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
