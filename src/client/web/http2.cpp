@@ -259,6 +259,22 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 				if(it != this->_workers.end()){
 					// Выполняем определение типа фрейма
 					switch(type){
+						// Если производится сброс подключения
+						case NGHTTP2_RST_STREAM: {
+							cout << " ************************** STOP RESET " << endl;
+						} break;
+						// Если получено пуш-уведомление от сервера
+						case NGHTTP2_PUSH_PROMISE: {
+							cout << " ************************** GET PUSH " << endl;
+						} break;
+						// Если получено альтернативное расширение для переключения протокола
+						case NGHTTP2_ALTSVC: {
+							cout << " ************************** GET ALTSVC " << endl;
+						} break;
+						// Если пришел заголовок Origin
+						case NGHTTP2_ORIGIN: {
+							cout << " ************************** GET ORIGIN " << endl;
+						} break;
 						// Если мы получили входящие данные тела ответа
 						case NGHTTP2_DATA: {
 							// Определяем протокол клиента

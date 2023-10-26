@@ -402,6 +402,10 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Выполняем определение типа фрейма
 							switch(type){
+								// Если пришел заголовок Origin
+								case NGHTTP2_ORIGIN: {
+									cout << " ************************** GET ORIGIN " << endl;
+								} break;
 								// Если мы получили входящие данные тела ответа
 								case NGHTTP2_DATA: {
 									// Если мы получили неустановленный флаг или флаг завершения потока
