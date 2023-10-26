@@ -152,6 +152,9 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
  * @return    результат выполнения операции
  */
 bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
+	
+	cout << " ******************* shutdown " << endl;
+	
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -180,6 +183,9 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
  * @return      результат отправки сообщения
  */
 bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+	
+	cout << " ******************* reject " << endl;
+	
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -208,6 +214,9 @@ bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const uint3
  * @return     результат установки размера офна фрейма
  */
 bool awh::server::Web2::windowUpdate(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
+	
+	cout << " ******************* windowUpdate " << endl;
+	
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -237,6 +246,9 @@ bool awh::server::Web2::windowUpdate(const int32_t id, const uint64_t bid, const
  * @return       результат отправки расширения
  */
 bool awh::server::Web2::altsvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
+	
+	cout << " ******************* altsvc " << endl;
+	
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -269,6 +281,9 @@ bool awh::server::Web2::altsvc(const int32_t id, const uint64_t bid, const strin
 bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
+	
+	cout << " ******************* goaway " << endl;
+	
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (last > -1)){
 		// Выполняем поиск брокера в списке активных сессий
@@ -295,6 +310,9 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const uin
  * @return        результат отправки данных указанному клиенту
  */
 bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+	
+	cout << " ******************* Trailers " << endl;
+	
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -327,6 +345,9 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector 
 bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	bool result = false;
+	
+	cout << " ******************* Data " << endl;
+	
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем поиск брокера в списке активных сессий
@@ -356,6 +377,9 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
+	
+	cout << " ******************* Headers " << endl;
+	
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
@@ -385,6 +409,9 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
+	
+	cout << " ******************* Push " << endl;
+	
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
@@ -417,6 +444,9 @@ void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
  * @param origins список разрешённых источников
  */
 void awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
+	
+	cout << " ******************* Origin " << endl;
+	
 	// Выполняем поиск брокера в списке активных сессий
 	auto it = this->_sessions.find(bid);
 	// Если активная сессия найдена
