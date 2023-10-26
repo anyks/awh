@@ -148,7 +148,7 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	
-	cout << " ####################### FRAME " << << endl;
+	cout << " ####################### FRAME " << endl;
 	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
