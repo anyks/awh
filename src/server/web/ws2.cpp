@@ -430,8 +430,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												options->mess = options->frame.methods.message(data);
 												// Выводим сообщение об ошибке
 												this->error(bid, options->mess);
-												// Завершаем работу
-												const_cast <server::core_t *> (this->_core)->close(bid);
+												// Завершаем работу клиента
+												if(!(options->stopped = web2_t::reject(sid, bid, 400)))
+													// Завершаем работу
+													const_cast <server::core_t *> (this->_core)->close(bid);
 												// Если мы получили флаг завершения потока
 												if(flags & NGHTTP2_FLAG_END_STREAM){
 													// Если установлена функция отлова завершения запроса

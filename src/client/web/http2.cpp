@@ -1162,6 +1162,14 @@ void awh::client::Http2::stream(const int32_t sid, const mode_t mode) noexcept {
 		this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode);
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::client::Http2::proto() const noexcept {
+	// Выводим идентификатор активного HTTP-протокола
+	return this->_core->proto(this->_bid);
+}
+/**
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */
@@ -1583,6 +1591,66 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 	}
 	// Выводим значение по умолчанию
 	return result;
+}
+/**
+ * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
+ * @param id   идентификатор потока
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::client::Http2::windowUpdate2(const int32_t id, const int32_t size) noexcept {
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
+		if((size >= 0) && this->_http2.is())
+			// Выполняем обновление размера окна фрейма
+			return web2_t::windowUpdate(id, size);
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * send2 Метод HTTP/2 отправки сообщения на сервер
+ * @param id     идентификатор потока HTTP/2
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param flag   флаг передаваемого потока по сети
+ * @return       результат отправки данных указанному клиенту
+ */
+bool awh::client::Http2::send2(const int32_t id, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
+		if((buffer != nullptr) && (size > 0) && this->_http2.is())
+			// Выполняем отправку сообщения на сервер
+			return web2_t::send(id, buffer, size, flag);
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * send2 Метод HTTP/2 отправки заголовков на сервер
+ * @param id      идентификатор потока HTTP/2
+ * @param headers заголовки отправляемые на сервер
+ * @param flag    флаг передаваемого потока по сети
+ * @return        идентификатор нового запроса
+ */
+int32_t awh::client::Http2::send2(const int32_t id, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
+		if(!headers.empty() && this->_http2.is())
+			// Выполняем отправку заголовков на сервер
+			return web2_t::send(id, headers, flag);
+	}
+	// Выводим результат
+	return -1;
 }
 /**
  * pause Метод установки на паузу клиента

@@ -45,6 +45,13 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @param bid идентификатор брокера
+				 * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+				 */
+				engine_t::proto_t proto(const uint64_t bid) const noexcept;
+			public:
+				/**
 				 * trailers Метод получения запроса на передачу трейлеров
 				 * @param bid идентификатор брокера
 				 * @return    флаг запроса клиентом передачи трейлеров
@@ -116,6 +123,90 @@ namespace awh {
 				 * @param headers HTTP заголовки сообщения
 				 */
 				void send(const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+			public:
+				/**
+				 * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
+				 * @param bid идентификатор брокера
+				 * @return    результат выполнения операции
+				 */
+				bool shutdown2(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * reject2 Метод HTTP/2 выполнения сброса подключения
+				 * @param id    идентификатор потока
+				 * @param bid   идентификатор брокера
+				 * @param error код отправляемой ошибки
+				 * @return      результат отправки сообщения
+				 */
+				bool reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept;
+			public:
+				/**
+				 * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
+				 * @param id   идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param size размер нового окна
+				 * @return     результат установки размера офна фрейма
+				 */
+				bool windowUpdate2(const int32_t id, const uint64_t bid, const int32_t size) noexcept;
+			public:
+				/**
+				 * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
+				 * @param id     идентификатор потока
+				 * @param bid    идентификатор брокера
+				 * @param origin название сервиса
+				 * @param field  поле сервиса
+				 * @return       результат отправки расширения
+				 */
+				bool altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept;
+			public:
+				/**
+				 * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
+				 * @param last   идентификатор последнего потока
+				 * @param bid    идентификатор брокера
+				 * @param error  код отправляемой ошибки
+				 * @param buffer буфер отправляемых данных если требуется
+				 * @param size   размер отправляемого буфера данных
+				 * @return       результат отправки данных фрейма
+				 */
+				bool goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+			public:
+				/**
+				 * send2 HTTP/2 Метод отправки трейлеров
+				 * @param id      идентификатор потока
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @return        результат отправки данных указанному клиенту
+				 */
+				bool send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				/**
+				 * send2 HTTP/2 Метод отправки сообщения клиенту
+				 * @param id     идентификатор потока
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер бинарных данных передаваемых
+				 * @param size   размер сообщения в байтах
+				 * @param flag   флаг передаваемого потока по сети
+				 * @return       результат отправки данных указанному клиенту
+				 */
+				bool send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
+				/**
+				 * send2 HTTP/2 Метод отправки заголовков
+				 * @param id      идентификатор потока
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @param flag    флаг передаваемого потока по сети
+				 * @return        флаг последнего сообщения после которого поток закрывается
+				 */
+				int32_t send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+			public:
+				/**
+				 * push2 HTTP/2 Метод отправки пуш-уведомлений
+				 * @param id      идентификатор потока
+				 * @param bid     идентификатор брокера
+				 * @param headers заголовки отправляемые
+				 * @param flag    флаг передаваемого потока по сети
+				 * @return        флаг последнего сообщения после которого поток закрывается
+				 */
+				int32_t push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения

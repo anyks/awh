@@ -16,6 +16,15 @@
 #include <server/awh.hpp>
 
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @param bid идентификатор брокера
+ * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcept {
+	// Выполняем извлечения поддерживаемого протокола подключения
+	return this->_http.proto(bid);
+}
+/**
  * trailers Метод получения запроса на передачу трейлеров
  * @param bid идентификатор брокера
  * @return    флаг запроса клиентом передачи трейлеров
@@ -110,6 +119,110 @@ int32_t awh::server::AWH::send(const int32_t id, const uint64_t bid, const u_int
 void awh::server::AWH::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(bid, code, mess, entity, headers);
+}
+/**
+ * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
+ * @param bid идентификатор брокера
+ * @return    результат выполнения операции
+ */
+bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
+	// Выполняем отправку клиенту сообщения корректного завершения
+	return this->_http.shutdown2(bid);
+}
+/**
+ * reject2 Метод HTTP/2 выполнения сброса подключения
+ * @param id    идентификатор потока
+ * @param bid   идентификатор брокера
+ * @param error код отправляемой ошибки
+ * @return      результат отправки сообщения
+ */
+bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+	// Выполняем сброс подключения
+	return this->_http.reject2(id, bid, error);
+}
+/**
+ * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
+ * @param id   идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::server::AWH::windowUpdate2(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
+	// Выполняем обновление размера окна фрейма
+	return this->_http.windowUpdate2(id, bid, size);
+}
+/**
+ * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
+ * @param id     идентификатор потока
+ * @param bid    идентификатор брокера
+ * @param origin название сервиса
+ * @param field  поле сервиса
+ * @return       результат отправки расширения
+ */
+bool awh::server::AWH::altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
+	// Выполняем отправку расширения альтернативного сервиса RFC7383
+	return this->_http.altsvc2(id, bid, origin, field);
+}
+/**
+ * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
+ * @param last   идентификатор последнего потока
+ * @param bid    идентификатор брокера
+ * @param error  код отправляемой ошибки
+ * @param buffer буфер отправляемых данных если требуется
+ * @param size   размер отправляемого буфера данных
+ * @return       результат отправки данных фрейма
+ */
+bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+	// Выполняем отправку сообщения закрытия всех потоков
+	return this->_http.goaway2(last, bid, error, buffer, size);
+}
+/**
+ * send2 HTTP/2 Метод отправки трейлеров
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @return        результат отправки данных указанному клиенту
+ */
+bool awh::server::AWH::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+	// Выполняем отправку трейлеров
+	return this->_http.send2(id, bid, headers);
+}
+/**
+ * send2 HTTP/2 Метод отправки сообщения клиенту
+ * @param id     идентификатор потока
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых
+ * @param size   размер сообщения в байтах
+ * @param flag   флаг передаваемого потока по сети
+ * @return       результат отправки данных указанному клиенту
+ */
+bool awh::server::AWH::send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+	// Выполняем отправку сообщения клиенту
+	return this->_http.send2(id, bid, buffer, size, flag);
+}
+/**
+ * send2 HTTP/2 Метод отправки заголовков
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::AWH::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Выполняем отправку заголовков
+	return this->_http.send2(id, bid, headers, flag);
+}
+/**
+ * push2 HTTP/2 Метод отправки пуш-уведомлений
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::AWH::push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Выполняем отправку пуш-уведомлений
+	return this->_http.push2(id, bid, headers, flag);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения

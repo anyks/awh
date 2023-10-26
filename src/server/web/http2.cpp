@@ -804,8 +804,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										return;
 								}
 							}
-						// Выполняем отключение брокера
-						} else dynamic_cast <server::core_t *> (core)->close(bid);
+						// Если сообщение о закрытии подключения не отправлено
+						} else if(!web2_t::reject(sid, bid, 500))
+							// Выполняем отключение брокера
+							dynamic_cast <server::core_t *> (core)->close(bid);
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выводим функцию обратного вызова
@@ -866,7 +868,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем заголовки запроса на сервер
-					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
+					const int32_t sid = web2_t::send(sid, bid, headers, flag);
 					// Если запрос не получилось отправить
 					if(sid < 0)
 						// Выходим из функции
@@ -889,7 +891,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
+							if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
 						}
@@ -918,13 +920,15 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								cout << endl << endl;
 							#endif
 							// Выполняем отправку трейлеров
-							if(!web2_t::send(options->sid, bid, trailers))
+							if(!web2_t::send(sid, bid, trailers))
 								// Выходим из функции
 								return;
 						}
 					}
-				// Выполняем отключение брокера
-				} else dynamic_cast <server::core_t *> (core)->close(bid);
+				// Если сообщение о закрытии подключения не отправлено
+				} else if(!web2_t::reject(sid, bid, 500))
+					// Выполняем отключение брокера
+					dynamic_cast <server::core_t *> (core)->close(bid);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
@@ -1456,6 +1460,15 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 	}
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @param bid идентификатор брокера
+ * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::server::Http2::proto(const uint64_t bid) const noexcept {
+	// Выводим идентификатор активного HTTP-протокола
+	return this->_core->proto(bid);
+}
+/**
  * trailers Метод получения запроса на передачу трейлеров
  * @param bid идентификатор брокера
  * @return    флаг запроса клиентом передачи трейлеров
@@ -1688,10 +1701,8 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
  * @return        результат отправки данных указанному клиенту
  */
 bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
-	// Результат работы функции
-	bool result = false;
 	// Если данные переданы верные
-	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1707,15 +1718,14 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
-							result = web2_t::send(id, bid, headers);
-						break;
+							return web2_t::send(id, bid, headers);
 					}
 				}
 			}
 		}
 	}
 	// Выводим значение по умолчанию
-	return result;
+	return false;
 }
 /**
  * send Метод отправки тела сообщения клиенту
@@ -1730,7 +1740,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
-	if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1836,10 +1846,8 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
  * @return        идентификатор нового запроса
  */
 int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
-	// Результат работы функции
-	int32_t result = -1;
 	// Если заголовки запроса переданы
-	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -1907,7 +1915,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем заголовки запроса на сервер
-									result = web2_t::send(id, bid, headers, flag);
+									return web2_t::send(id, bid, headers, flag);
 								}
 							} break;
 						}
@@ -1917,7 +1925,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 		}
 	}
 	// Выводим значение по умолчанию
-	return result;
+	return -1;
 }
 /**
  * send Метод отправки сообщения брокеру
@@ -2067,6 +2075,317 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 			}
 		}
 	}
+}
+/**
+ * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
+ * @param bid идентификатор брокера
+ * @return    результат выполнения операции
+ */
+bool awh::server::Http2::shutdown2(const uint64_t bid) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем тправки клиенту сообщения корректного завершения
+							return web2_t::shutdown(bid);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * reject2 Метод HTTP/2 выполнения сброса подключения
+ * @param id    идентификатор потока
+ * @param bid   идентификатор брокера
+ * @param error код отправляемой ошибки
+ * @return      результат отправки сообщения
+ */
+bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем сброс подключения
+							return web2_t::reject(id, bid, error);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
+ * @param id   идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::server::Http2::windowUpdate2(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем обновление размера окна фрейма
+							return web2_t::windowUpdate(id, bid, size);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
+ * @param id     идентификатор потока
+ * @param bid    идентификатор брокера
+ * @param origin название сервиса
+ * @param field  поле сервиса
+ * @return       результат отправки расширения
+ */
+bool awh::server::Http2::altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && !origin.empty() && !field.empty()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку расширения альтернативного сервиса RFC7383
+							return web2_t::altsvc(id, bid, origin, field);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
+ * @param last   идентификатор последнего потока
+ * @param bid    идентификатор брокера
+ * @param error  код отправляемой ошибки
+ * @param buffer буфер отправляемых данных если требуется
+ * @param size   размер отправляемого буфера данных
+ * @return       результат отправки данных фрейма
+ */
+bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку сообщения закрытия всех потоков
+							return web2_t::goaway(last, bid, error, buffer, size);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * send2 Метод HTTP/2 отправки трейлеров
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @return        результат отправки данных указанному клиенту
+ */
+bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку трейлеров
+							return web2_t::send(id, bid, headers);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * send2 Метод HTTP/2 отправки сообщения клиенту
+ * @param id     идентификатор потока
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых
+ * @param size   размер сообщения в байтах
+ * @param flag   флаг передаваемого потока по сети
+ * @return       результат отправки данных указанному клиенту
+ */
+bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку сообщения клиенту
+							return web2_t::send(id, bid, buffer, size, flag);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * send2 Метод HTTP/2 отправки заголовков
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку заголовков
+							return web2_t::send(id, bid, headers, flag);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return -1;
+}
+/**
+ * push2 Метод HTTP/2 отправки пуш-уведомлений
+ * @param id      идентификатор потока
+ * @param bid     идентификатор брокера
+ * @param headers заголовки отправляемые
+ * @param flag    флаг передаваемого потока по сети
+ * @return        флаг последнего сообщения после которого поток закрывается
+ */
+int32_t awh::server::Http2::push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Если протокол подключения соответствует HTTP/2
+			if(options->proto == engine_t::proto_t::HTTP2){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Выполняем отправку пуш-уведомлений
+							return web2_t::push(id, bid, headers, flag);
+					}
+				}
+			}
+		}
+	}
+	// Выводим значение по умолчанию
+	return -1;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения

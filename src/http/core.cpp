@@ -2608,7 +2608,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 9: allow = !available[i]; break;
 									}
 									// Если ответ является информационным
-									if((res.code >= 100) && (res.code < 200) && available[i]){
+									if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
 											case 0:
@@ -3304,7 +3304,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										case 9: allow = !available[i]; break;
 									}
 									// Если ответ является информационным
-									if((res.code >= 100) && (res.code < 200) && available[i]){
+									if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
 										// Запрещяем указанным заголовкам формирование
 										switch(i){
 											case 0:

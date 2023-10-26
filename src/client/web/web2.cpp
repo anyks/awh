@@ -450,8 +450,35 @@ bool awh::client::Web2::ping() noexcept {
 	return false;
 }
 /**
+ * windowUpdate Метод обновления размера окна фрейма
+ * @param id   идентификатор потока
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::client::Web2::windowUpdate(const int32_t id, const int32_t size) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Создаём объект холдирования
+	hold_t <event_t> hold(this->_events);
+	// Если событие соответствует разрешённому
+	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
+		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+		if((result = ((this->_core != nullptr) && this->_core->working() && (size > 0)))){
+			// Выполняем отправку нового размера окна фрейма
+			if(!(result = this->_http2.windowUpdate(id, size))){
+				// Выполняем закрытие подключения
+				const_cast <client::core_t *> (this->_core)->close(this->_bid);
+				// Выходим из функции
+				return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * send Метод отправки сообщения на сервер
- * @param id     идентификатор потока HTTP/2
+ * @param id     идентификатор потока
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
@@ -480,7 +507,7 @@ bool awh::client::Web2::send(const int32_t id, const char * buffer, const size_t
 }
 /**
  * send Метод отправки заголовков на сервер
- * @param id      идентификатор потока HTTP/2
+ * @param id      идентификатор потока
  * @param headers заголовки отправляемые на сервер
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса

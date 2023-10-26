@@ -701,8 +701,16 @@ namespace awh {
 				bool ping() noexcept;
 			public:
 				/**
+				 * windowUpdate Метод обновления размера окна фрейма
+				 * @param id   идентификатор потока
+				 * @param size размер нового окна
+				 * @return     результат установки размера офна фрейма
+				 */
+				bool windowUpdate(const int32_t id, const int32_t size) noexcept;
+			public:
+				/**
 				 * send Метод отправки сообщения на сервер
-				 * @param id     идентификатор потока HTTP/2
+				 * @param id     идентификатор потока
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param flag   флаг передаваемого потока по сети
@@ -711,7 +719,7 @@ namespace awh {
 				bool send(const int32_t id, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 				/**
 				 * send Метод отправки заголовков на сервер
-				 * @param id      идентификатор потока HTTP/2
+				 * @param id      идентификатор потока
 				 * @param headers заголовки отправляемые на сервер
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса

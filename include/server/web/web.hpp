@@ -664,8 +664,54 @@ namespace awh {
 				bool ping(const uint64_t bid) noexcept;
 			public:
 				/**
+				 * shutdown Метод отправки клиенту сообщения корректного завершения
+				 * @param bid идентификатор брокера
+				 * @return    результат выполнения операции
+				 */
+				bool shutdown(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * reject Метод выполнения сброса подключения
+				 * @param id    идентификатор потока
+				 * @param bid   идентификатор брокера
+				 * @param error код отправляемой ошибки
+				 * @return      результат отправки сообщения
+				 */
+				bool reject(const int32_t id, const uint64_t bid, const uint32_t error) noexcept;
+			public:
+				/**
+				 * windowUpdate Метод обновления размера окна фрейма
+				 * @param id   идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param size размер нового окна
+				 * @return     результат установки размера офна фрейма
+				 */
+				bool windowUpdate(const int32_t id, const uint64_t bid, const int32_t size) noexcept;
+			public:
+				/**
+				 * altsvc Метод отправки расширения альтернативного сервиса RFC7383
+				 * @param id     идентификатор потока
+				 * @param bid    идентификатор брокера
+				 * @param origin название сервиса
+				 * @param field  поле сервиса
+				 * @return       результат отправки расширения
+				 */
+				bool altsvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept;
+			public:
+				/**
+				 * goaway Метод отправки сообщения закрытия всех потоков
+				 * @param last   идентификатор последнего потока
+				 * @param bid    идентификатор брокера
+				 * @param error  код отправляемой ошибки
+				 * @param buffer буфер отправляемых данных если требуется
+				 * @param size   размер отправляемого буфера данных
+				 * @return       результат отправки данных фрейма
+				 */
+				bool goaway(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+			public:
+				/**
 				 * send Метод отправки трейлеров
-				 * @param id      идентификатор потока HTTP/2
+				 * @param id      идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
@@ -673,7 +719,7 @@ namespace awh {
 				bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения клиенту
-				 * @param id     идентификатор потока HTTP/2
+				 * @param id     идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых
 				 * @param size   размер сообщения в байтах
@@ -683,23 +729,22 @@ namespace awh {
 				bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 				/**
 				 * send Метод отправки заголовков
-				 * @param id      идентификатор потока HTTP/2
+				 * @param id      идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
 				int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
-			public:
 				/**
-				 * promise Метод отправки обещаний
-				 * @param id      идентификатор потока HTTP/2
+				 * push Метод отправки пуш-уведомлений
+				 * @param id      идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t promise(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * setOrigin Метод установки списка разрешённых источников

@@ -16,6 +16,14 @@
 #include <client/awh.hpp>
 
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::client::AWH::proto() const noexcept {
+	// Выполняем определение активного HTTP-протокола
+	return this->_http.proto();
+}
+/**
  * sendTimeout Метод отправки сигнала таймаута
  */
 void awh::client::AWH::sendTimeout() noexcept {
@@ -72,6 +80,39 @@ bool awh::client::AWH::send(const int32_t id, const char * buffer, const size_t 
 int32_t awh::client::AWH::send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков на удалённый сервер HTTP/2
 	return this->_http.send(id, url, method, headers, end);
+}
+/**
+ * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
+ * @param id   идентификатор потока
+ * @param size размер нового окна
+ * @return     результат установки размера офна фрейма
+ */
+bool awh::client::AWH::windowUpdate2(const int32_t id, const int32_t size) noexcept {
+	// Выполняем обновление размера окна фрейма
+	return this->_http.windowUpdate2(id, size);
+}
+/**
+ * send2 Метод HTTP/2 отправки сообщения на сервер
+ * @param id     идентификатор потока
+ * @param buffer буфер бинарных данных передаваемых на сервер
+ * @param size   размер сообщения в байтах
+ * @param flag   флаг передаваемого потока по сети
+ * @return       результат отправки данных указанному клиенту
+ */
+bool awh::client::AWH::send2(const int32_t id, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+	// Выполняем отправку сообщения на сервер
+	return this->_http.send2(id, buffer, size, flag);
+}
+/**
+ * send2 Метод HTTP/2 отправки заголовков на сервер
+ * @param id      идентификатор потока
+ * @param headers заголовки отправляемые на сервер
+ * @param flag    флаг передаваемого потока по сети
+ * @return        идентификатор нового запроса
+ */
+int32_t awh::client::AWH::send2(const int32_t id, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+	// Выполняем отправку заголовков на сервер
+	return this->_http.send2(id, headers, flag);
 }
 /**
  * pause Метод установки на паузу клиента WebSocket

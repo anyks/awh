@@ -89,14 +89,14 @@ namespace awh {
 			 */
 			enum class event_t : uint8_t {
 				NONE          = 0x00, // Событие не установлено
-				SEND_PING     = 0x01, // Событие отправки пинга
-				SEND_DATA     = 0x02, // Событие отправки данных
-				RECV_FRAME    = 0x03, // События получения данных
-				SEND_ALTSVC   = 0x04, // Событие отправки альтернативного сервиса
-				SEND_GOAWAY   = 0x05, // Событие отправки сообщения закрытия потоков
-				SEND_ORIGIN   = 0x06, // События отправки доверенных источников
-				SEND_REJECT   = 0x07, // Событие отправки сброса подключения
-				SEND_PROMISE  = 0x08, // События отправки промисов
+				SEND_PUSH     = 0x01, // События отправки промисов
+				SEND_PING     = 0x02, // Событие отправки пинга
+				SEND_DATA     = 0x03, // Событие отправки данных
+				RECV_FRAME    = 0x04, // События получения данных
+				SEND_ALTSVC   = 0x05, // Событие отправки альтернативного сервиса
+				SEND_GOAWAY   = 0x06, // Событие отправки сообщения закрытия потоков
+				SEND_ORIGIN   = 0x07, // События отправки доверенных источников
+				SEND_REJECT   = 0x08, // Событие отправки сброса подключения
 				SEND_HEADERS  = 0x09, // Событие отправки заголовков
 				SEND_TRAILERS = 0x0A, // Событие отправки трейлеров
 				SEND_SHUTDOWN = 0x0B, // Событие отправки сообщения о завершении работы
@@ -129,42 +129,42 @@ namespace awh {
 			 */
 			static void debug(const char * format, va_list args) noexcept;
 			/**
-			 * begin Функция начала получения фрейма заголовков HTTP/2
-			 * @param session объект сессии HTTP/2
-			 * @param frame   объект фрейма заголовков HTTP/2
+			 * begin Функция начала получения фрейма заголовков
+			 * @param session объект сессии
+			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус полученных данных
 			 */
 			static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * frameRecv Функция обратного вызова при получении фрейма
-			 * @param session объект сессии HTTP/2
-			 * @param frame   объект фрейма заголовков HTTP/2
+			 * @param session объект сессии
+			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус полученных данных
 			 */
 			static int frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * frameSend Функция обратного вызова при отправки фрейма
-			 * @param session объект сессии HTTP/2
-			 * @param frame   объект фрейма заголовков HTTP/2
+			 * @param session объект сессии
+			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус полученных данных
 			 */
 			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * close Функция закрытия подключения
-			 * @param session объект сессии HTTP/2
+			 * @param session объект сессии
 			 * @param sid     идентификатор потока
-			 * @param error   флаг ошибки HTTP/2 если присутствует
+			 * @param error   флаг ошибки если присутствует
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус полученного события
 			 */
 			static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
 			/**
 			 * chunk Функция обратного вызова при получении чанка
-			 * @param session объект сессии HTTP/2
-			 * @param flags   флаги события для сессии HTTP/2
+			 * @param session объект сессии
+			 * @param flags   флаги события для сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных который содержит полученный чанк
 			 * @param size    размер полученного буфера данных чанка
@@ -173,36 +173,25 @@ namespace awh {
 			 */
 			static int chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 			/**
-			 * header Функция обратного вызова при получении заголовка HTTP/2
-			 * @param session объект сессии HTTP/2
-			 * @param frame   объект фрейма заголовков HTTP/2
+			 * header Функция обратного вызова при получении заголовка
+			 * @param session объект сессии
+			 * @param frame   объект фрейма заголовков
 			 * @param key     данные ключа заголовка
 			 * @param keySize размер ключа заголовка
 			 * @param val     данные значения заголовка
 			 * @param valSize размер значения заголовка
-			 * @param flags   флаги события для сессии HTTP/2
+			 * @param flags   флаги события для сессии
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус полученных данных
 			 */
 			static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
-			 * extension Функция обратного вызова при отправке расширений
-			 * @param session объект сессии HTTP/2
-			 * @param buffer  буфер данных которые следует отправить
-			 * @param size    размер буфера данных для отправки
-			 * @param frame   объект фрейма заголовков HTTP/2
-			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        количество отправленных байт
-			 */
-			static ssize_t extension(nghttp2_session * session, uint8_t * buffer, size_t size, const nghttp2_frame * frame, void * ctx) noexcept;
-		private:
-			/**
 			 * send Функция обратного вызова при подготовки данных для отправки
-			 * @param session объект сессии HTTP/2
+			 * @param session объект сессии
 			 * @param buffer  буфер данных которые следует отправить
 			 * @param size    размер буфера данных для отправки
-			 * @param flags   флаги события для сессии HTTP/2
+			 * @param flags   флаги события для сессии
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
 			 */
@@ -210,11 +199,11 @@ namespace awh {
 		public:
 			/**
 			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
-			 * @param session объект сессии HTTP/2
+			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
 			 * @param size    размер буфера данных для отправки
-			 * @param flags   флаги события для сессии HTTP/2
+			 * @param flags   флаги события для сессии
 			 * @param source  объект промежуточных данных локального подключения
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
@@ -264,11 +253,11 @@ namespace awh {
 			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		public:
 			/**
-			 * altsvc Метод отправки фрейма альтернативного сервиса RFC7383
+			 * altsvc Метод отправки расширения альтернативного сервиса RFC7383
 			 * @param sid    идентификатор потока
 			 * @param origin название сервиса
 			 * @param field  поле сервиса
-			 * @return       результат отправки фрейма 
+			 * @return       результат отправки расширения
 			 */
 			bool altsvc(const int32_t sid, const string & origin, const string & field) noexcept;
 		public:
@@ -295,6 +284,14 @@ namespace awh {
 			 */
 			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
 			/**
+			 * sendPush Метод отправки пуш-уведомлений
+			 * @param id      идентификатор потока
+			 * @param headers заголовки отправляемые
+			 * @param flag    флаг передаваемого потока по сети
+			 * @return        флаг завершения потока передачи данных
+			 */
+			int32_t sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			/**
 			 * sendHeaders Метод отправки заголовков
 			 * @param id      идентификатор потока
 			 * @param headers заголовки отправляемые
@@ -302,14 +299,6 @@ namespace awh {
 			 * @return        флаг завершения потока передачи данных
 			 */
 			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
-			/**
-			 * sendPromise Метод отправки промисов
-			 * @param id      идентификатор потока
-			 * @param headers заголовки отправляемые
-			 * @param flag    флаг передаваемого потока по сети
-			 * @return        флаг завершения потока передачи данных
-			 */
-			int32_t sendPromise(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
 		public:
 			/**
 			 * goaway Метод отправки сообщения закрытия всех потоков
