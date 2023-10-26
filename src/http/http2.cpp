@@ -78,8 +78,17 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Выполняем определение типа фрейма
 	switch(frame->hd.type){
+		
+		
+
+		case NGHTTP2_PUSH_PROMISE: {
+
+			cout << " @@@@@@@@@@@@@@@@@@@@ PROMISE " << (frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) << endl;
+
+		} break;
+		
 		// Если мы получили входящие данные заголовков ответа
-		case NGHTTP2_HEADERS:{
+		case NGHTTP2_HEADERS: {
 			// Получаем объект родительского объекта
 			http2_t * self = reinterpret_cast <http2_t *> (ctx);
 			// Определяем идентификатор сервиса
@@ -234,6 +243,9 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
+	
+	cout << " ####################### HEADER " << string(reinterpret_cast <const char *> (key), keySize) << " == " << string(reinterpret_cast <const char *> (val), valSize) << endl;
+	
 	// Выполняем определение типа фрейма
 	switch(frame->hd.type){
 		// Если мы получили входящие данные заголовков ответа
@@ -940,9 +952,6 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 		vector <nghttp2_nv> nva;
 		// Выполняем перебор всех заголовков запроса
 		for(auto & header : headers){
-			
-			cout << " =================1 " << header.first << " == " << header.second << endl;
-			
 			// Выполняем добавление метода запроса
 			nva.push_back({
 				(uint8_t *) header.first.c_str(),
