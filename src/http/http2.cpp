@@ -967,11 +967,6 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 				flags = NGHTTP2_FLAG_END_STREAM;
 			break;
 		}
-
-		flags = NGHTTP2_FLAG_END_STREAM;
-
-		cout << " =================2 " << this->_session << " == " << (u_short) flags << " == " << id << endl;
-
 		// Выполняем пуш-уведомление клиенту
 		result = nghttp2_submit_push_promise(this->_session, flags, id, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить

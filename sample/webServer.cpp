@@ -322,7 +322,7 @@ int main(int argc, char * argv[]){
 	// Разрешаем метод CONNECT и PUSH уведомления для сервера
 	awh.settings({
 		{server::web2_t::settings_t::CONNECT, 1},
-		{server::web2_t::settings_t::ENABLE_PUSH, 1}
+		// {server::web2_t::settings_t::ENABLE_PUSH, 1}
 	});
 	// Устанавливаем функцию извлечения пароля
 	// awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
