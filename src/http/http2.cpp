@@ -793,7 +793,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		// Выполняем подписку на основной канал передачи данных
 		if(rv != 0){
 			// Выводим в лог сообщение
-			this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+			this->_log->print("++++1 %s", log_t::flag_t::CRITICAL, strerror(errno));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выводим функцию обратного вызова
@@ -835,7 +835,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выполняем закрытие сокета для записи
 				::close(fds[1]);
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				this->_log->print("++++2 %s", log_t::flag_t::CRITICAL, strerror(errno));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
@@ -880,7 +880,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выполняем формирование данных фрейма для отправки
 			if((rv = nghttp2_submit_data(this->_session, flags, id, &data)) != 0){
 				// Выводим сообщение об полученной ошибке
-				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+				this->_log->print("++++3 %s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Выводим функцию обратного вызова
@@ -895,7 +895,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Фиксируем отправленный результат
 				if((rv = nghttp2_session_send(this->_session)) != 0){
 					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					this->_log->print("++++4 %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выводим функцию обратного вызова
@@ -1016,9 +1016,6 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 		vector <nghttp2_nv> nva;
 		// Выполняем перебор всех заголовков запроса
 		for(auto & header : headers){
-			
-			cout << " **************************1 " << header.first << " === " << header.second << endl;
-			
 			// Выполняем добавление метода запроса
 			nva.push_back({
 				(uint8_t *) header.first.c_str(),
@@ -1047,9 +1044,6 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 		result = nghttp2_submit_headers(this->_session, flags, id, nullptr, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить
 		if(result < 0){
-			
-			cout << " **************************2 " << endl;
-			
 			// Выводим в лог сообщение
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(result));
 			// Если функция обратного вызова на на вывод ошибок установлена

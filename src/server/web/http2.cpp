@@ -886,9 +886,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Выводим сообщение о выводе чанка тела
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
-							
-							cout << " *****************************1 " << entity.size() << endl;
-							
 							// Если нужно установить флаг закрытия потока
 							if(options->http.body().empty() && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
@@ -897,8 +894,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
 								return;
-							
-							cout << " *****************************2 " << endl;
 						}
 						// Если список трейлеров установлен
 						if(options->http.trailers() > 0){
