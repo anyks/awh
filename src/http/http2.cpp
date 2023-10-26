@@ -968,6 +968,8 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 			break;
 		}
 
+		flags = NGHTTP2_FLAG_END_HEADERS;
+
 		cout << " =================2 " << this->_session << " == " << (u_short) flags << " == " << id << endl;
 
 		// Выполняем пуш-уведомление клиенту
