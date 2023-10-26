@@ -1016,6 +1016,9 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 		vector <nghttp2_nv> nva;
 		// Выполняем перебор всех заголовков запроса
 		for(auto & header : headers){
+			
+			cout << " **************************1 " << header.first << " === " << header.second << endl;
+			
 			// Выполняем добавление метода запроса
 			nva.push_back({
 				(uint8_t *) header.first.c_str(),
@@ -1044,6 +1047,9 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 		result = nghttp2_submit_headers(this->_session, flags, id, nullptr, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить
 		if(result < 0){
+			
+			cout << " **************************2 " << endl;
+			
 			// Выводим в лог сообщение
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(result));
 			// Если функция обратного вызова на на вывод ошибок установлена
