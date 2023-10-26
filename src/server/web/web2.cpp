@@ -66,7 +66,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 					// Если мы получили разрешение присылать пуш-уведомления
 					case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
 						// Устанавливаем разрешение присылать пуш-уведомления
-						iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, setting.second});
+						iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, 1});//setting.second});
 					break;
 					// Если мы получили максимальный размер фрейма
 					case static_cast <uint8_t> (settings_t::FRAME_SIZE):
