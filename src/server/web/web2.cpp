@@ -63,9 +63,9 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			for(auto & setting : this->_settings){
 				// Определяем тип настройки
 				switch(static_cast <uint8_t> (setting.first)){
-					// Если мы получили разрешение присылать пуш-уведомления
+					// Если мы получили разрешение присылать push-уведомления
 					case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
-						// Устанавливаем разрешение присылать пуш-уведомления
+						// Устанавливаем разрешение присылать push-уведомления
 						iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, setting.second});
 					break;
 					// Если мы получили максимальный размер фрейма
@@ -104,18 +104,18 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			}
 			// Выполняем создание нового объекта сессии HTTP/2
 			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
-			// Выполняем установку функции обратного вызова начала открытии потока
-			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
+			// Выполняем установку функции обратного вызова начала открытии потока
+			ret.first->second->on((function <int (const int32_t, const http2_t::head_t)>) std::bind(&web2_t::beginSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
-			// Выполняем установку функции обратного вызова при получении данных заголовка
-			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t direct, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			// Выполняем установку функции обратного вызова при получении данных заголовка
+			ret.first->second->on((function <int (const int32_t, const string &, const string &, const http2_t::head_t)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
@@ -375,7 +375,7 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 	return result;
 }
 /**
- * push Метод отправки пуш-уведомлений
+ * push Метод отправки push-уведомлений
  * @param id      идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
@@ -391,13 +391,10 @@ int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vect
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
-			// Если ответ не получилось отправить пуш-уведомление
-			if((result = it->second->sendPush(id, headers, flag)) < 0){
-				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(bid);
+			// Если ответ не получилось отправить push-уведомление
+			if((result = it->second->sendPush(id, headers, flag)) < 0)
 				// Выходим из функции
 				return result;
-			}
 		}
 	}
 	// Выводим результат
@@ -468,9 +465,9 @@ void awh::server::Web2::settings(const map <settings_t, uint32_t> & settings) no
 	if(this->_settings.count(settings_t::HEADER_TABLE_SIZE) == 0)
 		// Выполняем установку максимального размера блока заголовоков
 		this->_settings.emplace(settings_t::HEADER_TABLE_SIZE, HEADER_TABLE_SIZE);
-	// Если флаг разрешения принимать пуш-уведомления не установлено
+	// Если флаг разрешения принимать push-уведомления не установлено
 	if(this->_settings.count(settings_t::ENABLE_PUSH) == 0)
-		// Выполняем установку флага отключения принёма пуш-уведомлений
+		// Выполняем установку флага отключения принёма push-уведомлений
 		this->_settings.emplace(settings_t::ENABLE_PUSH, 0);
 }
 /**

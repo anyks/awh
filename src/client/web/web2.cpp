@@ -380,9 +380,9 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 			for(auto & setting : this->_settings){
 				// Определяем тип настройки
 				switch(static_cast <uint8_t> (setting.first)){
-					// Если мы получили разрешение присылать пуш-уведомления
+					// Если мы получили разрешение присылать push-уведомления
 					case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
-						// Устанавливаем разрешение присылать пуш-уведомления
+						// Устанавливаем разрешение присылать push-уведомления
 						iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, setting.second});
 					break;
 					// Если мы получили максимальный размер фрейма
@@ -414,18 +414,18 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 					break;
 				}
 			}
-			// Выполняем установку функции обратного вызова начала открытии потока
-			this->_http2.on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
 			this->_http2.on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			this->_http2.on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
+			// Выполняем установку функции обратного вызова начала открытии потока
+			this->_http2.on((function <int (const int32_t, const http2_t::head_t)>) std::bind(&web2_t::beginSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			this->_http2.on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
-			// Выполняем установку функции обратного вызова при получении данных заголовка
-			this->_http2.on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
 			this->_http2.on((function <int (const int32_t, const http2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			// Выполняем установку функции обратного вызова при получении данных заголовка
+			this->_http2.on((function <int (const int32_t, const string &, const string &, const http2_t::head_t)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
@@ -573,9 +573,9 @@ void awh::client::Web2::settings(const map <settings_t, uint32_t> & settings) no
 	if(this->_settings.count(settings_t::HEADER_TABLE_SIZE) == 0)
 		// Выполняем установку максимального размера блока заголовоков
 		this->_settings.emplace(settings_t::HEADER_TABLE_SIZE, HEADER_TABLE_SIZE);
-	// Если флаг разрешения принимать пуш-уведомления не установлено
+	// Если флаг разрешения принимать push-уведомления не установлено
 	if(this->_settings.count(settings_t::ENABLE_PUSH) == 0)
-		// Выполняем установку флага отключения принёма пуш-уведомлений
+		// Выполняем установку флага отключения принёма push-уведомлений
 		this->_settings.emplace(settings_t::ENABLE_PUSH, 0);
 }
 /**

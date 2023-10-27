@@ -746,31 +746,6 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 	return 0;
 }
 /**
- * beginSignal Метод начала получения фрейма заголовков HTTP/2
- * @param sid идентификатор потока
- * @param bid идентификатор брокера
- * @return    статус полученных данных
- */
-int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
-	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Устанавливаем новый идентификатор потока
-		options->sid = sid;
-		// Выполняем сброс флага рукопожатия
-		options->shake = false;
-		// Выполняем очистку параметров HTTP запроса
-		options->http.clear();
-		// Очищаем буфер собранных данных
-		options->buffer.payload.clear();
-		// Выполняем очистку оставшихся фрагментов
-		options->buffer.fragmes.clear();
-	}
-	// Выводим результат
-	return 0;
-}
-/**
  * closedSignal Метод завершения работы потока
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
@@ -915,24 +890,57 @@ int awh::server::WebSocket2::closedSignal(const int32_t sid, const uint64_t bid,
 	return 0;
 }
 /**
- * headerSignal Метод обратного вызова при получении заголовка HTTP/2
- * @param sid идентификатор потока
- * @param bid идентификатор брокера
- * @param key данные ключа заголовка
- * @param val данные значения заголовка
- * @return    статус полученных данных
+ * beginSignal Метод начала получения фрейма заголовков HTTP/2
+ * @param sid  идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param head идентификатор заголовка
+ * @return     статус полученных данных
  */
-int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
-	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Устанавливаем полученные заголовки
-		options->http.header2(key, val);
-		// Если функция обратного вызова на полученного заголовка с сервера установлена
-		if(this->_callback.is("header"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
+int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid, const http2_t::head_t head) noexcept {
+	// Если заголовок соответствует HTTP-заголовку
+	if(head == http2_t::head_t::HEADER){
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Устанавливаем новый идентификатор потока
+			options->sid = sid;
+			// Выполняем сброс флага рукопожатия
+			options->shake = false;
+			// Выполняем очистку параметров HTTP запроса
+			options->http.clear();
+			// Очищаем буфер собранных данных
+			options->buffer.payload.clear();
+			// Выполняем очистку оставшихся фрагментов
+			options->buffer.fragmes.clear();
+		}
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+ * @param sid  идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param key  данные ключа заголовка
+ * @param val  данные значения заголовка
+ * @param head идентификатор заголовка
+ * @return     статус полученных данных
+ */
+int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val, const http2_t::head_t head) noexcept {
+	// Если заголовок соответствует HTTP-заголовку
+	if(head == http2_t::head_t::HEADER){
+		// Получаем параметры активного клиента
+		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Устанавливаем полученные заголовки
+			options->http.header2(key, val);
+			// Если функция обратного вызова на полученного заголовка с сервера установлена
+			if(this->_callback.is("header"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
+		}
 	}
 	// Выводим результат
 	return 0;

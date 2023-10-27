@@ -493,33 +493,6 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const http2_t::direc
 	return 0;
 }
 /**
- * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
- * @param sid идентификатор потока
- * @return    статус полученных данных
- */
-int awh::client::WebSocket2::beginSignal(const int32_t sid) noexcept {
-	// Если подключение производится через, прокси-сервер
-	if(this->_scheme.isProxy())
-		// Выполняем обработку сигнала начала получения заголовков для прокси-сервера
-		return this->beginProxySignal(sid);
-	// Если мы работаем с сервером напрямую
-	else {
-		// Если идентификатор сессии клиента совпадает
-		if(this->_sid == sid){
-			// Выполняем сброс флага рукопожатия
-			this->_shake = false;
-			// Выполняем очистку параметров HTTP запроса
-			this->_http.clear();
-			// Очищаем буфер собранных данных
-			this->_buffer.clear();
-			// Выполняем очистку оставшихся фрагментов
-			this->_fragmes.clear();
-		}
-	}
-	// Выводим результат
-	return 0;
-}
-/**
  * closedSignal Метод завершения работы потока
  * @param sid   идентификатор потока
  * @param error флаг ошибки HTTP/2 если присутствует
@@ -658,27 +631,62 @@ int awh::client::WebSocket2::closedSignal(const int32_t sid, const uint32_t erro
 	return 0;
 }
 /**
- * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
- * @param sid идентификатор потока
- * @param key данные ключа заголовка
- * @param val данные значения заголовка
- * @return    статус полученных данных
+ * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
+ * @param sid  идентификатор потока
+ * @param head идентификатор заголовка
+ * @return     статус полученных данных
  */
-int awh::client::WebSocket2::headerSignal(const int32_t sid, const string & key, const string & val) noexcept {
-	// Если подключение производится через, прокси-сервер
-	if(this->_scheme.isProxy())
-		// Выполняем обработку полученных заголовков для прокси-сервера
-		return this->headerProxySignal(sid, key, val);
-	// Если мы работаем с сервером напрямую
-	else {
-		// Если идентификатор сессии клиента совпадает
-		if(this->_sid == sid){
-			// Устанавливаем полученные заголовки
-			this->_http.header2(key, val);
-			// Если функция обратного вызова на полученного заголовка с сервера установлена
-			if(this->_callback.is("header"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const string &, const string &> ("header", sid, key, val);
+int awh::client::WebSocket2::beginSignal(const int32_t sid, const http2_t::head_t head) noexcept {
+	// Если заголовок соответствует HTTP-заголовку
+	if(head == http2_t::head_t::HEADER){
+		// Если подключение производится через, прокси-сервер
+		if(this->_scheme.isProxy())
+			// Выполняем обработку сигнала начала получения заголовков для прокси-сервера
+			return this->beginProxySignal(sid);
+		// Если мы работаем с сервером напрямую
+		else {
+			// Если идентификатор сессии клиента совпадает
+			if(this->_sid == sid){
+				// Выполняем сброс флага рукопожатия
+				this->_shake = false;
+				// Выполняем очистку параметров HTTP запроса
+				this->_http.clear();
+				// Очищаем буфер собранных данных
+				this->_buffer.clear();
+				// Выполняем очистку оставшихся фрагментов
+				this->_fragmes.clear();
+			}
+		}
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
+ * @param sid  идентификатор потока
+ * @param key  данные ключа заголовка
+ * @param val  данные значения заголовка
+ * @param head идентификатор заголовка
+ * @return     статус полученных данных
+ */
+int awh::client::WebSocket2::headerSignal(const int32_t sid, const string & key, const string & val, const http2_t::head_t head) noexcept {
+	// Если заголовок соответствует HTTP-заголовку
+	if(head == http2_t::head_t::HEADER){
+		// Если подключение производится через, прокси-сервер
+		if(this->_scheme.isProxy())
+			// Выполняем обработку полученных заголовков для прокси-сервера
+			return this->headerProxySignal(sid, key, val);
+		// Если мы работаем с сервером напрямую
+		else {
+			// Если идентификатор сессии клиента совпадает
+			if(this->_sid == sid){
+				// Устанавливаем полученные заголовки
+				this->_http.header2(key, val);
+				// Если функция обратного вызова на полученного заголовка с сервера установлена
+				if(this->_callback.is("header"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const int32_t, const string &, const string &> ("header", sid, key, val);
+			}
 		}
 	}
 	// Выводим результат

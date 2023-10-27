@@ -605,14 +605,6 @@ namespace awh {
 				virtual int chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
-				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @return    статус полученных данных
-				 */
-				virtual int beginSignal(const int32_t sid, const uint64_t bid) noexcept = 0;
-			protected:
-				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
@@ -620,16 +612,24 @@ namespace awh {
 				 * @return      статус полученных данных
 				 */
 				virtual int closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept = 0;
-			protected:
+				/**
+				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
+				 */
+				virtual int beginSignal(const int32_t sid, const uint64_t bid, const http2_t::head_t head) noexcept = 0;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @param key данные ключа заголовка
-				 * @param val данные значения заголовка
-				 * @return    статус полученных данных
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param key  данные ключа заголовка
+				 * @param val  данные значения заголовка
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept = 0;
+				virtual int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val, const http2_t::head_t head) noexcept = 0;
 			protected:
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2

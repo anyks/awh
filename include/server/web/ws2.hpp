@@ -132,13 +132,6 @@ namespace awh {
 				int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
 			private:
 				/**
-				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @return    статус полученных данных
-				 */
-				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
-				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
@@ -147,14 +140,23 @@ namespace awh {
 				 */
 				int closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept;
 				/**
-				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @param key данные ключа заголовка
-				 * @param val данные значения заголовка
-				 * @return    статус полученных данных
+				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
 				 */
-				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
+				int beginSignal(const int32_t sid, const uint64_t bid, const http2_t::head_t head) noexcept;
+				/**
+				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param key  данные ключа заголовка
+				 * @param val  данные значения заголовка
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
+				 */
+				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val, const http2_t::head_t head) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы брокера

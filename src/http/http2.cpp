@@ -76,63 +76,67 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 	(void) session;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	// Выполняем определение типа фрейма
-	switch(frame->hd.type){
-		
-		
-
-		case NGHTTP2_PUSH_PROMISE: {
-
-			cout << " @@@@@@@@@@@@@@@@@@@@ PROMISE " << (frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) << endl;
-
-		} break;
-		
-		// Если мы получили входящие данные заголовков ответа
-		case NGHTTP2_HEADERS: {
-			// Получаем объект родительского объекта
-			http2_t * self = reinterpret_cast <http2_t *> (ctx);
-			// Определяем идентификатор сервиса
-			switch(static_cast <uint8_t> (self->_mode)){
-				// Если сервис идентифицирован как клиент
-				case static_cast <uint8_t> (mode_t::CLIENT): {
-					// Если мы получили ответ сервера
-					if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим информацию об ошибке
-							cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
-						#endif
-						// Если функция обратного вызова установлена
-						if(self->_callback.is("begin"))
-							// Выводим функцию обратного вызова
-							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
-					}
-				} break;
-				// Если сервис идентифицирован как сервер
-				case static_cast <uint8_t> (mode_t::SERVER): {
-					// Если мы получили запрос клиента
-					if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим информацию об ошибке
-							cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
-						#endif
-						// Если функция обратного вызова установлена
-						if(self->_callback.is("begin"))
-							// Выводим функцию обратного вызова
-							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
-					}
-				} break;
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("begin")){
+		// Выполняем определение типа фрейма
+		switch(frame->hd.type){
+			// Если мы получили входящие данные push-уведомления
+			case NGHTTP2_PUSH_PROMISE: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим информацию об ошибке
+					cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+				#endif
+				// Выводим функцию обратного вызова
+				return self->_callback.apply <int, const int32_t, const head_t> ("begin", frame->hd.stream_id, head_t::PUSH);
 			}
-		} break;
+			// Если мы получили входящие данные заголовков ответа
+			case NGHTTP2_HEADERS: {
+				// Получаем объект родительского объекта
+				http2_t * self = reinterpret_cast <http2_t *> (ctx);
+				// Определяем идентификатор сервиса
+				switch(static_cast <uint8_t> (self->_mode)){
+					// Если сервис идентифицирован как клиент
+					case static_cast <uint8_t> (mode_t::CLIENT): {
+						// Если мы получили ответ сервера
+						if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим информацию об ошибке
+								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+							#endif
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t, const head_t> ("begin", frame->hd.stream_id, head_t::HEADER);
+						}
+					} break;
+					// Если сервис идентифицирован как сервер
+					case static_cast <uint8_t> (mode_t::SERVER): {
+						// Если мы получили запрос клиента
+						if(frame->headers.cat == NGHTTP2_HCAT_REQUEST){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим информацию об ошибке
+								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+							#endif
+							// Выводим функцию обратного вызова
+							return self->_callback.apply <int, const int32_t, const head_t> ("begin", frame->hd.stream_id, head_t::HEADER);
+						}
+					} break;
+				}
+			} break;
+		}
 	}
 	// Выводим результат
 	return 0;
@@ -147,9 +151,6 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
-	
-	cout << " ####################### FRAME " << endl;
-	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -246,51 +247,50 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
-	
-	cout << " ####################### HEADER " << string(reinterpret_cast <const char *> (key), keySize) << " == " << string(reinterpret_cast <const char *> (val), valSize) << endl;
-	
-	// Выполняем определение типа фрейма
-	switch(frame->hd.type){
-		// Если мы получили входящие данные заголовков ответа
-		case NGHTTP2_HEADERS: {
-			// Получаем объект родительского объекта
-			http2_t * self = reinterpret_cast <http2_t *> (ctx);
-			// Определяем идентификатор сервиса
-			switch(static_cast <uint8_t> (self->_mode)){
-				// Если сервис идентифицирован как клиент
-				case static_cast <uint8_t> (mode_t::CLIENT): {
-					// Определяем флаг ответа сервера
-					switch(static_cast <uint8_t> (frame->headers.cat)){
-						// Если мы получили сырые заголовки с сервера
-						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
-						// Если мы получили заголовки ответа с сервера
-						case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
-						// Если мы получили заголовки промисов с сервера
-						case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE): {
-							// Если функция обратного вызова установлена
-							if(self->_callback.is("header"))
+	// Получаем объект родительского объекта
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("header")){
+		// Выполняем определение типа фрейма
+		switch(frame->hd.type){
+			// Если мы получили push-уведомление
+			case NGHTTP2_PUSH_PROMISE:
+				// Выводим функцию обратного вызова
+				return self->_callback.apply <int, const int32_t, const string &, const string &, const head_t> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize), head_t::PUSH);
+			break;
+			// Если мы получили входящие данные заголовков ответа
+			case NGHTTP2_HEADERS: {
+				// Определяем идентификатор сервиса
+				switch(static_cast <uint8_t> (self->_mode)){
+					// Если сервис идентифицирован как клиент
+					case static_cast <uint8_t> (mode_t::CLIENT): {
+						// Определяем флаг ответа сервера
+						switch(static_cast <uint8_t> (frame->headers.cat)){
+							// Если мы получили сырые заголовки с сервера
+							case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
+							// Если мы получили заголовки ответа с сервера
+							case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
+							// Если мы получили заголовки промисов с сервера
+							case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE):
 								// Выводим функцию обратного вызова
-								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
-						} break;
-					}
-				} break;
-				// Если сервис идентифицирован как сервер
-				case static_cast <uint8_t> (mode_t::SERVER): {
-					// Если мы получили запрос клиента
-					switch(static_cast <uint8_t> (frame->headers.cat)){
-						// Если мы получили сырые заголовки с клиента
-						case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
-						// Если мы получили заголовки ответа с клиента
-						case static_cast <uint8_t> (NGHTTP2_HCAT_REQUEST): {
-							// Если функция обратного вызова установлена
-							if(self->_callback.is("header"))
+								return self->_callback.apply <int, const int32_t, const string &, const string &, const head_t> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize), head_t::HEADER);
+						}
+					} break;
+					// Если сервис идентифицирован как сервер
+					case static_cast <uint8_t> (mode_t::SERVER): {
+						// Если мы получили запрос клиента
+						switch(static_cast <uint8_t> (frame->headers.cat)){
+							// Если мы получили сырые заголовки с клиента
+							case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
+							// Если мы получили заголовки ответа с клиента
+							case static_cast <uint8_t> (NGHTTP2_HCAT_REQUEST):
 								// Выводим функцию обратного вызова
-								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
-						} break;
-					}
-				} break;
-			}
-		} break;
+								return self->_callback.apply <int, const int32_t, const string &, const string &, const head_t> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize), head_t::HEADER);
+						}
+					} break;
+				}
+			} break;
+		}
 	}
 	// Выводим результат
 	return 0;
@@ -938,7 +938,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	return false;
 }
 /**
- * sendPush Метод отправки пуш-уведомлений
+ * sendPush Метод отправки push-уведомлений
  * @param id      идентификатор потока
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
@@ -979,7 +979,7 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 				flags = NGHTTP2_FLAG_END_STREAM;
 			break;
 		}
-		// Выполняем пуш-уведомление клиенту
+		// Выполняем push-уведомление клиенту
 		result = nghttp2_submit_push_promise(this->_session, flags, id, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить
 		if(result < 0){
@@ -1316,9 +1316,9 @@ void awh::Http2::on(function <void (void)> callback) noexcept {
  * on Метод установки функции обратного вызова начала открытии потока
  * @param callback функция обратного вызова
  */
-void awh::Http2::on(function <int (const int32_t)> callback) noexcept {
+void awh::Http2::on(function <int (const int32_t, const head_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t)> ("begin", callback);
+	this->_callback.set <int (const int32_t, const head_t)> ("begin", callback);
 }
 /**
  * on Метод установки функции обратного вызова при закрытии потока
@@ -1345,20 +1345,20 @@ void awh::Http2::on(function <int (const int32_t, const uint8_t *, const size_t)
 	this->_callback.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", callback);
 }
 /**
- * on Метод установки функции обратного вызова при получении данных заголовка
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const string &, const string &)> ("header", callback);
-}
-/**
  * on Метод установки функции обратного вызова на событие получения ошибки
  * @param callback функция обратного вызова
  */
 void awh::Http2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при получении данных заголовка
+ * @param callback функция обратного вызова
+ */
+void awh::Http2::on(function <int (const int32_t, const string &, const string &, const head_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <int (const int32_t, const string &, const string &, const head_t)> ("header", callback);
 }
 /**
  * on Метод установки функции обратного вызова при обмене фреймами

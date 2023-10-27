@@ -538,7 +538,7 @@ namespace awh {
 					NONE              = 0x00, // Настройки не установлены
 					STREAMS           = 0x01, // Максимальное количество потоков
 					FRAME_SIZE        = 0x02, // Максимальный размер фрейма
-					ENABLE_PUSH       = 0x03, // Разрешение присылать пуш-уведомления
+					ENABLE_PUSH       = 0x03, // Разрешение присылать push-уведомления
 					WINDOW_SIZE       = 0x04, // Максимальный размер окна полезной нагрузки
 					HEADER_TABLE_SIZE = 0x05  // Максимальный размер таблицы заголовков
 				};
@@ -626,10 +626,11 @@ namespace awh {
 				int beginProxySignal(const int32_t sid) noexcept;
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
-				 * @param sid идентификатор потока
-				 * @return    статус полученных данных
+				 * @param sid  идентификатор потока
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
 				 */
-				virtual int beginSignal(const int32_t sid) noexcept = 0;
+				virtual int beginSignal(const int32_t sid, const http2_t::head_t head) noexcept = 0;
 			protected:
 				/**
 				 * streamClosedSignal Метод завершения работы потока
@@ -649,12 +650,13 @@ namespace awh {
 				int headerProxySignal(const int32_t sid, const string & key, const string & val) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
-				 * @param sid идентификатор потока
-				 * @param key данные ключа заголовка
-				 * @param val данные значения заголовка
-				 * @return    статус полученных данных
+				 * @param sid  идентификатор потока
+				 * @param key  данные ключа заголовка
+				 * @param val  данные значения заголовка
+				 * @param head идентификатор заголовка
+				 * @return     статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
+				virtual int headerSignal(const int32_t sid, const string & key, const string & val, const http2_t::head_t head) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
