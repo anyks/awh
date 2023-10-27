@@ -91,6 +91,9 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 					// Выводим информацию об ошибке
 					cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
 				#endif
+				
+				cout << " ******************************* START PUSH " << (u_short) frame->headers.cat << " == " << (u_short) frame->hd.flags << endl;
+				
 				// Выводим функцию обратного вызова
 				return self->_callback.apply <int, const int32_t, const head_t> ("begin", frame->hd.stream_id, head_t::PUSH);
 			}
@@ -170,6 +173,9 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
+
+	cout << " ############################# FRAME " << endl;
+
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -255,6 +261,11 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 		switch(frame->hd.type){
 			// Если мы получили push-уведомление
 			case NGHTTP2_PUSH_PROMISE:
+				
+				// if(flags & NGHTTP2_FLAG_END_HEADERS)
+
+				cout << " ******************************* PUSH " << (u_short) frame->headers.cat << " == " << (u_short) frame->hd.flags << endl;
+				
 				// Выводим функцию обратного вызова
 				return self->_callback.apply <int, const int32_t, const string &, const string &, const head_t> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize), head_t::PUSH);
 			break;
