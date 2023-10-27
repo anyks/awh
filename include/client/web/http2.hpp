@@ -152,10 +152,10 @@ namespace awh {
 				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
-				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				int closedSignal(const int32_t sid, const uint32_t error) noexcept;
+				int closedSignal(const int32_t sid, const awh::http2_t::error_t error) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера

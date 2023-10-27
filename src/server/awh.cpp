@@ -136,7 +136,7 @@ bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
 	// Выполняем сброс подключения
 	return this->_http.reject2(id, bid, error);
 }
@@ -172,7 +172,7 @@ bool awh::server::AWH::altsvc2(const int32_t id, const uint64_t bid, const strin
  * @param size   размер отправляемого буфера данных
  * @return       результат отправки данных фрейма
  */
-bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh::http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения закрытия всех потоков
 	return this->_http.goaway2(last, bid, error, buffer, size);
 }

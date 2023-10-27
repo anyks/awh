@@ -83,6 +83,25 @@ namespace awh {
 				END_HEADER = 0x01, // Флаг завершения передачи заголовков
 				END_STREAM = 0x02  // Флаг завершения передачи потока
 			};
+			/**
+			 * Флаги ошибок протокола HTTP/2
+			 */
+			enum class error_t : uint8_t {
+				NONE                = 0x00, // Ошибка не установлена
+				CANCEL              = 0x01, // Требование выполнения отмены запроса
+				CONNECT_ERROR       = 0x02, // Ошибка TCP-соединения для метода CONNECT
+				STREAM_CLOSED       = 0x03, // Получен кадр для завершения потока
+				REFUSED_STREAM      = 0x04, // Поток не обработан
+				PROTOCOL_ERROR      = 0x05, // Ошибка протокола HTTP/2
+				INTERNAL_ERROR      = 0x06, // Получена ошибка реализации
+				FRAME_SIZE_ERROR    = 0x07, // Размер кадра некорректен
+				SETTINGS_TIMEOUT    = 0x08, // Установка параметров завершилась по таймауту
+				COMPRESSION_ERROR   = 0x09, // Состояние компрессии не обновлено
+				ENHANCE_YOUR_CALM   = 0x0A, // Превышена емкость для обработки
+				HTTP_1_1_REQUIRED   = 0x0B, // Для запроса требуется протокол HTTP/1.1
+				FLOW_CONTROL_ERROR  = 0x0C, // Ошибка превышения предела управления потоком
+				INADEQUATE_SECURITY = 0x0D  // Согласованные параметры SSL не приемлемы
+			};
 		private:
 			/**
 			 * Событие обмена данными
@@ -223,7 +242,7 @@ namespace awh {
 			bool ping() noexcept;
 		public:
 			/**
-			 * shutdown Метод отправки клиенту сообщения корректного завершения
+			 * shutdown Метод запрещения получения данных с клиента
 			 * @return результат выполнения операции
 			 */
 			bool shutdown() noexcept;
@@ -242,7 +261,7 @@ namespace awh {
 			 * @param error код отправляемой ошибки
 			 * @return      результат отправки сообщения
 			 */
-			bool reject(const int32_t sid, const uint32_t error) noexcept;
+			bool reject(const int32_t sid, const error_t error) noexcept;
 		public:
 			/**
 			 * windowUpdate Метод обновления размера окна фрейма
@@ -262,7 +281,7 @@ namespace awh {
 			bool altsvc(const int32_t sid, const string & origin, const string & field) noexcept;
 		public:
 			/**
-			 * sendOrigin Метод отправки списка разрешенных источников
+			 * sendOrigin Метод отправки списка разрешённых источников
 			 * @param origins список разрешённых источников
 			 * @return        результат отправки данных фрейма
 			 */
@@ -308,7 +327,7 @@ namespace awh {
 			 * @param size   размер отправляемого буфера данных
 			 * @return       результат отправки данных фрейма
 			 */
-			bool goaway(const int32_t last, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+			bool goaway(const int32_t last, const error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 		public:
 			/**
 			 * free Метод очистки активной сессии
@@ -347,7 +366,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова при закрытии потока
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <int (const int32_t, const uint32_t)> callback) noexcept;
+			void on(function <int (const int32_t, const error_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при отправки сообщения
 			 * @param callback функция обратного вызова

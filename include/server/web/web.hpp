@@ -608,10 +608,10 @@ namespace awh {
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
-				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept = 0;
+				virtual int closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept = 0;
 			protected:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
@@ -676,7 +676,7 @@ namespace awh {
 				 * @param error код отправляемой ошибки
 				 * @return      результат отправки сообщения
 				 */
-				bool reject(const int32_t id, const uint64_t bid, const uint32_t error) noexcept;
+				bool reject(const int32_t id, const uint64_t bid, http2_t::error_t error) noexcept;
 			public:
 				/**
 				 * windowUpdate Метод обновления размера окна фрейма
@@ -706,7 +706,7 @@ namespace awh {
 				 * @param size   размер отправляемого буфера данных
 				 * @return       результат отправки данных фрейма
 				 */
-				bool goaway(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+				bool goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 			public:
 				/**
 				 * send Метод отправки трейлеров

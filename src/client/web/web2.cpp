@@ -419,7 +419,7 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
 			this->_http2.on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			this->_http2.on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
+			this->_http2.on((function <int (const int32_t, const http2_t::error_t)>) std::bind(&web2_t::closedSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			this->_http2.on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка

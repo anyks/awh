@@ -156,10 +156,8 @@ class WebServer {
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					*/
 					
-					// Выполняем отключение подключения
-					this->_awh->shutdown2(bid); // +++++++++ НЕ ПОНЯТНО
 					// Выполняем сброс подключения с ошибкой
-					// this->_awh->reject2(sid, bid, 333); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
+					this->_awh->reject2(sid, bid, awh::http2_t::error_t::COMPRESSION_ERROR); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку алтернативных протоколов

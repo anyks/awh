@@ -465,136 +465,16 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 /**
  * closedSignal Метод завершения работы потока
  * @param sid   идентификатор потока
- * @param error флаг ошибки HTTP/2 если присутствует
+ * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
  */
-int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) noexcept {
+int awh::client::Http2::closedSignal(const int32_t sid, const awh::http2_t::error_t error) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
 	if(it != this->_workers.end()){
-		// Определяем тип получаемой ошибки
-		switch(error){
-			// Если получена ошибка протокола
-			case 0x1: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "PROTOCOL_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PROTOCOL, this->_fmk->format("Stream %d closed with error=%s", it->first, "PROTOCOL_ERROR"));
-			} break;
-			// Если получена ошибка реализации
-			case 0x2: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "INTERNAL_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_INTERNAL, this->_fmk->format("Stream %d closed with error=%s", it->first, "INTERNAL_ERROR"));
-			} break;
-			// Если получена ошибка превышения предела управления потоком
-			case 0x3: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "FLOW_CONTROL_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_FLOW_CONTROL, this->_fmk->format("Stream %d closed with error=%s", it->first, "FLOW_CONTROL_ERROR"));
-			} break;
-			// Если установка не подтверждённа
-			case 0x4: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "SETTINGS_TIMEOUT");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS_TIMEOUT, this->_fmk->format("Stream %d closed with error=%s", it->first, "SETTINGS_TIMEOUT"));
-			} break;
-			// Если получен кадр для завершения потока
-			case 0x5: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "STREAM_CLOSED");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_STREAM_CLOSED, this->_fmk->format("Stream %d closed with error=%s", it->first, "STREAM_CLOSED"));
-			} break;
-			// Если размер кадра некорректен
-			case 0x6: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "FRAME_SIZE_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_FRAME_SIZE, this->_fmk->format("Stream %d closed with error=%s", it->first, "FRAME_SIZE_ERROR"));
-			} break;
-			// Если поток не обработан
-			case 0x7: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "REFUSED_STREAM");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_REFUSED_STREAM, this->_fmk->format("Stream %d closed with error=%s", it->first, "REFUSED_STREAM"));
-			} break;
-			// Если поток аннулирован
-			case 0x8: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "CANCEL");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_CANCEL, this->_fmk->format("Stream %d closed with error=%s", it->first, "CANCEL"));
-			} break;
-			// Если состояние компрессии не обновлено
-			case 0x9: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "COMPRESSION_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_COMPRESSION, this->_fmk->format("Stream %d closed with error=%s", it->first, "COMPRESSION_ERROR"));
-			} break;
-			// Если получена ошибка TCP-соединения для метода CONNECT
-			case 0xA: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "CONNECT_ERROR");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_CONNECT, this->_fmk->format("Stream %d closed with error=%s", it->first, "CONNECT_ERROR"));
-			} break;
-			// Если превышена емкость для обработки
-			case 0xB: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "ENHANCE_YOUR_CALM");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_ENHANCE_YOUR_CALM, this->_fmk->format("Stream %d closed with error=%s", it->first, "ENHANCE_YOUR_CALM"));
-			} break;
-			// Если согласованные параметры SSL не приемлемы
-			case 0xC: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "INADEQUATE_SECURITY");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_INADEQUATE_SECURITY, this->_fmk->format("Stream %d closed with error=%s", it->first, "INADEQUATE_SECURITY"));
-			} break;
-			// Если для запроса используется HTTP/1.1
-			case 0xD: {
-				// Выводим информацию о закрытии сессии с ошибкой
-				this->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, it->first, "HTTP_1_1_REQUIRED");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_HTTP_1_1_REQUIRED, this->_fmk->format("Stream %d closed with error=%s", it->first, "HTTP_1_1_REQUIRED"));
-			} break;
-		}
 		// Если флаг инициализации сессии HTTP/2 установлен
-		if((this->_core != nullptr) && (error > 0x0) && this->_http2.is())
+		if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE) && this->_http2.is())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 			this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
 		// Если функция обратного вызова активности потока установлена

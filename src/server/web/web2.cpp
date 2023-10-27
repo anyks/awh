@@ -109,7 +109,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			ret.first->second->on((function <int (const int32_t, const uint32_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
+			ret.first->second->on((function <int (const int32_t, const http2_t::error_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
 			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
@@ -179,7 +179,7 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const http2_t::error_t error) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -266,7 +266,7 @@ bool awh::server::Web2::altsvc(const int32_t id, const uint64_t bid, const strin
  * @param size   размер отправляемого буфера данных
  * @return       результат отправки данных фрейма
  */
-bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено

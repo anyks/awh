@@ -138,7 +138,7 @@ namespace awh {
 				 * @param error код отправляемой ошибки
 				 * @return      результат отправки сообщения
 				 */
-				bool reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept;
+				bool reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 			public:
 				/**
 				 * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
@@ -168,7 +168,7 @@ namespace awh {
 				 * @param size   размер отправляемого буфера данных
 				 * @return       результат отправки данных фрейма
 				 */
-				bool goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+				bool goaway2(const int32_t last, const uint64_t bid, const awh::http2_t::error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 			public:
 				/**
 				 * send2 HTTP/2 Метод отправки трейлеров

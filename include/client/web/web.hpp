@@ -634,10 +634,10 @@ namespace awh {
 				/**
 				 * streamClosedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
-				 * @param error флаг ошибки HTTP/2 если присутствует
+				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const uint32_t error) noexcept = 0;
+				virtual int closedSignal(const int32_t sid, const http2_t::error_t error) noexcept = 0;
 			protected:
 				/**
 				 * headerProxySignal Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера

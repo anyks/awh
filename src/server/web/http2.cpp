@@ -477,132 +477,12 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
  * closedSignal Метод завершения работы потока
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
- * @param error флаг ошибки HTTP/2 если присутствует
+ * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
  */
-int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept {
-	// Определяем тип получаемой ошибки
-	switch(error){
-		// Если получена ошибка протокола
-		case 0x1: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "PROTOCOL_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_PROTOCOL, this->_fmk->format("Stream %d closed with error=%s", sid, "PROTOCOL_ERROR"));
-		} break;
-		// Если получена ошибка реализации
-		case 0x2: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "INTERNAL_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_INTERNAL, this->_fmk->format("Stream %d closed with error=%s", sid, "INTERNAL_ERROR"));
-		} break;
-		// Если получена ошибка превышения предела управления потоком
-		case 0x3: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "FLOW_CONTROL_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_FLOW_CONTROL, this->_fmk->format("Stream %d closed with error=%s", sid, "FLOW_CONTROL_ERROR"));
-		} break;
-		// Если установка не подтверждённа
-		case 0x4: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "SETTINGS_TIMEOUT");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS_TIMEOUT, this->_fmk->format("Stream %d closed with error=%s", sid, "SETTINGS_TIMEOUT"));
-		} break;
-		// Если получен кадр для завершения потока
-		case 0x5: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "STREAM_CLOSED");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_STREAM_CLOSED, this->_fmk->format("Stream %d closed with error=%s", sid, "STREAM_CLOSED"));
-		} break;
-		// Если размер кадра некорректен
-		case 0x6: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "FRAME_SIZE_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_FRAME_SIZE, this->_fmk->format("Stream %d closed with error=%s", sid, "FRAME_SIZE_ERROR"));
-		} break;
-		// Если поток не обработан
-		case 0x7: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "REFUSED_STREAM");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_REFUSED_STREAM, this->_fmk->format("Stream %d closed with error=%s", sid, "REFUSED_STREAM"));
-		} break;
-		// Если поток аннулирован
-		case 0x8: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "CANCEL");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_CANCEL, this->_fmk->format("Stream %d closed with error=%s", sid, "CANCEL"));
-		} break;
-		// Если состояние компрессии не обновлено
-		case 0x9: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "COMPRESSION_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_COMPRESSION, this->_fmk->format("Stream %d closed with error=%s", sid, "COMPRESSION_ERROR"));
-		} break;
-		// Если получена ошибка TCP-соединения для метода CONNECT
-		case 0xA: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "CONNECT_ERROR");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_CONNECT, this->_fmk->format("Stream %d closed with error=%s", sid, "CONNECT_ERROR"));
-		} break;
-		// Если превышена емкость для обработки
-		case 0xB: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "ENHANCE_YOUR_CALM");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_ENHANCE_YOUR_CALM, this->_fmk->format("Stream %d closed with error=%s", sid, "ENHANCE_YOUR_CALM"));
-		} break;
-		// Если согласованные параметры SSL не приемлемы
-		case 0xC: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "INADEQUATE_SECURITY");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_INADEQUATE_SECURITY, this->_fmk->format("Stream %d closed with error=%s", sid, "INADEQUATE_SECURITY"));
-		} break;
-		// Если для запроса используется HTTP/1.1
-		case 0xD: {
-			// Выводим информацию о закрытии сессии с ошибкой
-			this->_log->print("Stream %d [ID=%zu] closed with error=%s", log_t::flag_t::CRITICAL, sid, bid, "HTTP_1_1_REQUIRED");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP2_HTTP_1_1_REQUIRED, this->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
-		} break;
-	}
+int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
 	// Если разрешено выполнить остановку
-	if((this->_core != nullptr) && (error > 0x00)){
+	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE)){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
@@ -809,7 +689,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								}
 							}
 						// Если сообщение о закрытии подключения не отправлено
-						} else if(!web2_t::reject(options->sid, bid, 500))
+						} else if(!web2_t::reject(options->sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
 							// Выполняем отключение брокера
 							dynamic_cast <server::core_t *> (core)->close(bid);
 						// Если функция обратного вызова на на вывод ошибок установлена
@@ -930,7 +810,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						}
 					}
 				// Если сообщение о закрытии подключения не отправлено
-				} else if(!web2_t::reject(options->sid, bid, 500))
+				} else if(!web2_t::reject(options->sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
 					// Выполняем отключение брокера
 					dynamic_cast <server::core_t *> (core)->close(bid);
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -2119,7 +1999,7 @@ bool awh::server::Http2::shutdown2(const uint64_t bid) noexcept {
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const uint32_t error) noexcept {
+bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -2224,7 +2104,7 @@ bool awh::server::Http2::altsvc2(const int32_t id, const uint64_t bid, const str
  * @param size   размер отправляемого буфера данных
  * @return       результат отправки данных фрейма
  */
-bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const uint32_t error, const uint8_t * buffer, const size_t size) noexcept {
+bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const awh::http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
