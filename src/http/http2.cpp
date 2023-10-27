@@ -144,14 +144,6 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 	// Выводим результат
 	return 0;
 }
-
-int awh::Http2::beginFrame(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept {
-
-	cout << " ****************** FRAME " << (u_short) hd->type << " == " << (u_short) hd->stream_id << " == " << (u_short) hd->flags << endl;
-
-	return 0;
-}
-
 /**
  * frameRecv Функция обратного вызова при получении фрейма
  * @param session объект сессии
@@ -1550,7 +1542,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
 
-		nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &http2_t::beginFrame);
+		
 
 		// nghttp2_session_callbacks_set_before_frame_send_callback
 		// nghttp2_session_callbacks_set_data_source_read_length_callback

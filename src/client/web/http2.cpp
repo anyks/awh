@@ -293,14 +293,6 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 									this->_callback.call <const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("push", sid, query.method, query.url, it->second->http.headers());
 							}
 						} break;
-						// Если получено альтернативное расширение для переключения протокола
-						case NGHTTP2_ALTSVC: {
-							cout << " ************************** GET ALTSVC " << endl;
-						} break;
-						// Если пришел заголовок Origin
-						case NGHTTP2_ORIGIN: {
-							cout << " ************************** GET ORIGIN " << endl;
-						} break;
 						// Если мы получили входящие данные тела ответа
 						case NGHTTP2_DATA: {
 							// Определяем протокол клиента
