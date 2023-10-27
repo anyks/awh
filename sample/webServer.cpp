@@ -165,7 +165,7 @@ class WebServer {
 					// Выгоняем клиента с нашей поляны)))
 					// this->_awh->goaway2(sid, bid, 334, (const uint8_t *) body.data(), body.size()); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
-					this->_awh->sendOrigin2(bid, {"anyks.com", "anyks.net"});
+					this->_awh->sendOrigin(bid, {"anyks.com", "anyks.net"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
