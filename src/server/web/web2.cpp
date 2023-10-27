@@ -124,6 +124,8 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			if(!ret.first->second->init(http2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
+			
+			else this->altsvc2(sid, bid, "anyks.net", "h2=\":2222\""); // ++++++++++ НЕ РАБОТАЕТ
 		}
 	}
 }

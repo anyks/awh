@@ -159,7 +159,7 @@ class WebServer {
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку алтернативных протоколов
-					this->_awh->altsvc2(sid, bid, "anyks.net", "h2=\":2222\""); // ++++++++++ НЕ РАБОТАЕТ
+					// this->_awh->altsvc2(sid, bid, "anyks.net", "h2=\":2222\""); // ++++++++++ НЕ РАБОТАЕТ
 
 					// Устанавливаем список доступных ресурсов
 					// this->_awh->origin(bid, {"https://anyks.net:2222", "https://anyks.com"});
