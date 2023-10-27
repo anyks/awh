@@ -886,6 +886,9 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 				
 				// Фиксируем отправленный результат
 				rv = nghttp2_session_send(this->_session);
+
+				cout << " ^^^^^^^^^^^^^^ " << rv << endl;
+
 				// Если зафиксифровать результат не вышло
 				if(nghttp2_is_fatal(rv)){
 					
