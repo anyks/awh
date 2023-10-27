@@ -333,7 +333,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем список доступных ресурсов
-	awh.setOrigin({"https://anyks.net:2222"});
+	awh.setOrigin({"anyks.net:2222"});
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
