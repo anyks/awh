@@ -163,7 +163,7 @@ class WebServer {
 					// Выполняем отправку алтернативных протоколов
 					// this->_awh->altsvc2(sid, bid, "example.com", "h2=\":8000\""); // ++++++++++ НЕ РАБОТАЕТ
 					// Выгоняем клиента с нашей поляны)))
-					this->_awh->goaway2(sid, bid, 334, body.data(), body.size());
+					this->_awh->goaway2(sid, bid, 334, (const uint8_t *) body.data(), body.size());
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
 					// this->_awh->sendOrigin2(bid, {"anyks.com", "anyks.net"});
 				}
