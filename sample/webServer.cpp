@@ -143,9 +143,22 @@ class WebServer {
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {{"Result", "100"},{"ANYKS", {"Hello!!!"}}};
 					// Выполняем отправку push-уведомлений
-					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
+					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::END_HEADER) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
+					
+					// Выполняем отключение подключения
+					// this->_awh->shutdown(bid);
+					// Выполняем сброс подключения с ошибкой
+					// this->_awh->reject(sid, bid, 333);
+					// Выполняем установку нового размера окна
+					// this->_awh->windowUpdate(sid, bid, 4964);
+					// Выполняем отправку алтернативных протоколов
+					// this->_awh->altsvc(sid, bid, "example.com", "h2=\":8000\"");
+					// Выгоняем клиента с нашей поляны)))
+					// this->_awh->goaway(sid, bid, 334, body.data(), body.siae());
+					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
+					// this->_awh->sendOrigin(bid, {"anyks.com", "anyks.net"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
