@@ -155,9 +155,9 @@ class WebServer {
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					
 					// Выполняем отключение подключения
-					this->_awh->shutdown2(bid);
+					// this->_awh->shutdown2(bid);
 					// Выполняем сброс подключения с ошибкой
-					// this->_awh->reject2(sid, bid, 333);
+					this->_awh->reject2(sid, bid, 333);
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964);
 					// Выполняем отправку алтернативных протоколов
