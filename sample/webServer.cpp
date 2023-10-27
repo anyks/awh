@@ -160,10 +160,8 @@ class WebServer {
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку алтернативных протоколов
 					// this->_awh->altsvc2(sid, bid, "example.com", "h2=\":8000\""); // ++++++++++ НЕ РАБОТАЕТ
-					// Выгоняем клиента с нашей поляны)))
-					this->_awh->goaway2(sid, bid, awh::http2_t::error_t::COMPRESSION_ERROR, (const uint8_t *) body.data(), body.size()); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
-					// this->_awh->sendOrigin(bid, {"anyks.com", "anyks.net"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
+					this->_awh->sendOrigin(bid, {"https://anyks.net", "https://nghttp2.org"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
