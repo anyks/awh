@@ -160,8 +160,12 @@ class WebServer {
 					// this->_awh->reject2(sid, bid, 333); // +++++++++++++ РАБОТАЕТ
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
+					
+					string key = "example.com";
+					string val = "h2=\":8000\"";
+					
 					// Выполняем отправку алтернативных протоколов
-					this->_awh->altsvc2(-1, bid, "example.com", "h2=\":8000\"");
+					this->_awh->altsvc2(sid, bid, key, val); // ++++++++++ НЕ РАБОТАЕТ
 					// Выгоняем клиента с нашей поляны)))
 					// this->_awh->goaway2(sid, bid, 334, body.data(), body.siae());
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
