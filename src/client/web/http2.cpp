@@ -1282,6 +1282,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 										return -1;
 								}
 							}
+
+							// Выполняем установку нового размера окна
+							this->windowUpdate2(result, 2147483647);
 						}
 					// Если активирован режим работы с HTTP/1.1 протоколом
 					} else {
