@@ -1348,7 +1348,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-								// Получаем бинарные данные WEB запроса
+								// Получаем бинарные данные HTTP-запроса
 								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
@@ -1373,7 +1373,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								this->_callback.call <const int32_t, const int32_t> ("redirect", sid, result);
 							// Если тело запроса существует
 							if(!request.entity.empty()){
-								// Тело WEB запроса
+								// Тело HTTP-запроса
 								vector <char> entity;
 								// Получаем данные тела запроса
 								while(!(entity = this->_http.payload()).empty()){
@@ -1618,7 +1618,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок запроса
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-						// Получаем бинарные данные WEB запроса
+						// Получаем бинарные данные HTTP-запроса
 						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;

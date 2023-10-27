@@ -681,7 +681,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									}
 									// Если тело запроса существует
 									if(!options->http.body().empty()){
-										// Тело WEB запроса
+										// Тело HTTP-запроса
 										vector <char> entity;
 										// Получаем данные тела запроса
 										while(!(entity = options->http.payload()).empty()){

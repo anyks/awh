@@ -278,7 +278,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 								#if defined(DEBUG_MODE)
 									// Выводим заголовок запроса
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-									// Получаем бинарные данные WEB запроса
+									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = this->_scheme.proxy.http.proxy(query);
 									// Выводим параметры запроса
 									cout << string(buffer.begin(), buffer.end()) << endl << endl;

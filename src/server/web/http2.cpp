@@ -758,7 +758,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								return;
 							// Если тело запроса существует
 							if(!options->http.body().empty()){
-								// Тело WEB запроса
+								// Тело HTTP-запроса
 								vector <char> entity;
 								// Получаем данные тела запроса
 								while(!(entity = options->http.payload()).empty()){
@@ -879,7 +879,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						return;
 					// Если тело запроса существует
 					if(!options->http.body().empty()){
-						// Тело WEB запроса
+						// Тело HTTP-запроса
 						vector <char> entity;
 						// Получаем данные тела запроса
 						while(!(entity = options->http.payload()).empty()){
@@ -1169,7 +1169,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						return;
 					// Если тело запроса существует
 					if(!options->http.body().empty()){
-						// Тело WEB запроса
+						// Тело HTTP-запроса
 						vector <char> entity;
 						// Получаем данные тела запроса
 						while(!(entity = options->http.payload()).empty()){
@@ -2020,7 +2020,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										options->sid = (options->sid > -1 ? options->sid : sid);
 										// Если тело запроса существует
 										if((code >= 200) && !options->http.body().empty()){
-											// Тело WEB запроса
+											// Тело HTTP-запроса
 											vector <char> entity;
 											// Получаем данные тела запроса
 											while(!(entity = options->http.payload()).empty()){
@@ -2385,12 +2385,18 @@ int32_t awh::server::Http2::push2(const int32_t id, const uint64_t bid, const ve
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
-								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
-								// Получаем бинарные данные WEB запроса
-								const auto & buffer = options->http.process(http_t::process_t::REQUEST, options->http.request());
-								// Выводим параметры запроса
-								cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								{
+									// Выполняем инициализацию объекта HTTP-парсера
+									http_t http(this->_fmk, this->_log);
+									// Устанавливаем заголовки запроса
+									http.headers2(headers);
+									// Выводим заголовок запроса
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
+									// Получаем бинарные данные HTTP-запроса
+									const auto & buffer = http.process(http_t::process_t::REQUEST, http.request());
+									// Выводим параметры запроса
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								}
 							#endif
 							// Выполняем отправку push-уведомлений
 							return web2_t::push(id, bid, headers, flag);

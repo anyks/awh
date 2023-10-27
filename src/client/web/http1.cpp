@@ -688,7 +688,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					// Выполняем установки заголовка авторизации на прокси-сервере
 					this->_http.header("Proxy-Authorization", header);
 			}
-			// Получаем бинарные данные WEB запроса
+			// Получаем бинарные данные HTTP-запроса
 			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
@@ -906,7 +906,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 					// Выполняем установки заголовка авторизации на прокси-сервере
 					this->_http.header("Proxy-Authorization", header);
 			}
-			// Получаем бинарные данные WEB запроса
+			// Получаем бинарные данные HTTP-запроса
 			const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(query));
 			// Если заголовки запроса получены
 			if(!headers.empty()){
