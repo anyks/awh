@@ -899,7 +899,7 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 					return false;
 				}
 
-				cout << " +++++++++++++++++++ UPDATE WINDOW5 " << endl;
+				cout << " +++++++++++++++++++ UPDATE WINDOW6 " << endl;
 			}
 		}
 	}
