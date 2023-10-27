@@ -164,7 +164,7 @@ class WebServer {
 					// this->_awh->sendOrigin(bid, {"https://anyks.net", "https://nghttp2.org"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 
 					// Устанавливаем список доступных ресурсов
-					this->_awh->sendOrigin({"https://anyks.net:2222"});
+					this->_awh->sendOrigin(bid, {"https://anyks.net:2222"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
