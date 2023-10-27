@@ -157,15 +157,15 @@ class WebServer {
 					// Выполняем отключение подключения
 					// this->_awh->shutdown2(bid); // +++++++++ НЕ ПОНЯТНО
 					// Выполняем сброс подключения с ошибкой
-					// this->_awh->reject2(sid, bid, 333); // +++++++++++++ РАБОТАЕТ
+					// this->_awh->reject2(sid, bid, 333); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку алтернативных протоколов
 					// this->_awh->altsvc2(sid, bid, "example.com", "h2=\":8000\""); // ++++++++++ НЕ РАБОТАЕТ
 					// Выгоняем клиента с нашей поляны)))
-					this->_awh->goaway2(sid, bid, 334, (const uint8_t *) body.data(), body.size());
+					// this->_awh->goaway2(sid, bid, 334, (const uint8_t *) body.data(), body.size()); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
-					// this->_awh->sendOrigin2(bid, {"anyks.com", "anyks.net"});
+					this->_awh->sendOrigin2(bid, {"anyks.com", "anyks.net"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
