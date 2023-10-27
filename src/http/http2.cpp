@@ -1604,7 +1604,9 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				nghttp2_option_set_peer_max_concurrent_streams(option, 100);
 
 				// Выполняем создание клиента
-				nghttp2_session_client_new(&this->_session, callbacks, this);
+				// nghttp2_session_client_new(&this->_session, callbacks, this);
+
+				nghttp2_session_client_new2(&this->_session, callbacks, this, option);
 
 			break;
 			// Если сервис идентифицирован как сервер
