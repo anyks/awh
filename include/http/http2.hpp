@@ -76,14 +76,6 @@ namespace awh {
 				RECV = 0x02  // Направление получения
 			};
 			/**
-			 * Разновидность заголовков
-			 */
-			enum class head_t : uint8_t {
-				NONE   = 0x00, // Заголовок не установлен
-				PUSH   = 0x01, // Заголовок является push-уведомлением
-				HEADER = 0x02  // Заголовок является обычным заголовком
-			};
-			/**
 			 * Флаги передачи данных
 			 */
 			enum class flag_t : uint8_t {
@@ -350,7 +342,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова начала открытии потока
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <int (const int32_t, const head_t)> callback) noexcept;
+			void on(function <int (const int32_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при закрытии потока
 			 * @param callback функция обратного вызова
@@ -367,15 +359,15 @@ namespace awh {
 			 */
 			void on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept;
 			/**
+			 * on Метод установки функции обратного вызова при получении данных заголовка
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <int (const int32_t, const string &, const string &)> callback) noexcept;
+			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибки
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при получении данных заголовка
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const string &, const string &, const head_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при обмене фреймами
 			 * @param callback функция обратного вызова

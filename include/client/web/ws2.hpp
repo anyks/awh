@@ -207,22 +207,21 @@ namespace awh {
 				 * @return      статус полученных данных
 				 */
 				int closedSignal(const int32_t sid, const uint32_t error) noexcept;
+			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
-				 * @param sid  идентификатор потока
-				 * @param head идентификатор заголовка
-				 * @return     статус полученных данных
+				 * @param sid идентификатор потока
+				 * @return    статус полученных данных
 				 */
-				int beginSignal(const int32_t sid, const http2_t::head_t head) noexcept;
+				int beginSignal(const int32_t sid) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
-				 * @param sid  идентификатор потока
-				 * @param key  данные ключа заголовка
-				 * @param val  данные значения заголовка
-				 * @param head идентификатор заголовка
-				 * @return     статус полученных данных
+				 * @param sid идентификатор потока
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
 				 */
-				int headerSignal(const int32_t sid, const string & key, const string & val, const http2_t::head_t head) noexcept;
+				int headerSignal(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * redirect Метод выполнения редиректа если требуется

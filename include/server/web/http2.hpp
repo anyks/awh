@@ -130,24 +130,23 @@ namespace awh {
 				 * @return      статус полученных данных
 				 */
 				int closedSignal(const int32_t sid, const uint64_t bid, const uint32_t error) noexcept;
+			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid  идентификатор потока
-				 * @param bid  идентификатор брокера
-				 * @param head идентификатор заголовка
-				 * @return     статус полученных данных
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @return    статус полученных данных
 				 */
-				int beginSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::head_t head) noexcept;
+				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid  идентификатор потока
-				 * @param bid  идентификатор брокера
-				 * @param key  данные ключа заголовка
-				 * @param val  данные значения заголовка
-				 * @param head идентификатор заголовка
-				 * @return     статус полученных данных
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
 				 */
-				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val, const awh::http2_t::head_t head) noexcept;
+				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных

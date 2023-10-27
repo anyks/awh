@@ -265,7 +265,34 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 						} break;
 						// Если получено push-уведомление от сервера
 						case NGHTTP2_PUSH_PROMISE: {
-							cout << " ************************** GET PUSH " << endl;
+							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
+							if(flags & NGHTTP2_FLAG_END_HEADERS){
+								// Выполняем формирование ответа
+								awh::web_t::res_t response = awh::web_t::res_t(static_cast <u_int> (104), "push");
+								// Устанавливаем параметры запроса
+								it->second->http.response(response);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									{
+										// Получаем данные ответа
+										const auto & response = it->second->http.process(http_t::process_t::RESPONSE, it->second->http.response());
+										// Если параметры ответа получены
+										if(!response.empty())
+											// Выводим параметры ответа
+											cout << string(response.begin(), response.end()) << endl;
+									}
+								#endif
+								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+								if(this->_callback.is("response"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const u_int, const string &> ("response", sid, response.code, response.message);
+								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+								if(this->_callback.is("headers"))
+									// Выводим функцию обратного вызова
+									this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
+							}
 						} break;
 						// Если получено альтернативное расширение для переключения протокола
 						case NGHTTP2_ALTSVC: {
@@ -585,11 +612,10 @@ int awh::client::Http2::closedSignal(const int32_t sid, const uint32_t error) no
 }
 /**
  * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
- * @param sid  идентификатор потока
- * @param head идентификатор заголовка
- * @return     статус полученных данных
+ * @param sid идентификатор потока
+ * @return    статус полученных данных
  */
-int awh::client::Http2::beginSignal(const int32_t sid, const awh::http2_t::head_t head) noexcept {
+int awh::client::Http2::beginSignal(const int32_t sid) noexcept {
 	// Если подключение производится через, прокси-сервер
 	if(this->_scheme.isProxy())
 		// Выполняем обработку сигнала начала получения заголовков для прокси-сервера
@@ -604,27 +630,17 @@ int awh::client::Http2::beginSignal(const int32_t sid, const awh::http2_t::head_
 			switch(static_cast <uint8_t> (it->second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Определяем тип полученных заголовков
-					switch(static_cast <uint8_t> (head)){
-						// Если заголовок является push-уведомлением
-						case static_cast <uint8_t> (awh::http2_t::head_t::PUSH): {
-							cout << " ^^^^^^^^^^^^^^^^^^^^^ START PUSH " << endl;
-						} break;
-						// Если заголовок является HTTP-заголовком
-						case static_cast <uint8_t> (awh::http2_t::head_t::HEADER): {
-							// Выполняем очистку параметров HTTP запроса
-							it->second->http.clear();
-							// Если функция обратного вызова активности потока установлена
-							if(this->_callback.is("stream"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::OPEN);
-						} break;
-					}
+					// Выполняем очистку параметров HTTP запроса
+					it->second->http.clear();
+					// Если функция обратного вызова активности потока установлена
+					if(this->_callback.is("stream"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::OPEN);
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем инициализации заголовков на WebSocket-клиенте
-					this->_ws2.beginSignal(sid, head);
+					this->_ws2.beginSignal(sid);
 				break;
 			}
 		}
@@ -634,13 +650,12 @@ int awh::client::Http2::beginSignal(const int32_t sid, const awh::http2_t::head_
 }
 /**
  * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
- * @param sid  идентификатор потока
- * @param key  данные ключа заголовка
- * @param val  данные значения заголовка
- * @param head идентификатор заголовка
- * @return     статус полученных данных
+ * @param sid идентификатор потока
+ * @param key данные ключа заголовка
+ * @param val данные значения заголовка
+ * @return    статус полученных данных
  */
-int awh::client::Http2::headerSignal(const int32_t sid, const string & key, const string & val, const awh::http2_t::head_t head) noexcept {
+int awh::client::Http2::headerSignal(const int32_t sid, const string & key, const string & val) noexcept {
 	// Если подключение производится через, прокси-сервер
 	if(this->_scheme.isProxy())
 		// Выполняем обработку полученных заголовков для прокси-сервера
@@ -655,27 +670,17 @@ int awh::client::Http2::headerSignal(const int32_t sid, const string & key, cons
 			switch(static_cast <uint8_t> (it->second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Определяем тип полученных заголовков
-					switch(static_cast <uint8_t> (head)){
-						// Если заголовок является push-уведомлением
-						case static_cast <uint8_t> (awh::http2_t::head_t::PUSH): {
-							cout << " ^^^^^^^^^^^^^^^^^^^^^ GET PUSH " << key << " == " << val << endl;
-						} break;
-						// Если заголовок является HTTP-заголовком
-						case static_cast <uint8_t> (awh::http2_t::head_t::HEADER): {
-							// Устанавливаем полученные заголовки
-							it->second->http.header2(key, val);
-							// Если функция обратного вызова на полученного заголовка с сервера установлена
-							if(this->_callback.is("header"))
-								// Выводим функцию обратного вызова
-								this->_callback.call <const int32_t, const string &, const string &> ("header", sid, key, val);
-						} break;
-					}
+					// Устанавливаем полученные заголовки
+					it->second->http.header2(key, val);
+					// Если функция обратного вызова на полученного заголовка с сервера установлена
+					if(this->_callback.is("header"))
+						// Выводим функцию обратного вызова
+						this->_callback.call <const int32_t, const string &, const string &> ("header", sid, key, val);
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем отправку полученных заголовков на WebSocket-клиент
-					this->_ws2.headerSignal(sid, key, val, head);
+					this->_ws2.headerSignal(sid, key, val);
 				break;
 			}
 		}

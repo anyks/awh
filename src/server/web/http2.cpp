@@ -619,50 +619,42 @@ int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, cons
 }
 /**
  * beginSignal Метод начала получения фрейма заголовков HTTP/2
- * @param sid  идентификатор потока
- * @param bid  идентификатор брокера
- * @param head идентификатор заголовка
- * @return     статус полученных данных
+ * @param sid идентификатор потока
+ * @param bid идентификатор брокера
+ * @return    статус полученных данных
  */
-int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::head_t head) noexcept {
-	// Если заголовок соответствует HTTP-заголовку
-	if(head == awh::http2_t::head_t::HEADER){
-		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-		// Если параметры активного клиента получены
-		if(options != nullptr){
-			// Устанавливаем новый идентификатор потока
-			options->sid = sid;
-			// Выполняем очистку параметров HTTP запроса
-			options->http.clear();
-		}
+int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Устанавливаем новый идентификатор потока
+		options->sid = sid;
+		// Выполняем очистку параметров HTTP запроса
+		options->http.clear();
 	}
 	// Выводим результат
 	return 0;
 }
 /**
  * headerSignal Метод обратного вызова при получении заголовка HTTP/2
- * @param sid  идентификатор потока
- * @param bid  идентификатор брокера
- * @param key  данные ключа заголовка
- * @param val  данные значения заголовка
- * @param head идентификатор заголовка
- * @return     статус полученных данных
+ * @param sid идентификатор потока
+ * @param bid идентификатор брокера
+ * @param key данные ключа заголовка
+ * @param val данные значения заголовка
+ * @return    статус полученных данных
  */
-int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val, const awh::http2_t::head_t head) noexcept {
-	// Если заголовок соответствует HTTP-заголовку
-	if(head == awh::http2_t::head_t::HEADER){
-		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-		// Если параметры активного клиента получены
-		if(options != nullptr){
-			// Устанавливаем полученные заголовки
-			options->http.header2(key, val);
-			// Если функция обратного вызова на полученного заголовка с сервера установлена
-			if(this->_callback.is("header"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
-		}
+int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Устанавливаем полученные заголовки
+		options->http.header2(key, val);
+		// Если функция обратного вызова на полученного заголовка с сервера установлена
+		if(this->_callback.is("header"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
 	}
 	// Выводим результат
 	return 0;
