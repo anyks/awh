@@ -511,21 +511,13 @@ void awh::server::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
 	this->_http.mode(flags);
 }
 /**
- * setOrigin Метод установки списка разрешённых источников
- * @param origins список разрешённых источников
- */
-void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
-	// Выполняем установку списка разрешённых источников
-	this->_http.setOrigin(origins);
-}
-/**
- * sendOrigin Метод отправки списка разрешённых источников
+ * origin Метод отправки списка разрешённых источников
  * @param bid     идентификатор брокера
  * @param origins список разрешённых источников
  */
-void awh::server::AWH::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
+void awh::server::AWH::origin(const uint64_t bid, const vector <string> & origins) noexcept {
 	// Выполняем отправку списка разрешённых источников
-	this->_http.sendOrigin(bid, origins);
+	this->_http.origin(bid, origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

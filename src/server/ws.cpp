@@ -414,21 +414,13 @@ void awh::server::WebSocket::bytesDetect(const scheme_t::mark_t read, const sche
 	this->_ws.bytesDetect(read, write);
 }
 /**
- * setOrigin Метод установки списка разрешенных источников
- * @param origins список разрешённых источников
- */
-void awh::server::WebSocket::setOrigin(const vector <string> & origins) noexcept {
-	// Выполняем установку списка разрешенных источников
-	this->_ws.setOrigin(origins);
-}
-/**
- * sendOrigin Метод отправки списка разрешенных источников
+ * origin Метод отправки списка разрешенных источников
  * @param bid     идентификатор брокера
  * @param origins список разрешённых источников
  */
-void awh::server::WebSocket::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
+void awh::server::WebSocket::origin(const uint64_t bid, const vector <string> & origins) noexcept {
 	// Выполняем отправку списка разрешенных источников
-	this->_ws.sendOrigin(bid, origins);
+	this->_ws.origin(bid, origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

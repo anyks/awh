@@ -124,10 +124,6 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			if(!ret.first->second->init(http2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
-			// Если инициализация модуля NgHttp2 прошла успешно и список ресурсов с которым должен работать сервер установлен
-			else if(!this->_origins.empty())
-				// Выполняем установку список ресурсов с которым должен работать сервер
-				this->sendOrigin(bid, this->_origins);
 		}
 	}
 }
@@ -145,6 +141,25 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
 		return it->second->ping();
 	// Выводим результат
 	return false;
+}
+/**
+ * origin Метод отправки списка разрешённых источников
+ * @param bid     идентификатор брокера
+ * @param origins список разрешённых источников
+ */
+void awh::server::Web2::origin(const uint64_t bid, const vector <string> & origins) noexcept {
+	// Выполняем поиск брокера в списке активных сессий
+	auto it = this->_sessions.find(bid);
+	// Если активная сессия найдена
+	if(it != this->_sessions.end()){
+		// Если список разрешённых источников отправить не удалось
+		if((this->_core != nullptr) && !it->second->sendOrigin(origins)){
+			// Выполняем закрытие подключения
+			const_cast <server::core_t *> (this->_core)->close(bid);
+			// Выходим из функции
+			return;
+		}
+	}
 }
 /**
  * shutdown Метод отправки клиенту сообщения корректного завершения
@@ -399,33 +414,6 @@ int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vect
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * setOrigin Метод установки списка разрешённых источников
- * @param origins список разрешённых источников
- */
-void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
-	// Выполняем установку списка источников
-	this->_origins = origins;
-}
-/**
- * sendOrigin Метод отправки списка разрешённых источников
- * @param bid     идентификатор брокера
- * @param origins список разрешённых источников
- */
-void awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
-	// Выполняем поиск брокера в списке активных сессий
-	auto it = this->_sessions.find(bid);
-	// Если активная сессия найдена
-	if(it != this->_sessions.end()){
-		// Если список разрешённых источников отправить не удалось
-		if((this->_core != nullptr) && !it->second->sendOrigin(origins)){
-			// Выполняем закрытие подключения
-			const_cast <server::core_t *> (this->_core)->close(bid);
-			// Выходим из функции
-			return;
-		}
-	}
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

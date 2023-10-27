@@ -406,16 +406,11 @@ namespace awh {
 				void mode(const set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
-				 * setOrigin Метод установки списка разрешённых источников
-				 * @param origins список разрешённых источников
-				 */
-				void setOrigin(const vector <string> & origins) noexcept;
-				/**
-				 * sendOrigin Метод отправки списка разрешённых источников
+				 * origin Метод отправки списка разрешённых источников
 				 * @param bid     идентификатор брокера
 				 * @param origins список разрешённых источников
 				 */
-				void sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
+				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

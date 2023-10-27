@@ -323,16 +323,11 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * setOrigin Метод установки списка разрешенных источников
-				 * @param origins список разрешённых источников
-				 */
-				void setOrigin(const vector <string> & origins) noexcept;
-				/**
-				 * sendOrigin Метод отправки списка разрешенных источников
+				 * origin Метод отправки списка разрешенных источников
 				 * @param bid     идентификатор брокера
 				 * @param origins список разрешённых источников
 				 */
-				void sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
+				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

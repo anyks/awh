@@ -577,9 +577,6 @@ namespace awh {
 					HEADER_TABLE_SIZE = 0x06  // Максимальный размер таблицы заголовков
 				};
 			protected:
-				// Список доступных источников
-				vector <string> _origins;
-			protected:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
 			protected:
@@ -663,6 +660,13 @@ namespace awh {
 				bool ping(const uint64_t bid) noexcept;
 			public:
 				/**
+				 * origin Метод отправки списка разрешённых источников
+				 * @param bid     идентификатор брокера
+				 * @param origins список разрешённых источников
+				 */
+				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
+			public:
+				/**
 				 * shutdown Метод отправки клиенту сообщения корректного завершения
 				 * @param bid идентификатор брокера
 				 * @return    результат выполнения операции
@@ -744,18 +748,6 @@ namespace awh {
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
 				int32_t push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
-			public:
-				/**
-				 * setOrigin Метод установки списка разрешённых источников
-				 * @param origins список разрешённых источников
-				 */
-				void setOrigin(const vector <string> & origins) noexcept;
-				/**
-				 * sendOrigin Метод отправки списка разрешённых источников
-				 * @param bid     идентификатор брокера
-				 * @param origins список разрешённых источников
-				 */
-				void sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
