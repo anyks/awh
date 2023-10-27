@@ -156,6 +156,9 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 	(void) session;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	
+	cout << " ############################# FRAME GET " << (u_short) frame->hd.stream_id << " == " << (u_short) frame->hd.type << " == " << (u_short) frame->hd.flags << endl;
+	
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame"))
 		// Выводим функцию обратного вызова
@@ -174,7 +177,7 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 
-	cout << " ############################# FRAME " << endl;
+	cout << " ############################# FRAME SEND " << (u_short) frame->hd.stream_id << " == " << (u_short) frame->hd.type << " == " << (u_short) frame->hd.flags << endl;
 
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);

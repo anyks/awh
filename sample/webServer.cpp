@@ -143,7 +143,7 @@ class WebServer {
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {{"Result", "100"},{"ANYKS", {"Hello!!!"}}};
 					// Выполняем отправку push-уведомлений
-					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::END_HEADER) < 0)
+					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::END_STREAM) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					
