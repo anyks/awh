@@ -1579,8 +1579,33 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT):
+				
+
+
+				nghttp2_option * option;
+
+				nghttp2_option_new(&option);
+
+				// Make sure closed connections aren't kept around, taking up memory.
+				// Note that this breaks the priority tree, which we don't use.
+				nghttp2_option_set_no_closed_streams(option, 1);
+
+				// We manually handle flow control within a session in order to
+				// implement backpressure -- that is, we only send WINDOW_UPDATE
+				// frames to the remote peer as data is actually consumed by user
+				// code. This ensures that the flow of data over the connection
+				// does not move too quickly and limits the amount of data we
+				// are required to buffer.
+				nghttp2_option_set_no_auto_window_update(option, 1);
+
+				nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+   				nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+
+				nghttp2_option_set_peer_max_concurrent_streams(option, 100);
+
 				// Выполняем создание клиента
 				nghttp2_session_client_new(&this->_session, callbacks, this);
+
 			break;
 			// Если сервис идентифицирован как сервер
 			case static_cast <uint8_t> (mode_t::SERVER):
