@@ -164,7 +164,7 @@ class WebServer {
 					// this->_awh->sendOrigin(bid, {"https://anyks.net", "https://nghttp2.org"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 
 					// Устанавливаем список доступных ресурсов
-					this->_awh->sendOrigin(bid, {"https://anyks.net:2222"});
+					// this->_awh->sendOrigin(bid, {"https://anyks.net:2222"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
@@ -337,6 +337,9 @@ int main(int argc, char * argv[]){
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
+
+	awh.setOrigin({"https://anyks.net:2222"});
+
 	// Устанавливаем функцию извлечения пароля
 	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации

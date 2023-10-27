@@ -1608,6 +1608,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 
 				nghttp2_session_client_new2(&this->_session, callbacks, this, option);
 
+				nghttp2_option_del(option);
+
 			break;
 			// Если сервис идентифицирован как сервер
 			case static_cast <uint8_t> (mode_t::SERVER):
