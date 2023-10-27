@@ -155,6 +155,8 @@ namespace awh {
 			 * @return        статус полученных данных
 			 */
 			static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+
+			static int beginFrame(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept;
 			/**
 			 * frameRecv Функция обратного вызова при получении фрейма
 			 * @param session объект сессии
