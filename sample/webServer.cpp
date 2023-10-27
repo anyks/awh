@@ -150,7 +150,7 @@ class WebServer {
 						{"user-agent", "nghttp2/1.0.1-DEV"}
 					};
 					// Выполняем отправку push-уведомлений
-					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::END_STREAM) < 0)
+					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					
