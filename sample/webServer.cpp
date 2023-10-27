@@ -162,7 +162,7 @@ class WebServer {
 					// this->_awh->altsvc2(sid, bid, "anyks.net", "h2=\":2222\""); // ++++++++++ НЕ РАБОТАЕТ
 
 					// Устанавливаем список доступных ресурсов
-					// this->_awh->origin(bid, {"https://anyks.net:2222", "https://anyks.com"});
+					this->_awh->origin(bid, {"https://anyks.net:2222", "https://anyks.com"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
