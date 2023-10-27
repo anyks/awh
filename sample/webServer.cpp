@@ -157,7 +157,7 @@ class WebServer {
 					*/
 					
 					// Выполняем установку нового размера окна
-					this->_awh->windowUpdate2(sid, bid, 2147483647);
+					this->_awh->windowUpdate2(sid, bid, 65535);
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){

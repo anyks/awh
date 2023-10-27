@@ -247,16 +247,25 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 		} break;
 		// Если производится получения фрейма с сервера
 		case static_cast <uint8_t> (awh::http2_t::direct_t::RECV): {
+			
+			cout << " ^^^^^^^^^^^^^^^^^^^^^^1 " << endl;
+			
 			// Если подключение производится через, прокси-сервер
 			if(this->_scheme.isProxy())
 				// Выполняем обработку полученных данных фрейма для прокси-сервера
 				return this->frameProxySignal(sid, direct, type, flags);
 			// Если мы работаем с сервером напрямую
 			else if(this->_core != nullptr) {
+				
+				cout << " ^^^^^^^^^^^^^^^^^^^^^^2 " << (u_short) type << " == " << (u_short) flags << endl;
+				
 				// Выполняем поиск идентификатора воркера
 				auto it = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
 				if(it != this->_workers.end()){
+					
+					cout << " ^^^^^^^^^^^^^^^^^^^^^^3 " << endl;
+					
 					// Выполняем определение типа фрейма
 					switch(type){
 						// Если производится сброс подключения
@@ -295,6 +304,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 						} break;
 						// Если мы получили входящие данные тела ответа
 						case NGHTTP2_DATA: {
+							
+							cout << " @@@@@@@@@@@@@@ NGHTTP2_DATA " << endl;
+							
 							// Определяем протокол клиента
 							switch(static_cast <uint8_t> (it->second->agent)){
 								// Если агент является клиентом HTTP
@@ -353,6 +365,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 						} break;
 						// Если мы получили входящие данные заголовков ответа
 						case NGHTTP2_HEADERS: {
+							
+							cout << " @@@@@@@@@@@@@@ NGHTTP2_HEADERS " << endl;
+							
 							// Определяем протокол клиента
 							switch(static_cast <uint8_t> (it->second->agent)){
 								// Если агент является клиентом HTTP
