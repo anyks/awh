@@ -314,7 +314,7 @@ void awh::server::Web::on(function <void (const int32_t, const uint64_t, const s
  */
 void awh::server::Web::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set<void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", callback);
 }
 /**
  * on Метод установки функции вывода полученного тела данных с клиента

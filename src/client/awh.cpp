@@ -622,6 +622,22 @@ void awh::client::AWH::on(function <void (const int32_t, const u_int, const stri
 	this->_http.on(callback);
 }
 /**
+ * on Метод установки функции вывода запроса клиента к серверу
+ * @param callback функция обратного вызова
+ */
+void awh::client::AWH::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова на вывода push-уведомления
+ * @param callback функция обратного вызова
+ */
+void awh::client::AWH::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * open Метод открытия подключения
  */
 void awh::client::AWH::open() noexcept {

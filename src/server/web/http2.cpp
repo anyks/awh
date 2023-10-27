@@ -2380,9 +2380,21 @@ int32_t awh::server::Http2::push2(const int32_t id, const uint64_t bid, const ve
 					// Определяем тип активного протокола
 					switch(static_cast <uint8_t> (it->second)){
 						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP):
+						case static_cast <uint8_t> (agent_t::HTTP): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
+								// Получаем бинарные данные WEB запроса
+								const auto & buffer = options->http.process(http_t::process_t::REQUEST, options->http.request());
+								// Выводим параметры запроса
+								cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							#endif
 							// Выполняем отправку push-уведомлений
 							return web2_t::push(id, bid, headers, flag);
+						}
 					}
 				}
 			}

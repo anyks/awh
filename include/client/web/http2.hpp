@@ -387,6 +387,17 @@ namespace awh {
 				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции вывода запроса клиента к серверу
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова на вывода push-уведомления
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+			public:
+				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола
 				 * @param subprotocol сабпротокол для установки
 				 */

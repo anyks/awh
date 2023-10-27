@@ -267,31 +267,29 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 						case NGHTTP2_PUSH_PROMISE: {
 							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 							if(flags & NGHTTP2_FLAG_END_HEADERS){
-								// Выполняем формирование ответа
-								awh::web_t::res_t response = awh::web_t::res_t(static_cast <u_int> (104), "push");
-								// Устанавливаем параметры запроса
-								it->second->http.response(response);
+								// Получаем данные запроса
+								const auto & query = it->second->http.request();
 								/**
 								 * Если включён режим отладки
 								 */
 								#if defined(DEBUG_MODE)
 									{
-										// Получаем данные ответа
-										const auto & response = it->second->http.process(http_t::process_t::RESPONSE, it->second->http.response());
-										// Если параметры ответа получены
-										if(!response.empty())
-											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl;
+										// Получаем данные запроса
+										const auto & request = it->second->http.process(http_t::process_t::REQUEST, query);
+										// Если параметры запроса получены
+										if(!request.empty())
+											// Выводим параметры запроса
+											cout << string(request.begin(), request.end()) << endl;
 									}
 								#endif
-								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-								if(this->_callback.is("response"))
+								// Если функция обратного вызова на вывода запроса клиента к серверу
+								if(this->_callback.is("request"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const u_int, const string &> ("response", sid, response.code, response.message);
-								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-								if(this->_callback.is("headers"))
+									this->_callback.call <const int32_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", sid, query.method, query.url);
+								// Если функция обратного вызова на вывода push-уведомления
+								if(this->_callback.is("push"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, it->second->http.headers());
+									this->_callback.call <const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("push", sid, query.method, query.url, it->second->http.headers());
 							}
 						} break;
 						// Если получено альтернативное расширение для переключения протокола
@@ -1868,6 +1866,22 @@ void awh::client::Http2::on(function <void (const int32_t, const u_int, const st
 	this->_ws2.on(callback);
 	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
 	this->_http1.on(callback);
+}
+/**
+ * on Метод установки функции вывода запроса клиента к серверу
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", callback);
+}
+/**
+ * on Метод установки функции обратного вызова на вывода push-уведомления
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", callback);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
