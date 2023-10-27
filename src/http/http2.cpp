@@ -72,6 +72,9 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
  * @return        статус полученных данных
  */
 int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC BEGIN " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
@@ -152,6 +155,9 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
  * @return        статус полученных данных
  */
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC FRAME RECV " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
@@ -171,6 +177,9 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
  * @return        статус полученных данных
  */
 int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC FRAME SEND " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
 	// Получаем объект родительского объекта
@@ -191,6 +200,9 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
  * @return        статус полученного события
  */
 int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC CLOSE " << endl;
+	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	/**
@@ -370,6 +382,9 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
  * @return        статус полученных данных
  */
 int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC CHUNK " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
@@ -395,6 +410,9 @@ int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int3
  * @return        статус полученных данных
  */
 int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC HEADER " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
@@ -458,6 +476,9 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
  * @return        количество отправленных байт
  */
 ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept {
+	
+	cout << " +++++++++++++++++++ STATIC SEND " << endl;
+	
 	// Выполняем блокировку неиспользуемой переменных
 	(void) flags;
 	(void) session;
@@ -553,6 +574,9 @@ void awh::Http2::completed(const event_t event) noexcept {
  * @return результат работы пинга
  */
 bool awh::Http2::ping() noexcept {
+	
+	cout << " +++++++++++++++++++ PING " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_PING;
 	// Если сессия инициализированна
@@ -601,6 +625,9 @@ bool awh::Http2::ping() noexcept {
  * @return результат выполнения операции
  */
 bool awh::Http2::shutdown() noexcept {
+	
+	cout << " +++++++++++++++++++ SHUTDOWN " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_SHUTDOWN;
 	// Если сессия инициализированна
@@ -651,6 +678,9 @@ bool awh::Http2::shutdown() noexcept {
  * @return       результат чтения данных фрейма
  */
 bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
+	
+	cout << " +++++++++++++++++++ RECV FRAME " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::RECV_FRAME;
 	// Если данные для чтения переданы
@@ -708,6 +738,9 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
  * @return      результат отправки сообщения
  */
 bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
+	
+	cout << " +++++++++++++++++++ REJECT " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_REJECT;
 	// Если сессия инициализированна
@@ -820,16 +853,25 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
  * @return     результат установки размера офна фрейма
  */
 bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
+	
+	cout << " +++++++++++++++++++ UPDATE WINDOW1 " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::WINDOW_UPDATE;
 	// Если размер окна фрейма передан
 	if(size > 0){
+		
+		cout << " +++++++++++++++++++ UPDATE WINDOW2 " << endl;
+		
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
 			// Выполняем установку нового размера окна фрейма
 			int rv = nghttp2_submit_window_update(this->_session, NGHTTP2_FLAG_NONE, sid, size);
 			// Если установить нового размера окна фрейма не вышло
 			if(nghttp2_is_fatal(rv)){
+				
+				cout << " +++++++++++++++++++ UPDATE WINDOW3 " << endl;
+				
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
@@ -839,10 +881,16 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 			}
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
+				
+				cout << " +++++++++++++++++++ UPDATE WINDOW4 " << endl;
+				
 				// Фиксируем отправленный результат
 				rv = nghttp2_session_send(this->_session);
 				// Если зафиксифровать результат не вышло
 				if(nghttp2_is_fatal(rv)){
+					
+					cout << " +++++++++++++++++++ UPDATE WINDOW5 " << endl;
+					
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 					// Выполняем вызов метода выполненного события
@@ -850,6 +898,8 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 					// Выходим из функции
 					return false;
 				}
+
+				cout << " +++++++++++++++++++ UPDATE WINDOW5 " << endl;
 			}
 		}
 	}
@@ -866,6 +916,9 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
  * @return       результат отправки расширения
  */
 bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string & field) noexcept {
+	
+	cout << " +++++++++++++++++++ ALT SVC " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ALTSVC;
 	// Если размер окна расширения передан
@@ -910,6 +963,9 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
  * @return        результат отправки данных фрейма
  */
 bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
+	
+	cout << " +++++++++++++++++++ SEND ORIGIN " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ORIGIN;
 	// Если список источников передан
@@ -965,6 +1021,9 @@ bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
  * @return        результат отправки данных фрейма
  */
 bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept {
+	
+	cout << " +++++++++++++++++++ SEND TRAILERS " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_TRAILERS;
 	// Если заголовки для отправки переданы и сессия инициализированна
@@ -1030,6 +1089,9 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
  * @return       результат отправки данных фрейма
  */
 bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept {
+	
+	cout << " +++++++++++++++++++ SEND DATA " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
@@ -1186,6 +1248,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
  * @return        флаг завершения потока передачи данных
  */
 int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+	
+	cout << " +++++++++++++++++++ SEND PUSH " << endl;
+	
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -1267,6 +1332,9 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
  * @return        флаг завершения потока передачи данных
  */
 int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+	
+	cout << " +++++++++++++++++++ SEND HEADERS " << endl;
+	
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -1349,6 +1417,9 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
  * @return       результат отправки данных фрейма
  */
 bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t * buffer, const size_t size) noexcept {
+	
+	cout << " +++++++++++++++++++ GOAWAY " << endl;
+	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_GOAWAY;
 	// Если размер окна фрейма передан
@@ -1461,6 +1532,9 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
  * free Метод очистки активной сессии
  */
 void awh::Http2::free() noexcept {
+	
+	cout << " +++++++++++++++++++ FREE " << endl;
+	
 	// Если сессия создана удачно
 	if(this->_session != nullptr){
 		// Выполняем удаление сессии
@@ -1473,6 +1547,9 @@ void awh::Http2::free() noexcept {
  * close Метод закрытия подключения
  */
 void awh::Http2::close() noexcept {
+	
+	cout << " +++++++++++++++++++ CLOSE " << endl;
+	
 	// Если активное событие не установлено
 	if(!(this->_close = (this->_event != event_t::NONE))){
 		// Если сессия создана удачно
