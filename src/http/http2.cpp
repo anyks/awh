@@ -457,8 +457,14 @@ bool awh::Http2::shutdown() noexcept {
 	this->_event = event_t::SEND_SHUTDOWN;
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
+		
+		cout << " ****************1 " << endl;
+		
 		// Выполняем отправку клиенту сообщения о завершении работы
 		if((rv = nghttp2_submit_shutdown_notice(this->_session)) != 0){
+			
+			cout << " ****************2 " << endl;
+			
 			// Выводим сообщение об полученной ошибке
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 			// Если функция обратного вызова на на вывод ошибок установлена
@@ -472,8 +478,14 @@ bool awh::Http2::shutdown() noexcept {
 		}
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
+			
+			cout << " ****************3 " << endl;
+			
 			// Фиксируем отправленный результат
 			if((rv = nghttp2_session_send(this->_session)) != 0){
+				
+				cout << " ****************4 " << endl;
+				
 				// Выводим сообщение об полученной ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
