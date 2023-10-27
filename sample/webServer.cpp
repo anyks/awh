@@ -162,6 +162,9 @@ class WebServer {
 					// this->_awh->altsvc2(sid, bid, "example.com", "h2=\":8000\""); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
 					// this->_awh->sendOrigin(bid, {"https://anyks.net", "https://nghttp2.org"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
+
+					// Устанавливаем список доступных ресурсов
+					this->_awh->sendOrigin({"https://anyks.net:2222"});
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
@@ -332,8 +335,6 @@ int main(int argc, char * argv[]){
 	awh.encryption(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
-	// Устанавливаем список доступных ресурсов
-	awh.setOrigin({"https://anyks.net:2222"});
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
