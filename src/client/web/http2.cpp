@@ -260,9 +260,10 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 					// Выполняем определение типа фрейма
 					switch(type){
 						// Если производится сброс подключения
-						case NGHTTP2_RST_STREAM: {
-							cout << " ************************** STOP RESET " << endl;
-						} break;
+						case NGHTTP2_RST_STREAM:
+							// Выводим сообщение об ошибке
+							this->_log->print("Connection was reset by the server", log_t::flag_t::WARNING);
+						break;
 						// Если получено push-уведомление от сервера
 						case NGHTTP2_PUSH_PROMISE: {
 							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена

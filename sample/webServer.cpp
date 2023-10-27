@@ -156,14 +156,12 @@ class WebServer {
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					*/
 					
-					// Выполняем сброс подключения с ошибкой
-					this->_awh->reject2(sid, bid, awh::http2_t::error_t::COMPRESSION_ERROR); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем установку нового размера окна
 					// this->_awh->windowUpdate2(sid, bid, 4964); // ++++++++++ НЕ РАБОТАЕТ
 					// Выполняем отправку алтернативных протоколов
 					// this->_awh->altsvc2(sid, bid, "example.com", "h2=\":8000\""); // ++++++++++ НЕ РАБОТАЕТ
 					// Выгоняем клиента с нашей поляны)))
-					// this->_awh->goaway2(sid, bid, 334, (const uint8_t *) body.data(), body.size()); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
+					this->_awh->goaway2(sid, bid, awh::http2_t::error_t::COMPRESSION_ERROR, (const uint8_t *) body.data(), body.size()); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 					// Выполняем отправку списка доступных ресурсов которым разрешено подключаться к серверу
 					// this->_awh->sendOrigin(bid, {"anyks.com", "anyks.net"}); // +++++++++++++ РАБОТАЕТ (научиться извлекать данные)
 				}
