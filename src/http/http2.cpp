@@ -73,7 +73,7 @@ static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_h
 	
 	if(hd->stream_id > 0){
 		cout << " +++++++++++++++++++++ SEND FRAME " << hd->stream_id << endl;
-		reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id, k1, k2);
+		reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id);
 	}
 	
 	/*
