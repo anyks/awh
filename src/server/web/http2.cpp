@@ -301,6 +301,7 @@ int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, cons
 			this->sendOrigin(bid, this->_origins);
 		*/
 
+		/*
 		// Если альтернативные сервисы установлены
 		if(!this->_altsvc.empty()){
 			// Выполняем перебор весь список альтернативных сервисов
@@ -309,7 +310,9 @@ int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, cons
 				this->sendAltSvc(sid, bid, item.first, item.second);
 		// Выполняем отправку текущего адреса ресурса
 		} else this->sendAltSvc(0, bid);
-		
+		*/
+
+		this->sendAltSvc(sid, bid, "example.com", "h2=\":8000\"");
 
 		
 
