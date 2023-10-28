@@ -94,7 +94,7 @@ static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_h
 	if(hd->stream_id > 0){
 		cout << " +++++++++++++++++++++ SEND FRAME " << hd->stream_id << endl;
 		// reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id, k1, k2);
-		nghttp2_submit_extension(session, 0xa, NGHTTP2_FLAG_NONE, 0, (void *) &altsvc);
+		nghttp2_submit_extension(session, 0xa, NGHTTP2_FLAG_NONE, hd->stream_id, (void *) &altsvc);
 	}
 	
 	/*
@@ -1987,7 +1987,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 
 		nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
 
-		nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
+		// nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
 		
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
@@ -2046,6 +2046,9 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 			} break;
 			// Если сервис идентифицирован как сервер
 			case static_cast <uint8_t> (mode_t::SERVER):
+
+				nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
+
 				// Выполняем создание сервера
 				nghttp2_session_server_new(&this->_session, callbacks, this);
 			break;
