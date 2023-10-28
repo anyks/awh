@@ -234,10 +234,13 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 			cout << " ++++++++++++++++++ ALTSVC1 " << hd->stream_id << " == " << (u_int) type << endl;
 
 			// self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
+
+			for(auto & item : self->_kdl)
+				self->sendAltSvc(hd->stream_id, item.first, item.second);
 		}
 
 		// Выводим функцию обратного вызова
-		return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
+		// return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
 	}
 	// Выводим результат
 	return 0;

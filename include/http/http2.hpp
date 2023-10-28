@@ -154,6 +154,10 @@ namespace awh {
 			// Объект функций обратного вызова
 			fn_t _callback;
 		private:
+
+			unordered_multimap <string, string> _kdl = {{"example.com", "h2=\":8000\""}};
+
+		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
 		private:
