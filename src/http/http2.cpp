@@ -246,6 +246,73 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 	// Выводим результат
 	return 0;
 }
+
+typedef struct {
+  const uint8_t *origin;
+  size_t originlen;
+  const uint8_t *field;
+  size_t fieldlen;
+} alt_svc;
+
+/* buffers incoming ALTSVC payload */
+uint8_t altsvc_buffer[4096];
+/* The length of byte written to altsvc_buffer */
+size_t altsvc_bufferlen = 0;
+
+int on_extension_chunk_recv_callback(nghttp2_session *session,
+                                     const nghttp2_frame_hd *hd,
+                                     const uint8_t *data, size_t len,
+                                     void *user_data) {
+  if (sizeof(altsvc_buffer) < altsvc_bufferlen + len) {
+    altsvc_bufferlen = 0;
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  memcpy(altsvc_buffer + altsvc_bufferlen, data, len);
+  altsvc_bufferlen += len;
+
+  return 0;
+}
+
+int unpack_extension_callback(nghttp2_session *session, void **payload,
+                              const nghttp2_frame_hd *hd, void *user_data) {
+  uint8_t *origin, *field;
+  size_t originlen, fieldlen;
+  uint8_t *p, *end;
+
+  if (altsvc_bufferlen < 2) {
+    altsvc_bufferlen = 0;
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  p = altsvc_buffer;
+  end = altsvc_buffer + altsvc_bufferlen;
+
+  originlen = ((*p) << 8) + *(p + 1);
+  p += 2;
+
+  if (p + originlen > end) {
+    altsvc_bufferlen = 0;
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  origin = p;
+  field = p + originlen;
+  fieldlen = end - field;
+
+  alt_svc * altsvc = new alt_svc;
+  altsvc->origin = origin;
+  altsvc->originlen = originlen;
+  altsvc->field = field;
+  altsvc->fieldlen = fieldlen;
+
+  *payload = altsvc;
+
+  altsvc_bufferlen = 0;
+
+  return 0;
+}
+
 /**
  * frameRecv Функция обратного вызова при получении фрейма
  * @param session объект сессии
@@ -256,6 +323,18 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
+	
+	switch (frame->hd.type) {
+		case 0xa: {
+			alt_svc *altsvc = (alt_svc *)frame->ext.payload;
+			fprintf(stderr, "ALTSVC frame received\n");
+			fprintf(stderr, " origin: %.*s\n", (int)altsvc->originlen, altsvc->origin);
+			fprintf(stderr, " field : %.*s\n", (int)altsvc->fieldlen, altsvc->field);
+			delete altsvc;
+			break;
+		}
+	}
+	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
