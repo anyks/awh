@@ -2023,40 +2023,6 @@ bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const awh
 	return false;
 }
 /**
- * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param id   идентификатор потока
- * @param bid  идентификатор брокера
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::server::Http2::windowUpdate2(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
-	// Если данные переданы верные
-	if((this->_core != nullptr) && this->_core->working()){
-		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-		// Если параметры активного клиента получены
-		if(options != nullptr){
-			// Если протокол подключения соответствует HTTP/2
-			if(options->proto == engine_t::proto_t::HTTP2){
-				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
-				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
-					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
-						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP):
-							// Выполняем обновление размера окна фрейма
-							return web2_t::windowUpdate(id, bid, size);
-					}
-				}
-			}
-		}
-	}
-	// Выводим значение по умолчанию
-	return false;
-}
-/**
  * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
  * @param id     идентификатор потока
  * @param bid    идентификатор брокера

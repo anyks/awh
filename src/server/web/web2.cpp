@@ -216,34 +216,6 @@ bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const http2
 	return result;
 }
 /**
- * windowUpdate Метод обновления размера окна фрейма
- * @param id   идентификатор потока
- * @param bid  идентификатор брокера
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::server::Web2::windowUpdate(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working() && (size >= 0)){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
-			// Выполняем отправку нового размера окна фрейма
-			if(!(result = it->second->windowUpdate(id, size))){
-				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(bid);
-				// Выходим из функции
-				return result;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * altsvc Метод отправки расширения альтернативного сервиса RFC7383
  * @param id     идентификатор потока
  * @param bid    идентификатор брокера

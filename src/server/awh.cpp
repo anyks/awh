@@ -141,17 +141,6 @@ bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const awh::
 	return this->_http.reject2(id, bid, error);
 }
 /**
- * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param id   идентификатор потока
- * @param bid  идентификатор брокера
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::server::AWH::windowUpdate2(const int32_t id, const uint64_t bid, const int32_t size) noexcept {
-	// Выполняем обновление размера окна фрейма
-	return this->_http.windowUpdate2(id, bid, size);
-}
-/**
  * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
  * @param id     идентификатор потока
  * @param bid    идентификатор брокера

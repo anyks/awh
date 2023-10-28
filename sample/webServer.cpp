@@ -154,10 +154,6 @@ class WebServer {
 					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
-					
-					
-					// Выполняем установку нового размера окна
-					// this->_awh->windowUpdate2(0, bid, 2147483647);
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){

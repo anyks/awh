@@ -683,15 +683,6 @@ namespace awh {
 				bool reject(const int32_t id, const uint64_t bid, http2_t::error_t error) noexcept;
 			public:
 				/**
-				 * windowUpdate Метод обновления размера окна фрейма
-				 * @param id   идентификатор потока
-				 * @param bid  идентификатор брокера
-				 * @param size размер нового окна
-				 * @return     результат установки размера офна фрейма
-				 */
-				bool windowUpdate(const int32_t id, const uint64_t bid, const int32_t size) noexcept;
-			public:
-				/**
 				 * altsvc Метод отправки расширения альтернативного сервиса RFC7383
 				 * @param id     идентификатор потока
 				 * @param bid    идентификатор брокера
