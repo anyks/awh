@@ -290,7 +290,7 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
  */
 int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::frame_t frame) noexcept {
 	
-	cout << " ******************* CREATE FRAME " << (u_short) frame << endl;
+	cout << " ******************* CREATE FRAME " << (u_short) frame << " == " << sid << endl;
 	
 	// Выполняем определение типа фрейма
 	switch(static_cast <uint8_t> (frame)){
