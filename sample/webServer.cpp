@@ -21,6 +21,11 @@ using namespace awh;
  */
 class WebServer {
 	private:
+
+		string host = "anyks.net";
+		string port = "h2=\":2222\"";
+
+	private:
 		// Создаём объект фреймворка
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
@@ -140,6 +145,8 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
+					
+					/*
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
 						{":method", "GET"},
@@ -153,6 +160,11 @@ class WebServer {
 					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
+					*/
+
+
+
+					this->_awh->altsvc2(sid, bid, this->host, this->port);
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
