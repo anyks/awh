@@ -78,12 +78,9 @@ class WebServer {
 		 */
 		void active(const uint64_t bid, const server::web_t::mode_t mode){
 			// Если подключение клиента установлено
-			if(mode == server::web_t::mode_t::CONNECT){
+			if(mode == server::web_t::mode_t::CONNECT)
 				// Аактивируем шифрование
 				this->_awh->encrypt(bid, true);
-				// Отправляем клиенту параметры требования к подключению
-				this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
-			}
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
