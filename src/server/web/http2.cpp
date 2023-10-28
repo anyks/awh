@@ -263,6 +263,99 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
+ * beginSignal Метод начала получения фрейма заголовков HTTP/2
+ * @param sid идентификатор потока
+ * @param bid идентификатор брокера
+ * @return    статус полученных данных
+ */
+int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Устанавливаем новый идентификатор потока
+		options->sid = sid;
+		// Выполняем очистку параметров HTTP запроса
+		options->http.clear();
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * createSignal Метод обратного вызова при создании нового фрейма HTTP/2
+ * @param sid   идентификатор потока
+ * @param bid   идентификатор брокера
+ * @param frame тип полученного фрейма
+ * @return      статус полученных данных
+ */
+int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::frame_t frame) noexcept {
+	
+	cout << " ******************* CREATE FRAME " << (u_short) frame << endl;
+	
+	// Выполняем определение типа фрейма
+	switch(static_cast <uint8_t> (frame)){
+		// Если мы получили входящие данные тела ответа
+		case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
+			
+			cout << " ******************* CREATE DATA " << sid << endl;
+
+		} break;
+		// Если мы получили входящие данные заголовков ответа
+		case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
+			cout << " ******************* CREATE HEADER " << sid << endl;
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * closedSignal Метод завершения работы потока
+ * @param sid   идентификатор потока
+ * @param bid   идентификатор брокера
+ * @param error флаг ошибки если присутствует
+ * @return      статус полученных данных
+ */
+int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+	// Если разрешено выполнить остановку
+	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE)){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end())
+			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+			it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+	}
+	// Если функция обратного вызова активности потока установлена
+	if(this->_callback.is("stream"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
+	// Выводим результат
+	return 0;
+}
+/**
+ * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+ * @param sid идентификатор потока
+ * @param bid идентификатор брокера
+ * @param key данные ключа заголовка
+ * @param val данные значения заголовка
+ * @return    статус полученных данных
+ */
+int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
+	// Получаем параметры активного клиента
+	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	// Если параметры активного клиента получены
+	if(options != nullptr){
+		// Устанавливаем полученные заголовки
+		options->http.header2(key, val);
+		// Если функция обратного вызова на полученного заголовка с сервера установлена
+		if(this->_callback.is("header"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
+	}
+	// Выводим результат
+	return 0;
+}
+/**
  * chunkSignal Метод обратного вызова при получении чанка HTTP/2
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
@@ -322,7 +415,7 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param direct направление передачи фрейма
- * @param type   тип полученного фрейма
+ * @param frame  тип полученного фрейма
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
@@ -465,72 +558,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 				}
 			}
 		} break;
-	}
-	// Выводим результат
-	return 0;
-}
-/**
- * closedSignal Метод завершения работы потока
- * @param sid   идентификатор потока
- * @param bid   идентификатор брокера
- * @param error флаг ошибки если присутствует
- * @return      статус полученных данных
- */
-int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
-	// Если разрешено выполнить остановку
-	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE)){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if(it != this->_sessions.end())
-			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
-	}
-	// Если функция обратного вызова активности потока установлена
-	if(this->_callback.is("stream"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
-	// Выводим результат
-	return 0;
-}
-/**
- * beginSignal Метод начала получения фрейма заголовков HTTP/2
- * @param sid идентификатор потока
- * @param bid идентификатор брокера
- * @return    статус полученных данных
- */
-int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
-	// Получаем параметры активного клиента
-	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Устанавливаем новый идентификатор потока
-		options->sid = sid;
-		// Выполняем очистку параметров HTTP запроса
-		options->http.clear();
-	}
-	// Выводим результат
-	return 0;
-}
-/**
- * headerSignal Метод обратного вызова при получении заголовка HTTP/2
- * @param sid идентификатор потока
- * @param bid идентификатор брокера
- * @param key данные ключа заголовка
- * @param val данные значения заголовка
- * @return    статус полученных данных
- */
-int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
-	// Получаем параметры активного клиента
-	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Устанавливаем полученные заголовки
-		options->http.header2(key, val);
-		// Если функция обратного вызова на полученного заголовка с сервера установлена
-		if(this->_callback.is("header"))
-			// Выводим функцию обратного вызова
-			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
 	}
 	// Выводим результат
 	return 0;

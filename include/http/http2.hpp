@@ -169,19 +169,27 @@ namespace awh {
 			 */
 			static void debug(const char * format, va_list args) noexcept;
 			/**
-			 * begin Функция начала получения фрейма заголовков
+			 * begin Функция обратного вызова активации получения фрейма заголовков
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
+			 * @return        статус обработки полученных данных
 			 */
 			static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			/**
+			 * create Функция обратного вызова при создании фрейма
+			 * @param session объект сессии
+			 * @param hd      параметры фрейма
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        статус обработки полученных данных
+			 */
+			static int create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept;
 			/**
 			 * frameRecv Функция обратного вызова при получении фрейма
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
+			 * @return        статус обработки полученных данных
 			 */
 			static int frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
@@ -189,7 +197,7 @@ namespace awh {
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
+			 * @return        статус обработки полученных данных
 			 */
 			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
@@ -198,7 +206,7 @@ namespace awh {
 			 * @param msg     сообщение ошибки
 			 * @param size    размер текста ошибки
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус обработки полученной ошибки
+			 * @return        статус обработки полученных данных
 			 */
 			static int error(nghttp2_session * session, const char * msg, const size_t size, void * ctx) noexcept;
 			/**
@@ -207,7 +215,7 @@ namespace awh {
 			 * @param sid     идентификатор потока
 			 * @param error   флаг ошибки если присутствует
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученного события
+			 * @return        статус обработки полученных данных
 			 */
 			static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
 			/**
@@ -218,7 +226,7 @@ namespace awh {
 			 * @param buffer  буфер данных который содержит полученный чанк
 			 * @param size    размер полученного буфера данных чанка
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
+			 * @return        статус обработки полученных данных
 			 */
 			static int chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 			/**
@@ -231,7 +239,7 @@ namespace awh {
 			 * @param valSize размер значения заголовка
 			 * @param flags   флаги события для сессии
 			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус полученных данных
+			 * @return        статус обработки полученных данных
 			 */
 			static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
 		private:
@@ -392,6 +400,11 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <int (const int32_t)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при создании фрейма
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <int (const int32_t, const frame_t)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при закрытии потока
 			 * @param callback функция обратного вызова

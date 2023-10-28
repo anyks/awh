@@ -16,18 +16,6 @@
 #include <server/web/web.hpp>
 
 /**
- * sendSignal Метод обратного вызова при отправки данных HTTP/2
- * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных
- * @param size   размер буфера данных для отправки
- */
-void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
-	// Если объект сетевого ядра инициализирован
-	if(this->_core != nullptr)
-		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
-}
-/**
  * eventsCallback Функция обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
@@ -108,6 +96,8 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
+			// Выполняем установку функции обратного вызова при создании нового фрейма клиента
+			ret.first->second->on((function <int (const int32_t, const http2_t::frame_t)>) std::bind(&web2_t::createSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			ret.first->second->on((function <int (const int32_t, const http2_t::error_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
@@ -126,6 +116,18 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 				this->_sessions.erase(ret.first);
 		}
 	}
+}
+/**
+ * sendSignal Метод обратного вызова при отправки данных HTTP/2
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных
+ * @param size   размер буфера данных для отправки
+ */
+void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
+	// Если объект сетевого ядра инициализирован
+	if(this->_core != nullptr)
+		// Выполняем отправку заголовков ответа клиенту
+		const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
 }
 /**
  * ping Метод выполнения пинга клиента

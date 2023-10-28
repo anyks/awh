@@ -112,6 +112,38 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
+				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @return    статус полученных данных
+				 */
+				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
+				/**
+				 * createSignal Метод обратного вызова при создании нового фрейма HTTP/2
+				 * @param sid   идентификатор потока
+				 * @param bid   идентификатор брокера
+				 * @param frame тип полученного фрейма
+				 * @return      статус полученных данных
+				 */
+				int createSignal(const int32_t sid, const uint64_t bid, const http2_t::frame_t frame) noexcept;
+				/**
+				 * closedSignal Метод завершения работы потока
+				 * @param sid   идентификатор потока
+				 * @param bid   идентификатор брокера
+				 * @param error флаг ошибки если присутствует
+				 * @return      статус полученных данных
+				 */
+				int closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept;
+				/**
+				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @param key данные ключа заголовка
+				 * @param val данные значения заголовка
+				 * @return    статус полученных данных
+				 */
+				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
+				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
@@ -125,37 +157,11 @@ namespace awh {
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param direct направление передачи фрейма
-				 * @param type   тип полученного фрейма
+				 * @param frame  тип полученного фрейма
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
 				int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
-			private:
-				/**
-				 * closedSignal Метод завершения работы потока
-				 * @param sid   идентификатор потока
-				 * @param bid   идентификатор брокера
-				 * @param error флаг ошибки если присутствует
-				 * @return      статус полученных данных
-				 */
-				int closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept;
-			private:
-				/**
-				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @return    статус полученных данных
-				 */
-				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
-				/**
-				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
-				 * @param sid идентификатор потока
-				 * @param bid идентификатор брокера
-				 * @param key данные ключа заголовка
-				 * @param val данные значения заголовка
-				 * @return    статус полученных данных
-				 */
-				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы брокера

@@ -64,57 +64,12 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 	// Выводим отладочную информацию
 	cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << endl;
 }
-
-
-
-typedef struct {
-  const uint8_t *origin;
-  size_t originlen;
-  const uint8_t *field;
-  size_t fieldlen;
-} alt_svc;
-
-/* buffers incoming ALTSVC payload */
-uint8_t altsvc_buffer[4096];
-/* The length of byte written to altsvc_buffer */
-size_t altsvc_bufferlen = 0;
-
-
-typedef struct {
-  const char *origin;
-  const char *field;
-} alt_svc1;
-
-static const alt_svc1 altsvc = {"anyks.net", "h2=\":443\""};
-
-
-static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx){
-	
-	
-	if(hd->stream_id > 0){
-		cout << " +++++++++++++++++++++ SEND FRAME " << hd->stream_id << endl;
-		// reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id, k1, k2);
-		nghttp2_submit_extension(session, 0xa, NGHTTP2_FLAG_NONE, hd->stream_id, (void *) &altsvc);
-	}
-	
-	/*
-	switch(hd->type) {
-		case NGHTTP2_ALTSVC: {
-			cout << " +++++++++++++++++++++ SEND FRAME " << endl;
-			reinterpret_cast <awh::http2_t *> (ctx)->altsvc(0, "anyks.net", "h2=\":2222\"");
-		} break;
-	}
-	*/
-
-	return 0;
-}
-
 /**
- * begin Функция начала получения фрейма заголовков
+ * begin Функция обратного вызова активации получения фрейма заголовков
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
@@ -189,103 +144,102 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 	// Выводим результат
 	return 0;
 }
-
-
-ssize_t pack_extension_callback(nghttp2_session *session, uint8_t *buf, size_t len, const nghttp2_frame *frame, void *user_data) {
-  
-  cout << " ++++++++++++++++++ pack_extension_callback1 " << endl;
-  
-  const alt_svc1 *altsvc = (const alt_svc1 *)frame->ext.payload;
-  size_t originlen = strlen(altsvc->origin);
-  size_t fieldlen = strlen(altsvc->field);
-
-  uint8_t *p;
-
-  if (len < 2 + originlen + fieldlen || originlen > 0xffff) {
-    return NGHTTP2_ERR_CANCEL;
-  }
-
-  p = buf;
-  *p++ = originlen >> 8;
-  *p++ = originlen & 0xff;
-  memcpy(p, altsvc->origin, originlen);
-  p += originlen;
-  memcpy(p, altsvc->field, fieldlen);
-  p += fieldlen;
-
-  cout << " ++++++++++++++++++ pack_extension_callback2 " << endl;
-
-  return p - buf;
+/**
+ * create Функция обратного вызова при создании фрейма
+ * @param session объект сессии
+ * @param hd      параметры фрейма
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус обработки полученных данных
+ */
+int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект родительского объекта
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("create")){
+		// Выполняем создание идентификатора фрейма по умолчанию
+		frame_t type = frame_t::NONE;
+		// Определяем тип фрейма
+		switch(static_cast <uint8_t> (hd->type)){
+			// Если мы получили фрейм данных
+			case static_cast <uint8_t> (NGHTTP2_DATA):
+				// Выполняем установку фрейма
+				type = frame_t::DATA;
+			break;
+			// Если мы получили фрейм пингов
+			case static_cast <uint8_t> (NGHTTP2_PING):
+				// Выполняем установку фрейма
+				type = frame_t::PING;
+			break;
+			// Если мы получили фрейм требования отключиться от сервера
+			case static_cast <uint8_t> (NGHTTP2_GOAWAY):
+				// Выполняем установку фрейма
+				type = frame_t::GOAWAY;
+			break;
+			// Если мы получили фрейм передачи альтернативных желаемых протоколов
+			case static_cast <uint8_t> (NGHTTP2_ALTSVC):
+				// Выполняем установку фрейма
+				type = frame_t::ALTSVC;
+			break;
+			// Если мы получили фрейм списка разрешённых ресурсов для подключения
+			case static_cast <uint8_t> (NGHTTP2_ORIGIN):
+				// Выполняем установку фрейма
+				type = frame_t::ORIGIN;
+			break;
+			// Если мы получили фрейм заголовков
+			case static_cast <uint8_t> (NGHTTP2_HEADERS):
+				// Выполняем установку фрейма
+				type = frame_t::HEADERS;
+			break;
+			// Если мы получили фрейм приоритетов
+			case static_cast <uint8_t> (NGHTTP2_PRIORITY):
+				// Выполняем установку фрейма
+				type = frame_t::PRIORITY;
+			break;
+			// Если мы получили фрейм полученя настроек
+			case static_cast <uint8_t> (NGHTTP2_SETTINGS):
+				// Выполняем установку фрейма
+				type = frame_t::SETTINGS;
+			break;
+			// Если мы получили фрейм сброса подключения клиента
+			case static_cast <uint8_t> (NGHTTP2_RST_STREAM):
+				// Выполняем установку фрейма
+				type = frame_t::RST_STREAM;
+			break;
+			// Если мы получили фрейм продолжения работы
+			case static_cast <uint8_t> (NGHTTP2_CONTINUATION):
+				// Выполняем установку фрейма
+				type = frame_t::CONTINUATION;
+			break;
+			// Если мы получили фрейм отправки push-уведомления
+			case static_cast <uint8_t> (NGHTTP2_PUSH_PROMISE):
+				// Выполняем установку фрейма
+				type = frame_t::PUSH_PROMISE;
+			break;
+			// Если мы получили фрейм обновления окна фрейма
+			case static_cast <uint8_t> (NGHTTP2_WINDOW_UPDATE):
+				// Выполняем установку фрейма
+				type = frame_t::WINDOW_UPDATE;
+			break;
+			// Если мы получили фрейм обновления приоритетов
+			case static_cast <uint8_t> (NGHTTP2_PRIORITY_UPDATE):
+				// Выполняем установку фрейма
+				type = frame_t::PRIORITY_UPDATE;
+			break;
+		}
+		// Выводим функцию обратного вызова
+		return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
+	}
+	// Выводим результат
+	return 0;
 }
-
-int on_extension_chunk_recv_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, const uint8_t * data, size_t len, void * user_data) {
-  
-  cout << " ++++++++++++++++++ on_extension_chunk_recv_callback1 " << endl;
-  
-  if (sizeof(altsvc_buffer) < altsvc_bufferlen + len) {
-    altsvc_bufferlen = 0;
-    return NGHTTP2_ERR_CANCEL;
-  }
-
-  memcpy(altsvc_buffer + altsvc_bufferlen, data, len);
-  altsvc_bufferlen += len;
-
-  cout << " ++++++++++++++++++ on_extension_chunk_recv_callback2 " << endl;
-
-  return 0;
-}
-
-int unpack_extension_callback(nghttp2_session *session, void ** payload, const nghttp2_frame_hd * hd, void * user_data) {
-  
-  cout << " ++++++++++++++++++ unpack_extension_callback1 " << endl;
-  
-  uint8_t *origin, *field;
-  size_t originlen, fieldlen;
-  uint8_t *p, *end;
-
-  if (altsvc_bufferlen < 2) {
-    altsvc_bufferlen = 0;
-    return NGHTTP2_ERR_CANCEL;
-  }
-
-  p = altsvc_buffer;
-  end = altsvc_buffer + altsvc_bufferlen;
-
-  originlen = ((*p) << 8) + *(p + 1);
-  p += 2;
-
-  if (p + originlen > end) {
-    altsvc_bufferlen = 0;
-    return NGHTTP2_ERR_CANCEL;
-  }
-
-  origin = p;
-  field = p + originlen;
-  fieldlen = end - field;
-
-  alt_svc * altsvc = new alt_svc;
-  altsvc->origin = origin;
-  altsvc->originlen = originlen;
-  altsvc->field = field;
-  altsvc->fieldlen = fieldlen;
-
-  cout << " ++++++++++++++++++ unpack_extension_callback2 " << string((const char *) origin, originlen) << " == " << string((const char *) field, fieldlen) << endl;
-
-  *payload = altsvc;
-
-  altsvc_bufferlen = 0;
-
-  cout << " ++++++++++++++++++ unpack_extension_callback3 " << endl;
-
-  return 0;
-}
-
 /**
  * frameRecv Функция обратного вызова при получении фрейма
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
@@ -294,18 +248,6 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame")){
-		
-		switch(frame->hd.type) {
-			case NGHTTP2_ALTSVC: {
-				alt_svc *altsvc = (alt_svc *) frame->ext.payload;
-				fprintf(stderr, "ALTSVC frame received\n");
-				fprintf(stderr, " origin: %.*s\n", (int)altsvc->originlen, altsvc->origin);
-				fprintf(stderr, " field : %.*s\n", (int)altsvc->fieldlen, altsvc->field);
-				delete altsvc;
-				break;
-			}
-		}
-		
 		// Выполняем создание флага по умолчанию
 		set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
@@ -405,7 +347,7 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
@@ -514,7 +456,7 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
  * @param msg     сообщение ошибки
  * @param size    размер текста ошибки
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус обработки полученной ошибки
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::error(nghttp2_session * session, const char * msg, const size_t size, void * ctx) noexcept {
 	// Получаем объект родительского объекта
@@ -534,7 +476,7 @@ int awh::Http2::error(nghttp2_session * session, const char * msg, const size_t 
  * @param sid     идентификатор потока
  * @param error   флаг ошибки если присутствует
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученного события
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
 	// Получаем объект родительского объекта
@@ -713,7 +655,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
  * @param buffer  буфер данных который содержит полученный чанк
  * @param size    размер полученного буфера данных чанка
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
@@ -738,7 +680,7 @@ int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int3
  * @param valSize размер значения заголовка
  * @param flags   флаги события для сессии
  * @param ctx     передаваемый промежуточный контекст
- * @return        статус полученных данных
+ * @return        статус обработки полученных данных
  */
 int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
@@ -1969,6 +1911,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_error_callback(callbacks, &http2_t::error);
 		// Выполняем установку функции обратного вызова при получении заголовка
 		nghttp2_session_callbacks_set_on_header_callback(callbacks, &http2_t::header);
+		// Выполняем установку функции обратного вызова при создании нового фрейма
+		nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &http2_t::create);
 		// Выполняем установку функции обратного вызова закрытия подключения
 		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &http2_t::close);
 		// Выполняем установку функции обратного вызова начала получения фрейма заголовков
@@ -1979,16 +1923,6 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
-		
-		
-		nghttp2_session_callbacks_set_pack_extension_callback(callbacks, pack_extension_callback);
-
-		nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
-
-		nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
-
-		// nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
-		
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
@@ -2046,9 +1980,6 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 			} break;
 			// Если сервис идентифицирован как сервер
 			case static_cast <uint8_t> (mode_t::SERVER):
-
-				nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
-
 				// Выполняем создание сервера
 				nghttp2_session_server_new(&this->_session, callbacks, this);
 			break;
@@ -2107,6 +2038,14 @@ void awh::Http2::on(function <void (void)> callback) noexcept {
 void awh::Http2::on(function <int (const int32_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <int (const int32_t)> ("begin", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при создании фрейма
+ * @param callback функция обратного вызова
+ */
+void awh::Http2::on(function <int (const int32_t, const frame_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <int (const int32_t, const frame_t)> ("create", callback);
 }
 /**
  * on Метод установки функции обратного вызова при закрытии потока
