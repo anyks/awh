@@ -164,7 +164,7 @@ class WebServer {
 
 
 
-					this->_awh->altsvc2(sid, bid, this->host, this->port);
+					this->_awh->altsvc2(0, bid, this->host, this->port);
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
