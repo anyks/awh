@@ -1216,17 +1216,6 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string & field) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ALTSVC;
-	
-	static const alt_svc1 altsvc = {"anyks.com", "h2=\":8000\""};
-
-	nghttp2_submit_extension(this->_session, 0x0A, NGHTTP2_FLAG_NONE, 0, (void *) &altsvc);
-
-	// Выполняем вызов метода выполненного события
-	this->completed(event_t::SEND_ALTSVC);
-	// Выводим результат
-	return false;
-
-	
 	// Если размер окна расширения передан
 	if((!origin.empty() && !field.empty()) || (origin.empty() && field.empty())){
 		// Определяем идентификатор сервиса
