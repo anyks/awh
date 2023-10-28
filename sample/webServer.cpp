@@ -83,9 +83,12 @@ class WebServer {
 		 */
 		void active(const uint64_t bid, const server::web_t::mode_t mode){
 			// Если подключение клиента установлено
-			if(mode == server::web_t::mode_t::CONNECT)
+			if(mode == server::web_t::mode_t::CONNECT){
 				// Аактивируем шифрование
 				this->_awh->encrypt(bid, true);
+
+				this->_awh->altsvc2(0, bid, this->host, this->port);
+			}
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -145,7 +148,6 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
-					
 					/*
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
@@ -161,10 +163,6 @@ class WebServer {
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					*/
-
-
-
-					this->_awh->altsvc2(0, bid, this->host, this->port);
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
