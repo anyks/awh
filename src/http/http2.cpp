@@ -69,7 +69,7 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 
 static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx){
 	
-	cout << " +++++++++++++++++++++ SEND FRAME " << endl;
+	cout << " +++++++++++++++++++++ SEND FRAME " << hd->stream_id << endl;
 	reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id, "anyks.net", "h2=\":2222\"");
 	
 	/*
