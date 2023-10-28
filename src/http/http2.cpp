@@ -1097,7 +1097,7 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ALTSVC;
 	// Если размер окна расширения передан
-	if(!origin.empty() && !field.empty()){
+	if((!origin.empty() && !field.empty()) || (origin.empty() && field.empty())){
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
@@ -1114,7 +1114,7 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
 				// Если сессия инициализированна
 				if(this->_session != nullptr){
 					// Выполняем отправку альтернативного сервиса
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, reinterpret_cast <const uint8_t *> (origin.c_str()), origin.size(), reinterpret_cast <const uint8_t *> (field.c_str()), field.size());
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
 					// Если отправить алтернативного сервиса не вышло
 					if(nghttp2_is_fatal(rv)){
 						// Выводим сообщение об полученной ошибке

@@ -87,7 +87,7 @@ class WebServer {
 				// Аактивируем шифрование
 				this->_awh->encrypt(bid, true);
 
-				this->_awh->altsvc2(0, bid, this->host, this->port);
+				// this->_awh->altsvc2(0, bid, this->host, this->port);
 			}
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
@@ -163,6 +163,9 @@ class WebServer {
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 					*/
+					
+					this->_awh->altsvc2(sid, bid);
+
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){

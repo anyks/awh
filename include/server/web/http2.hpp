@@ -294,7 +294,7 @@ namespace awh {
 				 * @param field  поле сервиса
 				 * @return       результат отправки расширения
 				 */
-				bool altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept;
+				bool altsvc2(const int32_t id, const uint64_t bid, const string & origin = "", const string & field = "") noexcept;
 			public:
 				/**
 				 * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков

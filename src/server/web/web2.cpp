@@ -227,7 +227,7 @@ bool awh::server::Web2::altsvc(const int32_t id, const uint64_t bid, const strin
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working() && !origin.empty() && !field.empty()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена

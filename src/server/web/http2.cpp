@@ -2032,7 +2032,7 @@ bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const awh
  */
 bool awh::server::Http2::altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
 	// Если данные переданы верные
-	if((this->_core != nullptr) && this->_core->working() && !origin.empty() && !field.empty()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
