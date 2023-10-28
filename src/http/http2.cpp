@@ -229,7 +229,8 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 			break;
 		}
 
-		self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
+		if(hd->stream_id > 0)
+			self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
 
 		// Выводим функцию обратного вызова
 		// return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
