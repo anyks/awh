@@ -143,7 +143,9 @@ class WebServer {
 					
 					
 					// Отправляем клиенту параметры требования к подключению
-					this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
+					// this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
+					// this->_awh->altsvc2(sid, bid, "anyks.net", "h2=\":2222\"");
+					this->_awh->altsvc2(0, bid);
 					
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
