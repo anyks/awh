@@ -73,7 +73,7 @@ static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_h
 	
 	if(hd->stream_id > 0){
 		cout << " +++++++++++++++++++++ SEND FRAME " << hd->stream_id << endl;
-		reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id);
+		reinterpret_cast <awh::http2_t *> (ctx)->altsvc(hd->stream_id, k1, k2);
 	}
 	
 	/*
@@ -1260,7 +1260,7 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
 					// Выполняем отправку альтернативного сервиса
 					// int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
 					
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (const uint8_t *) k1, strlen(k1), (const uint8_t *) k2, strlen(k2));
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, 1, (const uint8_t *) k1, strlen(k1), (const uint8_t *) k2, strlen(k2));
 					
 					// Если отправить алтернативного сервиса не вышло
 					if(nghttp2_is_fatal(rv)){
