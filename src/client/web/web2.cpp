@@ -383,12 +383,12 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 					// Если разрешено передавать расширения ALTSVC
 					case static_cast <uint8_t> (settings_t::ENABLE_ALTSVC):
 						// Устанавливаем разрешение передавать расширения ALTSVC
-						iv.push_back({0x0A, setting.second});
+						iv.push_back({NGHTTP2_ALTSVC, setting.second});
 					break;
 					// Если разрешено передавать расширения ORIGIN
 					case static_cast <uint8_t> (settings_t::ENABLE_ORIGIN):
 						// Устанавливаем разрешение передавать расширения ORIGIN
-						iv.push_back({0x0B, setting.second});
+						iv.push_back({NGHTTP2_ORIGIN, setting.second});
 					break;
 					// Если мы получили разрешение присылать push-уведомления
 					case static_cast <uint8_t> (settings_t::ENABLE_PUSH):

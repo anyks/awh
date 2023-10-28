@@ -228,8 +228,11 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 				type = frame_t::PRIORITY_UPDATE;
 			break;
 		}
+
+		self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
+
 		// Выводим функцию обратного вызова
-		return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
+		// return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
 	}
 	// Выводим результат
 	return 0;
@@ -1947,14 +1950,14 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 					// Определяем код параметра настроек
 					switch(it->settings_id){
 						// Если активированно разрешенение на передачу расширения ALTSVC
-						case 0x0A: {
+						case NGHTTP2_ALTSVC: {
 							// Выполняем установку зарешения использования расширения ALTSVC
 							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
 						// Если активированно разрешенение на передачу расширения ORIGIN
-						case 0x0B: {
+						case NGHTTP2_ORIGIN: {
 							// Выполняем установку зарешения использования расширения ORIGIN
 							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
 							// Выполняем удаление лишних параметров настроек
