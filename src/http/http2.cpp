@@ -1260,8 +1260,10 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
 					// Выполняем отправку альтернативного сервиса
 					// int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
 					
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, 1, (const uint8_t *) k1, strlen(k1), (const uint8_t *) k2, strlen(k2));
+					// int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (const uint8_t *) k1, strlen(k1), (const uint8_t *) k2, strlen(k2));
 					
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, 0, nullptr, 0, nullptr, 0);
+
 					// Если отправить алтернативного сервиса не вышло
 					if(nghttp2_is_fatal(rv)){
 						// Выводим сообщение об полученной ошибке
