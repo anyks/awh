@@ -235,13 +235,13 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 
 			// self->sendOrigin({"https://anyks.net:222"});
 
-			self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
+			// self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
 
 			/*
 			for(auto & item : self->_kdl)
 				self->sendAltSvc(hd->stream_id, item.first, item.second);
 			*/
-		}
+		} else self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
 
 		// Выводим функцию обратного вызова
 		// return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
