@@ -126,7 +126,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 				this->_sessions.erase(ret.first);
 			
 			// Отправляем клиенту параметры требования к подключению
-			else this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
+			else this->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
 		}
 	}
 }
