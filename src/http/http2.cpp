@@ -167,15 +167,15 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 			// Выполняем установку флага
 			flags.emplace(flag_t::PADDED);
 		// Если мы получили флаг установки приоритетов
-		else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY)
+		if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY)
 			// Выполняем установку флага
 			flags.emplace(flag_t::PRIORITY);
 		// Если мы получили флаг завершения передачи потока
-		else if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
+		if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_STREAM);
 		// Если мы получили флаг завершения передачи заголовков
-		else if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
+		if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_HEADERS);
 		// Определяем тип фрейма
@@ -246,9 +246,6 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 				type = frame_t::PRIORITY_UPDATE;
 			break;
 		}
-
-		cout << " ************************ " << (u_short) type << " === " << (u_short) frame->hd.flags << endl;
-
 		// Выводим функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const direct_t, const frame_t, const set <flag_t> &> ("frame", frame->hd.stream_id, direct_t::RECV, type, std::move(flags));
 	}
@@ -278,15 +275,15 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
 			// Выполняем установку флага
 			flags.emplace(flag_t::PADDED);
 		// Если мы получили флаг установки приоритетов
-		else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY)
+		if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY)
 			// Выполняем установку флага
 			flags.emplace(flag_t::PRIORITY);
 		// Если мы получили флаг завершения передачи потока
-		else if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
+		if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_STREAM);
 		// Если мы получили флаг завершения передачи заголовков
-		else if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
+		if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_HEADERS);
 		// Определяем тип фрейма
