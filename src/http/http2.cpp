@@ -1262,7 +1262,7 @@ bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string &
 					
 					// int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (const uint8_t *) k1, strlen(k1), (const uint8_t *) k2, strlen(k2));
 					
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, 0, nullptr, 0, nullptr, 0);
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, nullptr, 0, nullptr, 0);
 
 					// Если отправить алтернативного сервиса не вышло
 					if(nghttp2_is_fatal(rv)){
