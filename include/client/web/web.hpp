@@ -589,19 +589,19 @@ namespace awh {
 				 * @param sid    идентификатор потока
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
-				 * @param flags  флаг полученного фрейма
+				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
-				 * @param flags  флаг полученного фрейма
+				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2

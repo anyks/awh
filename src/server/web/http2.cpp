@@ -323,16 +323,16 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
  * @param bid    идентификатор брокера
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
- * @param flags  флаг полученного фрейма
+ * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags & NGHTTP2_FLAG_END_STREAM){
+			if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 				// Получаем параметры активного клиента
 				web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -364,7 +364,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 								// Выполняем передачу фрейма клиенту WebSocket
-								this->_ws2.frameSignal(sid, bid, direct, type, flags);
+								this->_ws2.frameSignal(sid, bid, direct, frame, flags);
 								// Выполняем поиск брокера в списке активных сессий
 								auto it = this->_ws2._sessions.find(bid);
 								// Если активная сессия найдена
@@ -401,11 +401,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Выполняем определение типа фрейма
-							switch(type){
+							switch(static_cast <uint8_t> (frame)){
 								// Если мы получили входящие данные тела ответа
-								case NGHTTP2_DATA: {
+								case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 									// Если мы получили неустановленный флаг или флаг завершения потока
-									if(flags & NGHTTP2_FLAG_END_STREAM){
+									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 										// Выполняем коммит полученного результата
 										options->http.commit();
 										// Выполняем обработку полученных данных
@@ -421,9 +421,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 									}
 								} break;
 								// Если мы получили входящие данные заголовков ответа
-								case NGHTTP2_HEADERS: {
+								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-									if(flags & NGHTTP2_FLAG_END_HEADERS){
+									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
 										// Выполняем коммит полученного результата
 										options->http.commit();
 										// Выполняем извлечение параметров запроса
@@ -437,7 +437,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 											// Выводим функцию обратного вызова
 											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
 										// Если мы получили неустановленный флаг или флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM){
+										if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
 											// Если функция обратного вызова активности потока установлена
@@ -459,7 +459,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 						// Если протокол соответствует протоколу WebSocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем передачу фрейма клиенту WebSocket
-							this->_ws2.frameSignal(sid, bid, direct, type, flags);
+							this->_ws2.frameSignal(sid, bid, direct, frame, flags);
 						break;
 					}
 				}

@@ -31,18 +31,18 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
  * @param sid    идентификатор потока
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
- * @param flags  флаг полученного фрейма
+ * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
 		// Выполняем определение типа фрейма
-		switch(type){
+		switch(static_cast <uint8_t> (frame)){
 			// Если мы получили входящие данные тела ответа
-			case NGHTTP2_DATA: {
+			case static_cast <uint8_t> (http2_t::frame_t::DATA): {
 				// Если мы получили флаг завершения потока
-				if(flags & NGHTTP2_FLAG_END_STREAM){
+				if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 					// Выполняем коммит полученного результата
 					this->_scheme.proxy.http.commit();
 					/**
@@ -75,9 +75,9 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
-			case NGHTTP2_HEADERS: {
+			case static_cast <uint8_t> (http2_t::frame_t::HEADERS): {
 				// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-				if(flags & NGHTTP2_FLAG_END_HEADERS){
+				if(flags.count(http2_t::flag_t::END_HEADERS) > 0){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -435,7 +435,7 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			this->_http2.on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			this->_http2.on((function <int (const int32_t, const http2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			this->_http2.on((function <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)>) std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки

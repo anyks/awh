@@ -633,10 +633,10 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
-				 * @param flags  флаг полученного фрейма
+				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept = 0;
+				virtual int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера

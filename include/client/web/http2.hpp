@@ -144,10 +144,10 @@ namespace awh {
 				 * @param sid    идентификатор потока
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
-				 * @param flags  флаг полученного фрейма
+				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept;
+				int frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * closedSignal Метод завершения работы потока

@@ -220,16 +220,16 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
  * @param sid    идентификатор потока
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
- * @param flags  флаг полученного фрейма
+ * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags & NGHTTP2_FLAG_END_STREAM){
+			if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 				// Выполняем поиск идентификатора воркера
 				auto it = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
@@ -237,7 +237,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 					// Если агент является клиентом WebSocket
 					if(it->second->agent == agent_t::WEBSOCKET)
 						// Выполняем передачу на WebSocket-клиент
-						this->_ws2.frameSignal(sid, direct, type, flags);
+						this->_ws2.frameSignal(sid, direct, frame, flags);
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
@@ -250,7 +250,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 			// Если подключение производится через, прокси-сервер
 			if(this->_scheme.isProxy())
 				// Выполняем обработку полученных данных фрейма для прокси-сервера
-				return this->frameProxySignal(sid, direct, type, flags);
+				return this->frameProxySignal(sid, direct, frame, flags);
 			// Если мы работаем с сервером напрямую
 			else if(this->_core != nullptr) {
 				// Выполняем поиск идентификатора воркера
@@ -258,16 +258,16 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 				// Если необходимый нам воркер найден
 				if(it != this->_workers.end()){
 					// Выполняем определение типа фрейма
-					switch(type){
+					switch(static_cast <uint8_t> (frame)){
 						// Если производится сброс подключения
-						case NGHTTP2_RST_STREAM:
+						case static_cast <uint8_t> (awh::http2_t::frame_t::RST_STREAM):
 							// Выводим сообщение об ошибке
 							this->_log->print("Connection was reset by the server", log_t::flag_t::WARNING);
 						break;
 						// Если получено push-уведомление от сервера
-						case NGHTTP2_PUSH_PROMISE: {
+						case static_cast <uint8_t> (awh::http2_t::frame_t::PUSH_PROMISE): {
 							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-							if(flags & NGHTTP2_FLAG_END_HEADERS){
+							if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
 								// Получаем данные запроса
 								const auto & query = it->second->http.request();
 								/**
@@ -294,13 +294,13 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 							}
 						} break;
 						// Если мы получили входящие данные тела ответа
-						case NGHTTP2_DATA: {
+						case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 							// Определяем протокол клиента
 							switch(static_cast <uint8_t> (it->second->agent)){
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если мы получили флаг завершения потока
-									if(flags & NGHTTP2_FLAG_END_STREAM){
+									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 										// Выполняем коммит полученного результата
 										it->second->http.commit();
 										/**
@@ -348,17 +348,17 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								// Если агент является клиентом WebSocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
 									// Выполняем передачу на WebSocket-клиент
-									return this->_ws2.frameSignal(sid, direct, type, flags);
+									return this->_ws2.frameSignal(sid, direct, frame, flags);
 							}
 						} break;
 						// Если мы получили входящие данные заголовков ответа
-						case NGHTTP2_HEADERS: {
+						case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
 							// Определяем протокол клиента
 							switch(static_cast <uint8_t> (it->second->agent)){
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-									if(flags & NGHTTP2_FLAG_END_HEADERS){
+									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
 										// Флаг полученных трейлеров из ответа сервера
 										bool trailers = false;
 										// Если трейлеры получены в ответе сервера
@@ -370,7 +370,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 												// Если такой заголовок трейлера не получен
 												if(!it->second->http.is(http_t::suite_t::HEADER, jt->second)){
 													// Если мы получили флаг завершения потока
-													if(flags & NGHTTP2_FLAG_END_STREAM){
+													if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 														// Выводим сообщение об ошибке, что трейлер не существует
 														this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, jt->second.c_str());
 														// Если функция обратного вызова на на вывод ошибок установлена
@@ -417,9 +417,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										// Если трейлеры получены с сервера
 										if(trailers)
 											// Выполняем извлечение полученных данных полезной нагрузки
-											return this->frameSignal(sid, awh::http2_t::direct_t::RECV, NGHTTP2_DATA, flags);
+											return this->frameSignal(sid, awh::http2_t::direct_t::RECV, awh::http2_t::frame_t::DATA, flags);
 										// Если мы получили флаг завершения потока
-										else if(flags & NGHTTP2_FLAG_END_STREAM) {
+										else if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0) {
 											// Выполняем препарирование полученных данных
 											switch(static_cast <uint8_t> (this->prepare(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
 												// Если необходимо выполнить пропуск обработки данных
@@ -430,7 +430,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										}
 									}
 									// Если мы получили флаг завершения потока
-									if(flags & NGHTTP2_FLAG_END_STREAM){
+									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 										// Выполняем удаление выполненного воркера
 										this->_workers.erase(sid);
 										// Если установлена функция отлова завершения запроса
@@ -444,7 +444,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								// Если агент является клиентом WebSocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
 									// Выполняем передачу на WebSocket-клиент
-									return this->_ws2.frameSignal(sid, direct, type, flags);
+									return this->_ws2.frameSignal(sid, direct, frame, flags);
 							}
 						} break;
 					}

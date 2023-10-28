@@ -115,7 +115,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t, const uint8_t, const uint8_t)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки

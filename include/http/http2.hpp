@@ -79,9 +79,30 @@ namespace awh {
 			 * Флаги передачи данных
 			 */
 			enum class flag_t : uint8_t {
-				NONE       = 0x00, // Флаг не установлен
-				END_HEADER = 0x01, // Флаг завершения передачи заголовков
-				END_STREAM = 0x02  // Флаг завершения передачи потока
+				NONE        = 0x00, // Флаг не установлен
+				PADDED      = 0x01, // Флаг PADDED
+				PRIORITY    = 0x02, // Флаг установки приоритетов
+				END_STREAM  = 0x03, // Флаг завершения передачи потока
+				END_HEADERS = 0x04  // Флаг завершения передачи заголовков
+			};
+			/**
+			 * Флаги типов фреймов
+			 */
+			enum class frame_t : uint8_t {
+				NONE            = 0x00, // Фрейм не установлен
+				DATA            = 0x01, // Фрейм данных
+				PING            = 0x02, // Фрейм пингов
+				GOAWAY          = 0x03, // Фрейм требования отключиться от сервера
+				ALTSVC          = 0x04, // Фрейм передачи альтернативных желаемых протоколов
+				ORIGIN          = 0x05, // Фрейм списка разрешённых ресурсов для подключения
+				HEADERS         = 0x06, // Фрейм заголовков
+				PRIORITY        = 0x07, // Фрейм приоритетов
+				SETTINGS        = 0x08, // Фрейм полученя настроек
+				RST_STREAM      = 0x09, // Фрейм сброса подключения клиента
+				CONTINUATION    = 0x0A, // Фрейм продолжения работы
+				PUSH_PROMISE    = 0x0B, // Фрейм отправки push-уведомления
+				WINDOW_UPDATE   = 0x0C, // Фрейм обновления окна фрейма
+				PRIORITY_UPDATE = 0x0D  // Фрейм обновления приоритетов
 			};
 			/**
 			 * Флаги ошибок протокола HTTP/2
@@ -400,7 +421,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова при обмене фреймами
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <int (const int32_t, const direct_t, const uint8_t, const uint8_t)> callback) noexcept;
+			void on(function <int (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> callback) noexcept;
 		public:
 			/**
 			 * Оператор [=] зануления фрейма Http2

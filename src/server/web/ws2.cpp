@@ -282,16 +282,16 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
  * @param bid    идентификатор брокера
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
- * @param flags  флаг полученного фрейма
+ * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const uint8_t type, const uint8_t flags) noexcept {
+int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags & NGHTTP2_FLAG_END_STREAM){
+			if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 				// Получаем параметры активного клиента
 				ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -327,13 +327,13 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 			// Если параметры активного клиента получены
 			if((this->_core != nullptr) && (options != nullptr)){
 				// Выполняем определение типа фрейма
-				switch(type){
+				switch(static_cast <uint8_t> (frame)){
 					// Если мы получили входящие данные тела ответа
-					case NGHTTP2_DATA: {
+					case static_cast <uint8_t> (http2_t::frame_t::DATA): {
 						// Если рукопожатие выполнено
 						if(options->shake && options->allow.receive){
 							// Если мы получили неустановленный флаг или флаг завершения потока
-							if((flags == NGHTTP2_FLAG_NONE) || (flags & NGHTTP2_FLAG_END_STREAM)){
+							if(flags.empty() || (flags.count(http2_t::flag_t::END_STREAM) > 0)){
 								// Флаг удачного получения данных
 								bool receive = false;
 								// Создаём буфер сообщения
@@ -435,7 +435,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 													// Завершаем работу
 													const_cast <server::core_t *> (this->_core)->close(bid);
 												// Если мы получили флаг завершения потока
-												if(flags & NGHTTP2_FLAG_END_STREAM){
+												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
 														// Выводим функцию обратного вызова
@@ -469,7 +469,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									if(!receive || options->buffer.payload.empty()) break;
 								}
 								// Если мы получили флаг завершения потока
-								if(flags & NGHTTP2_FLAG_END_STREAM){
+								if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
 										// Выводим функцию обратного вызова
@@ -489,9 +489,9 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 						}
 					} break;
 					// Если мы получили входящие данные заголовков ответа
-					case NGHTTP2_HEADERS: {
+					case static_cast <uint8_t> (http2_t::frame_t::HEADERS): {
 						// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-						if(flags & NGHTTP2_FLAG_END_HEADERS){
+						if(flags.count(http2_t::flag_t::END_HEADERS) > 0){
 							// Выполняем коммит полученного результата
 							options->http.commit();
 							// Выполняем извлечение параметров запроса
@@ -595,7 +595,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												// Если запрос не получилось отправить
 												if(sid < 0){
 													// Если мы получили флаг завершения потока
-													if(flags & NGHTTP2_FLAG_END_STREAM){
+													if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 														// Если установлена функция отлова завершения запроса
 														if(this->_callback.is("end"))
 															// Выводим функцию обратного вызова
@@ -613,7 +613,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 													// Выполняем функцию обратного вызова
 													this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
 												// Если мы получили флаг завершения потока
-												if(flags & NGHTTP2_FLAG_END_STREAM){
+												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
 														// Выводим функцию обратного вызова
@@ -670,7 +670,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									// Если запрос не получилось отправить
 									if(sid < 0){
 										// Если мы получили флаг завершения потока
-										if(flags & NGHTTP2_FLAG_END_STREAM){
+										if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
 												// Выводим функцию обратного вызова
@@ -699,7 +699,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Выполняем отправку тела запроса на сервер
 											if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag)){
 												// Если мы получили флаг завершения потока
-												if(flags & NGHTTP2_FLAG_END_STREAM){
+												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
 														// Выводим функцию обратного вызова
@@ -711,7 +711,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										}
 									}
 									// Если мы получили флаг завершения потока
-									if(flags & NGHTTP2_FLAG_END_STREAM){
+									if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
 											// Выводим функцию обратного вызова
@@ -730,7 +730,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							// Завершаем работу
 							else const_cast <server::core_t *> (this->_core)->close(bid);
 							// Если мы получили флаг завершения потока
-							if(flags & NGHTTP2_FLAG_END_STREAM){
+							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 								// Если установлена функция отлова завершения запроса
 								if(this->_callback.is("end"))
 									// Выводим функцию обратного вызова
