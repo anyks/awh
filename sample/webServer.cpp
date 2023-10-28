@@ -324,7 +324,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем разрешённый источник
 	awh.addOrigin("anyks.net");
 	// Устанавливаем альтернативный сервис
-	awh.addAltSvc("anyks.net", "h2=\":2222\"");
+	awh.addAltSvc("example.com", "h2=\":8000\"");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
 	// Разрешаем метод CONNECT для сервера
