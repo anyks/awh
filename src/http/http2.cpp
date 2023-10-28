@@ -246,6 +246,9 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 				type = frame_t::PRIORITY_UPDATE;
 			break;
 		}
+
+		cout << " ************************ " << (u_short) type << " === " << (u_short) frame->hd.flags << endl;
+
 		// Выводим функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const direct_t, const frame_t, const set <flag_t> &> ("frame", frame->hd.stream_id, direct_t::RECV, type, std::move(flags));
 	}
