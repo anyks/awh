@@ -145,25 +145,6 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
 	return false;
 }
 /**
- * origin Метод отправки списка разрешённых источников
- * @param bid     идентификатор брокера
- * @param origins список разрешённых источников
- */
-void awh::server::Web2::origin(const uint64_t bid, const vector <string> & origins) noexcept {
-	// Выполняем поиск брокера в списке активных сессий
-	auto it = this->_sessions.find(bid);
-	// Если активная сессия найдена
-	if(it != this->_sessions.end()){
-		// Если список разрешённых источников отправить не удалось
-		if((this->_core != nullptr) && !it->second->sendOrigin(origins)){
-			// Выполняем закрытие подключения
-			const_cast <server::core_t *> (this->_core)->close(bid);
-			// Выходим из функции
-			return;
-		}
-	}
-}
-/**
  * shutdown Метод отправки клиенту сообщения корректного завершения
  * @param bid идентификатор брокера
  * @return    результат выполнения операции
@@ -218,35 +199,6 @@ bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const http2
 	return result;
 }
 /**
- * altsvc Метод отправки расширения альтернативного сервиса RFC7383
- * @param id     идентификатор потока
- * @param bid    идентификатор брокера
- * @param origin название сервиса
- * @param field  поле сервиса
- * @return       результат отправки расширения
- */
-bool awh::server::Web2::altsvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working()){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
-			// Выполняем отправку расширения клиенту с требованием подключиться к другому протоколу
-			if(!(result = it->second->altsvc(id, origin, field))){
-				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(bid);
-				// Выходим из функции
-				return result;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * goaway Метод отправки сообщения закрытия всех потоков
  * @param last   идентификатор последнего потока
  * @param bid    идентификатор брокера
@@ -266,6 +218,59 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку требования клиенту выполнить отключение от сервера
 			if(!(result = it->second->goaway(last, error, buffer, size))){
+				// Выполняем закрытие подключения
+				const_cast <server::core_t *> (this->_core)->close(bid);
+				// Выходим из функции
+				return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * sendOrigin Метод отправки списка разрешённых источников
+ * @param bid     идентификатор брокера
+ * @param origins список разрешённых источников
+ * @return        результат отправки данных фрейма
+ */
+bool awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Выполняем поиск брокера в списке активных сессий
+	auto it = this->_sessions.find(bid);
+	// Если активная сессия найдена
+	if(it != this->_sessions.end()){
+		// Если список разрешённых источников отправить не удалось
+		if((this->_core != nullptr) && !(result = it->second->sendOrigin(origins))){
+			// Выполняем закрытие подключения
+			const_cast <server::core_t *> (this->_core)->close(bid);
+			// Выходим из функции
+			return result;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+ * @param id     идентификатор потока
+ * @param bid    идентификатор брокера
+ * @param origin название сервиса
+ * @param field  поле сервиса
+ * @return       результат отправки расширения
+ */
+bool awh::server::Web2::sendAltSvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if((result = (it != this->_sessions.end()))){
+			// Выполняем отправку расширения клиенту с требованием подключиться к другому протоколу
+			if(!(result = it->second->sendAltSvc(id, origin, field))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -388,6 +393,43 @@ int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vect
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * addOrigin Метод добавления разрешённого источника
+ * @param origin разрешённый источнико
+ */
+void awh::server::Web2::addOrigin(const string & origin) noexcept {
+	// Если разрешённый источник получен
+	if(!origin.empty())
+		// Выполняем добавления разрешённого источника
+		this->_origins.push_back(origin);
+}
+/**
+ * setOrigin Метод установки списка разрешённых источников
+ * @param origins список разрешённых источников
+ */
+void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_origins.assign(origins.begin(), origins.end());
+}
+/**
+ * addAltSvc Метод добавления альтернативного сервиса
+ * @param origin название альтернативного сервиса
+ * @param field  поле альтернативного сервиса
+ */
+void awh::server::Web2::addAltSvc(const string & origin, const string & field) noexcept {
+	// Если данные альтернативного сервиса переданы
+	if(!origin.empty() && !field.empty())
+		// Выполняем добавление альтернативного сервиса
+		this->_altsvc.emplace(origin, field);
+}
+/**
+ * setAltSvc Метод установки списка разрешённых источников
+ * @param origins список альтернативных сервисов
+ */
+void awh::server::Web2::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_altsvc = origins;
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

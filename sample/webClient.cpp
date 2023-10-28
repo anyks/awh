@@ -182,7 +182,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем логин и пароль пользователя
 	awh.user("user", "password");
 	// Активируем получение PUSH уведомлений
-	awh.settings({{client::web2_t::settings_t::ENABLE_PUSH, 1}});
+	awh.settings({
+		{client::web2_t::settings_t::ENABLE_PUSH, 1},
+		{client::web2_t::settings_t::ENABLE_ALTSVC, 1},
+		{client::web2_t::settings_t::ENABLE_ORIGIN, 1}
+	});
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(2, 3, 1);
 	// Устанавливаем длительное подключение

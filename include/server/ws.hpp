@@ -323,11 +323,27 @@ namespace awh {
 				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
-				 * origin Метод отправки списка разрешенных источников
-				 * @param bid     идентификатор брокера
+				 * addOrigin Метод добавления разрешённого источника
+				 * @param origin разрешённый источнико
+				 */
+				void addOrigin(const string & origin) noexcept;
+				/**
+				 * setOrigin Метод установки списка разрешённых источников
 				 * @param origins список разрешённых источников
 				 */
-				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
+				void setOrigin(const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * addAltSvc Метод добавления альтернативного сервиса
+				 * @param origin название альтернативного сервиса
+				 * @param field  поле альтернативного сервиса
+				 */
+				void addAltSvc(const string & origin, const string & field) noexcept;
+				/**
+				 * setAltSvc Метод установки списка разрешённых источников
+				 * @param origins список альтернативных сервисов
+				 */
+				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

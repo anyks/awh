@@ -141,18 +141,6 @@ bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const awh::
 	return this->_http.reject2(id, bid, error);
 }
 /**
- * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
- * @param id     идентификатор потока
- * @param bid    идентификатор брокера
- * @param origin название сервиса
- * @param field  поле сервиса
- * @return       результат отправки расширения
- */
-bool awh::server::AWH::altsvc2(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
-	// Выполняем отправку расширения альтернативного сервиса RFC7383
-	return this->_http.altsvc2(id, bid, origin, field);
-}
-/**
  * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
  * @param last   идентификатор последнего потока
  * @param bid    идентификатор брокера
@@ -500,13 +488,37 @@ void awh::server::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
 	this->_http.mode(flags);
 }
 /**
- * origin Метод отправки списка разрешённых источников
- * @param bid     идентификатор брокера
+ * addOrigin Метод добавления разрешённого источника
+ * @param origin разрешённый источнико
+ */
+void awh::server::AWH::addOrigin(const string & origin) noexcept {
+	// Выполняем добавление разрешённого источника
+	this->_http.addOrigin(origin);
+}
+/**
+ * setOrigin Метод установки списка разрешённых источников
  * @param origins список разрешённых источников
  */
-void awh::server::AWH::origin(const uint64_t bid, const vector <string> & origins) noexcept {
-	// Выполняем отправку списка разрешённых источников
-	this->_http.origin(bid, origins);
+void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку разрешённых источников
+	this->_http.setOrigin(origins);
+}
+/**
+ * addAltSvc Метод добавления альтернативного сервиса
+ * @param origin название альтернативного сервиса
+ * @param field  поле альтернативного сервиса
+ */
+void awh::server::AWH::addAltSvc(const string & origin, const string & field) noexcept {
+	// Выполняем добавление альтернативного сервиса
+	this->_http.addAltSvc(origin, field);
+}
+/**
+ * setAltSvc Метод установки списка разрешённых источников
+ * @param origins список альтернативных сервисов
+ */
+void awh::server::AWH::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_http.setAltSvc(origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

@@ -414,13 +414,37 @@ void awh::server::WebSocket::bytesDetect(const scheme_t::mark_t read, const sche
 	this->_ws.bytesDetect(read, write);
 }
 /**
- * origin Метод отправки списка разрешенных источников
- * @param bid     идентификатор брокера
+ * addOrigin Метод добавления разрешённого источника
+ * @param origin разрешённый источнико
+ */
+void awh::server::WebSocket::addOrigin(const string & origin) noexcept {
+	// Выполняем добавление разрешённого источника
+	this->_ws.addOrigin(origin);
+}
+/**
+ * setOrigin Метод установки списка разрешённых источников
  * @param origins список разрешённых источников
  */
-void awh::server::WebSocket::origin(const uint64_t bid, const vector <string> & origins) noexcept {
-	// Выполняем отправку списка разрешенных источников
-	this->_ws.origin(bid, origins);
+void awh::server::WebSocket::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку разрешённых источников
+	this->_ws.setOrigin(origins);
+}
+/**
+ * addAltSvc Метод добавления альтернативного сервиса
+ * @param origin название альтернативного сервиса
+ * @param field  поле альтернативного сервиса
+ */
+void awh::server::WebSocket::addAltSvc(const string & origin, const string & field) noexcept {
+	// Выполняем добавление альтернативного сервиса
+	this->_ws.addAltSvc(origin, field);
+}
+/**
+ * setAltSvc Метод установки списка разрешённых источников
+ * @param origins список альтернативных сервисов
+ */
+void awh::server::WebSocket::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_ws.setAltSvc(origins);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2

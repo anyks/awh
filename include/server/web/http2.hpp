@@ -293,16 +293,6 @@ namespace awh {
 				bool reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 			public:
 				/**
-				 * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
-				 * @param id     идентификатор потока
-				 * @param bid    идентификатор брокера
-				 * @param origin название сервиса
-				 * @param field  поле сервиса
-				 * @return       результат отправки расширения
-				 */
-				bool altsvc2(const int32_t id, const uint64_t bid, const string & origin = "", const string & field = "") noexcept;
-			public:
-				/**
 				 * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
 				 * @param last   идентификатор последнего потока
 				 * @param bid    идентификатор брокера

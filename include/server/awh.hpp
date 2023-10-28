@@ -141,16 +141,6 @@ namespace awh {
 				bool reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 			public:
 				/**
-				 * altsvc2 Метод HTTP/2 отправки расширения альтернативного сервиса RFC7383
-				 * @param id     идентификатор потока
-				 * @param bid    идентификатор брокера
-				 * @param origin название сервиса
-				 * @param field  поле сервиса
-				 * @return       результат отправки расширения
-				 */
-				bool altsvc2(const int32_t id, const uint64_t bid, const string & origin = "", const string & field = "") noexcept;
-			public:
-				/**
 				 * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
 				 * @param last   идентификатор последнего потока
 				 * @param bid    идентификатор брокера
@@ -397,11 +387,27 @@ namespace awh {
 				void mode(const set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
-				 * origin Метод отправки списка разрешённых источников
-				 * @param bid     идентификатор брокера
+				 * addOrigin Метод добавления разрешённого источника
+				 * @param origin разрешённый источнико
+				 */
+				void addOrigin(const string & origin) noexcept;
+				/**
+				 * setOrigin Метод установки списка разрешённых источников
 				 * @param origins список разрешённых источников
 				 */
-				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
+				void setOrigin(const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * addAltSvc Метод добавления альтернативного сервиса
+				 * @param origin название альтернативного сервиса
+				 * @param field  поле альтернативного сервиса
+				 */
+				void addAltSvc(const string & origin, const string & field) noexcept;
+				/**
+				 * setAltSvc Метод установки списка разрешённых источников
+				 * @param origins список альтернативных сервисов
+				 */
+				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

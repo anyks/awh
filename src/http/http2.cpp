@@ -1177,67 +1177,6 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 	return false;
 }
 /**
- * altsvc Метод отправки расширения альтернативного сервиса RFC7383
- * @param sid    идентификатор потока
- * @param origin название сервиса
- * @param field  поле сервиса
- * @return       результат отправки расширения
- */
-bool awh::Http2::altsvc(const int32_t sid, const string & origin, const string & field) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_ALTSVC;
-	// Если размер окна расширения передан
-	if((!origin.empty() && !field.empty()) || (origin.empty() && field.empty())){
-		// Определяем идентификатор сервиса
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если сервис идентифицирован как клиент
-			case static_cast <uint8_t> (mode_t::CLIENT): {
-				// Выводим сообщение об ошибке
-				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ALTSVC");
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ALTSVC\" method");
-			} break;
-			// Если сервис идентифицирован как сервер
-			case static_cast <uint8_t> (mode_t::SERVER): {
-				// Если сессия инициализированна
-				if(this->_session != nullptr){
-					// Выполняем отправку альтернативного сервиса
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
-					// Если отправить алтернативного сервиса не вышло
-					if(nghttp2_is_fatal(rv)){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_ALTSVC);
-						// Выходим из функции
-						return false;
-					}
-					// Если сессия инициализированна
-					if(this->_session != nullptr){
-						// Фиксируем отправленный результат
-						rv = nghttp2_session_send(this->_session);
-						// Если зафиксифровать результат не вышло
-						if(nghttp2_is_fatal(rv)){
-							// Выводим сообщение об полученной ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-							// Выполняем вызов метода выполненного события
-							this->completed(event_t::SEND_ALTSVC);
-							// Выходим из функции
-							return false;
-						}
-					}
-				}
-			} break;
-		}
-	}
-	// Выполняем вызов метода выполненного события
-	this->completed(event_t::SEND_ALTSVC);
-	// Выводим результат
-	return false;
-}
-/**
  * sendOrigin Метод отправки списка разрешённых источников
  * @param origins список разрешённых источников
  * @return        результат отправки данных фрейма
@@ -1303,6 +1242,67 @@ bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
 	}
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_ORIGIN);
+	// Выводим результат
+	return false;
+}
+/**
+ * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+ * @param sid    идентификатор потока
+ * @param origin название сервиса
+ * @param field  поле сервиса
+ * @return       результат отправки расширения
+ */
+bool awh::Http2::sendAltSvc(const int32_t sid, const string & origin, const string & field) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_ALTSVC;
+	// Если размер окна расширения передан
+	if((!origin.empty() && !field.empty()) || (origin.empty() && field.empty())){
+		// Определяем идентификатор сервиса
+		switch(static_cast <uint8_t> (this->_mode)){
+			// Если сервис идентифицирован как клиент
+			case static_cast <uint8_t> (mode_t::CLIENT): {
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ALTSVC");
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выводим функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ALTSVC\" method");
+			} break;
+			// Если сервис идентифицирован как сервер
+			case static_cast <uint8_t> (mode_t::SERVER): {
+				// Если сессия инициализированна
+				if(this->_session != nullptr){
+					// Выполняем отправку альтернативного сервиса
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
+					// Если отправить алтернативного сервиса не вышло
+					if(nghttp2_is_fatal(rv)){
+						// Выводим сообщение об полученной ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+						// Выполняем вызов метода выполненного события
+						this->completed(event_t::SEND_ALTSVC);
+						// Выходим из функции
+						return false;
+					}
+					// Если сессия инициализированна
+					if(this->_session != nullptr){
+						// Фиксируем отправленный результат
+						rv = nghttp2_session_send(this->_session);
+						// Если зафиксифровать результат не вышло
+						if(nghttp2_is_fatal(rv)){
+							// Выводим сообщение об полученной ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+							// Выполняем вызов метода выполненного события
+							this->completed(event_t::SEND_ALTSVC);
+							// Выходим из функции
+							return false;
+						}
+					}
+				}
+			} break;
+		}
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_ALTSVC);
 	// Выводим результат
 	return false;
 }

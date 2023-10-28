@@ -577,8 +577,14 @@ namespace awh {
 					HEADER_TABLE_SIZE = 0x06  // Максимальный размер таблицы заголовков
 				};
 			protected:
+				// Список доступных источников для подключения HTTP/2
+				vector <string> _origins;
+			protected:
 				// Список параметров настроек протокола HTTP/2
 				map <settings_t, uint32_t> _settings;
+			protected:
+				// Список отправляемых альтернативных сервисов HTTP/2
+				unordered_multimap <string, string> _altsvc;
 			protected:
 				// Список активных сессий HTTP/2
 				map <uint64_t, unique_ptr <http2_t>> _sessions;
@@ -665,13 +671,6 @@ namespace awh {
 				bool ping(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * origin Метод отправки списка разрешённых источников
-				 * @param bid     идентификатор брокера
-				 * @param origins список разрешённых источников
-				 */
-				void origin(const uint64_t bid, const vector <string> & origins) noexcept;
-			public:
-				/**
 				 * shutdown Метод отправки клиенту сообщения корректного завершения
 				 * @param bid идентификатор брокера
 				 * @return    результат выполнения операции
@@ -688,16 +687,6 @@ namespace awh {
 				bool reject(const int32_t id, const uint64_t bid, http2_t::error_t error) noexcept;
 			public:
 				/**
-				 * altsvc Метод отправки расширения альтернативного сервиса RFC7383
-				 * @param id     идентификатор потока
-				 * @param bid    идентификатор брокера
-				 * @param origin название сервиса
-				 * @param field  поле сервиса
-				 * @return       результат отправки расширения
-				 */
-				bool altsvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept;
-			public:
-				/**
 				 * goaway Метод отправки сообщения закрытия всех потоков
 				 * @param last   идентификатор последнего потока
 				 * @param bid    идентификатор брокера
@@ -707,6 +696,23 @@ namespace awh {
 				 * @return       результат отправки данных фрейма
 				 */
 				bool goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+			public:
+				/**
+				 * sendOrigin Метод отправки списка разрешённых источников
+				 * @param bid     идентификатор брокера
+				 * @param origins список разрешённых источников
+				 * @return        результат отправки расширения
+				 */
+				bool sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
+				/**
+				 * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+				 * @param id     идентификатор потока
+				 * @param bid    идентификатор брокера
+				 * @param origin название сервиса
+				 * @param field  поле сервиса
+				 * @return       результат отправки расширения
+				 */
+				bool sendAltSvc(const int32_t id, const uint64_t bid, const string & origin = "", const string & field = "") noexcept;
 			public:
 				/**
 				 * send Метод отправки трейлеров
@@ -744,6 +750,29 @@ namespace awh {
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
 				int32_t push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+			public:
+				/**
+				 * addOrigin Метод добавления разрешённого источника
+				 * @param origin разрешённый источнико
+				 */
+				void addOrigin(const string & origin) noexcept;
+				/**
+				 * setOrigin Метод установки списка разрешённых источников
+				 * @param origins список разрешённых источников
+				 */
+				void setOrigin(const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * addAltSvc Метод добавления альтернативного сервиса
+				 * @param origin название альтернативного сервиса
+				 * @param field  поле альтернативного сервиса
+				 */
+				void addAltSvc(const string & origin, const string & field) noexcept;
+				/**
+				 * setAltSvc Метод установки списка разрешённых источников
+				 * @param origins список альтернативных сервисов
+				 */
+				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

@@ -310,20 +310,19 @@ namespace awh {
 			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		public:
 			/**
-			 * altsvc Метод отправки расширения альтернативного сервиса RFC7383
-			 * @param sid    идентификатор потока
-			 * @param origin название сервиса
-			 * @param field  поле сервиса
-			 * @return       результат отправки расширения
-			 */
-			bool altsvc(const int32_t sid, const string & origin, const string & field) noexcept;
-		public:
-			/**
 			 * sendOrigin Метод отправки списка разрешённых источников
 			 * @param origins список разрешённых источников
 			 * @return        результат отправки данных фрейма
 			 */
 			bool sendOrigin(const vector <string> & origins) noexcept;
+			/**
+			 * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+			 * @param sid    идентификатор потока
+			 * @param origin название сервиса
+			 * @param field  поле сервиса
+			 * @return       результат отправки расширения
+			 */
+			bool sendAltSvc(const int32_t sid, const string & origin, const string & field) noexcept;
 			/**
 			 * sendTrailers Метод отправки трейлеров
 			 * @param id      идентификатор потока
@@ -340,6 +339,7 @@ namespace awh {
 			 * @return       результат отправки данных фрейма
 			 */
 			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
+		public:
 			/**
 			 * sendPush Метод отправки push-уведомлений
 			 * @param id      идентификатор потока
