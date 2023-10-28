@@ -183,6 +183,26 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
 	return 0;
 }
 /**
+ * error Функция обратного вызова при получении ошибок
+ * @param session объект сессии
+ * @param msg     сообщение ошибки
+ * @param size    размер текста ошибки
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус обработки полученной ошибки
+ */
+int awh::Http2::error(nghttp2_session * session, const char * msg, const size_t size, void * ctx) noexcept {
+	// Получаем объект родительского объекта
+	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	// Выводим информацию о закрытии сессии с ошибкой
+	self->_log->print("%s", log_t::flag_t::CRITICAL, string(msg, size).c_str());
+	// Если функция обратного вызова на на вывод ошибок установлена
+	if(self->_callback.is("error"))
+		// Выводим функцию обратного вызова
+		self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, string(msg, size));
+	// Выводим результат
+	return 0;
+}
+/**
  * close Функция закрытия подключения
  * @param session объект сессии
  * @param sid     идентификатор потока
@@ -1529,6 +1549,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_new(&callbacks);
 		// Выполняем установку функции обратного вызова при подготовки данных для отправки
 		nghttp2_session_callbacks_set_send_callback(callbacks, &http2_t::send);
+		// Выполняем установку функции обратного вызова при перехвате ошибок протокола
+		nghttp2_session_callbacks_set_error_callback(callbacks, &http2_t::error);
 		// Выполняем установку функции обратного вызова при получении заголовка
 		nghttp2_session_callbacks_set_on_header_callback(callbacks, &http2_t::header);
 		// Выполняем установку функции обратного вызова закрытия подключения
@@ -1541,30 +1563,6 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
-
-		// nghttp2_session_callbacks_set_before_frame_send_callback
-		// nghttp2_session_callbacks_set_data_source_read_length_callback
-		// nghttp2_session_callbacks_set_error_callback
-		// nghttp2_session_callbacks_set_error_callback2
-	
-		// nghttp2_session_callbacks_set_on_extension_chunk_recv_callback
-		// nghttp2_session_callbacks_set_on_frame_not_send_callback
-		// nghttp2_session_callbacks_set_on_header_callback2
-		// nghttp2_session_callbacks_set_on_invalid_frame_recv_callback
-		// nghttp2_session_callbacks_set_on_invalid_header_callback
-		// nghttp2_session_callbacks_set_on_invalid_header_callback2
-		// nghttp2_session_callbacks_set_pack_extension_callback
-		// nghttp2_session_callbacks_set_recv_callback
-		// nghttp2_session_callbacks_set_select_padding_callback
-		// nghttp2_session_callbacks_set_send_data_callback
-		// nghttp2_session_callbacks_set_unpack_extension_callback
-
-		// nghttp2_on_frame_send_callback
-		
-
-		// nghttp2_session_check_request_allowed
-		// nghttp2_session_check_server_session
-
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
@@ -1585,19 +1583,34 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				 */
 				nghttp2_option_set_no_auto_window_update(option, 1);
 				// Выполняем перебор полученных настроек
-				for(auto & setting : settings){
-					// Если настройки соответствуют количествам доступных потоков
-					if(setting.settings_id == NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS){
-						// Выполняем установку количество потоков разрешенных использовать в подключении
-						nghttp2_option_set_peer_max_concurrent_streams(option, setting.value);
-						// Выходим из цикла
-						break;
+				for(auto it = settings.begin(); it != settings.end();){
+					// Определяем код параметра настроек
+					switch(it->settings_id){
+						// Если активированно разрешенение на передачу расширения ALTSVC
+						case 0x0A: {
+							// Выполняем установку зарешения использования расширения ALTSVC
+							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+							// Выполняем удаление лишних параметров настроек
+							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
+						} break;
+						// Если активированно разрешенение на передачу расширения ORIGIN
+						case 0x0B: {
+							// Выполняем установку зарешения использования расширения ORIGIN
+							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+							// Выполняем удаление лишних параметров настроек
+							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
+						} break;
+						// Если настройки соответствуют количествам доступных потоков
+						case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS: {
+							// Выполняем установку количество потоков разрешенных использовать в подключении
+							nghttp2_option_set_peer_max_concurrent_streams(option, it->value);
+							// Выполняем увеличение итератора
+							++it;
+						} break;
+						// Для всех остальных настроек
+						default: ++it;
 					}
 				}
-				// Выполняем установку зарешения использования расширения ALTSVC
-				nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
-				// Выполняем установку зарешения использования расширения ORIGIN
-   				nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
 				// Выполняем создание клиента
 				// nghttp2_session_client_new(&this->_session, callbacks, this);
 				// Выполняем создание клиента

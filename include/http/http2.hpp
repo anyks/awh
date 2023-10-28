@@ -172,6 +172,15 @@ namespace awh {
 			 */
 			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
+			 * error Функция обратного вызова при получении ошибок
+			 * @param session объект сессии
+			 * @param msg     сообщение ошибки
+			 * @param size    размер текста ошибки
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        статус обработки полученной ошибки
+			 */
+			static int error(nghttp2_session * session, const char * msg, const size_t size, void * ctx) noexcept;
+			/**
 			 * close Функция закрытия подключения
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока

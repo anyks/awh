@@ -221,13 +221,11 @@ int main(int argc, char * argv[]){
 	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
-	
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// ws.encryption("PASS");
