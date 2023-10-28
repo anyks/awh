@@ -64,6 +64,19 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 	// Выводим отладочную информацию
 	cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << endl;
 }
+
+
+
+static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx){
+	switch(hd->type) {
+		case NGHTTP2_ALTSVC: {
+			cout << " +++++++++++++++++++++ SEND FRAME " << endl;
+			reinterpret_cast <awh::http2_t *> (ctx)->altsvc(0, "anyks.net", "h2=\":2222\"");
+		} break;
+	}
+	return 0;
+}
+
 /**
  * begin Функция начала получения фрейма заголовков
  * @param session объект сессии
@@ -1958,6 +1971,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
 
 		nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
+
+		nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, &begin_frame_callback);
 		
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
