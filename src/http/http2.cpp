@@ -235,7 +235,9 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 
 			// self->sendOrigin({"https://anyks.net:222"});
 
-			self->sendAltSvc(hd->stream_id, "example222.com", "h2=\":8000\"");
+			// self->sendAltSvc(hd->stream_id, "example222.com", "h2=\":8000\"");
+
+			self->sendAltSvc2(hd->stream_id);
 
 			/*
 			for(auto & item : self->_kdl)
@@ -1191,6 +1193,58 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 	// Выводим результат
 	return false;
 }
+
+void awh::Http2::sendAltSvc2(const int32_t sid) noexcept {
+	// Выполняем установку активного события
+	this->_event = event_t::SEND_ALTSVC;
+	// Определяем идентификатор сервиса
+	switch(static_cast <uint8_t> (this->_mode)){
+		// Если сервис идентифицирован как клиент
+		case static_cast <uint8_t> (mode_t::CLIENT): {
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ALTSVC");
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выводим функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ALTSVC\" method");
+		} break;
+		// Если сервис идентифицирован как сервер
+		case static_cast <uint8_t> (mode_t::SERVER): {
+			// Если сессия инициализированна
+			if(this->_session != nullptr){
+				// Выполняем перебор установленных альтернативных сервисов
+				for(auto & item : this->_kdl){
+					// Выполняем отправку альтернативного сервиса
+					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, reinterpret_cast <const uint8_t *> (item.first.c_str()), item.first.size(), reinterpret_cast <const uint8_t *> (item.second.c_str()), item.second.size());
+					// Если отправить алтернативного сервиса не вышло
+					if(nghttp2_is_fatal(rv)){
+						// Выводим сообщение об полученной ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+						// Выполняем вызов метода выполненного события
+						this->completed(event_t::SEND_ALTSVC);
+						// Выходим из функции
+						return;
+					}
+					// Если сессия инициализированна
+					if(this->_session != nullptr){
+						// Фиксируем отправленный результат
+						rv = nghttp2_session_send(this->_session);
+						// Если зафиксифровать результат не вышло
+						if(nghttp2_is_fatal(rv)){
+							// Выводим сообщение об полученной ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+							// Выполняем вызов метода выполненного события
+							this->completed(event_t::SEND_ALTSVC);
+						}
+					}
+				}
+			}
+		} break;
+	}
+	// Выполняем вызов метода выполненного события
+	this->completed(event_t::SEND_ALTSVC);
+}
+
 /**
  * sendOrigin Метод отправки списка разрешённых источников
  * @param origins список разрешённых источников

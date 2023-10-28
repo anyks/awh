@@ -313,6 +313,10 @@ namespace awh {
 			 * @return     результат установки размера офна фрейма
 			 */
 			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
+		private:
+
+			void sendAltSvc2(const int32_t sid) noexcept;
+
 		public:
 			/**
 			 * sendOrigin Метод отправки списка разрешённых источников
@@ -328,6 +332,7 @@ namespace awh {
 			 * @return       результат отправки расширения
 			 */
 			bool sendAltSvc(const int32_t sid, const string & origin, const string & field) noexcept;
+		public:
 			/**
 			 * sendTrailers Метод отправки трейлеров
 			 * @param id      идентификатор потока
