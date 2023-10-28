@@ -266,16 +266,9 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) 
  * @return      статус полученных данных
  */
 int awh::server::WebSocket2::createSignal(const int32_t sid, const uint64_t bid, const http2_t::frame_t frame) noexcept {
-	// Выполняем определение типа фрейма
-	switch(static_cast <uint8_t> (frame)){
-		// Если мы получили входящие данные тела ответа
-		case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
-			
-		} break;
-		// Если мы получили входящие данные заголовков ответа
-		case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
-
-		} break;
+	// Если мы получили входящие данные заголовков ответа
+	if(frame == http2_t::frame_t::HEADERS){
+		cout << " ******************* CREATE HEADER " << sid << endl;
 	}
 	// Выводим результат
 	return 0;

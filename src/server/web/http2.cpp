@@ -289,21 +289,9 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
  * @return      статус полученных данных
  */
 int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::frame_t frame) noexcept {
-	
-	cout << " ******************* CREATE FRAME " << (u_short) frame << " == " << sid << endl;
-	
-	// Выполняем определение типа фрейма
-	switch(static_cast <uint8_t> (frame)){
-		// Если мы получили входящие данные тела ответа
-		case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
-			
-			cout << " ******************* CREATE DATA " << sid << endl;
-
-		} break;
-		// Если мы получили входящие данные заголовков ответа
-		case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
-			cout << " ******************* CREATE HEADER " << sid << endl;
-		} break;
+	// Если мы получили входящие данные заголовков ответа
+	if(frame == awh::http2_t::frame_t::HEADERS){
+		cout << " ******************* CREATE HEADER " << sid << endl;
 	}
 	// Выводим результат
 	return 0;
