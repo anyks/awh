@@ -20,6 +20,7 @@
  */
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 /**
  * Методы только для OS Windows
