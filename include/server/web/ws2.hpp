@@ -119,14 +119,6 @@ namespace awh {
 				 */
 				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
 				/**
-				 * createSignal Метод обратного вызова при создании нового фрейма HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param bid   идентификатор брокера
-				 * @param frame тип полученного фрейма
-				 * @return      статус полученных данных
-				 */
-				int createSignal(const int32_t sid, const uint64_t bid, const http2_t::frame_t frame) noexcept;
-				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера

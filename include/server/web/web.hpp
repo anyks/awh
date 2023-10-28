@@ -619,14 +619,6 @@ namespace awh {
 				 */
 				virtual int beginSignal(const int32_t sid, const uint64_t bid) noexcept = 0;
 				/**
-				 * createSignal Метод обратного вызова при создании нового фрейма HTTP/2
-				 * @param sid   идентификатор потока
-				 * @param bid   идентификатор брокера
-				 * @param frame тип полученного фрейма
-				 * @return      статус полученных данных
-				 */
-				virtual int createSignal(const int32_t sid, const uint64_t bid, const http2_t::frame_t frame) noexcept = 0;
-				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
@@ -698,23 +690,6 @@ namespace awh {
 				bool goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 			public:
 				/**
-				 * sendOrigin Метод отправки списка разрешённых источников
-				 * @param bid     идентификатор брокера
-				 * @param origins список разрешённых источников
-				 * @return        результат отправки расширения
-				 */
-				bool sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept;
-				/**
-				 * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
-				 * @param id     идентификатор потока
-				 * @param bid    идентификатор брокера
-				 * @param origin название сервиса
-				 * @param field  поле сервиса
-				 * @return       результат отправки расширения
-				 */
-				bool sendAltSvc(const int32_t id, const uint64_t bid, const string & origin = "", const string & field = "") noexcept;
-			public:
-				/**
 				 * send Метод отправки трейлеров
 				 * @param id      идентификатор потока
 				 * @param bid     идентификатор брокера
@@ -769,7 +744,7 @@ namespace awh {
 				 */
 				void addAltSvc(const string & origin, const string & field) noexcept;
 				/**
-				 * setAltSvc Метод установки списка разрешённых источников
+				 * setAltSvc Метод установки списка альтернативных сервисов
 				 * @param origins список альтернативных сервисов
 				 */
 				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;

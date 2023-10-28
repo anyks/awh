@@ -155,9 +155,11 @@ namespace awh {
 			// Объект функций обратного вызова
 			fn_t _callback;
 		private:
-
-			unordered_multimap <string, string> _kdl = {{"example.com", "h2=\":8000\""}};
-
+			// Список доступных источников для подключения
+			vector <string> _origins;
+		private:
+			// Список отправляемых альтернативных сервисов
+			unordered_multimap <string, string> _altsvc;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -314,24 +316,15 @@ namespace awh {
 			 */
 			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		private:
-
-			void sendAltSvc2(const int32_t sid) noexcept;
-
-		public:
 			/**
 			 * sendOrigin Метод отправки списка разрешённых источников
-			 * @param origins список разрешённых источников
-			 * @return        результат отправки данных фрейма
 			 */
-			bool sendOrigin(const vector <string> & origins) noexcept;
+			void sendOrigin() noexcept;
 			/**
 			 * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
-			 * @param sid    идентификатор потока
-			 * @param origin название сервиса
-			 * @param field  поле сервиса
-			 * @return       результат отправки расширения
+			 * @param sid идентификатор потока
 			 */
-			bool sendAltSvc(const int32_t sid, const string & origin, const string & field) noexcept;
+			void sendAltSvc(const int32_t sid) noexcept;
 		public:
 			/**
 			 * sendTrailers Метод отправки трейлеров
@@ -391,6 +384,18 @@ namespace awh {
 			 * @return результат проверки инициализации
 			 */
 			bool is() const noexcept;
+		public:
+			/**
+			 * origin Метод установки списка разрешённых источников
+			 * @param origins список разрешённых источников
+			 */
+			void origin(const vector <string> & origins) noexcept;
+		public:
+			/**
+			 * altsvc Метод установки списка альтернативных сервисов
+			 * @param origins список альтернативных сервисов
+			 */
+			void altsvc(const unordered_multimap <string, string> & origins) noexcept;
 		public:
 			/**
 			 * init Метод инициализации

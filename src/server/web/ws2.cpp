@@ -259,32 +259,6 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) 
 	return 0;
 }
 /**
- * createSignal Метод обратного вызова при создании нового фрейма HTTP/2
- * @param sid   идентификатор потока
- * @param bid   идентификатор брокера
- * @param frame тип полученного фрейма
- * @return      статус полученных данных
- */
-int awh::server::WebSocket2::createSignal(const int32_t sid, const uint64_t bid, const http2_t::frame_t frame) noexcept {
-	// Если мы получили входящие данные заголовков ответа
-	if(frame == http2_t::frame_t::HEADERS){
-		// Если список разрешённых источников установлен
-		if(!this->_origins.empty())
-			// Выполняем отправку клиенту списка разрешённых источников
-			this->sendOrigin(bid, this->_origins);
-		// Если альтернативные сервисы установлены
-		if(!this->_altsvc.empty()){
-			// Выполняем перебор весь список альтернативных сервисов
-			for(auto & item : this->_altsvc)
-				// Выполняем отправку альтернативного сервиса
-				this->sendAltSvc(sid, bid, item.first, item.second);
-		// Выполняем отправку текущего адреса ресурса
-		} else this->sendAltSvc(0, bid);
-	}
-	// Выводим результат
-	return 0;
-}
-/**
  * closedSignal Метод завершения работы потока
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера

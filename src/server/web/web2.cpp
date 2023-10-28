@@ -96,8 +96,6 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
 			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
-			// Выполняем установку функции обратного вызова при создании нового фрейма клиента
-			ret.first->second->on((function <int (const int32_t, const http2_t::frame_t)>) std::bind(&web2_t::createSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
 			ret.first->second->on((function <int (const int32_t, const http2_t::error_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
@@ -114,6 +112,14 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			if(!ret.first->second->init(http2_t::mode_t::SERVER, std::move(iv)))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
+			// Если список разрешённых источников установлен
+			if(!this->_origins.empty())
+				// Устанавливаем список разрешённых источников
+				ret.first->second->origin(this->_origins);
+			// Если список альтернативных сервисов установлен
+			if(!this->_altsvc.empty())
+				// Устанавливаем список альтернативных сервисов
+				ret.first->second->altsvc(this->_altsvc);
 		}
 	}
 }
@@ -218,59 +224,6 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку требования клиенту выполнить отключение от сервера
 			if(!(result = it->second->goaway(last, error, buffer, size))){
-				// Выполняем закрытие подключения
-				const_cast <server::core_t *> (this->_core)->close(bid);
-				// Выходим из функции
-				return result;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * sendOrigin Метод отправки списка разрешённых источников
- * @param bid     идентификатор брокера
- * @param origins список разрешённых источников
- * @return        результат отправки данных фрейма
- */
-bool awh::server::Web2::sendOrigin(const uint64_t bid, const vector <string> & origins) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Выполняем поиск брокера в списке активных сессий
-	auto it = this->_sessions.find(bid);
-	// Если активная сессия найдена
-	if(it != this->_sessions.end()){
-		// Если список разрешённых источников отправить не удалось
-		if((this->_core != nullptr) && !(result = it->second->sendOrigin(origins))){
-			// Выполняем закрытие подключения
-			const_cast <server::core_t *> (this->_core)->close(bid);
-			// Выходим из функции
-			return result;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
- * @param id     идентификатор потока
- * @param bid    идентификатор брокера
- * @param origin название сервиса
- * @param field  поле сервиса
- * @return       результат отправки расширения
- */
-bool awh::server::Web2::sendAltSvc(const int32_t id, const uint64_t bid, const string & origin, const string & field) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working()){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
-			// Выполняем отправку расширения клиенту с требованием подключиться к другому протоколу
-			if(!(result = it->second->sendAltSvc(id, origin, field))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -424,11 +377,11 @@ void awh::server::Web2::addAltSvc(const string & origin, const string & field) n
 		this->_altsvc.emplace(origin, field);
 }
 /**
- * setAltSvc Метод установки списка разрешённых источников
+ * setAltSvc Метод установки списка альтернативных сервисов
  * @param origins список альтернативных сервисов
  */
 void awh::server::Web2::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
-	// Выполняем установку списка разрешённых источников
+	// Выполняем установку списка альтернативных сервисов
 	this->_altsvc = origins;
 }
 /**

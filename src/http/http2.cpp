@@ -154,102 +154,95 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
+	// Выполняем создание идентификатора фрейма по умолчанию
+	frame_t type = frame_t::NONE;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	// Если функция обратного вызова установлена
-	if(self->_callback.is("create")){
-		// Выполняем создание идентификатора фрейма по умолчанию
-		frame_t type = frame_t::NONE;
-		// Определяем тип фрейма
-		switch(static_cast <uint8_t> (hd->type)){
-			// Если мы получили фрейм данных
-			case static_cast <uint8_t> (NGHTTP2_DATA):
-				// Выполняем установку фрейма
-				type = frame_t::DATA;
-			break;
-			// Если мы получили фрейм пингов
-			case static_cast <uint8_t> (NGHTTP2_PING):
-				// Выполняем установку фрейма
-				type = frame_t::PING;
-			break;
-			// Если мы получили фрейм требования отключиться от сервера
-			case static_cast <uint8_t> (NGHTTP2_GOAWAY):
-				// Выполняем установку фрейма
-				type = frame_t::GOAWAY;
-			break;
-			// Если мы получили фрейм передачи альтернативных желаемых протоколов
-			case static_cast <uint8_t> (NGHTTP2_ALTSVC):
-				// Выполняем установку фрейма
-				type = frame_t::ALTSVC;
-			break;
-			// Если мы получили фрейм списка разрешённых ресурсов для подключения
-			case static_cast <uint8_t> (NGHTTP2_ORIGIN):
-				// Выполняем установку фрейма
-				type = frame_t::ORIGIN;
-			break;
-			// Если мы получили фрейм заголовков
-			case static_cast <uint8_t> (NGHTTP2_HEADERS):
-				// Выполняем установку фрейма
-				type = frame_t::HEADERS;
-			break;
-			// Если мы получили фрейм приоритетов
-			case static_cast <uint8_t> (NGHTTP2_PRIORITY):
-				// Выполняем установку фрейма
-				type = frame_t::PRIORITY;
-			break;
-			// Если мы получили фрейм полученя настроек
-			case static_cast <uint8_t> (NGHTTP2_SETTINGS):
-				// Выполняем установку фрейма
-				type = frame_t::SETTINGS;
-			break;
-			// Если мы получили фрейм сброса подключения клиента
-			case static_cast <uint8_t> (NGHTTP2_RST_STREAM):
-				// Выполняем установку фрейма
-				type = frame_t::RST_STREAM;
-			break;
-			// Если мы получили фрейм продолжения работы
-			case static_cast <uint8_t> (NGHTTP2_CONTINUATION):
-				// Выполняем установку фрейма
-				type = frame_t::CONTINUATION;
-			break;
-			// Если мы получили фрейм отправки push-уведомления
-			case static_cast <uint8_t> (NGHTTP2_PUSH_PROMISE):
-				// Выполняем установку фрейма
-				type = frame_t::PUSH_PROMISE;
-			break;
-			// Если мы получили фрейм обновления окна фрейма
-			case static_cast <uint8_t> (NGHTTP2_WINDOW_UPDATE):
-				// Выполняем установку фрейма
-				type = frame_t::WINDOW_UPDATE;
-			break;
-			// Если мы получили фрейм обновления приоритетов
-			case static_cast <uint8_t> (NGHTTP2_PRIORITY_UPDATE):
-				// Выполняем установку фрейма
-				type = frame_t::PRIORITY_UPDATE;
-			break;
-		}
-
-		if(hd->stream_id > 0){
-
-			cout << " ++++++++++++++++++!!! ALTSVC1 " << hd->stream_id << " == " << (u_int) type << endl;
-
-			self->sendOrigin({"https://anyks.net:222"});
-
-			
-
-			self->sendAltSvc(hd->stream_id, "", "");
-
-			// self->sendAltSvc2(hd->stream_id);
-
-			/*
-			for(auto & item : self->_kdl)
-				self->sendAltSvc(hd->stream_id, item.first, item.second);
-			*/
-		} else self->sendAltSvc(hd->stream_id, "example222.com", "h2=\":8000\"");
-
-		// Выводим функцию обратного вызова
-		// return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
+	// Определяем тип фрейма
+	switch(static_cast <uint8_t> (hd->type)){
+		// Если мы получили фрейм данных
+		case static_cast <uint8_t> (NGHTTP2_DATA):
+			// Выполняем установку фрейма
+			type = frame_t::DATA;
+		break;
+		// Если мы получили фрейм пингов
+		case static_cast <uint8_t> (NGHTTP2_PING):
+			// Выполняем установку фрейма
+			type = frame_t::PING;
+		break;
+		// Если мы получили фрейм требования отключиться от сервера
+		case static_cast <uint8_t> (NGHTTP2_GOAWAY):
+			// Выполняем установку фрейма
+			type = frame_t::GOAWAY;
+		break;
+		// Если мы получили фрейм передачи альтернативных желаемых протоколов
+		case static_cast <uint8_t> (NGHTTP2_ALTSVC):
+			// Выполняем установку фрейма
+			type = frame_t::ALTSVC;
+		break;
+		// Если мы получили фрейм списка разрешённых ресурсов для подключения
+		case static_cast <uint8_t> (NGHTTP2_ORIGIN):
+			// Выполняем установку фрейма
+			type = frame_t::ORIGIN;
+		break;
+		// Если мы получили фрейм заголовков
+		case static_cast <uint8_t> (NGHTTP2_HEADERS): {
+			// Выполняем установку фрейма
+			type = frame_t::HEADERS;
+			// Если сервис идентифицирован как сервер
+			if(self->_mode == mode_t::SERVER){
+				// Если поток является пользовательским
+				if(hd->stream_id > 0)
+					// Выполняем отправку списка источников клиенту
+					self->sendOrigin();
+				// Выполняем отправку список альтернативных сервисов клиенту
+				self->sendAltSvc(hd->stream_id);
+			}
+		} break;
+		// Если мы получили фрейм приоритетов
+		case static_cast <uint8_t> (NGHTTP2_PRIORITY):
+			// Выполняем установку фрейма
+			type = frame_t::PRIORITY;
+		break;
+		// Если мы получили фрейм полученя настроек
+		case static_cast <uint8_t> (NGHTTP2_SETTINGS): {
+			// Выполняем установку фрейма
+			type = frame_t::SETTINGS;
+			// Если сервис идентифицирован как сервер
+			if(self->_mode == mode_t::SERVER)
+				// Выполняем отправку список альтернативных сервисов клиенту
+				self->sendAltSvc(hd->stream_id);
+		} break;
+		// Если мы получили фрейм сброса подключения клиента
+		case static_cast <uint8_t> (NGHTTP2_RST_STREAM):
+			// Выполняем установку фрейма
+			type = frame_t::RST_STREAM;
+		break;
+		// Если мы получили фрейм продолжения работы
+		case static_cast <uint8_t> (NGHTTP2_CONTINUATION):
+			// Выполняем установку фрейма
+			type = frame_t::CONTINUATION;
+		break;
+		// Если мы получили фрейм отправки push-уведомления
+		case static_cast <uint8_t> (NGHTTP2_PUSH_PROMISE):
+			// Выполняем установку фрейма
+			type = frame_t::PUSH_PROMISE;
+		break;
+		// Если мы получили фрейм обновления окна фрейма
+		case static_cast <uint8_t> (NGHTTP2_WINDOW_UPDATE):
+			// Выполняем установку фрейма
+			type = frame_t::WINDOW_UPDATE;
+		break;
+		// Если мы получили фрейм обновления приоритетов
+		case static_cast <uint8_t> (NGHTTP2_PRIORITY_UPDATE):
+			// Выполняем установку фрейма
+			type = frame_t::PRIORITY_UPDATE;
+		break;
 	}
+	// Если функция обратного вызова установлена
+	if(self->_callback.is("create"))
+		// Выводим функцию обратного вызова
+		return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
 	// Выводим результат
 	return 0;
 }
@@ -1195,68 +1188,14 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 	// Выводим результат
 	return false;
 }
-
-void awh::Http2::sendAltSvc2(const int32_t sid) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_ALTSVC;
-	// Определяем идентификатор сервиса
-	switch(static_cast <uint8_t> (this->_mode)){
-		// Если сервис идентифицирован как клиент
-		case static_cast <uint8_t> (mode_t::CLIENT): {
-			// Выводим сообщение об ошибке
-			this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ALTSVC");
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ALTSVC\" method");
-		} break;
-		// Если сервис идентифицирован как сервер
-		case static_cast <uint8_t> (mode_t::SERVER): {
-			// Если сессия инициализированна
-			if(this->_session != nullptr){
-				// Выполняем перебор установленных альтернативных сервисов
-				for(auto & item : this->_kdl){
-					// Выполняем отправку альтернативного сервиса
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, reinterpret_cast <const uint8_t *> (item.first.c_str()), item.first.size(), reinterpret_cast <const uint8_t *> (item.second.c_str()), item.second.size());
-					// Если отправить алтернативного сервиса не вышло
-					if(nghttp2_is_fatal(rv)){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_ALTSVC);
-						// Выходим из функции
-						return;
-					}
-					// Если сессия инициализированна
-					if(this->_session != nullptr){
-						// Фиксируем отправленный результат
-						rv = nghttp2_session_send(this->_session);
-						// Если зафиксифровать результат не вышло
-						if(nghttp2_is_fatal(rv)){
-							// Выводим сообщение об полученной ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-							// Выполняем вызов метода выполненного события
-							this->completed(event_t::SEND_ALTSVC);
-						}
-					}
-				}
-			}
-		} break;
-	}
-	// Выполняем вызов метода выполненного события
-	this->completed(event_t::SEND_ALTSVC);
-}
-
 /**
  * sendOrigin Метод отправки списка разрешённых источников
- * @param origins список разрешённых источников
- * @return        результат отправки данных фрейма
  */
-bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
+void awh::Http2::sendOrigin() noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ORIGIN;
 	// Если список источников передан
-	if(!origins.empty()){
+	if(!this->_origins.empty()){
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
@@ -1273,7 +1212,7 @@ bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
 				// Список источников для установки на клиенте
 				vector <nghttp2_origin_entry> ov;
 				// Выполняем перебор списка источников
-				for(auto & origin : origins)
+				for(auto & origin : this->_origins)
 					// Выполняем добавление источника в списку
 					ov.push_back({(uint8_t *) origin.c_str(), origin.size()});
 				// Если сессия инициализированна
@@ -1284,50 +1223,36 @@ bool awh::Http2::sendOrigin(const vector <string> & origins) noexcept {
 					if(nghttp2_is_fatal(rv)){
 						// Выводим сообщение об полученной ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_ORIGIN);
 						// Выходим из функции
-						return false;
+						goto End;
 					}
 					// Если сессия инициализированна
 					if(this->_session != nullptr){
 						// Фиксируем отправленный результат
 						rv = nghttp2_session_send(this->_session);
 						// Если зафиксифровать результат не вышло
-						if(nghttp2_is_fatal(rv)){
+						if(nghttp2_is_fatal(rv))
 							// Выводим сообщение об полученной ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-							// Выполняем вызов метода выполненного события
-							this->completed(event_t::SEND_ORIGIN);
-							// Выходим из функции
-							return false;
-						}
 					}
 				}
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_ORIGIN);
-				// Выводим результат
-				return true;
 			}
 		}
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_ORIGIN);
-	// Выводим результат
-	return false;
 }
 /**
  * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
- * @param sid    идентификатор потока
- * @param origin название сервиса
- * @param field  поле сервиса
- * @return       результат отправки расширения
+ * @param sid идентификатор потока
  */
-bool awh::Http2::sendAltSvc(const int32_t sid, const string & origin, const string & field) noexcept {
+void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ALTSVC;
-	// Если размер окна расширения передан
-	if((!origin.empty() && !field.empty()) || (origin.empty() && field.empty())){
+	// Если список альтернативных сервисов не пустой
+	if(!this->_altsvc.empty()){
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
@@ -1343,42 +1268,65 @@ bool awh::Http2::sendAltSvc(const int32_t sid, const string & origin, const stri
 			case static_cast <uint8_t> (mode_t::SERVER): {
 				// Если сессия инициализированна
 				if(this->_session != nullptr){
-					
-					cout << " ######################## SEND " << sid << " === " << origin << " == " << field << endl;
-					
-					// Выполняем отправку альтернативного сервиса
-					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
-					// Если отправить алтернативного сервиса не вышло
-					if(nghttp2_is_fatal(rv)){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_ALTSVC);
-						// Выходим из функции
-						return false;
-					}
-					// Если сессия инициализированна
-					if(this->_session != nullptr){
-						// Фиксируем отправленный результат
-						rv = nghttp2_session_send(this->_session);
-						// Если зафиксифровать результат не вышло
-						if(nghttp2_is_fatal(rv)){
-							// Выводим сообщение об полученной ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-							// Выполняем вызов метода выполненного события
-							this->completed(event_t::SEND_ALTSVC);
-							// Выходим из функции
-							return false;
+					// Определяем идентификатор потока
+					switch(sid){
+						// Если фрейм является системным
+						case 0: {
+							// Выполняем перебор всех альтернативных сервисов
+							for(auto & item : this->_altsvc){
+								// Выполняем отправку альтернативного сервиса
+								int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, reinterpret_cast <const uint8_t *> (item.first.c_str()), item.first.size(), reinterpret_cast <const uint8_t *> (item.second.c_str()), item.second.size());
+								// Если отправить алтернативного сервиса не вышло
+								if(nghttp2_is_fatal(rv)){
+									// Выводим сообщение об полученной ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+									// Выходим из функции
+									goto End;
+								}
+								// Если сессия инициализированна
+								if(this->_session != nullptr){
+									// Фиксируем отправленный результат
+									rv = nghttp2_session_send(this->_session);
+									// Если зафиксифровать результат не вышло
+									if(nghttp2_is_fatal(rv)){
+										// Выводим сообщение об полученной ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+										// Выходим из функции
+										goto End;
+									}
+								}
+							}
+						} break;
+						// Если фрейм является пользовательским запросом
+						default: {
+							// Выполняем отправку альтернативного сервиса
+							int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, nullptr, 0, nullptr, 0);
+							// Если отправить алтернативного сервиса не вышло
+							if(nghttp2_is_fatal(rv)){
+								// Выводим сообщение об полученной ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+								// Выходим из функции
+								goto End;
+							}
+							// Если сессия инициализированна
+							if(this->_session != nullptr){
+								// Фиксируем отправленный результат
+								rv = nghttp2_session_send(this->_session);
+								// Если зафиксифровать результат не вышло
+								if(nghttp2_is_fatal(rv))
+									// Выводим сообщение об полученной ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+							}
 						}
 					}
 				}
 			} break;
 		}
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_ALTSVC);
-	// Выводим результат
-	return false;
 }
 /**
  * sendTrailers Метод отправки трейлеров
@@ -1952,6 +1900,22 @@ void awh::Http2::close() noexcept {
 bool awh::Http2::is() const noexcept {
 	// Выводим результат проверки
 	return (this->_session != nullptr);
+}
+/**
+ * origin Метод установки списка разрешённых источников
+ * @param origins список разрешённых источников
+ */
+void awh::Http2::origin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка разрешённых источников
+	this->_origins.assign(origins.begin(), origins.end());
+}
+/**
+ * altsvc Метод установки списка альтернативных сервисов
+ * @param origins список альтернативных сервисов
+ */
+void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noexcept {
+	// Выполняем установку списка альтернативных сервисов
+	this->_altsvc = origins;
 }
 /**
  * init Метод инициализации
