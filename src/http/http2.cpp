@@ -85,7 +85,7 @@ typedef struct {
   const char *field;
 } alt_svc1;
 
-static const alt_svc1 altsvc = {"example.com", "h2=\":8000\""};
+static const alt_svc1 altsvc = {"anyks.com", "h2=\":443\""};
 
 
 static int begin_frame_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx){
