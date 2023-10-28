@@ -21,11 +21,6 @@ using namespace awh;
  */
 class WebServer {
 	private:
-
-		string host = "anyks.net";
-		string port = "h2=\":2222\"";
-
-	private:
 		// Создаём объект фреймворка
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
@@ -86,8 +81,8 @@ class WebServer {
 			if(mode == server::web_t::mode_t::CONNECT){
 				// Аактивируем шифрование
 				this->_awh->encrypt(bid, true);
-
-				// this->_awh->altsvc2(0, bid, this->host, this->port);
+				// Отправляем клиенту параметры требования к подключению
+				this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
 			}
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
@@ -148,7 +143,6 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
-					/*
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
 						{":method", "GET"},
@@ -162,10 +156,6 @@ class WebServer {
 					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
-					*/
-					
-					this->_awh->altsvc2(sid, bid);
-
 				}
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
