@@ -306,7 +306,7 @@ int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, cons
 		} else this->sendAltSvc(0, bid);
 		*/
 
-		cout << " ++++++++++++++++++ ALTSVC2 " << sid << " == " (u_short) frame << endl;
+		cout << " ++++++++++++++++++ ALTSVC2 " << sid << " == " << (u_short) frame << endl;
 
 	}
 	// Выводим результат

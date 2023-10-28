@@ -231,7 +231,7 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 
 		if(hd->stream_id > 0){
 
-			cout << " ++++++++++++++++++ ALTSVC1 " << hd->stream_id << " === " << (u_short) type << endl;
+			cout << " ++++++++++++++++++ ALTSVC1 " << hd->stream_id << " === " << (u_int) type << endl;
 
 			self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
 		}
