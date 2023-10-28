@@ -140,7 +140,6 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
-					
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
 						{":method", "GET"},
