@@ -291,6 +291,7 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::frame_t frame) noexcept {
 	// Если мы получили входящие данные заголовков ответа
 	if(frame == awh::http2_t::frame_t::HEADERS){
+		/*
 		// Если список разрешённых источников установлен
 		if(!this->_origins.empty())
 			// Выполняем отправку клиенту списка разрешённых источников
@@ -303,6 +304,10 @@ int awh::server::Http2::createSignal(const int32_t sid, const uint64_t bid, cons
 				this->sendAltSvc(sid, bid, item.first, item.second);
 		// Выполняем отправку текущего адреса ресурса
 		} else this->sendAltSvc(0, bid);
+		*/
+
+		cout << " ++++++++++++++++++ ALTSVC2 " << sid << " == " (u_short) frame << endl;
+
 	}
 	// Выводим результат
 	return 0;
