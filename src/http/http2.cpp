@@ -157,10 +157,43 @@ uint8_t altsvc_buffer[4096];
 /* The length of byte written to altsvc_buffer */
 size_t altsvc_bufferlen = 0;
 
-int on_extension_chunk_recv_callback(nghttp2_session *session,
-                                     const nghttp2_frame_hd *hd,
-                                     const uint8_t *data, size_t len,
-                                     void *user_data) {
+
+typedef struct {
+  const char *origin;
+  const char *field;
+} alt_svc1;
+
+ssize_t pack_extension_callback(nghttp2_session *session, uint8_t *buf, size_t len, const nghttp2_frame *frame, void *user_data) {
+  
+  cout << " ++++++++++++++++++ pack_extension_callback1 " << endl;
+  
+  const alt_svc1 *altsvc = (const alt_svc1 *)frame->ext.payload;
+  size_t originlen = strlen(altsvc->origin);
+  size_t fieldlen = strlen(altsvc->field);
+
+  uint8_t *p;
+
+  if (len < 2 + originlen + fieldlen || originlen > 0xffff) {
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  p = buf;
+  *p++ = originlen >> 8;
+  *p++ = originlen & 0xff;
+  memcpy(p, altsvc->origin, originlen);
+  p += originlen;
+  memcpy(p, altsvc->field, fieldlen);
+  p += fieldlen;
+
+  cout << " ++++++++++++++++++ pack_extension_callback2 " << endl;
+
+  return p - buf;
+}
+
+int on_extension_chunk_recv_callback(nghttp2_session * session, const nghttp2_frame_hd * hd, const uint8_t * data, size_t len, void * user_data) {
+  
+  cout << " ++++++++++++++++++ on_extension_chunk_recv_callback1 " << endl;
+  
   if (sizeof(altsvc_buffer) < altsvc_bufferlen + len) {
     altsvc_bufferlen = 0;
     return NGHTTP2_ERR_CANCEL;
@@ -169,11 +202,15 @@ int on_extension_chunk_recv_callback(nghttp2_session *session,
   memcpy(altsvc_buffer + altsvc_bufferlen, data, len);
   altsvc_bufferlen += len;
 
+  cout << " ++++++++++++++++++ on_extension_chunk_recv_callback2 " << endl;
+
   return 0;
 }
 
-int unpack_extension_callback(nghttp2_session *session, void **payload,
-                              const nghttp2_frame_hd *hd, void *user_data) {
+int unpack_extension_callback(nghttp2_session *session, void ** payload, const nghttp2_frame_hd * hd, void * user_data) {
+  
+  cout << " ++++++++++++++++++ unpack_extension_callback1 " << endl;
+  
   uint8_t *origin, *field;
   size_t originlen, fieldlen;
   uint8_t *p, *end;
@@ -204,9 +241,13 @@ int unpack_extension_callback(nghttp2_session *session, void **payload,
   altsvc->field = field;
   altsvc->fieldlen = fieldlen;
 
+  cout << " ++++++++++++++++++ unpack_extension_callback2 " << string((const char *) origin, originlen) << " == " << string((const char *) field, fieldlen) << endl;
+
   *payload = altsvc;
 
   altsvc_bufferlen = 0;
+
+  cout << " ++++++++++++++++++ unpack_extension_callback3 " << endl;
 
   return 0;
 }
@@ -1912,6 +1953,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
 		
 		
+		nghttp2_session_callbacks_set_pack_extension_callback(callbacks, pack_extension_callback);
+
 		nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
 
 		nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
