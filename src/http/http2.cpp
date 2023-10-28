@@ -231,7 +231,7 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 
 		if(hd->stream_id > 0){
 
-			cout << " ++++++++++++++++++ ALTSVC1 " << hd->stream_id << " === " << (u_int) type << endl;
+			cout << " ++++++++++++++++++ ALTSVC1 " << hd->stream_id << " == " << (u_int) type << endl;
 
 			self->sendAltSvc(hd->stream_id, "example.com", "h2=\":8000\"");
 		}
@@ -1280,6 +1280,9 @@ bool awh::Http2::sendAltSvc(const int32_t sid, const string & origin, const stri
 			case static_cast <uint8_t> (mode_t::SERVER): {
 				// Если сессия инициализированна
 				if(this->_session != nullptr){
+					
+					cout << " ######################## SEND " << sid << " === " << origin << " == " << field << endl;
+					
 					// Выполняем отправку альтернативного сервиса
 					int rv = nghttp2_submit_altsvc(this->_session, NGHTTP2_FLAG_NONE, sid, (origin.empty() ? nullptr : reinterpret_cast <const uint8_t *> (origin.c_str())), origin.size(), (field.empty() ? nullptr : reinterpret_cast <const uint8_t *> (field.c_str())), field.size());
 					// Если отправить алтернативного сервиса не вышло
