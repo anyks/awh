@@ -140,13 +140,6 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
-					
-					
-					// Отправляем клиенту параметры требования к подключению
-					// this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
-					this->_awh->altsvc2(sid, bid, "anyks.net", "h2=\":2222\"");
-					// this->_awh->altsvc2(0, bid);
-					
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
 						{":method", "GET"},
@@ -290,7 +283,7 @@ int main(int argc, char * argv[]){
 	// awh.opaque("keySession");
 	// Устанавливаем тип авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	/*
 	awh.init(2222, "127.0.0.1", {
@@ -333,7 +326,7 @@ int main(int argc, char * argv[]){
 	// Разрешаем метод CONNECT для сервера
 	awh.settings({{server::web2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
-	// awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
+	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

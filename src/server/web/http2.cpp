@@ -508,6 +508,11 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 		options->sid = sid;
 		// Выполняем очистку параметров HTTP запроса
 		options->http.clear();
+
+		// Отправляем клиенту параметры требования к подключению
+		// this->_awh->altsvc2(0, bid, "anyks.net", "h2=\":2222\"");
+		this->altsvc2(sid, bid, "anyks.net", "h2=\":2222\"");
+		// this->_awh->altsvc2(0, bid);
 	}
 	// Выводим результат
 	return 0;
