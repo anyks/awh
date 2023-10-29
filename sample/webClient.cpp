@@ -270,11 +270,11 @@ int main(int argc, char * argv[]){
 	// Формируем GET запрос
 	// const auto & body = awh.GET(url);
 	// const auto & body = awh.GET(url, {{"Connection", "close"}});
-	const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"}});
+	// const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"}});
 	// Подготавливаем тело запроса
-	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
+	const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
-	// const auto & body = awh.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
+	const auto & body = awh.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
 	// Выводим время запроса
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены

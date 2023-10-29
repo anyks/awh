@@ -2570,6 +2570,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						this->_web.response(res);
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
+							
+							cout << " ********************** HEADER " << header.first << " == " << header.second << endl;
+							
 							// Флаг разрешающий вывода заголовка
 							bool allow = !this->is(suite_t::BLACK, header.first);
 							// Выполняем перебор всех обязательных заголовков
