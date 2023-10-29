@@ -573,8 +573,6 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					}
 					// Выполняем очистку HTTP-парсера
 					options->http.clear();
-					// Выполняем сброс состояния HTTP-парсера
-					options->http.reset();
 					// Получаем флаг шифрованных данных
 					options->crypted = options->http.crypted();
 					// Если клиент согласился на шифрование данных
