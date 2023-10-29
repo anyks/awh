@@ -997,7 +997,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 			if(options != nullptr){
 				// Тело WEB сообщения
 				vector <char> entity;
-				// Выполняем сброс данных тела
+				// Выполняем очистку данных тела
 				options->http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
 				options->http.body(vector <char> (buffer, buffer + size));
@@ -1074,10 +1074,10 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Выполняем очистку HTTP-парсера
-				options->http.clear();
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
+				// Выполняем очистку заголовков
+				options->http.clear(http_t::suite_t::HEADER);
 				// Устанавливаем заголовоки запроса
 				options->http.headers(headers);
 				// Если сообщение ответа не установлено
@@ -1133,12 +1133,14 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 			if(options != nullptr){
 				// Тело полезной нагрузки
 				vector <char> payload;
-				// Выполняем очистку HTTP-парсера
-				options->http.clear();
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Выполняем очистку буфера полученных данных
 				options->buffer.clear();
+				// Выполняем очистку данных тела
+				options->http.clear(http_t::suite_t::BODY);
+				// Выполняем очистку заголовков
+				options->http.clear(http_t::suite_t::HEADER);
 				// Устанавливаем полезную нагрузку
 				options->http.body(entity);
 				// Устанавливаем заголовки ответа

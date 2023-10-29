@@ -1704,7 +1704,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
 								vector <char> entity;
-								// Выполняем сброс данных тела
+								// Выполняем очистку данных тела
 								options->http.clear(http_t::suite_t::BODY);
 								// Устанавливаем тело запроса
 								options->http.body(vector <char> (buffer, buffer + size));
@@ -1809,10 +1809,10 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Выполняем очистку HTTP-парсера
-								options->http.clear();
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
+								// Выполняем очистку заголовков
+								options->http.clear(http_t::suite_t::HEADER);
 								// Устанавливаем заголовоки запроса
 								options->http.headers(headers);
 								// Если сообщение ответа не установлено
@@ -1903,13 +1903,10 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Выполняем сброс состояния HTTP парсера
-								// options->http.clear();
-								// Выполняем сброс состояния HTTP парсера
 								options->http.reset();
-								
-								// Выполняем сброс данных тела
+								// Выполняем очистку данных тела
 								options->http.clear(http_t::suite_t::BODY);
-								// Выполняем сброс заголовков
+								// Выполняем очистку заголовков
 								options->http.clear(http_t::suite_t::HEADER);
 								// Устанавливаем полезную нагрузку
 								options->http.body(entity);
