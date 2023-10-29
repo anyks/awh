@@ -140,6 +140,7 @@ class WebServer {
 				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
+				/*
 				// Если протокол подключения принадлежит к HTTP/2
 				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
 					// Выполняем отправку заголовковй временного овтета
@@ -156,6 +157,7 @@ class WebServer {
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 				}
+				*/
 				// Если клиент запросил передачу трейлеров
 				if(this->_awh->trailers(bid)){
 					// Устанавливаем тестовые трейлеры
