@@ -117,27 +117,15 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		
-		cout << " ****************1 " << endl;
-		
 		// Если протокол подключения является HTTP/2
 		if(core->proto(bid) == engine_t::proto_t::HTTP2){
-			
-			cout << " ****************3 " << endl;
-			
 			// Если прочитать данные фрейма не удалось, выходим из функции
 			if(!this->_http2.frame((const uint8_t *) buffer, size)){
-				
-				cout << " ****************4 " << endl;
-
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 				this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
 				// Выходим из функции
 				return;
 			}
-
-			cout << " ****************5 " << endl;
-
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
 			// Если активирован WebSocket-клиент
