@@ -709,10 +709,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
-				// Выполняем сброс состояния HTTP парсера
-				options->http.clear();
-				// Выполняем сброс состояния HTTP парсера
-				options->http.reset();
 			} break;
 			// Если запрос неудачный
 			case static_cast <uint8_t> (http_t::status_t::FAULT): {
@@ -925,11 +921,8 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					options->crypted = options->http.crypted();
 					// Выполняем очистку HTTP-парсера
 					options->http.clear();
-					
 					// Выполняем сброс состояния HTTP-парсера
 					options->http.reset();
-
-
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode){
 						// Устанавливаем соль шифрования

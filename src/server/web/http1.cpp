@@ -1133,6 +1133,12 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 			if(options != nullptr){
 				// Тело полезной нагрузки
 				vector <char> payload;
+				// Выполняем очистку HTTP-парсера
+				options->http.clear();
+				// Выполняем сброс состояния HTTP-парсера
+				options->http.reset();
+				// Выполняем очистку буфера полученных данных
+				options->buffer.clear();
 				// Устанавливаем полезную нагрузку
 				options->http.body(entity);
 				// Устанавливаем заголовки ответа
