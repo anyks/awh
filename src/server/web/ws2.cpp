@@ -251,7 +251,7 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) 
 		// Выполняем очистку HTTP-парсера
 		options->http.clear();
 		// Выполняем сброс состояния HTTP-парсера
-		options->http.reset();
+		// options->http.reset();
 		// Очищаем буфер собранных данных
 		options->buffer.payload.clear();
 		// Выполняем очистку оставшихся фрагментов
@@ -613,7 +613,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Выполняем очистку HTTP-парсера
 											options->http.clear();
 											// Выполняем сброс состояния HTTP-парсера
-											options->http.reset();
+											// options->http.reset();
 											// Получаем флаг шифрованных данных
 											options->crypted = options->http.crypted();
 											// Если клиент согласился на шифрование данных
