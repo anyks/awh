@@ -1903,9 +1903,14 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Выполняем сброс состояния HTTP парсера
-								options->http.clear();
+								// options->http.clear();
 								// Выполняем сброс состояния HTTP парсера
 								options->http.reset();
+								
+								// Выполняем сброс данных тела
+								options->http.clear(http_t::suite_t::BODY);
+								// Выполняем сброс заголовков
+								options->http.clear(http_t::suite_t::HEADER);
 								// Устанавливаем полезную нагрузку
 								options->http.body(entity);
 								// Устанавливаем заголовки ответа
