@@ -277,7 +277,6 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 		options->sid = sid;
 		// Выполняем очистку HTTP-парсера
 		options->http.clear();
-		
 		// Выполняем сброс состояния HTTP-парсера
 		options->http.reset();
 	}
@@ -699,12 +698,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					// Завершаем обработку
 					return;
 				}
-
-				// Выполняем сброс состояния HTTP парсера
-				options->http.clear();
-				// Выполняем сброс состояния HTTP парсера
-				options->http.reset();
-
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!options->http.body().empty() && this->_callback.is("entity")){
 					// Выполняем извлечение параметров запроса
@@ -716,6 +709,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
+				// Выполняем сброс состояния HTTP парсера
+				options->http.clear();
+				// Выполняем сброс состояния HTTP парсера
+				options->http.reset();
 			} break;
 			// Если запрос неудачный
 			case static_cast <uint8_t> (http_t::status_t::FAULT): {
@@ -1821,11 +1818,8 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();
-								
-								
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
-								
 								// Устанавливаем заголовоки запроса
 								options->http.headers(headers);
 								// Если сообщение ответа не установлено
