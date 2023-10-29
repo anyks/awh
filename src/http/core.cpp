@@ -565,9 +565,6 @@ void awh::Http::commit() noexcept {
 							const auto & range = headers.equal_range("te");
 							// Выполняем перебор всего списка указанных заголовков
 							for(auto it = range.first; it != range.second; ++it){
-								
-								cout << " ************************ TE " << it->first << " == " << it->second << endl;
-								
 								// Список параметров запроса для Transfer-Encoding
 								vector <string> params;
 								// Выполняем извлечение списка параметров
@@ -657,7 +654,7 @@ void awh::Http::commit() noexcept {
 								}
 							}
 							// Если список запрашиваемых компрессоров получен
-							if(!requested.empty()){
+							if(!requested.empty() && !this->_compressor.supports.empty()){
 								// Выполняем перебор списка запрашиваемых компрессоров
 								for(auto it = requested.rbegin(); it != requested.rend(); ++it){
 									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
