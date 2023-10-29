@@ -307,8 +307,6 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 				if(self->_callback.is("altsvc"))
 					// Выполняем функцию обратного вызова
 					self->_callback.call <const string &, const string &> ("altsvc", string(reinterpret_cast <const char *> (altsvc->origin), altsvc->origin_len), string(reinterpret_cast <const char *> (altsvc->field_value), altsvc->field_value_len));
-				// Очищаем выделенную ранее память
-				// delete altsvc;
 			} break;
 			// Если мы получили фрейм списка разрешённых ресурсов для подключения
 			case static_cast <uint8_t> (NGHTTP2_ORIGIN): {
@@ -327,8 +325,6 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 					// Выполняем функцию обратного вызова
 					self->_callback.call <const vector <string> &> ("origin", std::move(origins));
 				}
-				// Очищаем выделенную ранее память
-				// delete ov;
 			} break;
 			// Если мы получили фрейм заголовков
 			case static_cast <uint8_t> (NGHTTP2_HEADERS):
