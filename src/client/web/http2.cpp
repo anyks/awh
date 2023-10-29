@@ -323,14 +323,17 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 												// Завершаем работу
 												return 0;
 										}
+
 										// Выполняем очистку параметров HTTP-запроса
 										this->_http.clear();
 										// Выполняем сброс состояния HTTP-парсера
-										this->_http.reset();
+										// this->_http.reset();
+
 										// Выполняем очистку параметров HTTP-запроса у конкретного потока
 										it->second->http.clear();
 										// Выполняем сброс состояния HTTP-запроса у конкретного потока
-										it->second->http.reset();
+										// it->second->http.reset();
+
 										// Если функция обратного вызова установлена, выводим сообщение
 										if(it->second->callback.is("entity"))
 											// Выполняем функцию обратного вызова дисконнекта
@@ -598,10 +601,10 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 	if(it != this->_workers.end()){
 		// Выполняем установку объекта воркера
 		auto ret = this->_workers.emplace(to, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
-		// Выполняем сброс состояния HTTP-парсера
-		ret.first->second->http.reset();
 		// Выполняем очистку параметров HTTP-запроса
 		ret.first->second->http.clear();
+		// Выполняем сброс состояния HTTP-парсера
+		ret.first->second->http.reset();
 		// Выполняем установку типа агента
 		ret.first->second->agent = it->second->agent;
 		// Выполняем установку активный прототип интернета
@@ -1334,10 +1337,10 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
 					// Выполняем установку типа агента
 					ret.first->second->agent = agent;
-					// Выполняем сброс состояния HTTP-парсера
-					ret.first->second->http.reset();
 					// Выполняем очистку параметров HTTP-запроса
 					ret.first->second->http.clear();
+					// Выполняем сброс состояния HTTP-парсера
+					ret.first->second->http.reset();
 					// Выполняем установку идентификатора объекта
 					ret.first->second->http.id(this->_bid);
 					// Если сервер требует авторизацию
