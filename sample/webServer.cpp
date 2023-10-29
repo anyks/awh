@@ -130,6 +130,10 @@ class WebServer {
 				this->_awh->encrypt(bid, false);
 				// Извлекаем адрес URL-запроса
 				cout << " URL: " << this->_awh->parser(bid)->request().url << endl;
+				// Если тело запроса передано
+				if(!this->_awh->parser(bid)->body().empty())
+					// Выводим полученное поле запроса
+					cout << " BODY REQUEST: " << string(this->_awh->parser(bid)->body().begin(), this->_awh->parser(bid)->body().end()) << endl;
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
