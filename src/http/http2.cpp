@@ -2009,19 +2009,23 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 					switch(it->settings_id){
 						// Если активированно разрешенение на передачу расширения ALTSVC
 						case NGHTTP2_ALTSVC: {
+							/*
 							// Если параметр активирован в настройках
 							if(it->value > 0)
 								// Выполняем установку зарешения использования расширения ALTSVC
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+							*/
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
 						// Если активированно разрешенение на передачу расширения ORIGIN
 						case NGHTTP2_ORIGIN: {
+							/*
 							// Если параметр активирован в настройках
 							if(it->value > 0)
 								// Выполняем установку зарешения использования расширения ORIGIN
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+							*/
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
