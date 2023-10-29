@@ -308,7 +308,7 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 					// Выполняем функцию обратного вызова
 					self->_callback.call <const string &, const string &> ("altsvc", string(reinterpret_cast <const char *> (altsvc->origin), altsvc->origin_len), string(reinterpret_cast <const char *> (altsvc->field_value), altsvc->field_value_len));
 				// Очищаем выделенную ранее память
-				delete altsvc;
+				// delete altsvc;
 			} break;
 			// Если мы получили фрейм списка разрешённых ресурсов для подключения
 			case static_cast <uint8_t> (NGHTTP2_ORIGIN): {
@@ -328,7 +328,7 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 					self->_callback.call <const vector <string> &> ("origin", std::move(origins));
 				}
 				// Очищаем выделенную ранее память
-				delete ov;
+				// delete ov;
 			} break;
 			// Если мы получили фрейм заголовков
 			case static_cast <uint8_t> (NGHTTP2_HEADERS):
@@ -2009,23 +2009,19 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 					switch(it->settings_id){
 						// Если активированно разрешенение на передачу расширения ALTSVC
 						case NGHTTP2_ALTSVC: {
-							/*
 							// Если параметр активирован в настройках
 							if(it->value > 0)
 								// Выполняем установку зарешения использования расширения ALTSVC
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
-							*/
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
 						// Если активированно разрешенение на передачу расширения ORIGIN
 						case NGHTTP2_ORIGIN: {
-							/*
 							// Если параметр активирован в настройках
 							if(it->value > 0)
 								// Выполняем установку зарешения использования расширения ORIGIN
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
-							*/
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
