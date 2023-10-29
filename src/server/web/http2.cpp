@@ -705,14 +705,14 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, options->http.body());
 				}
-				// Если функция обратного вызова на получение удачного запроса установлена
-				if(this->_callback.is("handshake"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
 				// Выполняем сброс состояния HTTP парсера
 				options->http.clear();
 				// Выполняем сброс состояния HTTP парсера
 				options->http.reset();
+				// Если функция обратного вызова на получение удачного запроса установлена
+				if(this->_callback.is("handshake"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
 			} break;
 			// Если запрос неудачный
 			case static_cast <uint8_t> (http_t::status_t::FAULT): {
