@@ -454,8 +454,8 @@ namespace awh {
 				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP запроса
-				 * @param userAgent агент пользователя для HTTP запроса
+				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**

@@ -58,7 +58,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
 						this->_chunk.clear();
-						// Определяем тип HTTP модуля
+						// Определяем тип HTTP-модуля
 						switch(static_cast <uint8_t> (this->_hid)){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -321,7 +321,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				Stop:
 				// Выполняем очистку чанка
 				this->_chunk.clear();
-				// Определяем тип HTTP модуля
+				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_hid)){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -387,7 +387,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				result = bytes;
 				// Если все данные получены
 				if(stop){
-					// Определяем тип HTTP модуля
+					// Определяем тип HTTP-модуля
 					switch(static_cast <uint8_t> (this->_hid)){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -453,7 +453,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					switch(static_cast <uint8_t> (this->_state)){
 						// Если - это режим ожидания получения запроса
 						case static_cast <uint8_t> (state_t::QUERY): {
-							// Определяем тип HTTP модуля
+							// Определяем тип HTTP-модуля
 							switch(static_cast <uint8_t> (this->_hid)){
 								// Если мы работаем с клиентом
 								case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -732,9 +732,9 @@ vector <char> awh::Web::dump() const noexcept {
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
-		// Устанавливаем идентификатор HTTP модуля
+		// Устанавливаем идентификатор HTTP-модуля
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_id), reinterpret_cast <const char *> (&this->_id) + sizeof(this->_id));
-		// Устанавливаем тип используемого HTTP модуля
+		// Устанавливаем тип используемого HTTP-модуля
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_hid), reinterpret_cast <const char *> (&this->_hid) + sizeof(this->_hid));
 		// Устанавливаем массив позиций в буфере сепаратора
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_pos), reinterpret_cast <const char *> (&this->_pos) + sizeof(this->_pos));
@@ -748,25 +748,25 @@ vector <char> awh::Web::dump() const noexcept {
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_res.code), reinterpret_cast <const char *> (&this->_res.code) + sizeof(this->_res.code));
 		// Устанавливаем версию протокола HTTP ответа
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_res.version), reinterpret_cast <const char *> (&this->_res.version) + sizeof(this->_res.version));
-		// Устанавливаем метод HTTP запроса
+		// Устанавливаем метод HTTP-запроса
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_req.method), reinterpret_cast <const char *> (&this->_req.method) + sizeof(this->_req.method));
-		// Устанавливаем версию протокола HTTP запроса
+		// Устанавливаем версию протокола HTTP-запроса
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_req.version), reinterpret_cast <const char *> (&this->_req.version) + sizeof(this->_req.version));
 		// Если URL-адрес запроса установлен
 		if(!this->_req.url.empty()){
 			// Получаем адрес URL-запроса
 			const string & url = this->_uri.url(this->_req.url);
-			// Получаем размер записи параметров HTTP запроса
+			// Получаем размер записи параметров HTTP-запроса
 			length = url.size();
-			// Устанавливаем размер записи параметров HTTP запроса
+			// Устанавливаем размер записи параметров HTTP-запроса
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
-			// Устанавливаем параметры HTTP запроса
+			// Устанавливаем параметры HTTP-запроса
 			result.insert(result.end(), url.begin(), url.end());
 		// Если URL-адрес запроса не установлен
 		} else {
-			// Получаем размер записи параметров HTTP запроса
+			// Получаем размер записи параметров HTTP-запроса
 			length = 0;
-			// Устанавливаем размер записи параметров HTTP запроса
+			// Устанавливаем размер записи параметров HTTP-запроса
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		}
 		// Если текст ответа установлен
@@ -779,9 +779,9 @@ vector <char> awh::Web::dump() const noexcept {
 			result.insert(result.end(), this->_res.message.begin(), this->_res.message.end());
 		// Если текст ответа не установлен
 		} else {
-			// Получаем размер записи параметров HTTP запроса
+			// Получаем размер записи параметров HTTP-запроса
 			length = 0;
-			// Устанавливаем размер записи параметров HTTP запроса
+			// Устанавливаем размер записи параметров HTTP-запроса
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		}
 		// Получаем размер тела сообщения
@@ -822,11 +822,11 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
 		size_t length = 0, count = 0, offset = 0;
-		// Выполняем получение идентификатора HTTP модуля
+		// Выполняем получение идентификатора HTTP-модуля
 		::memcpy(reinterpret_cast <void *> (&this->_id), data.data() + offset, sizeof(this->_id));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_id);
-		// Выполняем получение типа используемого HTTP модуля
+		// Выполняем получение типа используемого HTTP-модуля
 		::memcpy(reinterpret_cast <void *> (&this->_hid), data.data() + offset, sizeof(this->_hid));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_hid);
@@ -846,7 +846,7 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 		::memcpy(reinterpret_cast <void *> (&this->_separator), data.data() + offset, sizeof(this->_separator));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_separator);
-		// Выполняем получение кода ответа на HTTP запрос
+		// Выполняем получение кода ответа на HTTP-запрос
 		::memcpy(reinterpret_cast <void *> (&this->_res.code), data.data() + offset, sizeof(this->_res.code));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_res.code);
@@ -854,15 +854,15 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 		::memcpy(reinterpret_cast <void *> (&this->_res.version), data.data() + offset, sizeof(this->_res.version));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_res.version);
-		// Выполняем получение метода HTTP запроса
+		// Выполняем получение метода HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&this->_req.method), data.data() + offset, sizeof(this->_req.method));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_req.method);
-		// Выполняем получение версии протокола HTTP запроса
+		// Выполняем получение версии протокола HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&this->_req.version), data.data() + offset, sizeof(this->_req.version));
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_req.version);
-		// Выполняем получение размера записи параметров HTTP запроса
+		// Выполняем получение размера записи параметров HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
@@ -870,7 +870,7 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 		if(length > 0){
 			// Создаём URL-адрес запроса
 			string url(length, 0);
-			// Выполняем получение параметров HTTP запроса
+			// Выполняем получение параметров HTTP-запроса
 			::memcpy(reinterpret_cast <void *> (url.data()), data.data() + offset, length);
 			// Устанавливаем URL-адрес запроса
 			this->_req.url = this->_uri.parse(std::move(url));
@@ -977,7 +977,7 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
  * clear Метод очистки собранных данных
  */
 void awh::Web::clear() noexcept {
-	// Выполняем очистку тела HTTP запроса
+	// Выполняем очистку тела HTTP-запроса
 	this->_body.clear();
 	// Выполняем сброс параметров чанка
 	this->_chunk.clear();

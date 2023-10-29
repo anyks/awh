@@ -114,6 +114,13 @@ namespace awh {
 				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			public:
 				/**
+				 * parser Метод извлечения объекта HTTP-парсера
+				 * @param bid идентификатор брокера
+				 * @return    объект HTTP-парсера
+				 */
+				const awh::http_t * parser(const uint64_t bid) const noexcept;
+			public:
+				/**
 				 * trailers Метод получения запроса на передачу трейлеров
 				 * @param bid идентификатор брокера
 				 * @return    флаг запроса клиентом передачи трейлеров

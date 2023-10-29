@@ -323,10 +323,14 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 												// Завершаем работу
 												return 0;
 										}
-										// Выполняем очистку параметров HTTP запроса
+										// Выполняем очистку параметров HTTP-запроса
 										this->_http.clear();
-										// Выполняем очистку параметров HTTP-апроса у конкретного потока
+										// Выполняем сброс состояния HTTP-парсера
+										this->_http.reset();
+										// Выполняем очистку параметров HTTP-запроса у конкретного потока
 										it->second->http.clear();
+										// Выполняем сброс состояния HTTP-запроса у конкретного потока
+										it->second->http.reset();
 										// Если функция обратного вызова установлена, выводим сообщение
 										if(it->second->callback.is("entity"))
 											// Выполняем функцию обратного вызова дисконнекта
@@ -501,7 +505,7 @@ int awh::client::Http2::beginSignal(const int32_t sid) noexcept {
 			switch(static_cast <uint8_t> (it->second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Выполняем очистку параметров HTTP запроса
+					// Выполняем очистку параметров HTTP-запроса
 					it->second->http.clear();
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
@@ -594,9 +598,9 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 	if(it != this->_workers.end()){
 		// Выполняем установку объекта воркера
 		auto ret = this->_workers.emplace(to, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
-		// Выполняем сброс состояния HTTP парсера
+		// Выполняем сброс состояния HTTP-парсера
 		ret.first->second->http.reset();
-		// Выполняем очистку параметров HTTP запроса
+		// Выполняем очистку параметров HTTP-запроса
 		ret.first->second->http.clear();
 		// Выполняем установку типа агента
 		ret.first->second->agent = it->second->agent;
@@ -1181,10 +1185,10 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если флаг инициализации сессии HTTP/2 установлен
 					if(this->_http2.is()){
-						// Выполняем сброс состояния HTTP парсера
-						this->_http.reset();
-						// Выполняем очистку параметров HTTP запроса
+						// Выполняем очистку параметров HTTP-запроса
 						this->_http.clear();
+						// Выполняем сброс состояния HTTP-парсера
+						this->_http.reset();
 						// Если список компрессоров передан
 						if(!request.compressors.empty())
 							// Устанавливаем список поддерживаемых компрессоров
@@ -1330,9 +1334,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
 					// Выполняем установку типа агента
 					ret.first->second->agent = agent;
-					// Выполняем сброс состояния HTTP парсера
+					// Выполняем сброс состояния HTTP-парсера
 					ret.first->second->http.reset();
-					// Выполняем очистку параметров HTTP запроса
+					// Выполняем очистку параметров HTTP-запроса
 					ret.first->second->http.clear();
 					// Выполняем установку идентификатора объекта
 					ret.first->second->http.id(this->_bid);
@@ -1464,8 +1468,10 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 		if(!headers.empty()){
 			// Если флаг инициализации сессии HTTP/2 установлен
 			if(this->_http2.is()){
-				// Выполняем очистку параметров HTTP запроса
+				// Выполняем очистку параметров HTTP-запроса
 				this->_http.clear();
+				// Выполняем сброс состояния HTTP-парсера
+				this->_http.reset();
 				// Устанавливаем заголовоки запроса
 				this->_http.headers(headers);
 				// Устанавливаем новый адрес запроса
@@ -1903,8 +1909,8 @@ void awh::client::Http2::user(const string & login, const string & password) noe
 	this->_http1.user(login, password);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Http2::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

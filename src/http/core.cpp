@@ -19,7 +19,7 @@
  * chunkingCallback Функция вывода полученных чанков полезной нагрузки
  * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
- * @param web    объект HTTP парсера
+ * @param web    объект HTTP-парсера
  */
 void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept {
 	// Если функция обратного вызова на вывод полученного чанка установлена
@@ -780,7 +780,7 @@ const vector <char> awh::Http::payload() const noexcept {
 	if(!body->empty()){
 		// Версия протокола HTTP
 		float version = 1.1f;
-		// Определяем тип HTTP модуля
+		// Определяем тип HTTP-модуля
 		switch(static_cast <uint8_t> (this->_web.hid())){
 			// Если мы работаем с клиентом
 			case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -836,7 +836,7 @@ const vector <char> awh::Http::payload() const noexcept {
 					chunk.append("\r\n");
 					// Формируем тело чанка
 					chunk.insert(chunk.end(), body->begin(), body->end());
-					// Определяем тип HTTP модуля
+					// Определяем тип HTTP-модуля
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -975,7 +975,7 @@ size_t awh::Http::trailers() const noexcept {
 void awh::Http::trailer(const string & key, const string & val) noexcept {
 	// Если ключ и значение заголовка переданы
 	if(!key.empty() && !val.empty()){
-		// Определяем тип HTTP модуля
+		// Определяем тип HTTP-модуля
 		switch(static_cast <uint8_t> (this->_web.hid())){
 			// Если мы работаем с клиентом
 			case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -1380,11 +1380,11 @@ vector <char> awh::Http::dump() const noexcept {
 		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		// Устанавливаем данные названия сервиса
 		result.insert(result.end(), this->_ident.name.begin(), this->_ident.name.end());
-		// Получаем размер User-Agent для HTTP запроса
+		// Получаем размер User-Agent для HTTP-запроса
 		length = this->_userAgent.size();
-		// Устанавливаем размер User-Agent для HTTP запроса
+		// Устанавливаем размер User-Agent для HTTP-запроса
 		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
-		// Устанавливаем данные User-Agent для HTTP запроса
+		// Устанавливаем данные User-Agent для HTTP-запроса
 		result.insert(result.end(), this->_userAgent.begin(), this->_userAgent.end());
 		// Получаем количество записей чёрного списка
 		count = this->_black.size();
@@ -1505,13 +1505,13 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		::memcpy(reinterpret_cast <void *> (this->_ident.name.data()), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
-		// Выполняем получение размера User-Agent для HTTP запроса
+		// Выполняем получение размера User-Agent для HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных User-Agent для HTTP запроса
+		// Выделяем память для данных User-Agent для HTTP-запроса
 		this->_userAgent.resize(length, 0);
-		// Выполняем получение данных User-Agent для HTTP запроса
+		// Выполняем получение данных User-Agent для HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (this->_userAgent.data()), data.data() + offset, length);
 		// Выполняем смещение в буфере
 		offset += length;
@@ -1694,7 +1694,7 @@ void awh::Http::response(const web_t::res_t & res) noexcept {
 	this->_web.response(res);
 }
 /**
- * date Метод получения текущей даты для HTTP запроса
+ * date Метод получения текущей даты для HTTP-запроса
  * @param stamp штамп времени в числовом виде
  * @return      штамп времени в текстовом виде
  */
@@ -2096,7 +2096,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						request = this->_fmk->format("CONNECT %s HTTP/%.1f\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), req.version);
 					break;
 				}
-				// Определяем тип HTTP модуля
+				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -2293,7 +2293,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Если операционной системой является FreeBSD
 									case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 								}
-								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
+								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 								this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 							}
 							// Добавляем заголовок в запрос
@@ -2301,7 +2301,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 						// Если заголовок авторизации не передан
 						if(!available[13]){
-							// Метод HTTP запроса
+							// Метод HTTP-запроса
 							string method = "";
 							// Определяем метод запроса
 							switch(static_cast <uint8_t> (req.method)){
@@ -2529,7 +2529,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 			if(!res.message.empty()){
 				// Данные REST-ответа
 				string response = this->_fmk->format("HTTP/%.1f %u %s\r\n", res.version, res.code, res.message.c_str());
-				// Определяем тип HTTP модуля
+				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -2885,7 +2885,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Формируем строку запроса
 						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 				}
-				// Определяем тип HTTP модуля
+				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -3050,7 +3050,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если операционной системой является FreeBSD
 									case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 								}
-								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
+								// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 								this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 							}
 							// Добавляем заголовок в запрос
@@ -3058,7 +3058,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 						// Если заголовок авторизации не передан
 						if(!available[13]){
-							// Метод HTTP запроса
+							// Метод HTTP-запроса
 							string method = "";
 							// Определяем метод запроса
 							switch(static_cast <uint8_t> (req.method)){
@@ -3237,7 +3237,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			if(!res.message.empty()){
 				// Данные REST ответа
 				result.push_back(make_pair(":status", ::to_string(res.code)));
-				// Определяем тип HTTP модуля
+				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -3560,8 +3560,8 @@ void awh::Http::chunk(const size_t size) noexcept {
 		this->_chunk = size;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::Http::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

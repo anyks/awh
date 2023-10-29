@@ -109,9 +109,9 @@ void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t s
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Если протокол активирован HTTPS или WSS защищённый поверх SSL
 					if(this->_proxy.connect){
-						// Выполняем сброс состояния HTTP парсера
+						// Выполняем сброс состояния HTTP-парсера
 						this->_scheme.proxy.http.reset();
-						// Выполняем очистку параметров HTTP запроса
+						// Выполняем очистку параметров HTTP-запроса
 						this->_scheme.proxy.http.clear();
 						// Создаём объек запроса
 						awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
@@ -732,8 +732,8 @@ void awh::client::Web::compressors(const vector <awh::http_t::compress_t> & comp
 	this->_compressors = compressors;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Web::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

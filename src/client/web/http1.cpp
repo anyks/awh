@@ -199,8 +199,10 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 							if((code >= 200) && this->_callback.is("end"))
 								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
-							// Выполняем очистку параметров HTTP запроса
+							// Выполняем очистку параметров HTTP-запроса
 							this->_http.clear();
+							// Выполняем сброс состояния HTTP-парсера
+							this->_http.reset();
 							// Если подключение выполнено и список запросов не пустой
 							if((code >= 200) && (this->_bid > 0) && !this->_requests.empty())
 								// Выполняем запрос на удалённый сервер
@@ -655,10 +657,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Выполняем сброс параметров запроса
 			this->flush();
-			// Выполняем сброс состояния HTTP парсера
-			this->_http.reset();
-			// Выполняем очистку параметров HTTP запроса
+			// Выполняем очистку параметров HTTP-запроса
 			this->_http.clear();
+			// Выполняем сброс состояния HTTP-парсера
+			this->_http.reset();
 			// Выполняем очистку функций обратного вызова
 			this->_resultCallback.clear();
 			// Если список компрессоров передан
@@ -889,8 +891,10 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы
 		if((this->_core != nullptr) && !headers.empty()){
-			// Выполняем очистку параметров HTTP запроса
+			// Выполняем очистку параметров HTTP-запроса
 			this->_http.clear();
+			// Выполняем сброс состояния HTTP-парсера
+			this->_http.reset();
 			// Устанавливаем заголовоки запроса
 			this->_http.headers(headers);
 			// Устанавливаем новый адрес запроса
@@ -1209,8 +1213,8 @@ void awh::client::Http1::user(const string & login, const string & password) noe
 	this->_http.user(login, password);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Http1::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

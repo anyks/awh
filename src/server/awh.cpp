@@ -25,6 +25,15 @@ awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcep
 	return this->_http.proto(bid);
 }
 /**
+ * parser Метод извлечения объекта HTTP-парсера
+ * @param bid идентификатор брокера
+ * @return    объект HTTP-парсера
+ */
+const awh::http_t * awh::server::AWH::parser(const uint64_t bid) const noexcept {
+	// Выполняем извлечение объекта HTTP-парсера
+	return this->_http.parser(bid);
+}
+/**
  * trailers Метод получения запроса на передачу трейлеров
  * @param bid идентификатор брокера
  * @return    флаг запроса клиентом передачи трейлеров

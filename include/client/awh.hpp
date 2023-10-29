@@ -458,8 +458,8 @@ namespace awh {
 				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP запроса
-				 * @param userAgent агент пользователя для HTTP запроса
+				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**

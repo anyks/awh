@@ -164,7 +164,7 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 		const string & auth = this->_web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
-			// Метод HTTP запроса
+			// Метод HTTP-запроса
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->_auth.server.header(auth);

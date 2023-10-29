@@ -248,8 +248,10 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) 
 		options->sid = sid;
 		// Выполняем сброс флага рукопожатия
 		options->shake = false;
-		// Выполняем очистку параметров HTTP запроса
+		// Выполняем очистку HTTP-парсера
 		options->http.clear();
+		// Выполняем сброс состояния HTTP-парсера
+		options->http.reset();
 		// Очищаем буфер собранных данных
 		options->buffer.payload.clear();
 		// Выполняем очистку оставшихся фрагментов
@@ -608,8 +610,10 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												// Завершаем работу
 												break;
 											}
-											// Выполняем сброс состояния HTTP-парсера
+											// Выполняем очистку HTTP-парсера
 											options->http.clear();
+											// Выполняем сброс состояния HTTP-парсера
+											options->http.reset();
 											// Получаем флаг шифрованных данных
 											options->crypted = options->http.crypted();
 											// Если клиент согласился на шифрование данных
@@ -706,7 +710,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									// Если результат определить не получилось
 									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (506), "Unknown request");
 								}
-								// Выполняем очистку данных HTTP-парсера
+								// Выполняем очистку HTTP-парсера
 								options->http.clear();
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();

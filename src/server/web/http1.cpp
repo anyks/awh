@@ -210,9 +210,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										this->websocket(bid, sid, core);
 									// Если протокол запрещён или не поддерживается
 									else {
-										// Выполняем сброс состояния HTTP парсера
+										// Выполняем очистку HTTP-парсера
 										options->http.clear();
-										// Выполняем сброс состояния HTTP парсера
+										// Выполняем сброс состояния HTTP-парсера
 										options->http.reset();
 										// Выполняем очистку буфера полученных данных
 										options->buffer.clear();
@@ -308,10 +308,6 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								if(!options->http.body().empty() && this->_callback.is("entity"))
 									// Выполняем функцию обратного вызова
 									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, bid, request.method, request.url, options->http.body());
-								// Выполняем сброс состояния HTTP парсера
-								options->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								options->http.reset();
 								// Если функция обратного вызова на получение удачного запроса установлена
 								if(this->_callback.is("handshake"))
 									// Выполняем функцию обратного вызова
@@ -325,9 +321,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							} break;
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::status_t::FAULT): {
-								// Выполняем сброс состояния HTTP парсера
+								// Выполняем очистку HTTP-парсера
 								options->http.clear();
-								// Выполняем сброс состояния HTTP парсера
+								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
 								// Выполняем очистку буфера полученных данных
 								options->buffer.clear();
@@ -575,8 +571,10 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Завершаем работу
 						goto End;
 					}
-					// Выполняем сброс состояния HTTP-парсера
+					// Выполняем очистку HTTP-парсера
 					options->http.clear();
+					// Выполняем сброс состояния HTTP-парсера
+					options->http.reset();
 					// Получаем флаг шифрованных данных
 					options->crypted = options->http.crypted();
 					// Если клиент согласился на шифрование данных
@@ -731,9 +729,9 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::SEND);
 					}
-					// Выполняем сброс состояния HTTP парсера
+					// Выполняем очистку HTTP-парсера
 					options->http.clear();
-					// Выполняем сброс состояния HTTP парсера
+					// Выполняем сброс состояния HTTP-парсера
 					options->http.reset();
 					// Выполняем очистку буфера данных
 					options->buffer.payload.clear();
@@ -851,6 +849,29 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 			}
 		}
 	}
+}
+/**
+ * parser Метод извлечения объекта HTTP-парсера
+ * @param bid идентификатор брокера
+ * @return    объект HTTP-парсера
+ */
+const awh::http_t * awh::server::Http1::parser(const uint64_t bid) const noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto it = this->_agents.find(bid);
+		// Если агент соответствует HTTP-протоколу
+		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+			// Получаем параметры активного клиента
+			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			// Если параметры активного клиента получены
+			if(options != nullptr)
+				// Выполняем получение объекта HTTP-парсера
+				return &options->http;
+		}
+	}
+	// Выводим результат
+	return nullptr;
 }
 /**
  * trailers Метод получения запроса на передачу трейлеров
@@ -1053,8 +1074,10 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Выполняем очистку параметров HTTP запроса
+				// Выполняем очистку HTTP-парсера
 				options->http.clear();
+				// Выполняем сброс состояния HTTP-парсера
+				options->http.reset();
 				// Устанавливаем заголовоки запроса
 				options->http.headers(headers);
 				// Если сообщение ответа не установлено

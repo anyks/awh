@@ -182,7 +182,7 @@ int awh::client::Web2::chunkProxySignal(const int32_t sid, const uint8_t * buffe
 int awh::client::Web2::beginProxySignal(const int32_t sid) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if(this->_proxy.sid == sid)
-		// Выполняем очистку параметров HTTP запроса
+		// Выполняем очистку параметров HTTP-запроса
 		this->_scheme.proxy.http.clear();
 	// Выводим результат
 	return 0;
@@ -262,9 +262,9 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 						this->_bid = bid;
 						// Если протокол активирован HTTPS или WSS защищённый поверх SSL
 						if(this->_proxy.connect){
-							// Выполняем сброс состояния HTTP парсера
+							// Выполняем сброс состояния HTTP-парсера
 							this->_scheme.proxy.http.reset();
-							// Выполняем очистку параметров HTTP запроса
+							// Выполняем очистку параметров HTTP-запроса
 							this->_scheme.proxy.http.clear();
 							// Выполняем инициализацию сессии HTTP/2
 							this->implementation(bid, dynamic_cast <client::core_t *> (core));
@@ -647,8 +647,8 @@ void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	}
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Web2::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

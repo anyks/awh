@@ -139,7 +139,7 @@ void awh::client::AWH::init(const string & dest, const vector <awh::http_t::comp
 vector <char> awh::client::AWH::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -153,7 +153,7 @@ vector <char> awh::client::AWH::GET(const uri_t::url_t & url, const unordered_mu
 vector <char> awh::client::AWH::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -172,7 +172,7 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const json & entit
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -187,7 +187,7 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const json & entit
 vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -217,7 +217,7 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const unordered_mu
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -236,7 +236,7 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const json & enti
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -251,7 +251,7 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const json & enti
 vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -281,7 +281,7 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const unordered_m
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -300,7 +300,7 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const json & ent
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -315,7 +315,7 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const json & ent
 vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -345,7 +345,7 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const unordered_
 	vector <char> result(body.begin(), body.end());
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
@@ -361,7 +361,7 @@ unordered_multimap <string, string> awh::client::AWH::HEAD(const uri_t::url_t & 
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::HEAD, url, entity, result);
 	// Выводим результат
 	return result;
@@ -377,7 +377,7 @@ unordered_multimap <string, string> awh::client::AWH::TRACE(const uri_t::url_t &
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::TRACE, url, entity, result);
 	// Выводим результат
 	return result;
@@ -393,7 +393,7 @@ unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP запрос на сервер
+	// Выполняем HTTP-запрос на сервер
 	this->REQUEST(awh::web_t::method_t::OPTIONS, url, entity, result);
 	// Выводим результат
 	return result;
@@ -791,11 +791,11 @@ void awh::client::AWH::multiThreads(const uint16_t count, const bool mode) noexc
 	this->_http.multiThreads(count, mode);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::AWH::userAgent(const string & userAgent) noexcept {
-	// Выполняем установку User-Agent для HTTP запроса
+	// Выполняем установку User-Agent для HTTP-запроса
 	this->_http.userAgent(userAgent);
 }
 /**

@@ -30,10 +30,10 @@ void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		this->flush();
 		// Запоминаем идентификатор брокера
 		this->_bid = bid;
-		// Выполняем сброс состояния HTTP парсера
-		this->_http.reset();
-		// Выполняем очистку параметров HTTP запроса
+		// Выполняем очистку параметров HTTP-запроса
 		this->_http.clear();
+		// Выполняем сброс состояния HTTP-парсера
+		this->_http.reset();
 		// Выполняем установку идентификатора объекта
 		this->_http.id(bid);
 		// Выполняем очистку функций обратного вызова
@@ -1358,8 +1358,8 @@ void awh::client::WebSocket1::setHeaders(const unordered_multimap <string, strin
 	this->_headers = headers;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::WebSocket1::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

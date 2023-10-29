@@ -470,8 +470,8 @@ namespace awh {
 				virtual void user(const string & login, const string & password) noexcept = 0;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP запроса
-				 * @param userAgent агент пользователя для HTTP запроса
+				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				virtual void userAgent(const string & userAgent) noexcept;
 				/**
@@ -579,7 +579,7 @@ namespace awh {
 				// Пароль пользователя для авторизации на сервере
 				string _password;
 			protected:
-				// User-Agent для HTTP запроса
+				// User-Agent для HTTP-запроса
 				string _userAgent;
 			protected:
 				// Размер одного чанка бинарных данных
@@ -769,8 +769,8 @@ namespace awh {
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * userAgent Метод установки User-Agent для HTTP запроса
-				 * @param userAgent агент пользователя для HTTP запроса
+				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**

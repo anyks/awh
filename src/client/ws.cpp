@@ -329,11 +329,11 @@ void awh::client::WebSocket::setHeaders(const unordered_multimap <string, string
 	this->_ws.setHeaders(headers);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
-	// Выполняем установку User-Agent для HTTP запроса
+	// Выполняем установку User-Agent для HTTP-запроса
 	this->_ws.userAgent(userAgent);
 }
 /**

@@ -275,8 +275,10 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 	if(options != nullptr){
 		// Устанавливаем новый идентификатор потока
 		options->sid = sid;
-		// Выполняем очистку параметров HTTP запроса
+		// Выполняем очистку HTTP-парсера
 		options->http.clear();
+		// Выполняем сброс состояния HTTP-парсера
+		options->http.reset();
 	}
 	// Выводим результат
 	return 0;
@@ -593,9 +595,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						this->websocket(sid, bid, core);
 					// Если протокол запрещён или не поддерживается
 					else {
-						// Выполняем сброс состояния HTTP парсера
+						// Выполняем очистку HTTP-парсера
 						options->http.clear();
-						// Выполняем сброс состояния HTTP парсера
+						// Выполняем сброс состояния HTTP-парсера
 						options->http.reset();
 						// Формируем ответ на запрос об авторизации
 						const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Requested protocol is not supported by this server");
@@ -703,10 +705,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, options->http.body());
 				}
-				// Выполняем сброс состояния HTTP парсера
-				options->http.clear();
-				// Выполняем сброс состояния HTTP парсера
-				options->http.reset();
 				// Если функция обратного вызова на получение удачного запроса установлена
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
@@ -714,9 +712,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 			} break;
 			// Если запрос неудачный
 			case static_cast <uint8_t> (http_t::status_t::FAULT): {
-				// Выполняем сброс состояния HTTP парсера
+				// Выполняем очистку HTTP-парсера
 				options->http.clear();
-				// Выполняем сброс состояния HTTP парсера
+				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Формируем ответ на запрос об авторизации
 				const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
@@ -921,8 +919,10 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					}
 					// Получаем флаг шифрованных данных
 					options->crypted = options->http.crypted();
-					// Выполняем сброс состояния HTTP-парсера
+					// Выполняем очистку HTTP-парсера
 					options->http.clear();
+					// Выполняем сброс состояния HTTP-парсера
+					options->http.reset();
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode){
 						// Устанавливаем соль шифрования
@@ -1008,9 +1008,9 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 				} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
 				// Устанавливаем метку завершения запроса
 				End:
-				// Выполняем сброс состояния HTTP парсера
+				// Выполняем очистку HTTP-парсера
 				options->http.clear();
-				// Выполняем сброс состояния HTTP парсера
+				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Получаем заголовки ответа удалённому клиенту
 				const auto & headers = options->http.reject2(response);
@@ -1105,9 +1105,9 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
-					// Выполняем сброс состояния HTTP парсера
+					// Выполняем очистку HTTP-парсера
 					options->http.clear();
-					// Выполняем сброс состояния HTTP парсера
+					// Выполняем сброс состояния HTTP-парсера
 					options->http.reset();
 					// Завершаем работу
 					return;
@@ -1347,6 +1347,56 @@ void awh::server::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 awh::engine_t::proto_t awh::server::Http2::proto(const uint64_t bid) const noexcept {
 	// Выводим идентификатор активного HTTP-протокола
 	return this->_core->proto(bid);
+}
+/**
+ * parser Метод извлечения объекта HTTP-парсера
+ * @param bid идентификатор брокера
+ * @return    объект HTTP-парсера
+ */
+const awh::http_t * awh::server::Http2::parser(const uint64_t bid) const noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем получение объекта HTTP-парсера
+								return this->_http1.parser(bid);
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto it = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(it != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP):
+								// Выполняем получение объекта HTTP-парсера
+								return &options->http;
+						}
+					}
+				} break;
+			}
+		}
+	}
+	// Выводим результат
+	return nullptr;
 }
 /**
  * trailers Метод получения запроса на передачу трейлеров
@@ -1759,8 +1809,10 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Выполняем очистку параметров HTTP запроса
+								// Выполняем очистку HTTP-парсера
 								options->http.clear();
+								// Выполняем сброс состояния HTTP-парсера
+								options->http.reset();
 								// Устанавливаем заголовоки запроса
 								options->http.headers(headers);
 								// Если сообщение ответа не установлено

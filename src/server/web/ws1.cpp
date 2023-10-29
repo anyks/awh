@@ -192,7 +192,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 						 */
 						#if defined(DEBUG_MODE)
 							{
-								// Получаем объект работы с HTTP запросами
+								// Получаем объект работы с HTTP-запросами
 								const http_t & http = reinterpret_cast <http_t &> (options->http);
 								// Получаем данные запроса
 								const auto & request = http.process(http_t::process_t::REQUEST, http.request());
@@ -231,8 +231,10 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										// Завершаем работу
 										break;
 									}
-									// Выполняем сброс состояния HTTP-парсера
+									// Выполняем очистку HTTP-парсера
 									options->http.clear();
+									// Выполняем сброс состояния HTTP-парсера
+									options->http.reset();
 									// Получаем флаг шифрованных данных
 									options->crypted = options->http.crypted();
 									// Если клиент согласился на шифрование данных
@@ -398,9 +400,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::SEND);
 							}
-							// Выполняем сброс состояния HTTP парсера
+							// Выполняем очистку HTTP-парсера
 							options->http.clear();
-							// Выполняем сброс состояния HTTP парсера
+							// Выполняем сброс состояния HTTP-парсера
 							options->http.reset();
 							// Выполняем очистку буфера данных
 							options->buffer.payload.clear();

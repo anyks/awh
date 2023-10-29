@@ -23,9 +23,9 @@
 void awh::client::WebSocket2::send(const uint64_t bid, client::core_t * core) noexcept {
 	// Выполняем сброс параметров запроса
 	this->flush();
-	// Выполняем сброс состояния HTTP парсера
+	// Выполняем сброс состояния HTTP-парсера
 	this->_http.clear();
-	// Выполняем сброс состояния HTTP парсера
+	// Выполняем сброс состояния HTTP-парсера
 	this->_http.reset();
 	// Выполняем установку идентификатора объекта
 	this->_http.id(bid);
@@ -526,8 +526,10 @@ int awh::client::WebSocket2::beginSignal(const int32_t sid) noexcept {
 		if(this->_sid == sid){
 			// Выполняем сброс флага рукопожатия
 			this->_shake = false;
-			// Выполняем очистку параметров HTTP запроса
+			// Выполняем очистку параметров HTTP-запроса
 			this->_http.clear();
+			// Выполняем сброс состояния HTTP-парсера
+			this->_http.reset();
 			// Очищаем буфер собранных данных
 			this->_buffer.clear();
 			// Выполняем очистку оставшихся фрагментов
@@ -1711,8 +1713,8 @@ void awh::client::WebSocket2::setHeaders(const unordered_multimap <string, strin
 	this->_headers = headers;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * userAgent Метод установки User-Agent для HTTP-запроса
+ * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::WebSocket2::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent

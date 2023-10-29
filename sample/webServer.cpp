@@ -128,6 +128,8 @@ class WebServer {
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
 				this->_awh->encrypt(bid, false);
+				// Извлекаем адрес URL-запроса
+				cout << " URL: " << this->_awh->parser(bid)->request().url << endl;
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"

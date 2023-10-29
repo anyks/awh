@@ -218,7 +218,7 @@ namespace awh {
 			// Объект для работы с Transfer-Encoding
 			mutable te_t _te;
 		protected:
-			// Создаём объект HTTP парсера
+			// Создаём объект HTTP-парсера
 			mutable web_t _web;
 			// Создаём объект для работы с авторизацией
 			mutable auth_t _auth;
@@ -248,7 +248,7 @@ namespace awh {
 			// Компрессор для жатия данных
 			compressor_t _compressor;
 		private:
-			// User-Agent для HTTP запроса
+			// User-Agent для HTTP-запроса
 			mutable string _userAgent;
 		protected:
 			// Чёрный список заголовков
@@ -266,7 +266,7 @@ namespace awh {
 			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
 			 * @param id     идентификатор объекта
 			 * @param buffer буфер данных чанка полезной нагрузки
-			 * @param web    объект HTTP парсера
+			 * @param web    объект HTTP-парсера
 			 */
 			void chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
 		protected:
@@ -493,7 +493,7 @@ namespace awh {
 			void response(const web_t::res_t & res) noexcept;
 		public:
 			/**
-			 * date Метод получения текущей даты для HTTP запроса
+			 * date Метод получения текущей даты для HTTP-запроса
 			 * @param stamp штамп времени в числовом виде
 			 * @return      штамп времени в текстовом виде
 			 */
@@ -642,8 +642,8 @@ namespace awh {
 			 */
 			void chunk(const size_t size) noexcept;
 			/**
-			 * userAgent Метод установки User-Agent для HTTP запроса
-			 * @param userAgent агент пользователя для HTTP запроса
+			 * userAgent Метод установки User-Agent для HTTP-запроса
+			 * @param userAgent агент пользователя для HTTP-запроса
 			 */
 			void userAgent(const string & userAgent) noexcept;
 		public:
