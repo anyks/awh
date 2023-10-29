@@ -279,7 +279,7 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 		options->http.clear();
 		
 		// Выполняем сброс состояния HTTP-парсера
-		// options->http.reset();
+		options->http.reset();
 	}
 	// Выводим результат
 	return 0;
@@ -930,7 +930,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					options->http.clear();
 					
 					// Выполняем сброс состояния HTTP-парсера
-					// options->http.reset();
+					options->http.reset();
 
 
 					// Если клиент согласился на шифрование данных
@@ -1824,7 +1824,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 								
 								
 								// Выполняем сброс состояния HTTP-парсера
-								// options->http.reset();
+								options->http.reset();
 								
 								// Устанавливаем заголовоки запроса
 								options->http.headers(headers);
