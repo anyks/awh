@@ -1900,9 +1900,6 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								
-								cout << " $$$$$$$$$$$$$$$$$$$$ SEND1 " << endl;
-								
 								// Выполняем сброс состояния HTTP парсера
 								options->http.reset();
 								// Выполняем очистку данных тела
@@ -1913,12 +1910,6 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 								options->http.body(entity);
 								// Устанавливаем заголовки ответа
 								options->http.headers(headers);
-
-								for(auto & item : headers)
-									cout << " ^^^^^^^^^^^^^^^ " << item.first << " == " << item.second << endl;
-
-								cout << " $$$$$$$$$$$$$$$$$$$$ SEND2 " << endl;
-
 								// Если сообщение ответа не установлено
 								if(mess.empty())
 									// Выполняем установку сообщения по умолчанию

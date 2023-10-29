@@ -2004,9 +2004,6 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		else this->_web.header("Connection", "Close");
 		// Добавляем заголовок тип контента
 		this->_web.header("Content-type", "text/html; charset=utf-8");
-
-		cout << " ******************** REJECT " << endl;
-
 		// Если запрос должен содержать тело сообщения
 		if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 			// Получаем данные тела
