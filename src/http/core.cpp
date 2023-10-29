@@ -565,6 +565,9 @@ void awh::Http::commit() noexcept {
 							const auto & range = headers.equal_range("te");
 							// Выполняем перебор всего списка указанных заголовков
 							for(auto it = range.first; it != range.second; ++it){
+								
+								cout << " ************************ TE " << it->first << " == " << it->second << endl;
+								
 								// Список параметров запроса для Transfer-Encoding
 								vector <string> params;
 								// Выполняем извлечение списка параметров
