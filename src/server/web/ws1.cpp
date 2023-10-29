@@ -233,8 +233,6 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									}
 									// Выполняем очистку HTTP-парсера
 									options->http.clear();
-									// Выполняем сброс состояния HTTP-парсера
-									options->http.reset();
 									// Получаем флаг шифрованных данных
 									options->crypted = options->http.crypted();
 									// Если клиент согласился на шифрование данных

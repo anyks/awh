@@ -921,8 +921,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					options->crypted = options->http.crypted();
 					// Выполняем очистку HTTP-парсера
 					options->http.clear();
-					// Выполняем сброс состояния HTTP-парсера
-					// options->http.reset();
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode){
 						// Устанавливаем соль шифрования
