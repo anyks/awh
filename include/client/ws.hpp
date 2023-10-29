@@ -134,6 +134,17 @@ namespace awh {
 				void on(function <void (const int32_t, const web_t::direct_t)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова при получении источника подключения
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const vector <string> &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при получении альтернативных сервисов
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const string &, const string &)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */

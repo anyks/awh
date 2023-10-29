@@ -137,7 +137,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 		}
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::CONNECT);
 	}
 }
@@ -160,7 +160,7 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::DISCONNECT);
 	}
 }
@@ -299,7 +299,7 @@ int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid,
 		options->http.header2(key, val);
 		// Если функция обратного вызова на полученного заголовка с сервера установлена
 		if(this->_callback.is("header"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
 	}
 	// Выводим результат
@@ -320,7 +320,7 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
 	if(options != nullptr){
 		// Если функция обратного вызова на перехват входящих чанков установлена
 		if(this->_callback.is("chunking"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", bid, vector <char> (buffer, buffer + size), &options->http);
 		// Если функция перехвата полученных чанков не установлена
 		else if(this->_core != nullptr) {
@@ -341,7 +341,7 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
 				options->buffer.payload.insert(options->buffer.payload.end(), buffer, buffer + size);
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callback.is("chunks"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", sid, bid, vector <char> (buffer, buffer + size));
 		}
 	}
@@ -386,7 +386,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callback.is("end"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::SEND);
 				// Выходим из функции
 				return 0;
@@ -510,7 +510,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
-														// Выводим функцию обратного вызова
+														// Выполняем функцию обратного вызова
 														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
 												}
 												// Выходим из функции
@@ -544,7 +544,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
-										// Выводим функцию обратного вызова
+										// Выполняем функцию обратного вызова
 										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
 								}
 								// Выходим из функции
@@ -556,7 +556,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							this->sendError(bid, options->mess);
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
-								// Выводим функцию обратного вызова
+								// Выполняем функцию обратного вызова
 								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", options->mess.code, options->mess.text.c_str()));
 						}
 					} break;
@@ -570,11 +570,11 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							const auto & request = options->http.request();
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callback.is("request"))
-								// Выводим функцию обратного вызова
+								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", options->sid, bid, request.method, request.url);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
-								// Выводим функцию обратного вызова
+								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
 							// Если рукопожатие не выполнено
 							if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
@@ -670,7 +670,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 													if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 														// Если установлена функция отлова завершения запроса
 														if(this->_callback.is("end"))
-															// Выводим функцию обратного вызова
+															// Выполняем функцию обратного вызова
 															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 													}
 													// Выходим из функции
@@ -688,7 +688,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
-														// Выводим функцию обратного вызова
+														// Выполняем функцию обратного вызова
 														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 												}
 												// Завершаем работу
@@ -745,7 +745,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 											// Если установлена функция отлова завершения запроса
 											if(this->_callback.is("end"))
-												// Выводим функцию обратного вызова
+												// Выполняем функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 										}
 										// Выходим из функции
@@ -774,7 +774,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 													// Если установлена функция отлова завершения запроса
 													if(this->_callback.is("end"))
-														// Выводим функцию обратного вызова
+														// Выполняем функцию обратного вызова
 														this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 												}
 												// Выходим из функции
@@ -786,7 +786,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
-											// Выводим функцию обратного вызова
+											// Выполняем функцию обратного вызова
 											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 									}
 									// Завершаем работу
@@ -805,7 +805,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 								// Если установлена функция отлова завершения запроса
 								if(this->_callback.is("end"))
-									// Выводим функцию обратного вызова
+									// Выполняем функцию обратного вызова
 									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
 							}
 						}
@@ -844,11 +844,11 @@ void awh::server::WebSocket2::error(const uint64_t bid, const ws::mess_t & messa
 			else this->_log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 			// Если функция обратного вызова при получении ошибки WebSocket установлена
 			if(this->_callback.is("wserror"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const u_int, const string &> ("wserror", bid, message.code, message.text);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::WARNING, http::error_t::WEBSOCKET, this->_fmk->format("%s [%u]", message.code, message.text.c_str()));
 		}
 	}

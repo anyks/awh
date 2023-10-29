@@ -144,6 +144,22 @@ void awh::client::WebSocket::on(function <void (const int32_t, const web_t::dire
 	this->_ws.on(callback);
 }
 /**
+ * on Метод установки функции обратного вызова при получении источника подключения
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const vector <string> &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова при получении альтернативных сервисов
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const string &, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_ws.on(callback);
+}
+/**
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */

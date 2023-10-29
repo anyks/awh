@@ -93,7 +93,7 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 						// Выводим информацию об ошибке
 						cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
 					#endif
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
 				}
 			} break;
@@ -116,7 +116,7 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 								// Выводим информацию об ошибке
 								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
 							#endif
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
 						}
 					} break;
@@ -133,7 +133,7 @@ int awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, vo
 								// Выводим информацию об ошибке
 								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
 							#endif
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							return self->_callback.apply <int, const int32_t> ("begin", frame->hd.stream_id);
 						}
 					} break;
@@ -241,7 +241,7 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 	}
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("create"))
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const frame_t> ("create", hd->stream_id, type);
 	// Выводим результат
 	return 0;
@@ -256,24 +256,6 @@ int awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, v
 int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
-	
-	switch (frame->hd.type) {
-		case 0xa: {
-			nghttp2_ext_altsvc * altsvc = (nghttp2_ext_altsvc *) frame->ext.payload;
-			fprintf(stderr, "ALTSVC frame received\n");
-			fprintf(stderr, " origin: %.*s\n", (int) altsvc->origin_len, altsvc->origin);
-			fprintf(stderr, " field : %.*s\n", (int) altsvc->field_value_len, altsvc->field_value);
-			delete altsvc;
-		} break;
-		case 0xc: {
-			fprintf(stderr, "ORIGIN frame received\n");
-			nghttp2_ext_origin * ov = (nghttp2_ext_origin *) frame->ext.payload;
-			for(size_t i = 0; i < ov->nov; i++)
-				fprintf(stderr, " origin: %.*s\n", (int) ov->ov[i].origin_len, ov->ov[i].origin);
-			delete ov;
-		} break;
-	}
-	
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -315,16 +297,39 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 				// Выполняем установку фрейма
 				type = frame_t::GOAWAY;
 			break;
-			// Если мы получили фрейм передачи альтернативных желаемых протоколов
-			case static_cast <uint8_t> (NGHTTP2_ALTSVC):
+			// Если мы получили фрейм передачи альтернативных желаемых сервисов
+			case static_cast <uint8_t> (NGHTTP2_ALTSVC): {
 				// Выполняем установку фрейма
 				type = frame_t::ALTSVC;
-			break;
+				// Извлекаем данныеальтернативных сервисов
+				nghttp2_ext_altsvc * altsvc = reinterpret_cast <nghttp2_ext_altsvc *> (frame->ext.payload);
+				// Если функция обратного вызова установлена
+				if(self->_callback.is("altsvc"))
+					// Выполняем функцию обратного вызова
+					self->_callback.call <const string &, const string &> ("altsvc", string(reinterpret_cast <const char *> (altsvc->origin), altsvc->origin_len), string(reinterpret_cast <const char *> (altsvc->field_value), altsvc->field_value_len));
+				// Очищаем выделенную ранее память
+				delete altsvc;
+			} break;
 			// Если мы получили фрейм списка разрешённых ресурсов для подключения
-			case static_cast <uint8_t> (NGHTTP2_ORIGIN):
+			case static_cast <uint8_t> (NGHTTP2_ORIGIN): {
 				// Выполняем установку фрейма
 				type = frame_t::ORIGIN;
-			break;
+				// Выполняем получение массив разрешённых ресурсов для подключения
+				nghttp2_ext_origin * ov = reinterpret_cast <nghttp2_ext_origin *> (frame->ext.payload);
+				// Если функция обратного вызова установлена
+				if(self->_callback.is("origin")){
+					// Создаём список полученных ресурсов
+					vector <string> origins;
+					// Выполняем перебор всех элементов полученного массива
+					for(size_t i = 0; i < ov->nov; i++)
+						// Выполняем заполнение списка полученных ресурсов
+						origins.push_back(string(reinterpret_cast <const char *> (ov->ov[i].origin), ov->ov[i].origin_len));
+					// Выполняем функцию обратного вызова
+					self->_callback.call <const vector <string> &> ("origin", std::move(origins));
+				}
+				// Очищаем выделенную ранее память
+				delete ov;
+			} break;
 			// Если мы получили фрейм заголовков
 			case static_cast <uint8_t> (NGHTTP2_HEADERS):
 				// Выполняем установку фрейма
@@ -366,7 +371,7 @@ int awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame
 				type = frame_t::PRIORITY_UPDATE;
 			break;
 		}
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const direct_t, const frame_t, const set <flag_t> &> ("frame", frame->hd.stream_id, direct_t::RECV, type, std::move(flags));
 	}
 	// Выводим результат
@@ -474,7 +479,7 @@ int awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame
 				type = frame_t::PRIORITY_UPDATE;
 			break;
 		}
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const direct_t, const frame_t, const set <flag_t> &> ("frame", frame->hd.stream_id, direct_t::SEND, type, std::move(flags));
 	}
 	// Выводим результат
@@ -495,7 +500,7 @@ int awh::Http2::error(nghttp2_session * session, const char * msg, const size_t 
 	self->_log->print("%s", log_t::flag_t::CRITICAL, string(msg, size).c_str());
 	// Если функция обратного вызова на на вывод ошибок установлена
 	if(self->_callback.is("error"))
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, string(msg, size));
 	// Выводим результат
 	return 0;
@@ -534,7 +539,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "PROTOCOL_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PROTOCOL, self->_fmk->format("Stream %d closed with error=%s", sid, "PROTOCOL_ERROR"));
 		} break;
 		// Если получена ошибка реализации
@@ -545,7 +550,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "INTERNAL_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_INTERNAL, self->_fmk->format("Stream %d closed with error=%s", sid, "INTERNAL_ERROR"));
 		} break;
 		// Если получена ошибка превышения предела управления потоком
@@ -556,7 +561,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "FLOW_CONTROL_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_FLOW_CONTROL, self->_fmk->format("Stream %d closed with error=%s", sid, "FLOW_CONTROL_ERROR"));
 		} break;
 		// Если установка параметров завершилась по таймауту
@@ -567,7 +572,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "SETTINGS_TIMEOUT");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SETTINGS_TIMEOUT, self->_fmk->format("Stream %d closed with error=%s", sid, "SETTINGS_TIMEOUT"));
 		} break;
 		// Если получен кадр для завершения потока
@@ -578,7 +583,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "STREAM_CLOSED");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_STREAM_CLOSED, self->_fmk->format("Stream %d closed with error=%s", sid, "STREAM_CLOSED"));
 		} break;
 		// Если размер кадра некорректен
@@ -589,7 +594,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "FRAME_SIZE_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_FRAME_SIZE, self->_fmk->format("Stream %d closed with error=%s", sid, "FRAME_SIZE_ERROR"));
 		} break;
 		// Если поток не обработан
@@ -600,7 +605,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "REFUSED_STREAM");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_REFUSED_STREAM, self->_fmk->format("Stream %d closed with error=%s", sid, "REFUSED_STREAM"));
 		} break;
 		// Если поток аннулирован
@@ -611,7 +616,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "CANCEL");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, self->_fmk->format("Stream %d closed with error=%s", sid, "CANCEL"));
 		} break;
 		// Если состояние компрессии не обновлено
@@ -622,7 +627,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "COMPRESSION_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_COMPRESSION, self->_fmk->format("Stream %d closed with error=%s", sid, "COMPRESSION_ERROR"));
 		} break;
 		// Если получена ошибка TCP-соединения для метода CONNECT
@@ -633,7 +638,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "CONNECT_ERROR");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_CONNECT, self->_fmk->format("Stream %d closed with error=%s", sid, "CONNECT_ERROR"));
 		} break;
 		// Если превышена емкость для обработки
@@ -644,7 +649,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "ENHANCE_YOUR_CALM");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_ENHANCE_YOUR_CALM, self->_fmk->format("Stream %d closed with error=%s", sid, "ENHANCE_YOUR_CALM"));
 		} break;
 		// Если согласованные параметры SSL не приемлемы
@@ -655,7 +660,7 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::CRITICAL, sid, "INADEQUATE_SECURITY");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_INADEQUATE_SECURITY, self->_fmk->format("Stream %d closed with error=%s", sid, "INADEQUATE_SECURITY"));
 		} break;
 		// Если для запроса используется HTTP/1.1
@@ -666,13 +671,13 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 			self->_log->print("Stream %d closed with error=%s", log_t::flag_t::WARNING, sid, "HTTP_1_1_REQUIRED");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(self->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				self->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_HTTP_1_1_REQUIRED, self->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("close"))
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const error_t> ("close", sid, code);
 	// Выводим значение по умолчанию
 	return 0;
@@ -695,7 +700,7 @@ int awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int3
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("chunk"))
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		return self->_callback.apply <int, const int32_t, const uint8_t *, const size_t> ("chunk", sid, buffer, size);
 	// Выводим значение по умолчанию
 	return 0;
@@ -726,7 +731,7 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 			case NGHTTP2_PUSH_PROMISE: {
 				// Если мы получили заголовки ответа с клиента
 				if(frame->headers.cat == NGHTTP2_HCAT_REQUEST)
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -743,7 +748,7 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 							case static_cast <uint8_t> (NGHTTP2_HCAT_RESPONSE):
 							// Если мы получили заголовки промисов с сервера
 							case static_cast <uint8_t> (NGHTTP2_HCAT_PUSH_RESPONSE):
-								// Выводим функцию обратного вызова
+								// Выполняем функцию обратного вызова
 								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
 						}
 					} break;
@@ -755,7 +760,7 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 							case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
 							// Если мы получили заголовки ответа с клиента
 							case static_cast <uint8_t> (NGHTTP2_HCAT_REQUEST):
-								// Выводим функцию обратного вызова
+								// Выполняем функцию обратного вызова
 								return self->_callback.apply <int, const int32_t, const string &, const string &> ("header", frame->hd.stream_id, string(reinterpret_cast <const char *> (key), keySize), string(reinterpret_cast <const char *> (val), valSize));
 						}
 					} break;
@@ -783,7 +788,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
-		// Выводим функцию обратного вызова
+		// Выполняем функцию обратного вызова
 		self->_callback.call <const uint8_t *, const size_t> ("send", buffer, size);
 	// Возвращаем количество отправленных байт
 	return static_cast <ssize_t> (size);
@@ -883,7 +888,7 @@ bool awh::Http2::ping() noexcept {
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_PING, nghttp2_strerror(rv));
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_PING);
@@ -900,7 +905,7 @@ bool awh::Http2::ping() noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_PING);
@@ -931,7 +936,7 @@ bool awh::Http2::shutdown() noexcept {
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_PING, nghttp2_strerror(rv));
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_SHUTDOWN);
@@ -948,7 +953,7 @@ bool awh::Http2::shutdown() noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_SHUTDOWN);
@@ -983,7 +988,7 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(static_cast <int> (bytes)));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::RECV_FRAME);
@@ -1000,7 +1005,7 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (rv)));
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
+						// Выполняем функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(static_cast <int> (rv)));
 					// Выполняем вызов метода выполненного события
 					this->completed(event_t::RECV_FRAME);
@@ -1036,7 +1041,7 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 			this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "REJECT");
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"REJECT\" method");
 		} break;
 		// Если сервис идентифицирован как сервер
@@ -1196,7 +1201,7 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 				this->_log->print("Server is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "WINDOW_UPDATE");
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"WINDOW_UPDATE\" method");
 			} break;
 		}
@@ -1222,7 +1227,7 @@ void awh::Http2::sendOrigin() noexcept {
 				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ORIGIN");
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ORIGIN\" method");
 			} break;
 			// Если сервис идентифицирован как сервер
@@ -1279,7 +1284,7 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "ALTSVC");
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"ALTSVC\" method");
 			} break;
 			// Если сервис идентифицирован как сервер
@@ -1365,7 +1370,7 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "TRAILERS");
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"TRAILERS\" method");
 			} break;
 			// Если сервис идентифицирован как сервер
@@ -1391,7 +1396,7 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 					this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
+						// Выполняем функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
 					// Выполняем вызов метода выполненного события
 					this->completed(event_t::SEND_TRAILERS);
@@ -1408,7 +1413,7 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 						// Выполняем вызов метода выполненного события
 						this->completed(event_t::SEND_TRAILERS);
@@ -1458,7 +1463,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_DATA);
@@ -1479,7 +1484,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
@@ -1500,7 +1505,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
@@ -1545,7 +1550,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
@@ -1562,7 +1567,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
-						// Выводим функцию обратного вызова
+						// Выполняем функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 					// Выполняем вызов метода выполненного события
 					this->completed(event_t::SEND_DATA);
@@ -1631,7 +1636,7 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(result));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(result));
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_PUSH);
@@ -1648,7 +1653,7 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_PUSH);
@@ -1712,7 +1717,7 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 			this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(result));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(result));
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_HEADERS);
@@ -1729,7 +1734,7 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_HEADERS);
@@ -1764,7 +1769,7 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 				this->_log->print("Client is not allowed to call the \"%s\" method", log_t::flag_t::WARNING, "GOAWAY");
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, "Client is not allowed to call the \"GOAWAY\" method");
 			} break;
 			// Если сервис идентифицирован как сервер
@@ -1903,7 +1908,7 @@ void awh::Http2::close() noexcept {
 				this->_log->print("Could not terminate session: %s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, this->_fmk->format("Could not terminate session: %s", nghttp2_strerror(rv)));
 			}
 			// Выполняем удаление созданную ранее сессию
@@ -2004,15 +2009,19 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 					switch(it->settings_id){
 						// Если активированно разрешенение на передачу расширения ALTSVC
 						case NGHTTP2_ALTSVC: {
-							// Выполняем установку зарешения использования расширения ALTSVC
-							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+							// Если параметр активирован в настройках
+							if(it->value > 0)
+								// Выполняем установку зарешения использования расширения ALTSVC
+								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
 						// Если активированно разрешенение на передачу расширения ORIGIN
 						case NGHTTP2_ORIGIN: {
-							// Выполняем установку зарешения использования расширения ORIGIN
-							nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+							// Если параметр активирован в настройках
+							if(it->value > 0)
+								// Выполняем установку зарешения использования расширения ORIGIN
+								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
 							// Выполняем удаление лишних параметров настроек
 							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
 						} break;
@@ -2052,7 +2061,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not submit SETTINGS: %s", nghttp2_strerror(rv)));
 				// Выполняем очистку предыдущей сессии
 				this->free();
@@ -2063,7 +2072,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 			this->_log->print("SETTINGS list is empty: %s", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, "SETTINGS list is empty");
 			// Выполняем очистку предыдущей сессии
 			this->free();
@@ -2096,6 +2105,14 @@ void awh::Http2::on(function <int (const int32_t)> callback) noexcept {
 	this->_callback.set <int (const int32_t)> ("begin", callback);
 }
 /**
+ * on Метод установки функции обратного вызова при получении источника подключения
+ * @param callback функция обратного вызова
+ */
+void awh::Http2::on(function <void (const vector <string> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const vector <string> &)> ("origin", callback);
+}
+/**
  * on Метод установки функции обратного вызова при создании фрейма
  * @param callback функция обратного вызова
  */
@@ -2118,6 +2135,14 @@ void awh::Http2::on(function <int (const int32_t, const error_t)> callback) noex
 void awh::Http2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint8_t *, const size_t)> ("send", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при получении альтернативных сервисов
+ * @param callback функция обратного вызова
+ */
+void awh::Http2::on(function <void (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const string &, const string &)> ("altsvc", callback);
 }
 /**
  * on Метод установки функции обратного вызова при получении чанка

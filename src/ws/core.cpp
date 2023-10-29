@@ -330,7 +330,7 @@ const string awh::WCore::key() const noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		#endif
 	}
@@ -477,7 +477,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						this->_log->print("Deflate max_window_bits for the client is set incorrectly", log_t::flag_t::WARNING);
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate max_window_bits for the client is set incorrectly");
 					}
 				break;
@@ -524,7 +524,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						this->_log->print("Deflate max_window_bits for the server is set incorrectly", log_t::flag_t::WARNING);
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate max_window_bits for the server is set incorrectly");
 					}
 				break;
@@ -952,7 +952,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 			this->_log->print("Protocol version not supported", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Protocol version not supported");
 			// Выходим из функции
 			return result;
@@ -969,7 +969,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 				this->_log->print("Protocol not upgraded", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Protocol not upgraded");
 				// Выходим из функции
 				return result;
@@ -985,7 +985,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 			this->_log->print("Client and server keys are inconsistent", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выводим функцию обратного вызова
+				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Client and server keys are inconsistent");
 		}
 	}
@@ -1099,7 +1099,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				this->_log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 				// Выходим из функции
 				return vector <char> ();
@@ -1136,7 +1136,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 						this->_log->print("SHA1 key could not be generated, no further work possiblet", log_t::flag_t::CRITICAL);
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
-							// Выводим функцию обратного вызова
+							// Выполняем функцию обратного вызова
 							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "SHA1 key could not be generated, no further work possiblet");
 						// Выходим из функции
 						return vector <char> ();
@@ -1152,7 +1152,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				this->_log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 				// Выходим из функции
 				return vector <char> ();
@@ -1197,7 +1197,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 				this->_log->print("Address or request method for WebSocket-client is incorrect", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 				// Выходим из функции
 				return vector <pair <string, string>> ();
@@ -1225,7 +1225,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 				this->_log->print("WebSocket-server response code set incorrectly", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
-					// Выводим функцию обратного вызова
+					// Выполняем функцию обратного вызова
 					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 				// Выходим из функции
 				return vector <pair <string, string>> ();

@@ -416,6 +416,11 @@ namespace awh {
 			 */
 			void on(function <int (const int32_t)> callback) noexcept;
 			/**
+			 * on Метод установки функции обратного вызова при получении источника подключения
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const vector <string> &)> callback) noexcept;
+			/**
 			 * on Метод установки функции обратного вызова при создании фрейма
 			 * @param callback функция обратного вызова
 			 */
@@ -430,6 +435,11 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const uint8_t *, const size_t)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при получении альтернативных сервисов
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const string &, const string &)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова при получении чанка с сервера
 			 * @param callback функция обратного вызова

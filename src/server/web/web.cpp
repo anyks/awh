@@ -58,7 +58,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
 	}
 }
@@ -78,7 +78,7 @@ bool awh::server::Web::acceptCallback(const string & ip, const string & mac, con
 	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			return this->_callback.apply <bool, const string &, const string &, const u_int> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
@@ -97,7 +97,7 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
-			// Выводим функцию обратного вызова
+			// Выполняем функцию обратного вызова
 			this->_callback.call <const int32_t, const uint64_t, const vector <char> &> ("chunks", 1, bid, chunk);
 	}
 }

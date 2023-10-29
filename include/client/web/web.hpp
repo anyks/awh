@@ -352,6 +352,17 @@ namespace awh {
 				virtual void on(function <void (const int32_t, const direct_t)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции обратного вызова при получении источника подключения
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const vector <string> &)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова при получении альтернативных сервисов
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const string &, const string &)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова
 				 */
@@ -688,6 +699,18 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * originCallback Метод вывода полученного списка разрешённых ресурсов для подключения
+				 * @param origin список разрешённых ресурсов для подключения
+				 */
+				void originCallback(const vector <string> & origin) noexcept;
+				/**
+				 * altsvcCallback Метод вывода полученного альтернативного сервиса от сервера
+				 * @param origin источник альтернативного сервиса
+				 * @param field  поле параметров альтернативного сервиса
+				 */
+				void altsvcCallback(const string & origin, const string & field) noexcept;
 			private:
 				/**
 				 * implementation Метод выполнения активации сессии HTTP/2
