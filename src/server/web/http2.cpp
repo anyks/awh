@@ -278,7 +278,7 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
 		// Выполняем очистку HTTP-парсера
 		options->http.clear();
 		// Выполняем сброс состояния HTTP-парсера
-		options->http.reset();
+		// options->http.reset();
 	}
 	// Выводим результат
 	return 0;
