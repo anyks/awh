@@ -128,7 +128,7 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 			// Если прочитать данные фрейма не удалось, выходим из функции
 			if(!this->_http2.frame((const uint8_t *) buffer, size)){
 				
-				cout << " ****************3 " << endl;
+				cout << " ****************4 " << endl;
 
 				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 				this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
@@ -136,7 +136,7 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 				return;
 			}
 
-			cout << " ****************4 " << endl;
+			cout << " ****************5 " << endl;
 
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
