@@ -1239,14 +1239,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
-								// Если время ожидания чтения данных установлено
-								if(shm->wait && (adj->_timeouts.read > 0)){
-									// Устанавливаем время ожидания на получение данных
-									adj->_bev.timer.read.repeat = adj->_timeouts.read;
-									// Запускаем повторное ожидание
-									adj->_bev.timer.read.again();
-								// Останавливаем таймаут ожидания на чтение из сокета
-								} else adj->_bev.timer.read.stop();
 								// Если данные получены
 								if(bytes > 0){
 									// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -1282,6 +1274,32 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 										} else if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
 											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+									}
+									// Если мы продолжаем чтение данных
+									if(this->method(bid) == engine_t::method_t::READ){
+										// Если флаг ожидания входящих сообщений, активирован
+										if(adj->_timeouts.read > 0){
+											// Определяем тип активного сокета
+											switch(static_cast <uint8_t> (this->_settings.sonet)){
+												// Если тип сокета установлен как UDP
+												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+												// Если тип сокета установлен как DTLS
+												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+													// Выполняем установку таймаута ожидания
+													adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+												break;
+												// Для всех остальных протоколов
+												default: {
+													// Если время ожидания чтения данных установлено
+													if(shm->wait){
+														// Устанавливаем время ожидания на получение данных
+														adj->_bev.timer.read.repeat = adj->_timeouts.read;
+														// Запускаем повторное ожидание
+														adj->_bev.timer.read.again();
+													}
+												}
+											}
+										}
 									}
 								// Если данные небыли получены
 								} else if(bytes <= 0) {

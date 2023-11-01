@@ -868,15 +868,28 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 						// Выполняем запуск работы события
 						adj->_bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if((adj->_timeouts.read > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
-							// Устанавливаем тип таймера
-							adj->_bev.timers.read.set(-1, EV_TIMEOUT);
-							// Устанавливаем базу данных событий
-							adj->_bev.timers.read.set(this->_dispatch.base);
-							// Устанавливаем функцию обратного вызова
-							adj->_bev.timers.read.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
-							// Выполняем запуск работы таймера
-							adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
+						if(adj->_timeouts.read > 0){
+							// Определяем тип активного сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Выполняем установку таймаута ожидания
+									adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+								break;
+								// Для всех остальных протоколов
+								default: {
+									// Устанавливаем тип таймера
+									adj->_bev.timers.read.set(-1, EV_TIMEOUT);
+									// Устанавливаем базу данных событий
+									adj->_bev.timers.read.set(this->_dispatch.base);
+									// Устанавливаем функцию обратного вызова
+									adj->_bev.timers.read.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
+									// Выполняем запуск работы таймера
+									adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
+								}
+							}
 						}
 					} break;
 					// Если событием является запись
@@ -886,15 +899,28 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 						// Устанавливаем время ожидания записи данных
 						adj->_timeouts.write = shm->timeouts.write;
 						// Если флаг ожидания исходящих сообщений, активирован
-						if((adj->_timeouts.write > 0) && (this->_settings.sonet != scheme_t::sonet_t::UDP)){
-							// Устанавливаем тип таймера
-							adj->_bev.timers.write.set(-1, EV_TIMEOUT);
-							// Устанавливаем базу данных событий
-							adj->_bev.timers.write.set(this->_dispatch.base);
-							// Устанавливаем функцию обратного вызова
-							adj->_bev.timers.write.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
-							// Выполняем запуск работы таймера
-							adj->_bev.timers.write.start(adj->_timeouts.write * 1000);
+						if(adj->_timeouts.write > 0){
+							// Определяем тип активного сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Выполняем установку таймаута ожидания
+									adj->_ectx.timeout(adj->_timeouts.write * 1000, engine_t::method_t::WRITE);
+								break;
+								// Для всех остальных протоколов
+								default: {
+									// Устанавливаем тип таймера
+									adj->_bev.timers.write.set(-1, EV_TIMEOUT);
+									// Устанавливаем базу данных событий
+									adj->_bev.timers.write.set(this->_dispatch.base);
+									// Устанавливаем функцию обратного вызова
+									adj->_bev.timers.write.set(std::bind(&awh::scheme_t::broker_t::timeout, adj, _1, _2));
+									// Выполняем запуск работы таймера
+									adj->_bev.timers.write.start(adj->_timeouts.write * 1000);
+								}
+							}
 						}
 					} break;
 					// Если событием является подключение
