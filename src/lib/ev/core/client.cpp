@@ -1241,6 +1241,18 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								bytes = adj->_ectx.read(buffer.get(), size);
 								// Если данные получены
 								if(bytes > 0){
+									// Если флаг ожидания входящих сообщений, активирован
+									if(adj->_timeouts.read > 0){
+										// Определяем тип активного сокета
+										switch(static_cast <uint8_t> (this->_settings.sonet)){
+											// Если тип сокета установлен как UDP
+											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+											// Если тип сокета установлен как DTLS
+											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
+											// Останавливаем таймаут ожидания на чтение из сокета
+											default: adj->_bev.timer.read.stop();
+										}
+									}
 									// Если данные считанные из буфера, больше размера ожидающего буфера
 									if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
 										// Смещение в буфере и отправляемый размер данных
