@@ -1587,10 +1587,10 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _uri(fmk), _engine(fmk, log, &_uri),
- _dispatch(this), _fs(fmk, log), _sig(_dispatch.base, log), _callback(log),
- _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::CLIENT),
- _mode(false), _noinfo(false), _cores(0), _dns(nullptr), _fmk(fmk), _log(log) {
+ _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callback(log),
+ _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base, log),
+ _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
+ _dns(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
@@ -1609,10 +1609,10 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _uri(fmk), _engine(fmk, log, &_uri),
- _dispatch(this), _fs(fmk, log), _sig(_dispatch.base, log), _callback(log),
- _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::CLIENT),
- _mode(false), _noinfo(false), _cores(0), _dns(const_cast <dns_t *> (dns)), _fmk(fmk), _log(log) {
+ _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callback(log),
+ _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base, log),
+ _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
+ _dns(const_cast <dns_t *> (dns)), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения

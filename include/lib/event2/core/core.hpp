@@ -274,6 +274,21 @@ namespace awh {
 			// Идентификатор процесса
 			pid_t _pid;
 		protected:
+			// Флаг разрешения работы
+			bool _mode;
+			// Флаг запрета вывода информационных сообщений
+			bool _noinfo;
+		private:
+			// Количество подключённых внешних ядер
+			uint32_t _cores;
+		protected:
+			// Объект работы с файловой системой
+			fs_t _fs;
+			// Мютекс для блокировки основного потока
+			mtx_t _mtx;
+			// Объект функций обратного вызова
+			fn_t _callback;
+		protected:
 			// Создаем объект сети
 			net_t _net;
 			// Создаём объект работы с URI
@@ -284,22 +299,14 @@ namespace awh {
 			settings_t _settings;
 			// Объект для работы с чтением базы событий
 			dispatch_t _dispatch;
-		protected:
-			// Объект работы с файловой системой
-			fs_t _fs;
+		private:
 			// Объект работы с сигналами
 			sig_t _sig;
-			// Объект функций обратного вызова
-			fn_t _callback;
-		protected:
-			// Мютекс для блокировки основного потока
-			mutable mtx_t _mtx;
 		protected:
 			// Флаг обработки сигналов
 			mode_t _signals;
 			// Статус сетевого ядра
 			status_t _status;
-		protected:
 			// Тип запускаемого ядра
 			engine_t::type_t _type;
 		private:
@@ -310,14 +317,6 @@ namespace awh {
 			map <uint16_t, const scheme_t *> _schemes;
 			// Список активных брокеров
 			map <uint64_t, const scheme_t::broker_t *> _brokers;
-		protected:
-			// Флаг разрешения работы
-			bool _mode;
-			// Флаг запрета вывода информационных сообщений
-			bool _noinfo;
-		private:
-			// Количество подключённых внешних ядер
-			uint32_t _cores;
 		protected:
 			// Создаём объект DNS-резолвера
 			dns_t * _dns;
