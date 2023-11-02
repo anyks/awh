@@ -277,8 +277,6 @@ namespace awh {
 		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
-			// Мютекс для блокировки основного потока
-			mtx_t _mtx;
 			// Объект функций обратного вызова
 			fn_t _callback;
 		protected:
@@ -295,6 +293,9 @@ namespace awh {
 		private:
 			// Объект работы с сигналами
 			sig_t _sig;
+		protected:
+			// Мютекс для блокировки основного потока
+			mtx_t _mtx;
 		protected:
 			// Флаг обработки сигналов
 			mode_t _signals;
@@ -340,6 +341,11 @@ namespace awh {
 			void clean(const uint64_t bid) const noexcept;
 		public:
 			/**
+			 * rebase Метод пересоздания базы событий
+			 */
+			void rebase() noexcept;
+		public:
+			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
 			 * @param core модуль ядра для подключения
 			 */
@@ -349,22 +355,6 @@ namespace awh {
 			 * @param core модуль ядра для отключения
 			 */
 			void unbind(Core * core) noexcept;
-		public:
-			/**
-			 * on Метод установки функции обратного вызова при краше приложения
-			 * @param callback функция обратного вызова для установки
-			 */
-			virtual void on(function <void (const int)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
-			 * @param callback функция обратного вызова для установки
-			 */
-			virtual void on(function <void (const status_t, Core *)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения ошибки
-			 * @param callback функция обратного вызова
-			 */
-			virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -387,6 +377,13 @@ namespace awh {
 			 * @return       идентификатор схемы сети
 			 */
 			uint16_t add(const scheme_t * scheme) noexcept;
+		public:
+			/**
+			 * method Метод получения текущего метода работы
+			 * @param bid идентификатор брокера
+			 * @return    результат работы функции
+			 */
+			engine_t::method_t method(const uint64_t bid) const noexcept;
 		public:
 			/**
 			 * close Метод отключения всех брокеров
@@ -439,18 +436,6 @@ namespace awh {
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
 			virtual void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
-		public:
-			/**
-			 * rebase Метод пересоздания базы событий
-			 */
-			void rebase() noexcept;
-		public:
-			/**
-			 * method Метод получения текущего метода работы
-			 * @param bid идентификатор брокера
-			 * @return    результат работы функции
-			 */
-			engine_t::method_t method(const uint64_t bid) const noexcept;
 		public:
 			/**
 			 * lockup Метод блокировки метода режима работы
@@ -506,6 +491,22 @@ namespace awh {
 			 * @return         идентификатор созданного таймера
 			 */
 			uint16_t setInterval(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
+		public:
+			/**
+			 * on Метод установки функции обратного вызова при краше приложения
+			 * @param callback функция обратного вызова для установки
+			 */
+			virtual void on(function <void (const int)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
+			 * @param callback функция обратного вызова для установки
+			 */
+			virtual void on(function <void (const status_t, Core *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения ошибки
+			 * @param callback функция обратного вызова
+			 */
+			virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
 		public:
 			/**
 			 * easily Метод активации простого режима чтения базы событий

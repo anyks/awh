@@ -224,7 +224,9 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 	// Создаем новую базу событий
 	this->base = event_base_new();
 	// Если работа уже запущена
-	if(this->_work) this->_init = !this->_init;
+	if(this->_work)
+		// Выполняем разблокировку чтения данных
+		this->_init = !this->_init;
 }
 /**
  * setBase Метод установки базы событий
@@ -449,6 +451,92 @@ void awh::Core::clean(const uint64_t bid) const noexcept {
 	}
 }
 /**
+ * rebase Метод пересоздания базы событий
+ */
+void awh::Core::rebase() noexcept {
+	// Если система уже запущена
+	if(this->_mode){
+		/**
+		 * Timer Структура таймера
+		 */
+		typedef struct Timer {
+			bool persist;                                  // Таймер является персистентным
+			time_t delay;                                  // Задержка времени в миллисекундах
+			function <void (const uint16_t, core_t *)> fn; // Функция обратного вызова
+			/**
+			 * Timer Конструктор
+			 */
+			Timer() noexcept : persist(false), delay(0), fn(nullptr) {}
+		} timer_t;
+		// Список пересоздаваемых таймеров
+		vector <timer_t> mainTimers(this->_timers.size());
+		/**
+		 * Если запрещено использовать простое чтение базы событий
+		 * Выполняем остановку всех таймеров
+		 */
+		if(!this->_timers.empty()){
+			// Индекс текущего таймера
+			size_t index = 0;
+			// Переходим по всем таймерам
+			for(auto it = this->_timers.begin(); it != this->_timers.end();){
+				// Выполняем блокировку потока
+				this->_mtx.timer.lock();
+				// Останавливаем работу таймера
+				it->second->event.stop();
+				// Устанавливаем функцию обратного вызова
+				mainTimers.at(index).fn = it->second->fn;
+				// Устанавливаем задержку времени в миллисекундах
+				mainTimers.at(index).delay = it->second->delay;
+				// Устанавливаем флаг персистентности
+				mainTimers.at(index).persist = it->second->persist;
+				// Удаляем таймер из списка
+				it = this->_timers.erase(it);
+				// Выполняем разблокировку потока
+				this->_mtx.timer.unlock();
+				// Увеличиваем значение индекса
+				index++;
+			}
+		}
+		// Выполняем остановку работы
+		this->stop();
+		// Если перехват сигналов активирован
+		if(this->_signals == mode_t::ENABLED)
+			// Выполняем остановку отслеживания сигналов
+			this->_sig.stop();
+		// Выполняем пересоздание базы событий
+		this->_dispatch.rebase();
+		// Если обработка сигналов включена
+		if(this->_signals == mode_t::ENABLED){
+			// Выполняем установку новой базы событий
+			this->_sig.base(this->_dispatch.base);
+			// Выполняем запуск отслеживания сигналов
+			this->_sig.start();
+		}
+		// Если DNS-резолвер установлен
+		if(this->_dns != nullptr)
+			// Выполняем сброс кэша DNS-резолвера
+			this->_dns->flush();
+		// Если список таймеров получен
+		if(!mainTimers.empty()){
+			// Переходим по всему списку таймеров
+			for(auto & timer : mainTimers){
+				// Если таймер персистентный
+				if(timer.persist)
+					// Создаём новый интервал таймера
+					this->setInterval(timer.delay, timer.fn);
+				// Создаём новый таймер
+				else this->setTimeout(timer.delay, timer.fn);
+			}
+			// Выполняем очистку списка таймеров
+			mainTimers.clear();
+			// Выполняем освобождение выделенной памяти
+			vector <timer_t> ().swap(mainTimers);
+		}
+		// Выполняем запуск работы
+		this->start();
+	}
+}
+/**
  * bind Метод подключения модуля ядра к текущей базе событий
  * @param core модуль ядра для подключения
  */
@@ -525,36 +613,6 @@ void awh::Core::unbind(core_t * core) noexcept {
 	}
 }
 /**
- * on Метод установки функции обратного вызова при краше приложения
- * @param callback функция обратного вызова для установки
- */
-void awh::Core::on(function <void (const int)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int)> ("crash", callback);
-}
-/**
- * on Метод установки функции обратного вызова при запуске/остановки работы модуля
- * @param callback функция обратного вызова для установки
- */
-void awh::Core::on(function <void (const status_t, core_t *)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const status_t, core_t *)> ("status", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
-}
-/**
  * stop Метод остановки клиента
  */
 void awh::Core::stop() noexcept {
@@ -629,6 +687,37 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 		shm->sid = result;
 		// Добавляем схему сети в список
 		this->_schemes.emplace(result, shm);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * method Метод получения текущего метода работы
+ * @param bid идентификатор брокера
+ * @return    результат работы функции
+ */
+awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
+	// Результат работы функции
+	engine_t::method_t result = engine_t::method_t::DISCONNECT;
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
+		// Получаем объект брокера
+		awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
+		// Если подключение только установлено
+		if(adj->_method == engine_t::method_t::CONNECT)
+			// Устанавливаем результат работы функции
+			result = adj->_method;
+		// Если производится запись или чтение
+		else if((adj->_method == engine_t::method_t::READ) || (adj->_method == engine_t::method_t::WRITE)) {
+			// Устанавливаем результат работы функции
+			result = engine_t::method_t::CONNECT;
+			// Если производится чтение или запись данных
+			if(((adj->_method == engine_t::method_t::READ) && !adj->_bev.locked.read && adj->_bev.locked.write) || ((adj->_method == engine_t::method_t::WRITE) && !adj->_bev.locked.write))
+				// Устанавливаем результат работы функции
+				result = adj->_method;
+		}
 	}
 	// Выводим результат
 	return result;
@@ -717,123 +806,6 @@ void awh::Core::bandWidth(const uint64_t bid, const string & read, const string 
 	(void) bid;
 	(void) read;
 	(void) write;
-}
-/**
- * rebase Метод пересоздания базы событий
- */
-void awh::Core::rebase() noexcept {
-	// Если система уже запущена
-	if(this->_mode){
-		/**
-		 * Timer Структура таймера
-		 */
-		typedef struct Timer {
-			bool persist;                                  // Таймер является персистентным
-			time_t delay;                                  // Задержка времени в миллисекундах
-			function <void (const uint16_t, core_t *)> fn; // Функция обратного вызова
-			/**
-			 * Timer Конструктор
-			 */
-			Timer() noexcept : persist(false), delay(0), fn(nullptr) {}
-		} timer_t;
-		// Список пересоздаваемых таймеров
-		vector <timer_t> mainTimers(this->_timers.size());
-		/**
-		 * Если запрещено использовать простое чтение базы событий
-		 * Выполняем остановку всех таймеров
-		 */
-		if(!this->_timers.empty()){
-			// Индекс текущего таймера
-			size_t index = 0;
-			// Переходим по всем таймерам
-			for(auto it = this->_timers.begin(); it != this->_timers.end();){
-				// Выполняем блокировку потока
-				this->_mtx.timer.lock();
-				// Останавливаем работу таймера
-				it->second->event.stop();
-				// Устанавливаем функцию обратного вызова
-				mainTimers.at(index).fn = it->second->fn;
-				// Устанавливаем задержку времени в миллисекундах
-				mainTimers.at(index).delay = it->second->delay;
-				// Устанавливаем флаг персистентности
-				mainTimers.at(index).persist = it->second->persist;
-				// Удаляем таймер из списка
-				it = this->_timers.erase(it);
-				// Выполняем разблокировку потока
-				this->_mtx.timer.unlock();
-				// Увеличиваем значение индекса
-				index++;
-			}
-		}
-		// Выполняем остановку работы
-		this->stop();
-		// Если перехват сигналов активирован
-		if(this->_signals == mode_t::ENABLED)
-			// Выполняем остановку отслеживания сигналов
-			this->_sig.stop();
-		// Выполняем пересоздание базы событий
-		this->_dispatch.rebase();
-		// Если обработка сигналов включена
-		if(this->_signals == mode_t::ENABLED){
-			// Выполняем установку новой базы событий
-			this->_sig.base(this->_dispatch.base);
-			// Выполняем запуск отслеживания сигналов
-			this->_sig.start();
-		}
-		// Если DNS-резолвер установлен
-		if(this->_dns != nullptr)
-			// Выполняем сброс кэша DNS-резолвера
-			this->_dns->flush();
-		// Если список таймеров получен
-		if(!mainTimers.empty()){
-			// Переходим по всему списку таймеров
-			for(auto & timer : mainTimers){
-				// Если таймер персистентный
-				if(timer.persist)
-					// Создаём новый интервал таймера
-					this->setInterval(timer.delay, timer.fn);
-				// Создаём новый таймер
-				else this->setTimeout(timer.delay, timer.fn);
-			}
-			// Выполняем очистку списка таймеров
-			mainTimers.clear();
-			// Выполняем освобождение выделенной памяти
-			vector <timer_t> ().swap(mainTimers);
-		}
-		// Выполняем запуск работы
-		this->start();
-	}
-}
-/**
- * method Метод получения текущего метода работы
- * @param bid идентификатор брокера
- * @return    результат работы функции
- */
-awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
-	// Результат работы функции
-	engine_t::method_t result = engine_t::method_t::DISCONNECT;
-	// Выполняем извлечение брокера
-	auto it = this->_brokers.find(bid);
-	// Если брокер получен
-	if(it != this->_brokers.end()){
-		// Получаем объект брокера
-		awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
-		// Если подключение только установлено
-		if(adj->_method == engine_t::method_t::CONNECT)
-			// Устанавливаем результат работы функции
-			result = adj->_method;
-		// Если производится запись или чтение
-		else if((adj->_method == engine_t::method_t::READ) || (adj->_method == engine_t::method_t::WRITE)) {
-			// Устанавливаем результат работы функции
-			result = engine_t::method_t::CONNECT;
-			// Если производится чтение или запись данных
-			if(((adj->_method == engine_t::method_t::READ) && !adj->_bev.locked.read && adj->_bev.locked.write) || ((adj->_method == engine_t::method_t::WRITE) && !adj->_bev.locked.write))
-				// Устанавливаем результат работы функции
-				result = adj->_method;
-		}
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * lockup Метод блокировки метода режима работы
@@ -1213,18 +1185,52 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 	return result;
 }
 /**
+ * on Метод установки функции обратного вызова при краше приложения
+ * @param callback функция обратного вызова для установки
+ */
+void awh::Core::on(function <void (const int)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int)> ("crash", callback);
+}
+/**
+ * on Метод установки функции обратного вызова при запуске/остановки работы модуля
+ * @param callback функция обратного вызова для установки
+ */
+void awh::Core::on(function <void (const status_t, core_t *)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const status_t, core_t *)> ("status", callback);
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибки
+ * @param callback функция обратного вызова
+ */
+void awh::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
+}
+/**
  * easily Метод активации простого режима чтения базы событий
  * @param mode флаг активации простого чтения базы событий
  */
 void awh::Core::easily(const bool mode) noexcept {
 	// Определяем запущено ли ядро сети
 	const bool start = this->_mode;
-	// Если ядро сети уже запущено, останавливаем его
-	if(start) this->stop();
+	// Если ядро сети уже запущено
+	if(start)
+		// Останавливаем ядро сети
+		this->stop();
 	// Устанавливаем режим чтения базы событий
 	this->_dispatch.easily(mode);
-	// Если ядро сети уже было запущено, запускаем его
-	if(start) this->start();
+	// Если ядро сети уже было запущено
+	if(start)
+		// Запускаем ядро сети
+		this->start();
 }
 /**
  * freeze Метод заморозки чтения данных
