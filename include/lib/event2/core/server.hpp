@@ -167,7 +167,7 @@ namespace awh {
 				 */
 				void timeout(const uint64_t bid) noexcept;
 				/**
-				 * resolving Метод получения IP адреса доменного имени
+				 * resolving Метод получения IP-адреса доменного имени
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -242,6 +242,15 @@ namespace awh {
 				 * @param sonet  тип сокета подключения (TCP / UDP)
 				 */
 				Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+				/**
+				 * Core Конструктор
+				 * @param fmk    объект фреймворка
+				 * @param log    объект для работы с логами
+				 * @param dns    объект DNS-резолвера
+				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 * @param sonet  тип сокета подключения (TCP / UDP)
+				 */
+				Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 				/**
 				 * ~Core Деструктор
 				 */

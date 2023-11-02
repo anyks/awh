@@ -51,13 +51,15 @@ namespace awh {
 			private:
 				// Идентификатор активного дочернего прцоесса
 				pid_t _pid;
-				// Объект кластера
-				cluster_t _cluster;
 			private:
 				// Размер кластера
-				uint16_t _clusterSize;
+				uint16_t _size;
+			private:
 				// Флаг автоматического перезапуска упавших процессов
-				bool _clusterAutoRestart;
+				bool _autoRestart;
+			private:
+				// Объект кластера
+				cluster_t _cluster;
 			private:
 				// Объект для работы с логами
 				const log_t * _log;
@@ -87,10 +89,10 @@ namespace awh {
 				void message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
-				 * isMaster Метод проверки является ли процесс дочерним
+				 * master Метод проверки является ли процесс дочерним
 				 * @return результат проверки
 				 */
-				bool isMaster() const noexcept;
+				bool master() const noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщение родительскому процессу
@@ -154,21 +156,21 @@ namespace awh {
 				void on(function <void (const cluster_t::family_t, const pid_t, const char *, const size_t, Core *)> callback) noexcept;
 			public:
 				/**
-				 * clusterAsync Метод установки флага асинхронного режима работы
+				 * async Метод установки флага асинхронного режима работы
 				 * @param wid  идентификатор воркера
 				 * @param mode флаг асинхронного режима работы
 				 */
-				void clusterAsync(const bool mode) noexcept;
+				void async(const bool mode) noexcept;
 				/**
-				 * clusterSize Метод установки количества процессов кластера
+				 * size Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const uint16_t size = 0) noexcept;
+				void size(const uint16_t size = 0) noexcept;
 				/**
-				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * autoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов
 				 */
-				void clusterAutoRestart(const bool mode) noexcept;
+				void autoRestart(const bool mode) noexcept;
 			public:
 				/**
 				 * Core Конструктор

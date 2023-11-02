@@ -65,6 +65,7 @@ namespace awh {
 				 * Core Объект биндинга TCP/IP
 				 */
 				typedef struct Core {
+					dns_t          dns;    // Объект DNS-резолвера
 					core_t         timer;  // Объект биндинга TCP/IP для таймера
 					client::core_t client; // Объект биндинга TCP/IP для клиента
 					server::core_t server; // Объект биндинга TCP/IP для сервера
@@ -74,7 +75,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Core(const fmk_t * fmk, const log_t * log) noexcept :
-					 timer(fmk, log), client(fmk, log), server(fmk, log) {}
+					 dns(fmk, log), timer(fmk, log), client(fmk, log, &dns), server(fmk, log, &dns) {}
 				} core_t;
 				/**
 				 * Callback Структура функций обратного вызова

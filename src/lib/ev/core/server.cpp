@@ -50,7 +50,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 			if(adj->_addr.attach(shm->_addr)){
 				// Выполняем прикрепление контекста клиента к контексту сервера
 				this->core->_engine.attach(adj->_ectx, &adj->_addr);
-				// Если MAC или IP адрес не получен, тогда выходим
+				// Если MAC или IP-адрес не получен, тогда выходим
 				if(adj->_addr.mac.empty() || adj->_addr.ip.empty()){
 					// Выполняем очистку контекста двигателя
 					adj->_ectx.clear();
@@ -260,7 +260,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если тип протокола подключения IPv4
 						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 							// Выполняем перебор всего списка адресов
-							for(auto & host : this->_settings.net.first){
+							for(auto & host : this->_settings.net){
 								// Если хост соответствует адресу IPv4
 								if(this->_net.host(host) == net_t::type_t::IPV4)
 									// Выполняем установку полученного хоста
@@ -270,7 +270,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если тип протокола подключения IPv6
 						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 							// Выполняем перебор всего списка адресов
-							for(auto & host : this->_settings.net.first){
+							for(auto & host : this->_settings.net){
 								// Если хост соответствует адресу IPv4
 								if(this->_net.host(host) == net_t::type_t::IPV6)
 									// Выполняем установку полученного хоста
@@ -421,7 +421,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 					}
 					// Выполняем разрешение подключения
 					if(adj->_addr.accept(shm->_addr)){
-						// Если MAC или IP адрес не получен, тогда выходим
+						// Если MAC или IP-адрес не получен, тогда выходим
 						if(adj->_addr.mac.empty() || adj->_addr.ip.empty()){
 							// Выполняем очистку контекста двигателя
 							adj->_ectx.clear();
@@ -748,8 +748,8 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 						this->resolving(shm->sid, shm->_host, AF_INET6);
 					} break;
 				}
-			// Если хост сервера является доменным именем
-			} else {			
+			// Если хост сервера является доменным именем и объект DNS-резолвера установлен
+			} else if(this->_dns != nullptr) {			
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
@@ -757,14 +757,14 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Выполняем резолвинг домена
-						const string & ip = this->_dns.resolve(AF_INET, shm->_host);
+						const string & ip = this->_dns->resolve(AF_INET, shm->_host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Выполняем резолвинг домена
-						const string & ip = this->_dns.resolve(AF_INET6, shm->_host);
+						const string & ip = this->_dns->resolve(AF_INET6, shm->_host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET6);
 					} break;
@@ -1139,7 +1139,7 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 	}
 }
 /**
- * resolving Метод получения IP адреса доменного имени
+ * resolving Метод получения IP-адреса доменного имени
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -1153,7 +1153,7 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 		if(it != this->_schemes.end()){
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
-			// Если IP адрес получен
+			// Если IP-адрес получен
 			if(!ip.empty()){
 				// sudo lsof -i -P | grep 1080
 				// Обновляем хост сервера
@@ -1187,7 +1187,7 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 								// Выполняем перебор всего списка адресов
-								for(auto & host : this->_settings.net.first){
+								for(auto & host : this->_settings.net){
 									// Если хост соответствует адресу IPv4
 									if(this->_net.host(host) == net_t::type_t::IPV4)
 										// Выполняем установку полученного хоста
@@ -1197,7 +1197,7 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 								// Выполняем перебор всего списка адресов
-								for(auto & host : this->_settings.net.first){
+								for(auto & host : this->_settings.net){
 									// Если хост соответствует адресу IPv4
 									if(this->_net.host(host) == net_t::type_t::IPV6)
 										// Выполняем установку полученного хоста
@@ -1282,7 +1282,7 @@ void awh::server::Core::resolving(const uint16_t sid, const string & ip, const i
 						}
 					}
 				}
-			// Если IP адрес сервера не получен
+			// Если IP-адрес сервера не получен
 			} else {
 				// Выводим в консоль информацию
 				this->_log->print("Broken host server %s", log_t::flag_t::CRITICAL, shm->_host.c_str());
@@ -1433,7 +1433,7 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 			if(!host.empty())
 				// Устанавливаем хост
 				shm->_host = host;
-			// Иначе получаем IP адрес сервера автоматически
+			// Иначе получаем IP-адрес сервера автоматически
 			else {
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet(this->_fmk, this->_log);
@@ -1499,6 +1499,21 @@ void awh::server::Core::on(function <void (const cluster_t::family_t, const uint
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
+	// Устанавливаем тип запускаемого ядра
+	this->_type = engine_t::type_t::SERVER;
+	// Устанавливаем функцию получения статуса кластера
+	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
+}
+/**
+ * Core Конструктор
+ * @param fmk    объект фреймворка
+ * @param log    объект для работы с логами
+ * @param dns    объект DNS-резолвера
+ * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param sonet  тип сокета подключения (TCP / UDP)
+ */
+awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
+ awh::core_t(fmk, log, dns, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера

@@ -158,25 +158,24 @@ namespace awh {
 			 * Settings Структура текущих параметров сети
 			 */
 			typedef struct Settings {
-				// Адрес файла unix-сокета
-				string filename;
 				// Протокол активного подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 				engine_t::proto_t proto;
 				// Тип сокета подключения (TCP / UDP)
 				scheme_t::sonet_t sonet;
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
 				scheme_t::family_t family;
-				// Параметры для сети и DNS-резолвера
-				pair <vector <string>, vector <string>> net;
+				// Адрес файла unix-сокета
+				string filename;
+				// Параметры для сети
+				vector <string> net;
 				/**
 				 * Settings Конструктор
 				 */
 				Settings() noexcept :
-				 filename(""),
 				 proto(engine_t::proto_t::RAW),
 				 sonet(scheme_t::sonet_t::TCP),
 				 family(scheme_t::family_t::IPV4),
-				 net{{"0.0.0.0","[::]"},{}} {}
+				 filename{""}, net{"0.0.0.0","[::]"} {}
 			} settings_t;
 		private:
 			/**
@@ -277,11 +276,8 @@ namespace awh {
 		protected:
 			// Создаем объект сети
 			net_t _net;
-		protected:
 			// Создаём объект работы с URI
 			uri_t _uri;
-			// Создаём объект DNS-резолвера
-			dns_t _dns;
 			// Создаём объект для работы с актуатором
 			engine_t _engine;
 			// Сетевые параметры
@@ -321,7 +317,10 @@ namespace awh {
 			bool _noinfo;
 		private:
 			// Количество подключённых внешних ядер
-			u_int _cores;
+			uint32_t _cores;
+		protected:
+			// Создаём объект DNS-резолвера
+			dns_t * _dns;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -462,20 +461,19 @@ namespace awh {
 			engine_t::method_t method(const uint64_t bid) const noexcept;
 		public:
 			/**
+			 * lockup Метод блокировки метода режима работы
+			 * @param method метод режима работы
+			 * @param mode   флаг блокировки метода
+			 * @param bid    идентификатор брокера
+			 */
+			void lockup(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept;
+			/**
 			 * events Метод активации/деактивации метода события сокета
 			 * @param mode   сигнал активации сокета
 			 * @param method метод события сокета
 			 * @param bid    идентификатор брокера
 			 */
 			void events(const mode_t mode, const engine_t::method_t method, const uint64_t bid) noexcept;
-		public:
-			/**
-			 * lockMethod Метод блокировки метода режима работы
-			 * @param method метод режима работы
-			 * @param mode   флаг блокировки метода
-			 * @param bid    идентификатор брокера
-			 */
-			void lockMethod(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept;
 			/**
 			 * dataTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
@@ -580,91 +578,10 @@ namespace awh {
 			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 		public:
 			/**
-			 * clearDNS Метод сброса кэша резолвера
-			 * @return результат работы функции
+			 * dns Метод установки объекта DNS-резолвера
+			 * @param dns объект DNS-резолвер
 			 */
-			bool clearDNS() noexcept;
-			/**
-			 * flushDNS Метод сброса кэша DNS-резолвера
-			 * @return результат работы функции
-			 */
-			bool flushDNS() noexcept;
-		public:
-			/**
-			 * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
-			 * @param sec интервал времени ожидания в секундах
-			 */
-			void timeoutDNS(const uint8_t sec) noexcept;
-		public:
-			/**
-			 * prefixDNS Метод установки префикса переменной окружения
-			 * @param prefix префикс переменной окружения для установки
-			 */
-			void prefixDNS(const string & prefix) noexcept;
-		public:
-			/**
-			 * cashTimeToLiveDNS Время жизни кэша DNS
-			 * @param msec время жизни в миллисекундах
-			 */
-			void cashTimeToLiveDNS(const time_t msec) noexcept;
-		public:
-			/**
-			 * readHostsDNS Метод загрузки файла со списком хостов
-			 * @param filename адрес файла для загрузки
-			 */
-			void readHostsDNS(const string & filename) noexcept;
-		public:
-			/**
-			 * serversDNS Метод установки серверов имён DNS
-			 * @param ns список серверов имён
-			 */
-			void serversDNS(const vector <string> & ns) noexcept;
-			/**
-			 * serversDNS Метод установки серверов имён DNS
-			 * @param ns     список серверов имён
-			 * @param family тип протокола интернета (IPV4 / IPV6)
-			 */
-			void serversDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept;
-		public:
-			/**
-			 * clearBlackListDNS Метод очистки чёрного списка
-			 * @param domain доменное имя соответствующее IP-адресу
-			 */
-			void clearBlackListDNS(const string & domain) noexcept;
-			/**
-			 * clearBlackListDNS Метод очистки чёрного списка
-			 * @param family тип протокола интернета (IPV4 / IPV6)
-			 * @param domain доменное имя соответствующее IP-адресу
-			 */
-			void clearBlackListDNS(const scheme_t::family_t family, const string & domain) noexcept;
-		public:
-			/**
-			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
-			 * @param domain доменное имя соответствующее IP-адресу
-			 * @param ip     адрес для удаления из чёрного списка
-			 */
-			void delInBlackListDNS(const string & domain, const string & ip) noexcept;
-			/**
-			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
-			 * @param family тип протокола интернета (IPV4 / IPV6)
-			 * @param domain доменное имя соответствующее IP-адресу
-			 * @param ip     адрес для удаления из чёрного списка
-			 */
-			void delInBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept;
-		public:
-			/**
-			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
-			 * @param domain доменное имя соответствующее IP-адресу
-			 * @param ip     адрес для добавления в чёрный список
-			 */
-			void setToBlackListDNS(const string & domain, const string & ip) noexcept;
-			/**
-			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
-			 * @param family тип протокола интернета (IPV4 / IPV6)
-			 * @param domain доменное имя соответствующее IP-адресу
-			 * @param ip     адрес для добавления в чёрный список
-			 */
-			void setToBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept;
+			void dns(const dns_t * dns) noexcept;
 		public:
 			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений
@@ -720,6 +637,15 @@ namespace awh {
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
 			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			/**
+			 * Core Конструктор
+			 * @param fmk    объект фреймворка
+			 * @param log    объект для работы с логами
+			 * @param dns    объект DNS-резолвера
+			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
+			 */
+			Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

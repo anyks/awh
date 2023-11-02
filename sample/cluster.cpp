@@ -124,9 +124,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Выделяем для кластера все доступные ядра
-	core.clusterSize();
+	core.size();
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
-	core.clusterAutoRestart(true);
+	core.autoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.on((function <void (const awh::core_t::status_t, core_t *)>) std::bind(&Executor::run, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении событий

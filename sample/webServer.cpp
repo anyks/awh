@@ -234,8 +234,10 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект DNS-резолвера
+	dns_t dns(&fmk, &log);
 	// Создаём биндинг
-	server::core_t core(&fmk, &log);
+	server::core_t core(&fmk, &log, &dns);
 	// Создаём объект WEB-клиента
 	server::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя

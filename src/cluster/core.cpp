@@ -81,10 +81,10 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
 	}
 }
 /**
- * isMaster Метод проверки является ли процесс дочерним
+ * master Метод проверки является ли процесс дочерним
  * @return результат проверки
  */
-bool awh::cluster::Core::isMaster() const noexcept {
+bool awh::cluster::Core::master() const noexcept {
 	// Выводим результат проверки
 	return (this->_pid == getpid());
 }
@@ -240,11 +240,11 @@ void awh::cluster::Core::on(function <void (const cluster_t::family_t, const pid
 	this->_callback.set <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", callback);
 }
 /**
- * clusterAsync Метод установки флага асинхронного режима работы
+ * async Метод установки флага асинхронного режима работы
  * @param wid  идентификатор воркера
  * @param mode флаг асинхронного режима работы
  */
-void awh::cluster::Core::clusterAsync(const bool mode) noexcept {
+void awh::cluster::Core::async(const bool mode) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -264,18 +264,18 @@ void awh::cluster::Core::clusterAsync(const bool mode) noexcept {
 	#endif
 }
 /**
- * clusterSize Метод установки количества процессов кластера
+ * size Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
-void awh::cluster::Core::clusterSize(const uint16_t size) noexcept {
+void awh::cluster::Core::size(const uint16_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Устанавливаем количество рабочих процессов кластера
-		this->_clusterSize = size;
+		this->_size = size;
 		// Выполняем инициализацию кластера
-		this->_cluster.init(0, this->_clusterSize);
+		this->_cluster.init(0, this->_size);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -289,18 +289,18 @@ void awh::cluster::Core::clusterSize(const uint16_t size) noexcept {
 	#endif
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
+ * autoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
-void awh::cluster::Core::clusterAutoRestart(const bool mode) noexcept {
+void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Разрешаем автоматический перезапуск упавших процессов
-		this->_clusterAutoRestart = mode;
+		this->_autoRestart = mode;
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
-		this->_cluster.restart(0, this->_clusterAutoRestart);
+		this->_cluster.restart(0, this->_autoRestart);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -321,7 +321,7 @@ void awh::cluster::Core::clusterAutoRestart(const bool mode) noexcept {
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _clusterSize(1), _clusterAutoRestart(false), _log(log) {
+ awh::core_t(fmk, log, family, sonet), _pid(0), _size(1), _autoRestart(false), _cluster(fmk, log), _log(log) {
 	// Устанавливаем идентификатор процесса
 	this->_pid = getpid();
 	// Устанавливаем тип запускаемого ядра
@@ -329,7 +329,7 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::f
 	// Выполняем установку базы данных
 	this->_cluster.base(this->_dispatch.base);
 	// Выполняем инициализацию кластера
-	this->_cluster.init(0, this->_clusterSize);
+	this->_cluster.init(0, this->_size);
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений

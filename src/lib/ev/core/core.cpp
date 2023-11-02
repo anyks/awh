@@ -503,8 +503,8 @@ void awh::Core::bind(core_t * core) noexcept {
 			this->_cores++;
 			// Устанавливаем флаг запуска
 			core->_mode = true;
-			// Выполняем установку нейм-серверов для DNS-резолвера
-			core->_dns.replace(core->_settings.net.second);
+			// Выполняем установку объекта DNS-резолвера
+			core->_dns = this->_dns;
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		// Если базы событий совпадают
@@ -548,8 +548,10 @@ void awh::Core::unbind(core_t * core) noexcept {
 		core->_mtx.status.lock();
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
-		// Выполняем удаление модуля DNS-резолвера
-		core->_dns.clear();
+		// Если DNS-резолвер установлен
+		if(core->_dns != nullptr)
+			// Выполняем удаление модуля DNS-резолвера
+			core->_dns->clear();
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 		// Зануляем базу событий
@@ -812,8 +814,10 @@ void awh::Core::rebase() noexcept {
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		}
-		// Выполняем установку нейм-серверов для DNS-резолвера
-		this->_dns.replace(this->_settings.net.second);
+		// Если DNS-резолвер установлен
+		if(this->_dns != nullptr)
+			// Выполняем сброс кэша DNS-резолвера
+			this->_dns->flush();
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
 			// Переходим по всему списку таймеров
@@ -864,6 +868,32 @@ awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * lockup Метод блокировки метода режима работы
+ * @param method метод режима работы
+ * @param mode   флаг блокировки метода
+ * @param bid    идентификатор брокера
+ */
+void awh::Core::lockup(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept {
+	// Выполняем извлечение брокера
+	auto it = this->_brokers.find(bid);
+	// Если брокер получен
+	if(it != this->_brokers.end()){
+		// Определяем метод режима работы
+		switch(static_cast <uint8_t> (method)){
+			// Режим работы ЧТЕНИЕ
+			case static_cast <uint8_t> (engine_t::method_t::READ):
+				// Выполняем установку разрешения на получение данных
+				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.read = mode;
+			break;
+			// Режим работы ЗАПИСЬ
+			case static_cast <uint8_t> (engine_t::method_t::WRITE):
+				// Выполняем установку разрешения на передачу данных
+				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.write = mode;
+			break;
+		}
+	}
 }
 /**
  * events Метод активации/деактивации метода события сокета
@@ -1030,32 +1060,6 @@ void awh::Core::events(const mode_t mode, const engine_t::method_t method, const
 			} else if(adj->_addr.fd > 65535)
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
-		}
-	}
-}
-/**
- * lockMethod Метод блокировки метода режима работы
- * @param method метод режима работы
- * @param mode   флаг блокировки метода
- * @param bid    идентификатор брокера
- */
-void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept {
-	// Выполняем извлечение брокера
-	auto it = this->_brokers.find(bid);
-	// Если брокер получен
-	if(it != this->_brokers.end()){
-		// Определяем метод режима работы
-		switch(static_cast <uint8_t> (method)){
-			// Режим работы ЧТЕНИЕ
-			case static_cast <uint8_t> (engine_t::method_t::READ):
-				// Выполняем установку разрешения на получение данных
-				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.read = mode;
-			break;
-			// Режим работы ЗАПИСЬ
-			case static_cast <uint8_t> (engine_t::method_t::WRITE):
-				// Выполняем установку разрешения на передачу данных
-				const_cast <scheme_t::broker_t *> (it->second)->_bev.locked.write = mode;
-			break;
 		}
 	}
 }
@@ -1433,184 +1437,14 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
- * clearDNS Метод сброса кэша резолвера
- * @return результат работы функции
+ * dns Метод установки объекта DNS-резолвера
+ * @param dns объект DNS-резолвер
  */
-bool awh::Core::clearDNS() noexcept {
-	// Выполняем сброс кэша резолвера
-	return this->_dns.clear();
-}
-/**
- * flushDNS Метод сброса кэша DNS-резолвера
- * @return результат работы функции
- */
-bool awh::Core::flushDNS() noexcept {
-	// Выполняем очистку кэша DNS-резолвера
-	return this->_dns.flush();
-}
-/**
- * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
- * @param sec интервал времени ожидания в секундах
- */
-void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
-	// Выполняем установку времени ожидания выполнения запроса
-	this->_dns.timeout(sec);
-}
-/**
- * prefixDNS Метод установки префикса переменной окружения
- * @param prefix префикс переменной окружения для установки
- */
-void awh::Core::prefixDNS(const string & prefix) noexcept {
-	// Выполняем установку префикса переменной окружения
-	this->_dns.setPrefix(prefix);
-}
-/**
- * cashTimeToLiveDNS Время жизни кэша DNS
- * @param msec время жизни в миллисекундах
- */
-void awh::Core::cashTimeToLiveDNS(const time_t msec) noexcept {
-	// Выполняем установку времени жизни кэша
-	this->_dns.timeToLive(msec);
-}
-/**
- * readHostsDNS Метод загрузки файла со списком хостов
- * @param filename адрес файла для загрузки
- */
-void awh::Core::readHostsDNS(const string & filename) noexcept {
-	// Если адрес файла хостов в файловой системе передан
-	if(!filename.empty())
-		// Выполняем установку адрес файла хостов в файловой системе
-		this->_dns.readHosts(filename);
-}
-/**
- * serversDNS Метод установки серверов имён DNS
- * @param ns список серверов имён
- */
-void awh::Core::serversDNS(const vector <string> & ns) noexcept {
-	// Если сервера имён переданы, устанавливаем их
-	if(!ns.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Выполняем установку нейм-серверов для DNS-резолвера
-		this->_dns.replace(ns);
-		// Выполняем установку DNS-резолвера
-		this->_settings.net.second.assign(ns.begin(), ns.end());
-	}
-}
-/**
- * serversDNS Метод установки серверов имён DNS
- * @param ns     список серверов имён
- * @param family тип протокола интернета (IPV4 / IPV6)
- */
-void awh::Core::serversDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept {
-	// Если сервера имён переданы, устанавливаем их
-	if(!ns.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Устанавливаем полученный список серверов имён
-		this->_settings.net.second.assign(ns.cbegin(), ns.cend());
-		// Определяем тип интернет-протокола
-		switch(static_cast <uint8_t> (family)){
-			// Если тип протокола интернета IPv4
-			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Выполняем установку нейм-серверов для DNS-резолвера
-				this->_dns.replace(AF_INET, ns);
-			break;
-			// Если тип протокола интернета IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-				// Выполняем установку нейм-серверов для DNS-резолвера
-				this->_dns.replace(AF_INET6, ns);
-			break;
-		}
-	}
-}
-/**
- * clearBlackListDNS Метод очистки чёрного списка
- * @param domain доменное имя соответствующее IP-адресу
- */
-void awh::Core::clearBlackListDNS(const string & domain) noexcept {
-	// Выполняем очистку чёрного списка IP-адресов
-	this->_dns.clearBlackList(domain);
-}
-/**
- * clearBlackListDNS Метод очистки чёрного списка
- * @param family тип протокола интернета (IPV4 / IPV6)
- * @param domain доменное имя соответствующее IP-адресу
- */
-void awh::Core::clearBlackListDNS(const scheme_t::family_t family, const string & domain) noexcept {
-	// Определяем тип интернет-протокола
-	switch(static_cast <uint8_t> (family)){
-		// Если тип протокола интернета IPv4
-		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем очистку чёрного списка IP-адресов
-			this->_dns.clearBlackList(AF_INET, domain);
-		break;
-		// Если тип протокола интернета IPv6
-		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем очистку чёрного списка IP-адресов
-			this->_dns.clearBlackList(AF_INET6, domain);
-		break;
-	}
-}
-/**
- * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
- * @param domain доменное имя соответствующее IP-адресу
- * @param ip     адрес для удаления из чёрного списка
- */
-void awh::Core::delInBlackListDNS(const string & domain, const string & ip) noexcept {
-	// Выполняем удаление из чёрного списка IP-адреса
-	this->_dns.delInBlackList(domain, ip);
-}
-/**
- * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
- * @param family тип протокола интернета (IPV4 / IPV6)
- * @param domain доменное имя соответствующее IP-адресу
- * @param ip     адрес для удаления из чёрного списка
- */
-void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept {
-	// Определяем тип интернет-протокола
-	switch(static_cast <uint8_t> (family)){
-		// Если тип протокола интернета IPv4
-		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем удаление из чёрного списка IP-адреса
-			this->_dns.delInBlackList(AF_INET, domain, ip);
-		break;
-		// Если тип протокола интернета IPv6
-		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем удаление из чёрного списка IP-адреса
-			this->_dns.delInBlackList(AF_INET6, domain, ip);
-		break;
-	}
-}
-/**
- * setToBlackListDNS Метод добавления IP-адреса в чёрный список
- * @param domain доменное имя соответствующее IP-адресу
- * @param ip     адрес для добавления в чёрный список
- */
-void awh::Core::setToBlackListDNS(const string & domain, const string & ip) noexcept {
-	// Выполняем установку в чёрный список IP-адреса
-	this->_dns.setToBlackList(domain, ip);
-}
-/**
- * setToBlackListDNS Метод добавления IP-адреса в чёрный список
- * @param family тип протокола интернета (IPV4 / IPV6)
- * @param domain доменное имя соответствующее IP-адресу
- * @param ip     адрес для добавления в чёрный список
- */
-void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept {
-	// Определяем тип интернет-протокола
-	switch(static_cast <uint8_t> (family)){
-		// Если тип протокола интернета IPv4
-		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем установку в чёрный список IP-адреса
-			this->_dns.setToBlackList(AF_INET, domain, ip);
-		break;
-		// Если тип протокола интернета IPv6
-		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем установку в чёрный список IP-адреса
-			this->_dns.setToBlackList(AF_INET6, domain, ip);
-		break;
-	}
+void awh::Core::dns(const dns_t * dns) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем DNS-резолвер
+	this->_dns = const_cast <dns_t *> (dns);
 }
 /**
  * noInfo Метод установки флага запрета вывода информационных сообщений
@@ -1737,8 +1571,10 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	}
 	// Если IP-адреса переданы
 	if(!ips.empty()){
-		// Выполняем установку параметров сети для DNS-резолвера
-		this->_dns.network(ips);
+		// Если объект DNS-резолвера установлен
+		if(this->_dns != nullptr)
+			// Выполняем установку параметров сети для DNS-резолвера
+			this->_dns->network(ips);
 		// Переходим по всему списку полученных адресов
 		for(auto & host : ips){
 			// Определяем к какому адресу относится полученный хост
@@ -1748,30 +1584,33 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 				// Если IP-адрес является IPv6 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
 					// Устанавливаем полученные IP-адреса
-					this->_settings.net.first.push_back(host);
+					this->_settings.net.push_back(host);
 				break;
 				// Для всех остальных адресов
 				default: {
-					// Определяем тип интернет-протокола
-					switch(static_cast <uint8_t> (family)){
-						// Если тип протокола интернета IPv4
-						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-							// Выполняем получение IP-адреса для IPv4
-							const string & ip = this->_dns.host(AF_INET, host);
-							// Если IP-адрес успешно получен
-							if(!ip.empty())
-								// Выполняем добавление полученного хоста в список
-								this->_settings.net.first.push_back(ip);
-						} break;
-						// Если тип протокола интернета IPv6
-						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-							// Выполняем получение IP-адреса для IPv6
-							const string & ip = this->_dns.host(AF_INET6, host);
-							// Если результат получен, выполняем пинг
-							if(!ip.empty())
-								// Выполняем добавление полученного хоста в список
-								this->_settings.net.first.push_back(ip);
-						} break;
+					// Если объект DNS-резолвера установлен
+					if(this->_dns != nullptr){
+						// Определяем тип интернет-протокола
+						switch(static_cast <uint8_t> (family)){
+							// Если тип протокола интернета IPv4
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+								// Выполняем получение IP-адреса для IPv4
+								const string & ip = this->_dns->host(AF_INET, host);
+								// Если IP-адрес успешно получен
+								if(!ip.empty())
+									// Выполняем добавление полученного хоста в список
+									this->_settings.net.push_back(ip);
+							} break;
+							// Если тип протокола интернета IPv6
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+								// Выполняем получение IP-адреса для IPv6
+								const string & ip = this->_dns->host(AF_INET6, host);
+								// Если результат получен, выполняем пинг
+								if(!ip.empty())
+									// Выполняем добавление полученного хоста в список
+									this->_settings.net.push_back(ip);
+							} break;
+						}
 					}
 				}
 			}
@@ -1786,10 +1625,30 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _uri(fmk), _dns(fmk, log), _engine(fmk, log, &_uri),
- _dispatch(this), _fs(fmk, log), _sig(_dispatch.base), _callback(log),
- _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::CLIENT),
- _mode(false), _noinfo(false), _cores(0), _fmk(fmk), _log(log) {
+ _pid(getpid()), _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _fs(fmk, log),
+ _sig(_dispatch.base), _callback(log), _signals(mode_t::DISABLED), _status(status_t::STOP),
+ _type(engine_t::type_t::CLIENT), _mode(false), _noinfo(false), _cores(0), _dns(nullptr), _fmk(fmk), _log(log) {
+	// Устанавливаем тип сокета
+	this->_settings.sonet = sonet;
+	// Устанавливаем тип активного интернет-подключения
+	this->_settings.family = family;
+	// Если тип сокета подключения - unix-сокет
+	if(this->_settings.family == scheme_t::family_t::NIX)
+		// Выполняем активацию адреса файла сокета
+		this->unixSocket();
+}
+/**
+ * Core Конструктор
+ * @param fmk    объект фреймворка
+ * @param log    объект для работы с логами
+ * @param dns    объект DNS-резолвера
+ * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
+ */
+awh::Core::Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
+ _pid(getpid()), _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _fs(fmk, log),
+ _sig(_dispatch.base), _callback(log), _signals(mode_t::DISABLED), _status(status_t::STOP),
+ _type(engine_t::type_t::CLIENT), _mode(false), _noinfo(false), _cores(0), _dns(const_cast <dns_t *> (dns)), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
@@ -1805,8 +1664,10 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
-	// Выполняем удаление модуля DNS-резолвера
-	this->_dns.clear();
+	// Если DNS-резолвер установлен
+	if(this->_dns != nullptr)
+		// Выполняем удаление модуля DNS-резолвера
+		this->_dns->clear();
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Выполняем удаление активных таймеров
