@@ -46,14 +46,6 @@ namespace awh {
 				 * Scheme Устанавливаем дружбу с схемой сети
 				 */
 				friend class Scheme;
-			public:
-				/**
-				 * Режим работы клиента
-				 */
-				enum class mode_t : uint8_t {
-					SYNC  = 0x00, // Синхронный режим работы
-					ASYNC = 0x01  // Асинхронный режим работы
-				};
 			private:
 				/**
 				 * Mutex Структура основных мютексов
