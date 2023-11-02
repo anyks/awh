@@ -1272,7 +1272,7 @@ void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
  * signalInterception Метод активации перехвата сигналов
  * @param mode флаг активации
  */
-void awh::server::Proxy::signalInterception(const awh::core_t::signals_t mode) noexcept {
+void awh::server::Proxy::signalInterception(const awh::core_t::mode_t mode) noexcept {
 	// Выполняем активацию перехвата сигналов
 	this->_core.server.signalInterception(mode);
 }

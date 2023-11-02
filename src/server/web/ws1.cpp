@@ -378,7 +378,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Если получение данных нужно остановить
 							if(options->stopped)
 								// Выполняем запрет на получение входящих данных
-								dynamic_cast <server::core_t *> (core)->disabled(engine_t::method_t::READ, bid);
+								dynamic_cast <server::core_t *> (core)->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!options->http.body().empty() && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
@@ -693,7 +693,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 					// Если данные сообщения получены
 					if((options->stopped = !data.empty())){
 						// Выполняем запрет на получение входящих данных
-						const_cast <server::core_t *> (this->_core)->disabled(engine_t::method_t::READ, bid);
+						const_cast <server::core_t *> (this->_core)->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 						// Выполняем отправку сообщения брокеру
 						const_cast <server::core_t *> (this->_core)->write(data.data(), data.size(), bid);
 					// Завершаем работу
@@ -881,7 +881,7 @@ void awh::server::WebSocket1::sendError(const uint64_t bid, const ws::mess_t & m
 				// Запрещаем получение данных
 				options->allow.receive = false;
 				// Выполняем остановку получения данных
-				core->disabled(engine_t::method_t::READ, bid);
+				core->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 			}
 			// Если отправка сообщений разблокированна
 			if((options != nullptr) && options->allow.send){

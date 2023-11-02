@@ -700,6 +700,14 @@ void awh::server::ProxySocks5::network(const vector <string> & ips, const vector
 	this->_core.server.network(ips, family, sonet);
 }
 /**
+ * signalInterception Метод активации перехвата сигналов
+ * @param mode флаг активации
+ */
+void awh::server::ProxySocks5::signalInterception(const awh::core_t::mode_t mode) noexcept {
+	// Выполняем активацию перехвата сигналов
+	this->_core.server.signalInterception(mode);
+}
+/**
  * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
  * @param mode флаг состояния разрешения проверки
  */
@@ -726,14 +734,6 @@ void awh::server::ProxySocks5::ca(const string & trusted, const string & path) n
 void awh::server::ProxySocks5::certificate(const string & chain, const string & key) noexcept {
 	// Устанавливаем установки файлов сертификата
 	this->_core.server.certificate(chain, key);
-}
-/**
- * signalInterception Метод активации перехвата сигналов
- * @param mode флаг активации
- */
-void awh::server::ProxySocks5::signalInterception(const awh::core_t::signals_t mode) noexcept {
-	// Выполняем активацию перехвата сигналов
-	this->_core.server.signalInterception(mode);
 }
 /**
  * ProxySocks5 Конструктор

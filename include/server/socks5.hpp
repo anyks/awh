@@ -339,6 +339,12 @@ namespace awh {
 				void network(const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			public:
 				/**
+				 * signalInterception Метод активации перехвата сигналов
+				 * @param mode флаг активации
+				 */
+				void signalInterception(const awh::core_t::mode_t mode) noexcept;
+			public:
+				/**
 				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
 				 * @param mode флаг состояния разрешения проверки
 				 */
@@ -355,12 +361,6 @@ namespace awh {
 				 * @param key   приватный ключ сертификата
 				 */
 				void certificate(const string & chain, const string & key) noexcept;
-			public:
-				/**
-				 * signalInterception Метод активации перехвата сигналов
-				 * @param mode флаг активации
-				 */
-				void signalInterception(const awh::core_t::signals_t mode) noexcept;
 			public:
 				/**
 				 * ProxySocks5 Конструктор

@@ -897,7 +897,7 @@ void awh::client::WebSocket1::sendError(const ws::mess_t & mess) noexcept {
 			// Получаем объект биндинга ядра TCP/IP
 			client::core_t * core = const_cast <client::core_t *> (this->_core);
 			// Выполняем остановку получения данных
-			core->disabled(engine_t::method_t::READ, this->_bid);
+			core->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, this->_bid);
 			// Если код ошибки относится к WebSocket
 			if(mess.code >= 1000){
 				// Получаем буфер сообщения

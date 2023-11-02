@@ -528,7 +528,7 @@ namespace awh {
 				 * signalInterception Метод активации перехвата сигналов
 				 * @param mode флаг активации
 				 */
-				void signalInterception(const awh::core_t::signals_t mode) noexcept;
+				void signalInterception(const awh::core_t::mode_t mode) noexcept;
 				/**
 				 * compressors Метод установки списка поддерживаемых компрессоров
 				 * @param compressors список поддерживаемых компрессоров

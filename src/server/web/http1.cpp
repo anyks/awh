@@ -707,7 +707,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Если получение данных нужно остановить
 					if(options->stopped)
 						// Выполняем запрет на получение входящих данных
-						dynamic_cast <server::core_t *> (core)->disabled(engine_t::method_t::READ, bid);
+						dynamic_cast <server::core_t *> (core)->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(!web->http.body().empty() && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова

@@ -354,7 +354,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если статус подключения не изменился
 					} else {
 						// Активируем ожидание подключения
-						this->enabled(engine_t::method_t::CONNECT, ret.first->first);
+						this->events(mode_t::ENABLED, engine_t::method_t::CONNECT, ret.first->first);
 						// Если разрешено выводить информационные сообщения
 						if(!this->_noinfo){
 							// Если unix-сокет используется
@@ -1030,11 +1030,11 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 				return;
 			}
 			// Останавливаем чтение данных
-			this->disabled(engine_t::method_t::READ, it->first);
+			this->events(mode_t::DISABLED, engine_t::method_t::READ, it->first);
 			// Останавливаем запись данных
-			this->disabled(engine_t::method_t::WRITE, it->first);
+			this->events(mode_t::DISABLED, engine_t::method_t::WRITE, it->first);
 			// Активируем ожидание подключения
-			this->enabled(engine_t::method_t::CONNECT, it->first);
+			this->events(mode_t::ENABLED, engine_t::method_t::CONNECT, it->first);
 		}
 	}
 }
@@ -1095,9 +1095,9 @@ void awh::client::Core::timeout(const uint64_t bid) noexcept {
 			} break;
 		}
 		// Останавливаем чтение данных
-		this->disabled(engine_t::method_t::READ, it->first);
+		this->events(mode_t::DISABLED, engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		this->disabled(engine_t::method_t::WRITE, it->first);
+		this->events(mode_t::DISABLED, engine_t::method_t::WRITE, it->first);
 		// Выполняем отключение от сервера
 		this->close(bid);
 	}
@@ -1140,7 +1140,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 					// Выполняем отмену ранее выполненных запросов DNS
 					this->_dns.cancel(AF_INET);
 					// Запускаем чтение данных
-					this->enabled(engine_t::method_t::READ, it->first);
+					this->events(mode_t::ENABLED, engine_t::method_t::READ, it->first);
 					// Если разрешено выводить информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение
@@ -1155,7 +1155,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 					// Выполняем отмену ранее выполненных запросов DNS
 					this->_dns.cancel(AF_INET6);
 					// Запускаем чтение данных
-					this->enabled(engine_t::method_t::READ, it->first);
+					this->events(mode_t::ENABLED, engine_t::method_t::READ, it->first);
 					// Если разрешено выводить информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение
@@ -1164,7 +1164,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 				// Если тип протокола подключения unix-сокет
 				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 					// Запускаем чтение данных
-					this->enabled(engine_t::method_t::READ, it->first);
+					this->events(mode_t::ENABLED, engine_t::method_t::READ, it->first);
 					// Если разрешено выводить информационные сообщения
 					if(!this->_noinfo)
 						// Выводим в лог сообщение
@@ -1332,9 +1332,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных
-					this->disabled(engine_t::method_t::READ, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Останавливаем запись данных
-					this->disabled(engine_t::method_t::WRITE, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 					// Выполняем отключение от сервера
 					this->close(bid);
 				}
@@ -1393,19 +1393,8 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 						int64_t max = adj->_ectx.buffer(engine_t::method_t::WRITE);
 						// Если максимальное установленное значение больше размеров буфера для записи, корректируем
 						max = ((max > 0) && (adj->_marker.write.max > max) ? max : adj->_marker.write.max);
-						// Если тип сокета установлен как UDP или DTLS
-						if((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS)){
-							// Если флаг ожидания входящих сообщений, активирован
-							if(adj->_timeouts.read > 0)
-								// Выполняем установку таймаута ожидания
-								adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-							// Если флаг ожидания исходящих сообщений, активирован
-							if(adj->_timeouts.write > 0)
-								// Выполняем установку таймаута ожидания
-								adj->_ectx.timeout(adj->_timeouts.write * 1000, engine_t::method_t::WRITE);
-						}
 						// Активируем ожидание записи данных
-						this->enabled(engine_t::method_t::WRITE, bid);
+						this->events(mode_t::ENABLED, engine_t::method_t::WRITE, bid);
 						// Выполняем отправку данных пока всё не отправим
 						while((size - offset) > 0){
 							// Получаем общий размер буфера данных
@@ -1427,7 +1416,7 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							offset += bytes;
 						}
 						// Останавливаем ожидание записи данных
-						this->disabled(engine_t::method_t::WRITE, bid);
+						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
 						if(shm->callback.is("write"))
 							// Выводим функцию обратного вызова
@@ -1435,7 +1424,7 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем ожидание записи данных
-						this->disabled(engine_t::method_t::WRITE, bid);
+						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
 						if(shm->callback.is("write"))
 							// Выводим функцию обратного вызова
@@ -1448,9 +1437,9 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных
-					this->disabled(engine_t::method_t::READ, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Останавливаем запись данных
-					this->disabled(engine_t::method_t::WRITE, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 					// Выполняем отключение от сервера
 					this->close(bid);
 				}

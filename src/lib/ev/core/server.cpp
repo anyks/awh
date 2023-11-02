@@ -158,7 +158,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						}
 					}
 					// Запускаем чтение данных
-					this->core->enabled(engine_t::method_t::READ, this->bid);
+					this->core->events(mode_t::ENABLED, engine_t::method_t::READ, this->bid);
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("connect"))
 						// Выполняем функцию обратного вызова
@@ -322,7 +322,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Переводим сокет в неблокирующий режим
 						ret.first->second->_ectx.block();
 						// Запускаем чтение данных
-						this->enabled(engine_t::method_t::READ, ret.first->first);
+						this->events(mode_t::ENABLED, engine_t::method_t::READ, ret.first->first);
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
@@ -570,7 +570,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								}
 							}
 							// Запускаем чтение данных
-							this->enabled(engine_t::method_t::READ, ret.first->first);
+							this->events(mode_t::ENABLED, engine_t::method_t::READ, ret.first->first);
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("connect"))
 								// Выполняем функцию обратного вызова
@@ -1050,7 +1050,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					// Если максимальное установленное значение больше размеров буфера для записи, корректируем
 					max = ((max > 0) && (adj->_marker.write.max > max) ? max : adj->_marker.write.max);
 					// Активируем ожидание записи данных
-					this->enabled(engine_t::method_t::WRITE, bid);
+					this->events(mode_t::ENABLED, engine_t::method_t::WRITE, bid);
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Получаем общий размер буфера данных
@@ -1072,7 +1072,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						offset += bytes;
 					}
 					// Останавливаем ожидание записи данных
-					this->disabled(engine_t::method_t::WRITE, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callback.is("write"))
 						// Выводим функцию обратного вызова
@@ -1080,7 +1080,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 				// Если данных недостаточно для записи в сокет
 				} else {
 					// Останавливаем ожидание записи данных
-					this->disabled(engine_t::method_t::WRITE, bid);
+					this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callback.is("write"))
 						// Выводим функцию обратного вызова
@@ -1131,9 +1131,9 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 			} break;
 		}
 		// Останавливаем чтение данных
-		this->disabled(engine_t::method_t::READ, bid);
+		this->events(mode_t::DISABLED, engine_t::method_t::READ, bid);
 		// Останавливаем запись данных
-		this->disabled(engine_t::method_t::WRITE, bid);
+		this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 		// Выполняем отключение клиента
 		this->close(bid);
 	}

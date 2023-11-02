@@ -34,11 +34,11 @@ void awh::scheme_t::broker_t::read(ev::io & watcher, int revents) noexcept {
 		// Если запрещено выполнять чтение данных из сокета
 		if(this->_bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(engine_t::method_t::READ, this->_bid);
+			core->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, this->_bid);
 		// Если запрещено выполнять запись данных в сокет
 		if(this->_bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(engine_t::method_t::WRITE, this->_bid);
+			core->events(core_t::mode_t::DISABLED, engine_t::method_t::WRITE, this->_bid);
 		// Если запрещено и читать и записывать в сокет
 		if(this->_bev.locked.read && this->_bev.locked.write)
 			// Выполняем отключение от сервера
@@ -58,7 +58,7 @@ void awh::scheme_t::broker_t::connect(ev::io & watcher, int revents) noexcept {
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (shm->_core);
 	// Останавливаем подключение
-	core->disabled(engine_t::method_t::CONNECT, this->_bid);
+	core->events(core_t::mode_t::DISABLED, engine_t::method_t::CONNECT, this->_bid);
 	// Выполняем передачу данных об удачном подключении к серверу
 	core->connected(this->_bid);
 }
@@ -473,11 +473,11 @@ void awh::Core::clean(const uint64_t bid) const noexcept {
 		// Получаем объект сетевого ядра
 		core_t * core = const_cast <core_t *> (this);
 		// Останавливаем чтение данных
-		core->disabled(engine_t::method_t::READ, it->first);
+		core->events(mode_t::DISABLED, engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		core->disabled(engine_t::method_t::WRITE, it->first);
+		core->events(mode_t::DISABLED, engine_t::method_t::WRITE, it->first);
 		// Останавливаем выполнения подключением
-		core->disabled(engine_t::method_t::CONNECT, it->first);
+		core->events(mode_t::DISABLED, engine_t::method_t::CONNECT, it->first);
 		// Выполняем блокировку на чтение/запись данных
 		adj->_bev.locked = scheme_t::locked_t();
 	}
@@ -800,13 +800,13 @@ void awh::Core::rebase() noexcept {
 		// Выполняем остановку работы
 		this->stop();
 		// Если перехват сигналов активирован
-		if(this->_signals == signals_t::ENABLED)
+		if(this->_signals == mode_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
 			this->_sig.stop();
 		// Выполняем пересоздание базы событий
 		this->_dispatch.rebase();
 		// Если обработка сигналов включена
-		if(this->_signals == signals_t::ENABLED){
+		if(this->_signals == mode_t::ENABLED){
 			// Выполняем установку новой базы событий
 			this->_sig.base(this->_dispatch.base);
 			// Выполняем запуск отслеживания сигналов
@@ -866,11 +866,12 @@ awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
 	return result;
 }
 /**
- * enabled Метод активации метода события сокета
+ * events Метод активации/деактивации метода события сокета
+ * @param mode   сигнал активации сокета
  * @param method метод события сокета
  * @param bid    идентификатор брокера
  */
-void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noexcept {
+void awh::Core::events(const mode_t mode, const engine_t::method_t method, const uint64_t bid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение брокера
@@ -887,102 +888,141 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 				switch(static_cast <uint8_t> (method)){
 					// Если событием является чтение
 					case static_cast <uint8_t> (engine_t::method_t::READ): {
-						// Разрешаем чтение данных из сокета
-						adj->_bev.locked.read = false;
-						// Устанавливаем размер детектируемых байт на чтение
-						adj->_marker.read = shm->marker.read;
-						// Устанавливаем время ожидания чтения данных
-						adj->_timeouts.read = shm->timeouts.read;
-						// Устанавливаем приоритет выполнения для события на чтение
-						ev_set_priority(&adj->_bev.event.read, -2);
-						// Устанавливаем базу событий
-						adj->_bev.event.read.set(this->_dispatch.base);
-						// Устанавливаем сокет для чтения
-						adj->_bev.event.read.set(adj->_addr.fd, ev::READ);
-						// Устанавливаем событие на чтение данных подключения
-						adj->_bev.event.read.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::read> (adj);
-						// Запускаем чтение данных
-						adj->_bev.event.read.start();
-						// Если флаг ожидания входящих сообщений, активирован
-						if(adj->_timeouts.read > 0){
-							// Определяем тип активного сокета
-							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Выполняем установку таймаута ожидания
-									adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-								break;
-								// Для всех остальных протоколов
-								default: {
-									// Устанавливаем приоритет выполнения для таймаута на чтение
-									ev_set_priority(&adj->_bev.timer.read, 0);
-									// Устанавливаем базу событий
-									adj->_bev.timer.read.set(this->_dispatch.base);
-									// Устанавливаем событие на таймаут чтения данных подключения
-									adj->_bev.timer.read.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
-									// Запускаем ожидание чтения данных
-									adj->_bev.timer.read.start(adj->_timeouts.read);
+						// Определяем сигнал сокета
+						switch(static_cast <uint8_t> (mode)){
+							// Если установлен сигнал активации сокета
+							case static_cast <uint8_t> (mode_t::ENABLED): {
+								// Разрешаем чтение данных из сокета
+								adj->_bev.locked.read = false;
+								// Устанавливаем размер детектируемых байт на чтение
+								adj->_marker.read = shm->marker.read;
+								// Устанавливаем время ожидания чтения данных
+								adj->_timeouts.read = shm->timeouts.read;
+								// Устанавливаем приоритет выполнения для события на чтение
+								ev_set_priority(&adj->_bev.event.read, -2);
+								// Устанавливаем базу событий
+								adj->_bev.event.read.set(this->_dispatch.base);
+								// Устанавливаем сокет для чтения
+								adj->_bev.event.read.set(adj->_addr.fd, ev::READ);
+								// Устанавливаем событие на чтение данных подключения
+								adj->_bev.event.read.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::read> (adj);
+								// Запускаем чтение данных
+								adj->_bev.event.read.start();
+								// Если флаг ожидания входящих сообщений, активирован
+								if(adj->_timeouts.read > 0){
+									// Определяем тип активного сокета
+									switch(static_cast <uint8_t> (this->_settings.sonet)){
+										// Если тип сокета установлен как UDP
+										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Если тип сокета установлен как DTLS
+										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+											// Выполняем установку таймаута ожидания
+											adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+										break;
+										// Для всех остальных протоколов
+										default: {
+											// Устанавливаем приоритет выполнения для таймаута на чтение
+											ev_set_priority(&adj->_bev.timer.read, 0);
+											// Устанавливаем базу событий
+											adj->_bev.timer.read.set(this->_dispatch.base);
+											// Устанавливаем событие на таймаут чтения данных подключения
+											adj->_bev.timer.read.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
+											// Запускаем ожидание чтения данных
+											adj->_bev.timer.read.start(adj->_timeouts.read);
+										}
+									}
 								}
-							}
+							} break;
+							// Если установлен сигнал деактивации сокета
+							case static_cast <uint8_t> (mode_t::DISABLED): {
+								// Запрещаем чтение данных из сокета
+								adj->_bev.locked.read = true;
+								// Останавливаем ожидание чтения данных
+								adj->_bev.timer.read.stop();
+								// Останавливаем чтение данных
+								adj->_bev.event.read.stop();
+							} break;
 						}
 					} break;
 					// Если событием является запись
 					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-						// Устанавливаем размер детектируемых байт на запись
-						adj->_marker.write = shm->marker.write;
-						// Устанавливаем время ожидания записи данных
-						adj->_timeouts.write = shm->timeouts.write;
-						// Если флаг ожидания исходящих сообщений, активирован
-						if(adj->_timeouts.write > 0){
-							// Определяем тип активного сокета
-							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Выполняем установку таймаута ожидания
-									adj->_ectx.timeout(adj->_timeouts.write * 1000, engine_t::method_t::WRITE);
-								break;
-								// Для всех остальных протоколов
-								default: {
-									// Устанавливаем приоритет выполнения для таймаута на запись
-									ev_set_priority(&adj->_bev.timer.write, 0);
-									// Устанавливаем базу событий
-									adj->_bev.timer.write.set(this->_dispatch.base);
-									// Устанавливаем событие на таймаут записи данных подключения
-									adj->_bev.timer.write.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
-									// Запускаем ожидание запись данных
-									adj->_bev.timer.write.start(adj->_timeouts.write);
+						// Определяем сигнал сокета
+						switch(static_cast <uint8_t> (mode)){
+							// Если установлен сигнал активации сокета
+							case static_cast <uint8_t> (mode_t::ENABLED): {
+								// Устанавливаем размер детектируемых байт на запись
+								adj->_marker.write = shm->marker.write;
+								// Устанавливаем время ожидания записи данных
+								adj->_timeouts.write = shm->timeouts.write;
+								// Если флаг ожидания исходящих сообщений, активирован
+								if(adj->_timeouts.write > 0){
+									// Определяем тип активного сокета
+									switch(static_cast <uint8_t> (this->_settings.sonet)){
+										// Если тип сокета установлен как UDP
+										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Если тип сокета установлен как DTLS
+										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+											// Выполняем установку таймаута ожидания
+											adj->_ectx.timeout(adj->_timeouts.write * 1000, engine_t::method_t::WRITE);
+										break;
+										// Для всех остальных протоколов
+										default: {
+											// Устанавливаем приоритет выполнения для таймаута на запись
+											ev_set_priority(&adj->_bev.timer.write, 0);
+											// Устанавливаем базу событий
+											adj->_bev.timer.write.set(this->_dispatch.base);
+											// Устанавливаем событие на таймаут записи данных подключения
+											adj->_bev.timer.write.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
+											// Запускаем ожидание запись данных
+											adj->_bev.timer.write.start(adj->_timeouts.write);
+										}
+									}
 								}
-							}
+							} break;
+							// Если установлен сигнал деактивации сокета
+							case static_cast <uint8_t> (mode_t::DISABLED):
+								// Останавливаем ожидание записи данных
+								adj->_bev.timer.write.stop();
+							break;
 						}
 					} break;
 					// Если событием является подключение
 					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
-						// Устанавливаем время ожидания записи данных
-						adj->_timeouts.connect = shm->timeouts.connect;
-						// Устанавливаем приоритет выполнения для события на чтения
-						ev_set_priority(&adj->_bev.event.connect, -2);
-						// Устанавливаем базу событий
-						adj->_bev.event.connect.set(this->_dispatch.base);
-						// Устанавливаем сокет для записи
-						adj->_bev.event.connect.set(adj->_addr.fd, ev::WRITE);
-						// Устанавливаем событие подключения
-						adj->_bev.event.connect.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::connect> (adj);
-						// Выполняем запуск подключения
-						adj->_bev.event.connect.start();
-						// Если время ожидания записи данных установлено
-						if(adj->_timeouts.connect > 0){
-							// Устанавливаем приоритет выполнения для таймаута на подключение
-							ev_set_priority(&adj->_bev.timer.connect, 0);
-							// Устанавливаем базу событий
-							adj->_bev.timer.connect.set(this->_dispatch.base);
-							// Устанавливаем событие на запись данных подключения
-							adj->_bev.timer.connect.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
-							// Запускаем запись данных на сервер
-							adj->_bev.timer.connect.start(adj->_timeouts.connect);
+						// Определяем сигнал сокета
+						switch(static_cast <uint8_t> (mode)){
+							// Если установлен сигнал активации сокета
+							case static_cast <uint8_t> (mode_t::ENABLED): {
+								// Устанавливаем время ожидания записи данных
+								adj->_timeouts.connect = shm->timeouts.connect;
+								// Устанавливаем приоритет выполнения для события на чтения
+								ev_set_priority(&adj->_bev.event.connect, -2);
+								// Устанавливаем базу событий
+								adj->_bev.event.connect.set(this->_dispatch.base);
+								// Устанавливаем сокет для записи
+								adj->_bev.event.connect.set(adj->_addr.fd, ev::WRITE);
+								// Устанавливаем событие подключения
+								adj->_bev.event.connect.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::connect> (adj);
+								// Выполняем запуск подключения
+								adj->_bev.event.connect.start();
+								// Если время ожидания записи данных установлено
+								if(adj->_timeouts.connect > 0){
+									// Устанавливаем приоритет выполнения для таймаута на подключение
+									ev_set_priority(&adj->_bev.timer.connect, 0);
+									// Устанавливаем базу событий
+									adj->_bev.timer.connect.set(this->_dispatch.base);
+									// Устанавливаем событие на запись данных подключения
+									adj->_bev.timer.connect.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
+									// Запускаем запись данных на сервер
+									adj->_bev.timer.connect.start(adj->_timeouts.connect);
+								}
+							} break;
+							// Если установлен сигнал деактивации сокета
+							case static_cast <uint8_t> (mode_t::DISABLED): {
+								// Останавливаем ожидание подключения
+								adj->_bev.timer.connect.stop();
+								// Останавливаем подключение
+								adj->_bev.event.connect.stop();
+							} break;
 						}
 					} break;
 				}
@@ -990,51 +1030,6 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 			} else if(adj->_addr.fd > 65535)
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
-		}
-	}
-}
-/**
- * disabled Метод деактивации метода события сокета
- * @param method метод события сокета
- * @param bid    идентификатор брокера
- */
-void awh::Core::disabled(const engine_t::method_t method, const uint64_t bid) noexcept {
-	// Если работа базы событий продолжается
-	if(this->working()){
-		// Выполняем извлечение брокера
-		auto it = this->_brokers.find(bid);
-		// Если брокер получен
-		if(it != this->_brokers.end()){
-			// Получаем объект брокера
-			awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
-			// Если сокет подключения активен
-			if(adj->_addr.fd < 65535){
-				// Определяем метод события сокета
-				switch(static_cast <uint8_t> (method)){
-					// Если событием является чтение
-					case static_cast <uint8_t> (engine_t::method_t::READ): {
-						// Запрещаем чтение данных из сокета
-						adj->_bev.locked.read = true;
-						// Останавливаем ожидание чтения данных
-						adj->_bev.timer.read.stop();
-						// Останавливаем чтение данных
-						adj->_bev.event.read.stop();
-					} break;
-					// Если событием является запись
-					case static_cast <uint8_t> (engine_t::method_t::WRITE):
-						// Останавливаем ожидание записи данных
-						adj->_bev.timer.write.stop();
-					break;
-					// Если событием является подключение
-					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
-						// Останавливаем ожидание подключения
-						adj->_bev.timer.connect.stop();
-						// Останавливаем подключение
-						adj->_bev.event.connect.stop();
-					} break;
-				}
-			// Если файловый дескриптор сломан, значит с памятью что-то не то, удаляем из памяти объект брокера
-			} else this->_brokers.erase(it);
 		}
 	}
 }
@@ -1422,7 +1417,7 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	// Если тип сокета подключения - unix-сокет
 	if((this->_settings.family == scheme_t::family_t::NIX) && this->_settings.filename.empty()){
 		// Если перехват сигналов активирован
-		if(this->_signals == signals_t::ENABLED)
+		if(this->_signals == mode_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
 			this->_sig.stop();
 		// Выполняем активацию адреса файла сокета
@@ -1430,7 +1425,7 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	// Если тип сокета подключения - хост и порт
 	} else if(this->_settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
-		if(this->_signals == signals_t::ENABLED)
+		if(this->_signals == mode_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		// Выполняем очистку адреса файла unix-сокета
@@ -1649,7 +1644,7 @@ void awh::Core::frequency(const uint8_t msec) noexcept {
  * signalInterception Метод активации перехвата сигналов
  * @param mode флаг активации
  */
-void awh::Core::signalInterception(const signals_t mode) noexcept {
+void awh::Core::signalInterception(const mode_t mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Если флаг активации отличается
@@ -1657,7 +1652,7 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 		// Определяем флаг активации
 		switch(static_cast <uint8_t> (mode)){
 			// Если передан флаг активации перехвата сигналов
-			case static_cast <uint8_t> (signals_t::ENABLED): {
+			case static_cast <uint8_t> (mode_t::ENABLED): {
 				// Если тип сокета подключения не является unix-сокетом
 				if(this->_settings.family != scheme_t::family_t::NIX){
 					// Устанавливаем функцию обработки сигналов
@@ -1669,7 +1664,7 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 				}
 			} break;
 			// Если передан флаг деактивации перехвата сигналов
-			case static_cast <uint8_t> (signals_t::DISABLED): {
+			case static_cast <uint8_t> (mode_t::DISABLED): {
 				// Выполняем остановку отслеживания сигналов
 				this->_sig.stop();
 				// Устанавливаем флаг деактивации перехвата сигналов
@@ -1726,7 +1721,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если тип сокета подключения - unix-сокет
 	if((this->_settings.family == scheme_t::family_t::NIX) && this->_settings.filename.empty()){
 		// Если перехват сигналов активирован
-		if(this->_signals == signals_t::ENABLED)
+		if(this->_signals == mode_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
 			this->_sig.stop();
 		// Выполняем активацию адреса файла сокета
@@ -1734,7 +1729,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если тип сокета подключения - хост и порт
 	} else if(this->_settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
-		if(this->_signals == signals_t::ENABLED)
+		if(this->_signals == mode_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		// Выполняем очистку адреса файла unix-сокета
@@ -1793,7 +1788,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  _pid(getpid()), _uri(fmk), _dns(fmk, log), _engine(fmk, log, &_uri),
  _dispatch(this), _fs(fmk, log), _sig(_dispatch.base), _callback(log),
- _status(status_t::STOP), _signals(signals_t::DISABLED), _type(engine_t::type_t::CLIENT),
+ _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::CLIENT),
  _mode(false), _noinfo(false), _cores(0), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
@@ -1837,7 +1832,7 @@ awh::Core::~Core() noexcept {
 	// Выполняем разблокировку потока
 	this->_mtx.status.unlock();
 	// Если перехват сигналов активирован
-	if(this->_signals == signals_t::ENABLED)
+	if(this->_signals == mode_t::ENABLED)
 		// Выполняем остановку отслеживания сигналов
 		this->_sig.stop();
 }

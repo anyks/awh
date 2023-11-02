@@ -121,7 +121,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Разрешаем перехват сигналов
-	core.signalInterception(core_t::signals_t::DISABLED);
+	core.signalInterception(core_t::mode_t::DISABLED);
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений

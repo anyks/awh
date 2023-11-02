@@ -81,9 +81,9 @@ namespace awh {
 				START = 0x01  // Статус запуска
 			};
 			/**
-			 * Флаги перехвата сигналов
+			 * Флаги активации/деактивации
 			 */
-			enum class signals_t : uint8_t {
+			enum class mode_t : uint8_t {
 				ENABLED  = 0x01, // Включено
 				DISABLED = 0x00  // Отключено
 			};
@@ -299,10 +299,11 @@ namespace awh {
 			// Мютекс для блокировки основного потока
 			mutable mtx_t _mtx;
 		protected:
+			// Флаг обработки сигналов
+			mode_t _signals;
 			// Статус сетевого ядра
 			status_t _status;
-			// Флаг обработки сигналов
-			signals_t _signals;
+		protected:
 			// Тип запускаемого ядра
 			engine_t::type_t _type;
 		private:
@@ -461,17 +462,12 @@ namespace awh {
 			engine_t::method_t method(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * enabled Метод активации метода события сокета
+			 * events Метод активации/деактивации метода события сокета
+			 * @param mode   сигнал активации сокета
 			 * @param method метод события сокета
 			 * @param bid    идентификатор брокера
 			 */
-			void enabled(const engine_t::method_t method, const uint64_t bid) noexcept;
-			/**
-			 * disabled Метод деактивации метода события сокета
-			 * @param method метод события сокета
-			 * @param bid    идентификатор брокера
-			 */
-			void disabled(const engine_t::method_t method, const uint64_t bid) noexcept;
+			void events(const mode_t mode, const engine_t::method_t method, const uint64_t bid) noexcept;
 		public:
 			/**
 			 * lockMethod Метод блокировки метода режима работы
@@ -689,7 +685,7 @@ namespace awh {
 			 * signalInterception Метод активации перехвата сигналов
 			 * @param mode флаг активации
 			 */
-			void signalInterception(const signals_t mode) noexcept;
+			void signalInterception(const mode_t mode) noexcept;
 			/**
 			 * ciphers Метод установки алгоритмов шифрования
 			 * @param ciphers список алгоритмов шифрования для установки

@@ -26,7 +26,7 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
 		// Если система запущена
 		case static_cast <uint8_t> (status_t::START): {
 			// Устанавливаем перехват сигналов падения процессов
-			this->_cluster.trackCrash(this->_signals == signals_t::ENABLED);
+			this->_cluster.trackCrash(this->_signals == mode_t::ENABLED);
 			// Выполняем запуск кластера
 			this->_cluster.start(0);
 		} break;
