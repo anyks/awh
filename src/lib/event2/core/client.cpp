@@ -1336,9 +1336,12 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					this->close(bid);
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->_addr.fd > 65535)
+			} else if(adj->_addr.fd > 65535) {
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
+				// Выводим в лог сообщение
+				this->_log->print("Socket for read is not initialized", log_t::flag_t::WARNING);
+			}
 		}
 	}
 }
@@ -1449,9 +1452,12 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 					this->close(bid);
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->_addr.fd > 65535)
+			} else if(adj->_addr.fd > 65535) {
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
+				// Выводим в лог сообщение
+				this->_log->print("Socket for write is not initialized", log_t::flag_t::WARNING);
+			}
 		}
 	}
 }

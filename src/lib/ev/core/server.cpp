@@ -988,12 +988,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 											// Для всех остальных протоколов
 											default: {
 												// Если время ожидания чтения данных установлено
-												if(shm->wait){
-													// Устанавливаем время ожидания на получение данных
-													adj->_bev.timer.read.repeat = adj->_timeouts.read;
-													// Запускаем повторное ожидание
-													adj->_bev.timer.read.again();
-												}
+												if(shm->wait)
+													// Запускаем работу таймера
+													adj->_bev.timer.read.start(adj->_timeouts.read);
 											}
 										}
 									}

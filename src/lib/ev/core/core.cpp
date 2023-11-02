@@ -922,10 +922,8 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 									adj->_bev.timer.read.set(this->_dispatch.base);
 									// Устанавливаем событие на таймаут чтения данных подключения
 									adj->_bev.timer.read.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
-									// Устанавливаем время ожидания таймера
-									adj->_bev.timer.read.repeat = adj->_timeouts.read;
 									// Запускаем ожидание чтения данных
-									adj->_bev.timer.read.again();
+									adj->_bev.timer.read.start(adj->_timeouts.read);
 								}
 							}
 						}
@@ -955,10 +953,8 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 									adj->_bev.timer.write.set(this->_dispatch.base);
 									// Устанавливаем событие на таймаут записи данных подключения
 									adj->_bev.timer.write.set <awh::scheme_t::broker_t, &awh::scheme_t::broker_t::timeout> (adj);
-									// Устанавливаем время ожидания таймера
-									adj->_bev.timer.write.repeat = adj->_timeouts.write;
 									// Запускаем ожидание запись данных
-									adj->_bev.timer.write.again();
+									adj->_bev.timer.write.start(adj->_timeouts.write);
 								}
 							}
 						}
@@ -979,6 +975,8 @@ void awh::Core::enabled(const engine_t::method_t method, const uint64_t bid) noe
 						adj->_bev.event.connect.start();
 						// Если время ожидания записи данных установлено
 						if(adj->_timeouts.connect > 0){
+							// Устанавливаем приоритет выполнения для таймаута на подключение
+							ev_set_priority(&adj->_bev.timer.connect, 0);
 							// Устанавливаем базу событий
 							adj->_bev.timer.connect.set(this->_dispatch.base);
 							// Устанавливаем событие на запись данных подключения

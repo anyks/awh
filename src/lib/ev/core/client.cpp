@@ -1303,12 +1303,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 												// Для всех остальных протоколов
 												default: {
 													// Если время ожидания чтения данных установлено
-													if(shm->wait){
-														// Устанавливаем время ожидания на получение данных
-														adj->_bev.timer.read.repeat = adj->_timeouts.read;
-														// Запускаем повторное ожидание
-														adj->_bev.timer.read.again();
-													}
+													if(shm->wait)
+														// Запускаем работу таймера
+														adj->_bev.timer.read.start(adj->_timeouts.read);
 												}
 											}
 										}
@@ -1342,9 +1339,12 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					this->close(bid);
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->_addr.fd > 65535)
+			} else if(adj->_addr.fd > 65535) {
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
+				// Выводим в лог сообщение
+				this->_log->print("Socket for read is not initialized", log_t::flag_t::WARNING);
+			}
 		}
 	}
 }
@@ -1455,9 +1455,12 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 					this->close(bid);
 				}
 			// Если файловый дескриптор сломан, значит с памятью что-то не то
-			} else if(adj->_addr.fd > 65535)
+			} else if(adj->_addr.fd > 65535) {
 				// Удаляем из памяти объект брокера
 				this->_brokers.erase(it);
+				// Выводим в лог сообщение
+				this->_log->print("Socket for write is not initialized", log_t::flag_t::WARNING);
+			}
 		}
 	}
 }
