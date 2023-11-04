@@ -33,8 +33,6 @@ namespace awh {
 		 */
 		typedef class WebSocket {
 			private:
-				// Объект работы с URI ссылками
-				uri_t _uri;
 				// Объект DNS-резолвера
 				dns_t _dns;
 				// Объект работы с протоколом HTTP/2

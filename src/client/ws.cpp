@@ -417,7 +417,7 @@ void awh::client::WebSocket::waitTimeDetect(const time_t read, const time_t writ
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _dns(fmk, log), _ws(core, fmk, log), _fmk(fmk), _log(log) {
+ _dns(fmk, log), _ws(core, fmk, log), _fmk(fmk), _log(log) {
 	// Выполняем установку DNS-резолвера
 	const_cast <client::core_t *> (core)->resolver(&this->_dns);
 }
