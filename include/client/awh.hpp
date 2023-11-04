@@ -43,6 +43,8 @@ namespace awh {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
+				// Объект DNS-резолвера
+				dns_t _dns;
 				// Объект работы с протоколом HTTP/2
 				client::http2_t _http;
 			private:
@@ -523,7 +525,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _uri(fmk), _http(core, fmk, log), _fmk(fmk), _log(log) {}
+				AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~AWH Деструктор
 				 */

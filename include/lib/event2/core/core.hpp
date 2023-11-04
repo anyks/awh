@@ -167,7 +167,7 @@ namespace awh {
 				// Адрес файла unix-сокета
 				string filename;
 				// Параметры для сети
-				vector <string> net;
+				vector <string> network;
 				/**
 				 * Settings Конструктор
 				 */
@@ -175,7 +175,7 @@ namespace awh {
 				 proto(engine_t::proto_t::RAW),
 				 sonet(scheme_t::sonet_t::TCP),
 				 family(scheme_t::family_t::IPV4),
-				 filename{""}, net{"0.0.0.0","[::]"} {}
+				 filename{""}, network{"0.0.0.0","[::]"} {}
 			} settings_t;
 		private:
 			/**
@@ -578,10 +578,10 @@ namespace awh {
 			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 		public:
 			/**
-			 * dns Метод установки объекта DNS-резолвера
+			 * resolver Метод установки объекта DNS-резолвера
 			 * @param dns объект DNS-резолвер
 			 */
-			void dns(const dns_t * dns) noexcept;
+			void resolver(const dns_t * dns) noexcept;
 		public:
 			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений
@@ -639,13 +639,13 @@ namespace awh {
 			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * Core Конструктор
+			 * @param dns    объект DNS-резолвера
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
-			 * @param dns    объект DNS-резолвера
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

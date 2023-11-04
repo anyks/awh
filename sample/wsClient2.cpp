@@ -315,10 +315,8 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk);
-	// Создаём объект DNS-резолвера
-	dns_t dns(&fmk, &log);
 	// Создаём биндинг
-	client::core_t core(&fmk, &log, &dns);
+	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
 	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя

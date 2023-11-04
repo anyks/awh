@@ -35,6 +35,8 @@ namespace awh {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
+				// Объект DNS-резолвера
+				dns_t _dns;
 				// Объект работы с протоколом HTTP/2
 				client::ws2_t _ws;
 			private:
@@ -324,7 +326,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _uri(fmk), _ws(core, fmk, log), _fmk(fmk), _log(log) {}
+				WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~WebSocket Деструктор
 				 */

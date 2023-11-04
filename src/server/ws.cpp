@@ -509,3 +509,13 @@ void awh::server::WebSocket::encryption(const string & pass, const string & salt
 	// Выполняем установку параметров шифрования
 	this->_ws.encryption(pass, salt, cipher);
 }
+/**
+ * WebSocket Конструктор
+ * @param core объект сетевого ядра
+ * @param fmk  объект фреймворка
+ * @param log  объект для работы с логами
+ */
+awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _dns(fmk, log), _ws(core, fmk, log), _fmk(fmk), _log(log) {
+	// Выполняем установку DNS-резолвера
+	const_cast <server::core_t *> (core)->resolver(&this->_dns);
+}

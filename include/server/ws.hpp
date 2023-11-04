@@ -36,6 +36,8 @@ namespace awh {
 		 */
 		typedef class WebSocket {
 			private:
+				// Объект DNS-резолвера
+				dns_t _dns;
 				// Объект работы с протоколом WebSocket/2
 				server::ws2_t _ws;
 			private:
@@ -398,7 +400,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _ws(core, fmk, log), _fmk(fmk), _log(log) {}
+				WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~WebSocket Деструктор
 				 */

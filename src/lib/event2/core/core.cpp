@@ -1405,10 +1405,10 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
- * dns Метод установки объекта DNS-резолвера
+ * resolver Метод установки объекта DNS-резолвера
  * @param dns объект DNS-резолвер
  */
-void awh::Core::dns(const dns_t * dns) noexcept {
+void awh::Core::resolver(const dns_t * dns) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем DNS-резолвер
@@ -1552,7 +1552,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 				// Если IP-адрес является IPv6 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
 					// Устанавливаем полученные IP-адреса
-					this->_settings.net.push_back(host);
+					this->_settings.network.push_back(host);
 				break;
 				// Для всех остальных адресов
 				default: {
@@ -1567,7 +1567,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 								// Если IP-адрес успешно получен
 								if(!ip.empty())
 									// Выполняем добавление полученного хоста в список
-									this->_settings.net.push_back(ip);
+									this->_settings.network.push_back(ip);
 							} break;
 							// Если тип протокола интернета IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
@@ -1576,7 +1576,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 								// Если результат получен, выполняем пинг
 								if(!ip.empty())
 									// Выполняем добавление полученного хоста в список
-									this->_settings.net.push_back(ip);
+									this->_settings.network.push_back(ip);
 							} break;
 						}
 					}
@@ -1608,13 +1608,13 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 }
 /**
  * Core Конструктор
+ * @param dns    объект DNS-резолвера
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
- * @param dns    объект DNS-резолвера
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
+awh::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callback(log),
  _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base, log),
  _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
@@ -1634,10 +1634,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const dns_t * dns, const s
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
-	// Если DNS-резолвер установлен
-	if(this->_dns != nullptr)
-		// Выполняем удаление модуля DNS-резолвера
-		this->_dns->clear();
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Выполняем удаление активных таймеров

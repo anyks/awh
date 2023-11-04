@@ -75,7 +75,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Core(const fmk_t * fmk, const log_t * log) noexcept :
-					 dns(fmk, log), timer(fmk, log), client(fmk, log, &dns), server(fmk, log, &dns) {}
+					 dns(fmk, log), timer(fmk, log), client(&dns, fmk, log), server(&dns, fmk, log) {}
 				} core_t;
 			private:
 				// Порт сервера
