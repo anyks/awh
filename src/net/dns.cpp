@@ -218,9 +218,9 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 					// Переходим по всему списку DNS-серверов
 					for(auto & addr : this->_self->_serversIPv4){
 						// Очищаем всю структуру для клиента
-						memset(&client, 0, sizeof(client));
+						::memset(&client, 0, sizeof(client));
 						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
+						::memset(&server, 0, sizeof(server));
 						// Устанавливаем протокол интернета
 						client.sin_family = this->_family;
 						// Устанавливаем протокол интернета
@@ -230,15 +230,15 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем порт для локального подключения
 						server.sin_port = htons(addr.port);
 						// Устанавливаем адрес для подключения
-						memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
+						::memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
 						// Устанавливаем адрес для локальго подключения
 						inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&this->_peer.client, &client, this->_peer.size);
+						::memcpy(&this->_peer.client, &client, this->_peer.size);
 						// Выполняем копирование объекта подключения сервера
-						memcpy(&this->_peer.server, &server, this->_peer.size);
+						::memcpy(&this->_peer.server, &server, this->_peer.size);
 						// Обнуляем серверную структуру
-						memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+						::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 						{
 							// Временный буфер данных для преобразования IP-адреса
 							char buffer[INET_ADDRSTRLEN];
@@ -267,9 +267,9 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 					// Переходим по всему списку DNS-серверов
 					for(auto & addr : this->_self->_serversIPv6){
 						// Очищаем всю структуру для клиента
-						memset(&client, 0, sizeof(client));
+						::memset(&client, 0, sizeof(client));
 						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
+						::memset(&server, 0, sizeof(server));
 						// Устанавливаем протокол интернета
 						client.sin6_family = this->_family;
 						// Устанавливаем протокол интернета
@@ -279,13 +279,13 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем порт для локального подключения
 						server.sin6_port = htons(addr.port);
 						// Устанавливаем адрес для подключения
-						memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
+						::memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
 						// Устанавливаем адрес для локальго подключения
 						inet_pton(this->_family, host.c_str(), &client.sin6_addr);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&this->_peer.client, &client, this->_peer.size);
+						::memcpy(&this->_peer.client, &client, this->_peer.size);
 						// Выполняем копирование объекта подключения сервера
-						memcpy(&this->_peer.server, &server, this->_peer.size);
+						::memcpy(&this->_peer.server, &server, this->_peer.size);
 						{
 							// Временный буфер данных для преобразования IP-адреса
 							char buffer[INET6_ADDRSTRLEN];
@@ -318,7 +318,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 		// Буфер пакета данных
 		u_char buffer[65536];
 		// Выполняем зануление буфера данных
-		memset(buffer, 0, sizeof(buffer));
+		::memset(buffer, 0, sizeof(buffer));
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
 		// Устанавливаем идентификатор заголовка
@@ -341,7 +341,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 		// Получаем доменное имя в нужном формате
 		const auto & domain = this->split(this->_domain);
 		// Выполняем копирование домена
-		memcpy(&buffer[size], domain.data(), domain.size());
+		::memcpy(&buffer[size], domain.data(), domain.size());
 		// Увеличиваем размер запроса
 		size += (domain.size() + 1);
 		// Создаём части флагов вопроса пакета запроса
@@ -401,7 +401,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 				// Получаем объект DNS-сервера
 				dns_t * self = const_cast <dns_t *> (this->_self);
 				// Выполняем зануление буфера данных
-				memset(buffer, 0, sizeof(buffer));
+				::memset(buffer, 0, sizeof(buffer));
 				// Выполняем чтение ответа сервера
 				const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_peer.server, &this->_peer.size);
 				// Если данные прочитать не удалось
@@ -528,7 +528,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 											// Создаём буфер данных
 											char buffer[INET6_ADDRSTRLEN];
 											// Зануляем буфер данных
-											memset(buffer, 0, sizeof(buffer));
+											::memset(buffer, 0, sizeof(buffer));
 											// Получаем IP-адрес принадлежащий доменному имени
 											const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 											// Если IP-адрес получен
@@ -559,7 +559,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 									// Если тип полученной записи IPv4 или IPv6
 									if((type[i] == 1) || (type[i] == 28)){
 										// Зануляем буфер данных
-										memset(buffer, 0, sizeof(buffer));
+										::memset(buffer, 0, sizeof(buffer));
 										// Получаем IP-адрес принадлежащий доменному имени
 										const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 										// Если IP-адрес получен
@@ -2220,13 +2220,13 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 						// Выполняем перебор всего списка полученных IP-адресов
 						while(domain->h_addr_list[index] != 0){
 							// Выполняем зануление буфера данных
-							memset(buffer, 0, sizeof(buffer));
+							::memset(buffer, 0, sizeof(buffer));
 							// Очищаем всю структуру для сервера
-							memset(&server, 0, sizeof(server));
+							::memset(&server, 0, sizeof(server));
 							// Устанавливаем протокол интернета
 							server.sin_family = family;
 							// Выполняем копирование данных типа подключения
-							memcpy(&server.sin_addr.s_addr, domain->h_addr_list[index++], domain->h_length);
+							::memcpy(&server.sin_addr.s_addr, domain->h_addr_list[index++], domain->h_length);
 							// Копируем полученные данные IP-адреса
 							ips.push_back(inet_ntop(family, &server.sin_addr, buffer, sizeof(buffer)));
 						}
@@ -2240,13 +2240,13 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 						// Выполняем перебор всего списка полученных IP-адресов
 						while(domain->h_addr_list[index] != 0){
 							// Выполняем зануление буфера данных
-							memset(buffer, 0, sizeof(buffer));
+							::memset(buffer, 0, sizeof(buffer));
 							// Очищаем всю структуру для сервера
-							memset(&server, 0, sizeof(server));
+							::memset(&server, 0, sizeof(server));
 							// Устанавливаем протокол интернета
 							server.sin6_family = family;
 							// Выполняем копирование данных типа подключения
-							memcpy(&server.sin6_addr.s6_addr, domain->h_addr_list[index++], domain->h_length);
+							::memcpy(&server.sin6_addr.s6_addr, domain->h_addr_list[index++], domain->h_length);
 							// Копируем полученные данные IP-адреса
 							ips.push_back(inet_ntop(family, &server.sin6_addr, buffer, sizeof(buffer)));
 						}

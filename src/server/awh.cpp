@@ -673,7 +673,8 @@ void awh::server::AWH::encryption(const string & pass, const string & salt, cons
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::AWH::AWH(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log) {
+awh::server::AWH::AWH(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+ _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log) {
 	// Выполняем установку DNS-резолвера
 	const_cast <server::core_t *> (core)->resolver(&this->_dns);
 }
