@@ -24,8 +24,21 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 	status_t result = status_t::FAULT;
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
-		// Получаем параметры авторизации
-		const string & auth = this->_web.header("authorization");
+		// Параметры авторизации
+		string auth = "";
+		// Определяем идентичность сервера
+		switch(static_cast <uint8_t> (this->_identity)){
+			// Если сервер соответствует HTTP-серверу
+			case static_cast <uint8_t> (identity_t::HTTP):
+				// Получаем параметры авторизации
+				auth = this->_web.header("authorization");
+			break;
+			// Если сервер соответствует PROXY-серверу
+			case static_cast <uint8_t> (identity_t::PROXY):
+				// Получаем параметры авторизации
+				auth = this->_web.header("proxy-authorization");
+			break;
+		}
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Метод HTTP запроса
@@ -141,7 +154,7 @@ void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * @param log объект для работы с логами
  */
 awh::server::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
-	// Выполняем установку идентичность клиента к протоколу HTTP
+	// Выполняем установку идентичность сервера к протоколу HTTP
 	this->_identity = identity_t::HTTP;
 	// Устанавливаем тип HTTP-парсера
 	this->_web.hid(web_t::hid_t::SERVER);

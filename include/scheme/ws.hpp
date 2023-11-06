@@ -41,144 +41,149 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * SchemeWS Структура схемы сети WebSocket сервера
+		 * scheme серверное пространство имён
 		 */
-		typedef struct SchemeWebSocket : public scheme_t {
-			public:
-				/**
-				 * Buffer Структура буфера данных
-				 */
-				typedef struct Buffer {
-					vector <char> payload; // Бинарный буфер полезной нагрузки
-					vector <char> fragmes; // Данные фрагметрированного сообщения
-				} buffer_t;
-				/**
-				 * Allow Структура флагов разрешения обменом данных
-				 */
-				typedef struct Allow {
-					bool send;    // Флаг разрешения отправки данных
-					bool receive; // Флаг разрешения чтения данных
+		namespace scheme {
+			/**
+			 * WebSocket Структура схемы сети WebSocket сервера
+			 */
+			typedef struct WebSocket : public scheme_t {
+				public:
 					/**
-					 * Allow Конструктор
+					 * Buffer Структура буфера данных
 					 */
-					Allow() noexcept : send(true), receive(true) {}
-				} __attribute__((packed)) allow_t;
-				/**
-				 * Partner Структура партнёра
-				 */
-				typedef struct Partner {
-					short wbit;    // Размер скользящего окна
-					bool takeover; // Флаг скользящего контекста сжатия
+					typedef struct Buffer {
+						vector <char> payload; // Бинарный буфер полезной нагрузки
+						vector <char> fragmes; // Данные фрагметрированного сообщения
+					} buffer_t;
 					/**
-					 * Partner Конструктор
+					 * Allow Структура флагов разрешения обменом данных
 					 */
-					Partner() noexcept : wbit(0), takeover(false) {}
-				} __attribute__((packed)) partner_t;
-				/**
-				 * Frame Объект фрейма WebSocket
-				 */
-				typedef struct Frame {
-					size_t size;                  // Минимальный размер сегмента
-					ws::frame_t methods;          // Методы работы с фреймом WebSocket
-					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
+					typedef struct Allow {
+						bool send;    // Флаг разрешения отправки данных
+						bool receive; // Флаг разрешения чтения данных
+						/**
+						 * Allow Конструктор
+						 */
+						Allow() noexcept : send(true), receive(true) {}
+					} __attribute__((packed)) allow_t;
 					/**
-					 * Frame Конструктор
+					 * Partner Структура партнёра
+					 */
+					typedef struct Partner {
+						short wbit;    // Размер скользящего окна
+						bool takeover; // Флаг скользящего контекста сжатия
+						/**
+						 * Partner Конструктор
+						 */
+						Partner() noexcept : wbit(0), takeover(false) {}
+					} __attribute__((packed)) partner_t;
+					/**
+					 * Frame Объект фрейма WebSocket
+					 */
+					typedef struct Frame {
+						size_t size;                  // Минимальный размер сегмента
+						ws::frame_t methods;          // Методы работы с фреймом WebSocket
+						ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
+						/**
+						 * Frame Конструктор
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
+						 */
+						Frame(const fmk_t * fmk, const log_t * log) noexcept :
+						size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+					} frame_t;
+				public:
+					/**
+					 * Options Структура параметров активного клиента
+					 */
+					typedef struct Options {
+						bool close;                  // Флаг требования закрыть брокера
+						bool shake;                  // Флаг выполненного рукопожатия
+						bool crypted;               // Флаг шифрования сообщений
+						bool inflate;                // Флаг переданных сжатых данных
+						bool stopped;                // Флаг принудительной остановки
+						int32_t sid;                 // Идентификатор потока
+						time_t point;                // Контрольная точка ответа на пинг
+						hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
+						allow_t allow;               // Объект разрешения обмена данными
+						frame_t frame;               // Объект для работы с фреймом WebSocket
+						ws::mess_t mess;             // Объект отправляемого сообщения
+						buffer_t buffer;             // Объект буфера данных
+						partner_t client;            // Объект партнёра клиента
+						partner_t server;            // Объект партнёра сервера
+						server::ws_t http;           // Создаём объект для работы с HTTP
+						recursive_mutex mtx;         // Мютекс для блокировки потока
+						engine_t::proto_t proto;     // Активный прототип интернета
+						http_t::compress_t compress; // Метод компрессии данных
+						/**
+						 * Options Конструктор
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
+						 */
+						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						close(false), shake(false), crypted(false),
+						inflate(false), stopped(false), sid(1), point(0),
+						hash(log), frame(fmk, log), http(fmk, log),
+						proto(engine_t::proto_t::HTTP1_1),
+						compress(http_t::compress_t::NONE) {}
+						/**
+						 * ~Options Деструктор
+						 */
+						~Options() noexcept {}
+					} options_t;
+				public:
+					// Список доступных компрессоров
+					vector <awh::http_t::compress_t> compressors;
+				private:
+					// Список параметров активных клиентов
+					map <uint64_t, unique_ptr <options_t>> _options;
+				private:
+					// Создаём объект фреймворка
+					const fmk_t * _fmk;
+					// Создаём объект работы с логами
+					const log_t * _log;
+				public:
+					/**
+					 * clear Метод очистки
+					 */
+					void clear() noexcept;
+				public:
+					/**
+					 * set Метод создания параметров активного клиента
+					 * @param bid идентификатор брокера
+					 */
+					void set(const uint64_t bid) noexcept;
+					/**
+					 * rm Метод удаления параметров активного клиента
+					 * @param bid идентификатор брокера
+					 */
+					void rm(const uint64_t bid) noexcept;
+				public:
+					/**
+					 * get Метод получения параметров активного клиента
+					 * @param bid идентификатор брокера
+					 * @return    параметры активного клиента
+					 */
+					const options_t * get(const uint64_t bid) const noexcept;
+					/**
+					 * get Метод извлечения списка параметров активных клиентов
+					 * @return список параметров активных клиентов
+					 */
+					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
+				public:
+					/**
+					 * WebSocket Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Frame(const fmk_t * fmk, const log_t * log) noexcept :
-					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
-				} frame_t;
-			public:
-				/**
-				 * Options Структура параметров активного клиента
-				 */
-				typedef struct Options {
-					bool close;                  // Флаг требования закрыть брокера
-					bool shake;                  // Флаг выполненного рукопожатия
-					bool crypted;               // Флаг шифрования сообщений
-					bool inflate;                // Флаг переданных сжатых данных
-					bool stopped;                // Флаг принудительной остановки
-					int32_t sid;                 // Идентификатор потока
-					time_t point;                // Контрольная точка ответа на пинг
-					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
-					allow_t allow;               // Объект разрешения обмена данными
-					frame_t frame;               // Объект для работы с фреймом WebSocket
-					ws::mess_t mess;             // Объект отправляемого сообщения
-					buffer_t buffer;             // Объект буфера данных
-					partner_t client;            // Объект партнёра клиента
-					partner_t server;            // Объект партнёра сервера
-					server::ws_t http;           // Создаём объект для работы с HTTP
-					recursive_mutex mtx;         // Мютекс для блокировки потока
-					engine_t::proto_t proto;     // Активный прототип интернета
-					http_t::compress_t compress; // Метод компрессии данных
+					WebSocket(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * Options Конструктор
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
+					 * ~WebSocket Деструктор
 					 */
-					Options(const fmk_t * fmk, const log_t * log) noexcept :
-					 close(false), shake(false), crypted(false),
-					 inflate(false), stopped(false), sid(1), point(0),
-					 hash(log), frame(fmk, log), http(fmk, log),
-					 proto(engine_t::proto_t::HTTP1_1),
-					 compress(http_t::compress_t::NONE) {}
-					/**
-					 * ~Options Деструктор
-					 */
-					~Options() noexcept {}
-				} options_t;
-			public:
-				// Список доступных компрессоров
-				vector <awh::http_t::compress_t> compressors;
-			private:
-				// Список параметров активных клиентов
-				map <uint64_t, unique_ptr <options_t>> _options;
-			private:
-				// Создаём объект фреймворка
-				const fmk_t * _fmk;
-				// Создаём объект работы с логами
-				const log_t * _log;
-			public:
-				/**
-				 * clear Метод очистки
-				 */
-				void clear() noexcept;
-			public:
-				/**
-				 * set Метод создания параметров активного клиента
-				 * @param bid идентификатор брокера
-				 */
-				void set(const uint64_t bid) noexcept;
-				/**
-				 * rm Метод удаления параметров активного клиента
-				 * @param bid идентификатор брокера
-				 */
-				void rm(const uint64_t bid) noexcept;
-			public:
-				/**
-				 * get Метод получения параметров активного клиента
-				 * @param bid идентификатор брокера
-				 * @return    параметры активного клиента
-				 */
-				const options_t * get(const uint64_t bid) const noexcept;
-				/**
-				 * get Метод извлечения списка параметров активных клиентов
-				 * @return список параметров активных клиентов
-				 */
-				const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
-			public:
-				/**
-				 * SchemeWebSocket Конструктор
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 */
-				SchemeWebSocket(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
-				/**
-				 * ~SchemeWebSocket Деструктор
-				 */
-				~SchemeWebSocket() noexcept {}
-		} ws_scheme_t;
+					~WebSocket() noexcept {}
+			} ws_t;
+		};
 	};
 };
 

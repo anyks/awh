@@ -72,12 +72,12 @@ namespace awh {
 				thr_t _thr;
 			private:
 				// Объект рабочего
-				ws_scheme_t _scheme;
+				scheme::ws_t _scheme;
 			private:
 				// Объект партнёра клиента
-				ws_scheme_t::partner_t _client;
+				scheme::ws_t::partner_t _client;
 				// Объект партнёра сервера
-				ws_scheme_t::partner_t _server;
+				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
 				set <string> _subprotocols;

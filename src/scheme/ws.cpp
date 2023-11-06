@@ -18,7 +18,7 @@
 /**
  * clear Метод очистки
  */
-void awh::server::SchemeWebSocket::clear() noexcept {
+void awh::server::scheme::WebSocket::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
@@ -32,7 +32,7 @@ void awh::server::SchemeWebSocket::clear() noexcept {
  * set Метод создания параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeWebSocket::set(const uint64_t bid) noexcept {
+void awh::server::scheme::WebSocket::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
@@ -47,7 +47,7 @@ void awh::server::SchemeWebSocket::set(const uint64_t bid) noexcept {
  * rm Метод удаления параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeWebSocket::rm(const uint64_t bid) noexcept {
+void awh::server::scheme::WebSocket::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
@@ -63,7 +63,7 @@ void awh::server::SchemeWebSocket::rm(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::SchemeWebSocket::options_t * awh::server::SchemeWebSocket::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::WebSocket::options_t * awh::server::scheme::WebSocket::get(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан
@@ -82,7 +82,7 @@ const awh::server::SchemeWebSocket::options_t * awh::server::SchemeWebSocket::ge
  * get Метод извлечения списка параметров активных клиентов
  * @return список параметров активных клиентов
  */
-const map <uint64_t, unique_ptr <awh::server::SchemeWebSocket::options_t>> & awh::server::SchemeWebSocket::get() const noexcept {
+const map <uint64_t, unique_ptr <awh::server::scheme::WebSocket::options_t>> & awh::server::scheme::WebSocket::get() const noexcept {
 	// Выводим результат
 	return this->_options;
 }

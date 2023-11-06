@@ -18,7 +18,7 @@
 /**
  * clear Метод очистки
  */
-void awh::server::SchemeWEB::clear() noexcept {
+void awh::server::scheme::WEB::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
@@ -32,7 +32,7 @@ void awh::server::SchemeWEB::clear() noexcept {
  * set Метод создания параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeWEB::set(const uint64_t bid) noexcept {
+void awh::server::scheme::WEB::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
@@ -47,7 +47,7 @@ void awh::server::SchemeWEB::set(const uint64_t bid) noexcept {
  * rm Метод удаления параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeWEB::rm(const uint64_t bid) noexcept {
+void awh::server::scheme::WEB::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
@@ -63,7 +63,7 @@ void awh::server::SchemeWEB::rm(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::SchemeWEB::options_t * awh::server::SchemeWEB::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::WEB::options_t * awh::server::scheme::WEB::get(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан
@@ -82,7 +82,7 @@ const awh::server::SchemeWEB::options_t * awh::server::SchemeWEB::get(const uint
  * get Метод извлечения списка параметров активных клиентов
  * @return список параметров активных клиентов
  */
-const map <uint64_t, unique_ptr <awh::server::SchemeWEB::options_t>> & awh::server::SchemeWEB::get() const noexcept {
+const map <uint64_t, unique_ptr <awh::server::scheme::WEB::options_t>> & awh::server::scheme::WEB::get() const noexcept {
 	// Выводим результат
 	return this->_options;
 }

@@ -41,8 +41,8 @@ namespace awh {
 				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
 			private:
-				// Минимальный размер сегмента
-				size_t _frameSize;
+				// Идентичность протокола
+				http_t::identity_t _identity;
 			private:
 				// Объект для работы c WebSocket
 				ws2_t _ws2;
@@ -50,12 +50,12 @@ namespace awh {
 				http1_t _http1;
 			private:
 				// Объект рабочего
-				web_scheme_t _scheme;
+				scheme::web_t _scheme;
 			private:
 				// Объект партнёра клиента
-				ws_scheme_t::partner_t _client;
+				scheme::ws_t::partner_t _client;
 				// Объект партнёра сервера
-				ws_scheme_t::partner_t _server;
+				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
 				set <string> _subprotocols;
@@ -566,6 +566,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void core(const server::core_t * core) noexcept;
+			public:
+				/**
+				 * identity Метод установки идентичности протокола модуля
+				 * @param identity идентичность протокола модуля
+				 */
+				void identity(const http_t::identity_t identity) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

@@ -33,7 +33,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Выполняем установку идентификатора объекта
@@ -176,7 +176,7 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если подключение закрыто
@@ -223,7 +223,7 @@ void awh::server::WebSocket2::writeCallback(const char * buffer, const size_t si
 	// Если данные существуют
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено
@@ -241,7 +241,7 @@ void awh::server::WebSocket2::writeCallback(const char * buffer, const size_t si
  */
 int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Устанавливаем новый идентификатор потока
@@ -294,7 +294,7 @@ int awh::server::WebSocket2::closedSignal(const int32_t sid, const uint64_t bid,
  */
 int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Устанавливаем полученные заголовки
@@ -317,7 +317,7 @@ int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid,
  */
 int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Если функция обратного вызова на перехват входящих чанков установлена
@@ -367,7 +367,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 			// Если мы получили флаг завершения потока
 			if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 				// Получаем параметры активного клиента
-				ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+				scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
 				if((this->_core != nullptr) && (options != nullptr)){
 					// Если необходимо выполнить закрыть подключение
@@ -397,7 +397,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 		// Если производится получения фрейма с сервера
 		case static_cast <uint8_t> (http2_t::direct_t::RECV): {
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if((this->_core != nullptr) && (options != nullptr)){
 				// Выполняем определение типа фрейма
@@ -826,7 +826,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
  */
 void awh::server::WebSocket2::error(const uint64_t bid, const ws::mess_t & message) const noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Очищаем список буффер бинарных данных
@@ -865,7 +865,7 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 	// Если буфер данных передан
 	if((bid > 0) && !buffer.empty() && this->_callback.is("message")){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем блокировку потока	
@@ -955,7 +955,7 @@ void awh::server::WebSocket2::pong(const uint64_t bid, awh::core_t * core, const
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Создаём буфер для отправки
@@ -977,7 +977,7 @@ void awh::server::WebSocket2::ping(const uint64_t bid, awh::core_t * core, const
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Создаём буфер для отправки
@@ -1002,7 +1002,7 @@ void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
 		 */
 		auto eraseFn = [this](const uint64_t bid) noexcept -> void {
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Устанавливаем флаг отключения
@@ -1056,7 +1056,7 @@ void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
  */
 void awh::server::WebSocket2::disconnect(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены и переключение протокола на HTTP/2 не выполнено
 	if((options != nullptr) && (options->proto != engine_t::proto_t::HTTP2))
 		// Добавляем в очередь список отключившихся клиентов
@@ -1137,7 +1137,7 @@ void awh::server::WebSocket2::sendError(const uint64_t bid, const ws::mess_t & m
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr)
 				// Запрещаем получение данных
@@ -1185,7 +1185,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Выполняем блокировку отправки сообщения
@@ -1537,7 +1537,7 @@ void awh::server::WebSocket2::start() noexcept {
  */
 void awh::server::WebSocket2::close(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 	if(options != nullptr){
 		// Если переключение протокола на HTTP/2 не выполнено
@@ -1590,7 +1590,7 @@ const set <string> & awh::server::WebSocket2::subprotocols(const uint64_t bid) c
 	// Результат работы функции
 	static const set <string> result;
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Если переключение протокола на HTTP/2 не выполнено
@@ -1620,7 +1620,7 @@ const vector <vector <string>> & awh::server::WebSocket2::extensions(const uint6
 	// Результат работы функции
 	static const vector <vector <string>> result;
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Если переключение протокола на HTTP/2 не выполнено
@@ -1918,7 +1918,7 @@ bool awh::server::WebSocket2::crypted(const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено
@@ -1941,7 +1941,7 @@ void awh::server::WebSocket2::encrypt(const uint64_t bid, const bool mode) noexc
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено

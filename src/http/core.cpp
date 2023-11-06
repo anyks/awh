@@ -1575,21 +1575,46 @@ bool awh::Http::is(const state_t state) const noexcept {
 			return (this->_state == state_t::GOOD);
 		// Если проверяется режим уставновки постоянного подключения
 		case static_cast <uint8_t> (state_t::ALIVE): {
-			// Запрашиваем заголовок подключения
-			const string & header = this->_web.header("connection");
-			// Если заголовок подключения найден
-			if(!header.empty())
-				// Выполняем проверку является ли соединение закрытым
-				return !this->_fmk->exists("close", header);
-			// Если заголовок подключения не найден
-			else {
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					// Если заголовок найден
-					if(this->_fmk->compare(header.first, "connection"))
+			// Определяем идентичность сервера
+			switch(static_cast <uint8_t> (this->_identity)){
+				// Если сервер соответствует HTTP-серверу
+				case static_cast <uint8_t> (identity_t::HTTP): {
+					// Запрашиваем заголовок подключения
+					const string & header = this->_web.header("connection");
+					// Если заголовок подключения найден
+					if(!header.empty())
 						// Выполняем проверку является ли соединение закрытым
-						return !this->_fmk->exists("close", header.second);
-				}
+						return !this->_fmk->exists("close", header);
+					// Если заголовок подключения не найден
+					else {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Если заголовок найден
+							if(this->_fmk->compare(header.first, "connection"))
+								// Выполняем проверку является ли соединение закрытым
+								return !this->_fmk->exists("close", header.second);
+						}
+					}
+				} break;
+				// Если сервер соответствует PROXY-серверу
+				case static_cast <uint8_t> (identity_t::PROXY): {
+					// Запрашиваем заголовок подключения
+					const string & header = this->_web.header("proxy-connection");
+					// Если заголовок подключения найден
+					if(!header.empty())
+						// Выполняем проверку является ли соединение закрытым
+						return !this->_fmk->exists("close", header);
+					// Если заголовок подключения не найден
+					else {
+						// Переходим по всему списку заголовков
+						for(auto & header : this->_web.headers()){
+							// Если заголовок найден
+							if(this->_fmk->compare(header.first, "proxy-connection"))
+								// Выполняем проверку является ли соединение закрытым
+								return !this->_fmk->exists("close", header.second);
+						}
+					}
+				} break;
 			}
 			// Сообщаем, что подключение постоянное
 			return true;
@@ -1947,12 +1972,39 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 	if(!res.message.empty()){
 		// Выполняем очистку списка установленных заголовков
 		this->_web.clearHeaders();
-		// Если требуется ввод авторизационных данных
-		if((res.code == 401) || (res.code == 407))
-			// Добавляем заголовок закрытия подключения
-			this->_web.header("Connection", "Keep-Alive");
-		// Добавляем заголовок закрытия подключения
-		else this->_web.header("Connection", "Close");
+		// Определяем код ответа авторизационных данных
+		switch(res.code){
+			// Если код ответа соответствует авторизации на HTTP-сервере
+			case 401:
+				// Добавляем заголовок постоянного подключения
+				this->_web.header("Connection", "Keep-Alive");
+			break;
+			// Если код ответа соответствует авторизации на PROXY-сервере
+			case 407: {
+				// Добавляем заголовок постоянного подключения на HTTP-сервере
+				this->_web.header("Connection", "Keep-Alive");
+				// Добавляем заголовок постоянного подключения на PROXY-сервере
+				this->_web.header("Proxy-Connection", "Keep-Alive");
+			} break;
+			// Для всех остальных кодов ответа
+			default: {
+				// Определяем идентичность сервера
+				switch(static_cast <uint8_t> (this->_identity)){
+					// Если сервер соответствует HTTP-серверу
+					case static_cast <uint8_t> (identity_t::HTTP):
+						// Добавляем заголовок закрытия подключения
+						this->_web.header("Connection", "Close");
+					break;
+					// Если сервер соответствует PROXY-серверу
+					case static_cast <uint8_t> (identity_t::PROXY): {
+						// Добавляем заголовок закрытия подключения на HTTP-сервере
+						this->_web.header("Connection", "Close");
+						// Добавляем заголовок закрытия подключения на PROXY-сервере
+						this->_web.header("Proxy-Connection", "Close");
+					} break;
+				}
+			}
+		}
 		// Добавляем заголовок тип контента
 		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
@@ -1996,12 +2048,39 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 	if(!res.message.empty()){
 		// Выполняем очистку списка установленных заголовков
 		this->_web.clearHeaders();
-		// Если требуется ввод авторизационных данных
-		if((res.code == 401) || (res.code == 407))
-			// Добавляем заголовок закрытия подключения
-			this->_web.header("Connection", "Keep-Alive");
-		// Добавляем заголовок закрытия подключения
-		else this->_web.header("Connection", "Close");
+		// Определяем код ответа авторизационных данных
+		switch(res.code){
+			// Если код ответа соответствует авторизации на HTTP-сервере
+			case 401:
+				// Добавляем заголовок постоянного подключения
+				this->_web.header("connection", "keep-alive");
+			break;
+			// Если код ответа соответствует авторизации на PROXY-сервере
+			case 407: {
+				// Добавляем заголовок постоянного подключения на HTTP-сервере
+				this->_web.header("connection", "keep-alive");
+				// Добавляем заголовок постоянного подключения на PROXY-сервере
+				this->_web.header("proxy-connection", "keep-alive");
+			} break;
+			// Для всех остальных кодов ответа
+			default: {
+				// Определяем идентичность сервера
+				switch(static_cast <uint8_t> (this->_identity)){
+					// Если сервер соответствует HTTP-серверу
+					case static_cast <uint8_t> (identity_t::HTTP):
+						// Добавляем заголовок закрытия подключения
+						this->_web.header("connection", "close");
+					break;
+					// Если сервер соответствует PROXY-серверу
+					case static_cast <uint8_t> (identity_t::PROXY): {
+						// Добавляем заголовок закрытия подключения на HTTP-сервере
+						this->_web.header("connection", "close");
+						// Добавляем заголовок закрытия подключения на PROXY-сервере
+						this->_web.header("proxy-connection", "close");
+					} break;
+				}
+			}
+		}
 		// Добавляем заголовок тип контента
 		this->_web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
@@ -2209,6 +2288,22 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("Connection: TE, %s\r\n", header.c_str()));
 							// Добавляем заголовок в запрос
 							else request.append(this->_fmk->format("Connection: %s\r\n", header.c_str()));
+						}
+						// Устанавливаем Proxy-Connection если не передан
+						if(!available[6] && !this->is(suite_t::BLACK, "Proxy-Connection")){
+							// Если сервер соответствует PROXY-серверу
+							if(this->_identity == identity_t::PROXY)
+								// Добавляем заголовок в запрос
+								request.append(this->_fmk->format("Proxy-Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+						// Если заголовок Proxy-Connection уже передан и не находится в чёрном списке
+						} else if(!this->is(suite_t::BLACK, "Proxy-Connection")) {
+							// Если сервер соответствует PROXY-серверу
+							if(this->_identity == identity_t::PROXY){
+								// Поулчаем заголовок Proxy-Connection
+								const string & header = this->_web.header("Proxy-Connection");
+								// Добавляем заголовок в запрос
+								request.append(this->_fmk->format("Proxy-Connection: %s\r\n", header.c_str()));
+							}
 						}
 						// Устанавливаем Accept-Language если не передан
 						if(!available[8] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept-Language"))
@@ -2641,6 +2736,13 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						if(!available[2] && !this->is(suite_t::BLACK, "Connection"))
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+						// Устанавливаем Proxy-Connection если не передан
+						if(!available[3] && !this->is(suite_t::BLACK, "Proxy-Connection")){
+							// Если клиент соответствует PROXY-клиенту
+							if(this->_identity == identity_t::PROXY)
+								// Добавляем заголовок в ответ
+								response.append(this->_fmk->format("Proxy-Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+						}
 						// Устанавливаем Content-Type если не передан
 						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "Content-Type"))
 							// Добавляем заголовок в ответ

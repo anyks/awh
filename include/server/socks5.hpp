@@ -92,7 +92,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего для сервера
-				socks5_scheme_t _scheme;
+				scheme::socks5_t _scheme;
 			private:
 				// Список отключившихся клиентов
 				map <uint64_t, time_t> _disconnected;

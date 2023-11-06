@@ -338,7 +338,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/hash/base64.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/core.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/server.cpp"
@@ -357,7 +356,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/awh.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/web.cpp"
@@ -372,7 +370,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
@@ -390,7 +387,6 @@ set(DNS_APP_NAME dns)
 set(NTP_APP_NAME ntp)
 set(PING_APP_NAME ping)
 set(TIMER_APP_NAME timer)
-set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
@@ -437,7 +433,6 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
     add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
     add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
@@ -455,7 +450,6 @@ else()
     add_executable(${NTP_APP_NAME} sample/ntp.cpp)
     add_executable(${PING_APP_NAME} sample/ping.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
     add_executable(${CLIENT_APP_NAME} sample/client.cpp)
     add_executable(${SERVER_APP_NAME} sample/server.cpp)
@@ -532,14 +526,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -657,13 +643,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-            ${AWH_IDN}
-        )
-
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
@@ -765,12 +744,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_SHARED}
         )
 
@@ -924,23 +897,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
@@ -1144,25 +1100,6 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${ICONV_LIBRARIES}
-            ${PCRE_LIBRARIES}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1398,22 +1335,6 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
-            ${EVENT_LIBRARY}
-            ${XML_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARIES}
-            ${NGTCP2_LIBRARY}
-            ${NGHTTP2_LIBRARY}
-            ${NGHTTP3_LIBRARY}
-            ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
@@ -1596,13 +1517,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             COMMENT "sign target \"${TIMER_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-
-        add_custom_command(TARGET "${PROXY_APP_NAME}" POST_BUILD
-            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${PROXY_APP_NAME}>"
-            COMMAND ulimit -c unlimited
-            COMMENT "sign target \"${PROXY_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
         
         add_custom_command(TARGET "${SOCKS5_APP_NAME}" POST_BUILD
             COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${SOCKS5_APP_NAME}>"
@@ -1665,7 +1579,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -1704,7 +1617,6 @@ install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

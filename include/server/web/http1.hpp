@@ -50,11 +50,14 @@ namespace awh {
 				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
 			private:
+				// Идентичность протокола
+				http_t::identity_t _identity;
+			private:
 				// Объект работы с WebSocket-сервером
 				ws1_t _ws1;
 			private:
 				// Объект рабочего
-				web_scheme_t _scheme;
+				scheme::web_t _scheme;
 			private:
 				// Список активных агентов
 				map <uint64_t, agent_t> _agents;
@@ -417,6 +420,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void core(const server::core_t * core) noexcept;
+			public:
+				/**
+				 * identity Метод установки идентичности протокола модуля
+				 * @param identity идентичность протокола модуля
+				 */
+				void identity(const http_t::identity_t identity) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

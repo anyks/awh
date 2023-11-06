@@ -18,7 +18,7 @@
 /**
  * clear Метод очистки
  */
-void awh::server::SchemeSocks5::clear() noexcept {
+void awh::server::scheme::Socks5::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список пар клиентов
@@ -32,7 +32,7 @@ void awh::server::SchemeSocks5::clear() noexcept {
  * set Метод создания параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeSocks5::set(const uint64_t bid) noexcept {
+void awh::server::scheme::Socks5::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1))
 		// Создаём объект параметров активного клиента
@@ -42,7 +42,7 @@ void awh::server::SchemeSocks5::set(const uint64_t bid) noexcept {
  * rm Метод удаления параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::SchemeSocks5::rm(const uint64_t bid) noexcept {	
+void awh::server::scheme::Socks5::rm(const uint64_t bid) noexcept {	
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
@@ -58,7 +58,7 @@ void awh::server::SchemeSocks5::rm(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::SchemeSocks5::options_t * awh::server::SchemeSocks5::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::Socks5::options_t * awh::server::scheme::Socks5::get(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан

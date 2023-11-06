@@ -131,7 +131,8 @@ namespace awh {
 					Service() noexcept :
 					 alive(false), port(SERVER_PORT),
 					 host{""}, realm{""}, opaque{""},
-					 hash(auth_t::hash_t::MD5), type(auth_t::type_t::NONE) {}
+					 hash(auth_t::hash_t::MD5),
+					 type(auth_t::type_t::NONE) {}
 				} service_t;
 			protected:
 				// Идентификатор основного процесса

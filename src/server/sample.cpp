@@ -108,7 +108,7 @@ void awh::server::Sample::readCallback(const char * buffer, const size_t size, c
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
-		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем сброс закрытия подключения
@@ -135,7 +135,7 @@ void awh::server::Sample::writeCallback(const char * buffer, const size_t size, 
 	// Если данные существуют
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если необходимо выполнить закрыть подключение
@@ -185,7 +185,7 @@ void awh::server::Sample::erase(const uint16_t tid, awh::core_t * core) noexcept
 			// Если брокер уже давно удалился
 			if((date - it->second) >= 5000){
 				// Получаем параметры активного клиента
-				sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(it->first));
+				scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(it->first));
 				// Если параметры активного клиента получены
 				if(options != nullptr)
 					// Устанавливаем флаг отключения
@@ -292,7 +292,7 @@ void awh::server::Sample::send(const uint64_t bid, const char * buffer, const si
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Получаем параметры активного клиента
-		sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if((options->stopped = (options != nullptr))){
 			// Если включён режим отладки
@@ -349,7 +349,7 @@ void awh::server::Sample::alive(const bool mode) noexcept {
  */
 void awh::server::Sample::alive(const uint64_t bid, const bool mode) noexcept {
 	// Получаем параметры активного клиента
-	sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг пдолгоживущего подключения
 	if(options != nullptr)
 		// Устанавливаем долгоживущее подключение
@@ -379,7 +379,7 @@ void awh::server::Sample::start() noexcept {
  */
 void awh::server::Sample::close(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	sample_scheme_t::options_t * options = const_cast <sample_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 	if((options->close = (options != nullptr)))
 		// Выполняем отключение брокера

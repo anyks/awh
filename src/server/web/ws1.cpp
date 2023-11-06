@@ -27,7 +27,7 @@ void awh::server::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем установку идентификатора объекта
@@ -150,7 +150,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если подключение закрыто
@@ -578,7 +578,7 @@ void awh::server::WebSocket1::writeCallback(const char * buffer, const size_t si
 	// Если данные существуют
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если необходимо выполнить закрыть подключение
@@ -598,7 +598,7 @@ void awh::server::WebSocket1::writeCallback(const char * buffer, const size_t si
  */
 void awh::server::WebSocket1::error(const uint64_t bid, const ws::mess_t & message) const noexcept {
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Очищаем список буффер бинарных данных
@@ -637,7 +637,7 @@ void awh::server::WebSocket1::extraction(const uint64_t bid, const vector <char>
 	// Если буфер данных передан
 	if((bid > 0) && !buffer.empty() && this->_callback.is("message")){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем блокировку потока	
@@ -729,7 +729,7 @@ void awh::server::WebSocket1::pong(const uint64_t bid, awh::core_t * core, const
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Создаём буфер для отправки
@@ -751,7 +751,7 @@ void awh::server::WebSocket1::ping(const uint64_t bid, awh::core_t * core, const
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Создаём буфер для отправки
@@ -776,7 +776,7 @@ void awh::server::WebSocket1::erase(const uint64_t bid) noexcept {
 		 */
 		auto eraseFn = [this](const uint64_t bid) noexcept -> void {
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Устанавливаем флаг отключения
@@ -873,7 +873,7 @@ void awh::server::WebSocket1::sendError(const uint64_t bid, const ws::mess_t & m
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем параметры активного клиента
-			ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Получаем объект биндинга ядра TCP/IP
 			server::core_t * core = const_cast <server::core_t *> (this->_core);
 			// Если параметры активного клиента получены
@@ -919,7 +919,7 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
 			// Выполняем блокировку отправки сообщения
@@ -1236,7 +1236,7 @@ void awh::server::WebSocket1::close(const uint64_t bid) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 		if(options != nullptr){
 			// Устанавливаем флаг закрытия подключения брокера
@@ -1275,7 +1275,7 @@ const set <string> & awh::server::WebSocket1::subprotocols(const uint64_t bid) c
 	// Результат работы функции
 	static const set <string> result;
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr)
 		// Выводим согласованный сабпротокол
@@ -1300,7 +1300,7 @@ const vector <vector <string>> & awh::server::WebSocket1::extensions(const uint6
 	// Результат работы функции
 	static const vector <vector <string>> result;
 	// Получаем параметры активного клиента
-	ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr)
 		// Выполняем установку списка расширений WebSocket
@@ -1506,7 +1506,7 @@ bool awh::server::WebSocket1::crypted(const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr)
 			// Выводим установленный флаг шифрования
@@ -1524,7 +1524,7 @@ void awh::server::WebSocket1::encrypt(const uint64_t bid, const bool mode) noexc
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr)
 			// Устанавливаем флаг шифрования для клиента

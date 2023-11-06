@@ -76,7 +76,7 @@ void awh::server::ProxySocks5::connectClientCallback(const uint64_t bid, const u
 		// Если брокер получен
 		if(it != this->_scheme.pairs.end()){
 			// Получаем параметры активного клиента
-			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(it->second));
+			scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(it->second));
 			// Если подключение не выполнено
 			if((options != nullptr) && !options->connect){
 				// Разрешаем обработки данных
@@ -107,7 +107,7 @@ void awh::server::ProxySocks5::connectServerCallback(const uint64_t bid, const u
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Получаем параметры активного клиента
-		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Устанавливаем количество секунд на чтение
@@ -196,7 +196,7 @@ void awh::server::ProxySocks5::disconnectClientCallback(const uint64_t bid, cons
 			// Удаляем пару клиента и сервера
 			this->_scheme.pairs.erase(it);
 			// Получаем параметры активного клиента
-			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid));
 			// Если подключение не выполнено, отправляем ответ клиенту
 			if((options != nullptr) && !options->connect){
 				// Устанавливаем флаг запрещающий подключение
@@ -263,7 +263,7 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
 		// Если брокер получен
 		if(it != this->_scheme.pairs.end()){
 			// Получаем параметры активного клиента
-			socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(it->second));
+			scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(it->second));
 			// Если подключение выполнено, отправляем ответ клиенту
 			if((options != nullptr) && options->connect){
 				// Если функция обратного вызова при получении входящих сообщений установлена
@@ -290,7 +290,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
-		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if((options != nullptr) && !options->locked){			
 			// Если данные не получены
@@ -384,7 +384,7 @@ void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const si
 	// Если данные существуют
 	if((size > 0) && (bid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
-		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid));
 		// Если объект брокера получен
 		if((options != nullptr) && options->stopped)
 			// Выполняем закрытие подключения
@@ -544,7 +544,7 @@ void awh::server::ProxySocks5::close(const uint64_t bid) noexcept {
 	// Если идентификатор брокера существует
 	if(bid > 0){
 		// Получаем параметры активного клиента
-		socks5_scheme_t::options_t * options = const_cast <socks5_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 		if(options != nullptr){
 			// Выполняем отключение всех дочерних клиентов

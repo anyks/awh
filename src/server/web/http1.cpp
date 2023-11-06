@@ -27,13 +27,15 @@ void awh::server::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);
 			// Устанавливаем размер чанка
 			options->http.chunk(this->_chunkSize);
+			// Устанавливаем флаг идентичности протокола
+			options->http.identity(this->_identity);
 			// Устанавливаем список компрессоров поддерживаемый сервером
 			options->http.compressors(this->_scheme.compressors);
 			// Устанавливаем данные сервиса
@@ -138,7 +140,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 		// Иначе выполняем обработку входящих данных как Web-сервер
 		else {
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Если подключение закрыто
@@ -321,14 +323,27 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							} break;
 							// Если запрос неудачный
 							case static_cast <uint8_t> (http_t::status_t::FAULT): {
+								// Ответ на запрос об авторизации
+								vector <char> response;
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
 								// Выполняем очистку буфера полученных данных
 								options->buffer.clear();
-								// Формируем запрос авторизации
-								const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+								// Определяем идентичность сервера
+								switch(static_cast <uint8_t> (this->_identity)){
+									// Если сервер соответствует HTTP-серверу
+									case static_cast <uint8_t> (http_t::identity_t::HTTP):
+										// Формируем запрос авторизации
+										response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+									break;
+									// Если сервер соответствует PROXY-серверу
+									case static_cast <uint8_t> (http_t::identity_t::PROXY):
+										// Формируем запрос авторизации
+										response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (407)));
+									break;
+								}
 								// Если ответ получен
 								if(!response.empty()){
 									// Тело полезной нагрузки
@@ -443,7 +458,7 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 		// Иначе выполняем обработку входящих данных как Web-сервер
 		else if(this->_core != nullptr) {
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Если необходимо выполнить закрыть подключение
@@ -469,7 +484,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 		// Создаём брокера
 		this->_ws1._scheme.set(bid);
 		// Получаем параметры активного клиента
-		ws_scheme_t::options_t * options = const_cast <ws_scheme_t::options_t *> (this->_ws1._scheme.get(bid));
+		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_ws1._scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если данные необходимо зашифровать
@@ -540,7 +555,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 				}
 			}
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * web = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * web = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(web != nullptr){
 				// Буфер данных для записи в сокет
@@ -766,7 +781,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 				this->_agents.erase(it);
 			}
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Устанавливаем флаг отключения
@@ -821,7 +836,7 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 				// Если агент соответствует серверу HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Получаем параметры активного клиента
-					web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(agent.first));
+					scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(agent.first));
 					// Если параметры активного клиента получены
 					if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
 						// Если брокер давно должен был быть отключён, отключаем его
@@ -861,7 +876,7 @@ const awh::http_t * awh::server::Http1::parser(const uint64_t bid) const noexcep
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr)
 				// Выполняем получение объекта HTTP-парсера
@@ -884,7 +899,7 @@ bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr)
 				// Выполняем получение флага запроса клиента на передачу трейлеров
@@ -908,7 +923,7 @@ void awh::server::Http1::trailer(const uint64_t bid, const string & key, const s
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr)
 				// Выполняем установку трейлера
@@ -990,7 +1005,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Тело WEB сообщения
@@ -1069,7 +1084,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Выполняем сброс состояния HTTP-парсера
@@ -1126,7 +1141,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 		// Если агент соответствует HTTP-протоколу
 		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
-			web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Тело полезной нагрузки
@@ -1465,7 +1480,7 @@ void awh::server::Http1::close(const uint64_t bid) noexcept {
 	// Иначе выполняем обработку входящих данных как Web-сервер
 	else if(this->_core != nullptr) {
 		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 		if(options != nullptr){
 			// Устанавливаем флаг закрытия подключения брокера
@@ -1639,7 +1654,7 @@ void awh::server::Http1::alive(const time_t time) noexcept {
  */
 void awh::server::Http1::alive(const uint64_t bid, const bool mode) noexcept {
 	// Получаем параметры активного клиента
-	web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr)
 		// Устанавливаем флаг пдолгоживущего подключения
@@ -1676,6 +1691,14 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
 	}
+}
+/**
+ * identity Метод установки идентичности протокола модуля
+ * @param identity идентичность протокола модуля
+ */
+void awh::server::Http1::identity(const http_t::identity_t identity) noexcept {
+	// Устанавливаем флаг идентичности протокола модуля
+	this->_identity = identity;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -1716,7 +1739,7 @@ bool awh::server::Http1::crypted(const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr)
 			// Выводим установленный флаг шифрования
@@ -1734,7 +1757,7 @@ void awh::server::Http1::encrypt(const uint64_t bid, const bool mode) noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		web_scheme_t::options_t * options = const_cast <web_scheme_t::options_t *> (this->_scheme.get(bid));
+		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Устанавливаем флаг шифрования для клиента
@@ -1767,7 +1790,8 @@ void awh::server::Http1::encryption(const string & pass, const string & salt, co
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _webSocket(false), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
+ web_t(fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http1_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -1787,7 +1811,8 @@ awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept : web_t
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _webSocket(false), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+ web_t(core, fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
