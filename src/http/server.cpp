@@ -28,6 +28,8 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 		string auth = "";
 		// Определяем идентичность сервера
 		switch(static_cast <uint8_t> (this->_identity)){
+			// Если сервер соответствует WebSocket-серверу
+			case static_cast <uint8_t> (identity_t::WS):
 			// Если сервер соответствует HTTP-серверу
 			case static_cast <uint8_t> (identity_t::HTTP):
 				// Получаем параметры авторизации

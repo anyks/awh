@@ -1577,6 +1577,8 @@ bool awh::Http::is(const state_t state) const noexcept {
 		case static_cast <uint8_t> (state_t::ALIVE): {
 			// Определяем идентичность сервера
 			switch(static_cast <uint8_t> (this->_identity)){
+				// Если сервер соответствует WebSocket-серверу
+				case static_cast <uint8_t> (identity_t::WS):
 				// Если сервер соответствует HTTP-серверу
 				case static_cast <uint8_t> (identity_t::HTTP): {
 					// Запрашиваем заголовок подключения
@@ -1990,6 +1992,8 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			default: {
 				// Определяем идентичность сервера
 				switch(static_cast <uint8_t> (this->_identity)){
+					// Если сервер соответствует WebSocket-серверу
+					case static_cast <uint8_t> (identity_t::WS):
 					// Если сервер соответствует HTTP-серверу
 					case static_cast <uint8_t> (identity_t::HTTP):
 						// Добавляем заголовок закрытия подключения
@@ -2066,6 +2070,8 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 			default: {
 				// Определяем идентичность сервера
 				switch(static_cast <uint8_t> (this->_identity)){
+					// Если сервер соответствует WebSocket-серверу
+					case static_cast <uint8_t> (identity_t::WS):
 					// Если сервер соответствует HTTP-серверу
 					case static_cast <uint8_t> (identity_t::HTTP):
 						// Добавляем заголовок закрытия подключения
