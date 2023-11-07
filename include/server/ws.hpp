@@ -41,9 +41,9 @@ namespace awh {
 				// Объект работы с протоколом WebSocket/2
 				server::ws2_t _ws;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			public:
 				/**
@@ -248,6 +248,12 @@ namespace awh {
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
+			public:
+				/**
+				 * hosts Метод загрузки файла со списком хостов
+				 * @param filename адрес файла для загрузки
+				 */
+				void hosts(const string & filename) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов

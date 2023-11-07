@@ -196,11 +196,11 @@ namespace awh {
 				// Список поддерживаемых компрессоров
 				vector <http_t::compress_t> _compressors;
 			protected:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
-				// Создаём объект сетевого ядра
+				// Объект сетевого ядра
 				const client::core_t * _core;
 			protected:
 				/**

@@ -165,11 +165,11 @@ namespace awh {
 				// Список мусорных брокеров
 				map <uint64_t, time_t> _disconected;
 			protected:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
-				// Создаём объект сетевого ядра
+				// Объект сетевого ядра
 				const server::core_t * _core;
 			protected:
 				/**

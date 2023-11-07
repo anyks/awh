@@ -162,9 +162,9 @@ namespace awh {
 				// Список мусорных брокеров
 				map <time_t, size_t> _garbage;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			private:
 				/**

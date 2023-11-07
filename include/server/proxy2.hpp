@@ -119,9 +119,9 @@ namespace awh {
 				// Список активных клиентов
 				map <uint64_t, unique_ptr <client_t>> _clients;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			private:
 				/**

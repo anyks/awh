@@ -473,6 +473,16 @@ void awh::server::AWH::segmentSize(const size_t size) noexcept {
 	this->_http.segmentSize(size);
 }
 /**
+ * hosts Метод загрузки файла со списком хостов
+ * @param filename адрес файла для загрузки
+ */
+void awh::server::AWH::hosts(const string & filename) noexcept {
+	// Если адрес файла с хостами в операционной системе передан
+	if(!filename.empty())
+		// Выполняем установку адреса файла хостов в операционной системе
+		this->_dns.hosts(filename);
+}
+/**
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
