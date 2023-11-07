@@ -2026,18 +2026,18 @@ void awh::DNS::network(const int family, const vector <string> & network) noexce
 	}
 }
 /**
- * setPrefix Метод установки префикса переменной окружения
+ * prefix Метод установки префикса переменной окружения
  * @param prefix префикс переменной окружения для установки
  */
-void awh::DNS::setPrefix(const string & prefix) noexcept {
+void awh::DNS::prefix(const string & prefix) noexcept {
 	// Выполняем установку префикса переменной окружения
 	this->_prefix = prefix;
 }
 /**
- * readHosts Метод загрузки файла со списком хостов
+ * hosts Метод загрузки файла со списком хостов
  * @param filename адрес файла для загрузки
  */
-void awh::DNS::readHosts(const string & filename) noexcept {
+void awh::DNS::hosts(const string & filename) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес файла получен

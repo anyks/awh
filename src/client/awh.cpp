@@ -755,6 +755,16 @@ void awh::client::AWH::attempts(const uint8_t attempts) noexcept {
 	this->_http.attempts(attempts);
 }
 /**
+ * hosts Метод загрузки файла со списком хостов
+ * @param filename адрес файла для загрузки
+ */
+void awh::client::AWH::hosts(const string & filename) noexcept {
+	// Если адрес файла с хостами в операционной системе передан
+	if(!filename.empty())
+		// Выполняем установку адреса файла хостов в операционной системе
+		this->_dns.hosts(filename);
+}
+/**
  * user Метод установки параметров авторизации
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
@@ -818,6 +828,76 @@ void awh::client::AWH::proxy(const string & uri, const scheme_t::family_t family
 	this->_http.proxy(uri, family);
 }
 /**
+ * flushDNS Метод сброса кэша DNS-резолвера
+ * @return результат работы функции
+ */
+bool awh::client::AWH::flushDNS() noexcept {
+	// Выполняем сброс кэша DNS-резолвера
+	return this->_dns.flush();
+}
+/**
+ * timeoutDNS Метод установки времени ожидания выполнения запроса
+ * @param sec интервал времени выполнения запроса в секундах
+ */
+void awh::client::AWH::timeoutDNS(const uint8_t sec) noexcept {
+	// Если время ожидания выполнения DNS-запроса передано
+	if(sec > 0)
+		// Выполняем установку времени ожидания получения данных с DNS-сервера
+		this->_dns.timeout(sec);
+}
+/**
+ * timeToLiveDNS Метод установки времени жизни DNS-кэша
+ * @param ttl время жизни DNS-кэша в миллисекундах
+ */
+void awh::client::AWH::timeToLiveDNS(const time_t ttl) noexcept {
+	// Если значение времени жизни DNS-кэша передано
+	if(ttl > 0)
+		// Выполняем установку времени жизни DNS-кэша
+		this->_dns.timeToLive(ttl);
+}
+/**
+ * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+ * @param prefix префикс переменной окружения для установки
+ */
+void awh::client::AWH::prefixDNS(const string & prefix) noexcept {
+	// Если префикс переменной окружения для извлечения серверов имён передан
+	if(!prefix.empty())
+		// Выполняем установку префикса переменной окружения
+		this->_dns.prefix(prefix);
+}
+/**
+ * clearDNSBlackList Метод очистки чёрного списка
+ * @param domain доменное имя для которого очищается чёрный список
+ */
+void awh::client::AWH::clearDNSBlackList(const string & domain) noexcept {
+	// Если доменное имя для удаления из чёрного списока передано
+	if(!domain.empty())
+		// Выполняем удаление доменного имени из чёрного списока
+		this->_dns.clearBlackList(domain);
+}
+/**
+ * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для удаления из чёрного списка
+ */
+void awh::client::AWH::delInDNSBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя для удаления из чёрного списока и соответствующий ему IP-адрес переданы
+	if(!domain.empty() && !ip.empty())
+		// Выполняем удаление доменного имени из чёрного списока
+		this->_dns.delInBlackList(domain, ip);
+}
+/**
+ * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для добавления в чёрный список
+ */
+void awh::client::AWH::setToDNSBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя для добавление в чёрный список и соответствующий ему IP-адрес переданы
+	if(!domain.empty() && !ip.empty())
+		// Выполняем установку доменного имени в чёрный список
+		this->_dns.setToBlackList(domain, ip);
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
@@ -873,13 +953,55 @@ void awh::client::AWH::waitTimeDetect(const time_t read, const time_t write, con
 	this->_http.waitTimeDetect(read, write, connect);
 }
 /**
+ * network Метод установки параметров сети
+ * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
+ * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
+ * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ */
+void awh::client::AWH::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family) noexcept {
+	// Если список IP-адресов передан
+	if(!ips.empty()){
+		// Определяем тип протокола интернета
+		switch(static_cast <uint8_t> (family)){
+			// Если протокол интернета соответствует IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+				// Добавляем список IP-адресов через которые нужно выходить в интернет
+				this->_dns.network(AF_INET, ips);
+			break;
+			// Если протокол интернета соответствует IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+				// Добавляем список IP-адресов через которые нужно выходить в интернет
+				this->_dns.network(AF_INET6, ips);
+			break;
+		}
+		// Устанавливаем параметры сети для сетевого ядра
+		const_cast <client::core_t *> (this->_core)->network(ips, family);
+	}
+	// Если список DNS-серверов передан
+	if(!ns.empty()){
+		// Определяем тип протокола интернета
+		switch(static_cast <uint8_t> (family)){
+			// Если протокол интернета соответствует IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+				// Выполняем установку списка DNS-серверов
+				this->_dns.replace(AF_INET, ns);
+			break;
+			// Если протокол интернета соответствует IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+				// Выполняем установку списка DNS-серверов
+				this->_dns.replace(AF_INET6, ns);
+			break;
+		}
+	}
+}
+/**
  * AWH Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
 awh::client::AWH::AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log) {
+ _uri(fmk), _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем установку DNS-резолвера
 	const_cast <client::core_t *> (core)->resolver(&this->_dns);
 }

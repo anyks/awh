@@ -566,16 +566,16 @@ namespace awh {
 			void network(const int family, const vector <string> & network) noexcept;
 		public:
 			/**
-			 * setPrefix Метод установки префикса переменной окружения
+			 * prefix Метод установки префикса переменной окружения
 			 * @param prefix префикс переменной окружения для установки
 			 */
-			void setPrefix(const string & prefix) noexcept;
+			void prefix(const string & prefix) noexcept;
 		public:
 			/**
-			 * readHosts Метод загрузки файла со списком хостов
+			 * hosts Метод загрузки файла со списком хостов
 			 * @param filename адрес файла для загрузки
 			 */
-			void readHosts(const string & filename) noexcept;
+			void hosts(const string & filename) noexcept;
 		public:
 			/**
 			 * host Метод определение локального IP-адреса по имени домена

@@ -38,10 +38,12 @@ namespace awh {
 				// Объект работы с протоколом HTTP/2
 				client::ws2_t _ws;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
+				// Объект сетевого ядра
+				const client::core_t * _core;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута
@@ -221,6 +223,12 @@ namespace awh {
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
+			public:
+				/**
+				 * hosts Метод загрузки файла со списком хостов
+				 * @param filename адрес файла для загрузки
+				 */
+				void hosts(const string & filename) noexcept;
 				/**
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
@@ -279,6 +287,47 @@ namespace awh {
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
+				 * flushDNS Метод сброса кэша DNS-резолвера
+				 * @return результат работы функции
+				 */
+				bool flushDNS() noexcept;
+			public:
+				/**
+				 * timeoutDNS Метод установки времени ожидания выполнения запроса
+				 * @param sec интервал времени выполнения запроса в секундах
+				 */
+				void timeoutDNS(const uint8_t sec) noexcept;
+				/**
+				 * timeToLiveDNS Метод установки времени жизни DNS-кэша
+				 * @param ttl время жизни DNS-кэша в миллисекундах
+				 */
+				void timeToLiveDNS(const time_t ttl) noexcept;
+			public:
+				/**
+				 * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+				 * @param prefix префикс переменной окружения для установки
+				 */
+				void prefixDNS(const string & prefix) noexcept;
+			public:
+				/**
+				 * clearDNSBlackList Метод очистки чёрного списка
+				 * @param domain доменное имя для которого очищается чёрный список
+				 */
+				void clearDNSBlackList(const string & domain) noexcept;
+				/**
+				 * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+				 * @param domain доменное имя соответствующее IP-адресу
+				 * @param ip     адрес для удаления из чёрного списка
+				 */
+				void delInDNSBlackList(const string & domain, const string & ip) noexcept;
+				/**
+				 * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+				 * @param domain доменное имя соответствующее IP-адресу
+				 * @param ip     адрес для добавления в чёрный список
+				 */
+				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
+			public:
+				/**
 				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */
@@ -317,6 +366,14 @@ namespace awh {
 				 * @param connect количество секунд для детекции по подключению
 				 */
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+			public:
+				/**
+				 * network Метод установки параметров сети
+				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
+				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
+				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 */
+				void network(const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
 				 * WebSocket Конструктор
