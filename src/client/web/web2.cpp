@@ -24,7 +24,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 	// Если сетевое ядро уже инициализированно
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков запроса на сервер
-		const_cast <client::core_t *> (this->_core)->write((const char *) buffer, size, this->_bid);
+		const_cast <client::core_t *> (this->_core)->write(reinterpret_cast <const char *> (buffer), size, this->_bid);
 }
 /**
  * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2

@@ -252,6 +252,16 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 					if(it != this->_agents.end()){
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
+							// Если протокол соответствует HTTP-протоколу
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Если необходимо выполнить закрыть подключение
+								if(!options->close && options->stopped){
+									// Устанавливаем флаг закрытия подключения
+									options->close = !options->close;
+									// Принудительно выполняем отключение лкиента
+									const_cast <server::core_t *> (this->_core)->close(bid);
+								}
+							} break;
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем переброс вызова записи клиенту WebSocket
@@ -1635,6 +1645,18 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 			}
 		}
 	}
+}
+/**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ */
+void awh::server::Http2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков ответа клиенту
+		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
 }
 /**
  * send Метод отправки трейлеров

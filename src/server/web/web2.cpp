@@ -133,7 +133,7 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write((const char *) buffer, size, bid);
+		const_cast <server::core_t *> (this->_core)->write(reinterpret_cast <const char *> (buffer), size, bid);
 }
 /**
  * ping Метод выполнения пинга клиента
