@@ -356,6 +356,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/awh.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/proxy2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/web.cpp"

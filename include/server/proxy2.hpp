@@ -205,13 +205,13 @@ namespace awh {
 				const awh::http_t * parser(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации PROXY-сервера
 				 * @param socket     unix-сокет для биндинга
 				 * @param compressor поддерживаемый компрессор
 				 */
 				void init(const string & socket, const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
 				/**
-				 * init Метод инициализации WEB-сервера
+				 * init Метод инициализации PROXY-сервера
 				 * @param port       порт сервера
 				 * @param host       хост сервера
 				 * @param compressor поддерживаемый компрессор
