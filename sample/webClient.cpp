@@ -206,6 +206,8 @@ int main(int argc, char * argv[]){
 	
 	// awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
+
+	awh.proxy("http://user:password@127.0.0.1:2222");
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
@@ -219,7 +221,7 @@ int main(int argc, char * argv[]){
 	*/
 	// Устанавливаем тип авторизации прокси-сервера
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
-	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

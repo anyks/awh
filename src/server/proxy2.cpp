@@ -64,8 +64,11 @@ bool awh::server::Proxy::acceptCallback(const string & ip, const string & mac, c
  * @param bid  идентификатор брокера (клиента)
  * @param mode режим события подключения
  */
-void awh::server::Proxy::activeCallback(const uint64_t bid, const server::web_t::mode_t mode) noexcept {
-
+void awh::server::Proxy::activeCallback(const uint64_t bid, const web_t::mode_t mode) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("active"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <const uint64_t, const web_t::mode_t> ("active", bid, mode);
 }
 /**
  * handshakeCallback Метод получения удачного запроса
@@ -73,7 +76,7 @@ void awh::server::Proxy::activeCallback(const uint64_t bid, const server::web_t:
  * @param bid   идентификатор брокера
  * @param agent идентификатор агента клиента
  */
-void awh::server::Proxy::handshakeCallback(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept {
+void awh::server::Proxy::handshakeCallback(const int32_t sid, const uint64_t bid, const web_t::agent_t agent) noexcept {
 
 }
 /**
@@ -84,6 +87,8 @@ void awh::server::Proxy::handshakeCallback(const int32_t sid, const uint64_t bid
  * @param url    url-адрес запроса
  */
 void awh::server::Proxy::requestCallback(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url) noexcept {
+
+	cout << " ---------------- " << sid << " === " << bid << " === " << (u_short) method << " === " << url << endl;
 
 }
 /**
@@ -150,8 +155,8 @@ void awh::server::Proxy::init(const u_int port, const string & host, const http_
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <void (const uint64_t, const web_t::mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_server.on(callback);
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const uint64_t, const web_t::mode_t)> ("active", callback);
 }
 /**
  * on Метод установки функции обратного вызова для извлечения пароля
@@ -262,6 +267,22 @@ void awh::server::Proxy::close(const uint64_t bid) noexcept {
 	this->_server.close(bid);
 }
 /**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
+	// Выполняем установку флага перезапуска процессов
+	this->_server.clusterAutoRestart(mode);
+}
+/**
+ * clusterSize Метод установки количества процессов кластера
+ * @param size количество рабочих процессов
+ */
+void awh::server::Proxy::clusterSize(const uint16_t size) noexcept {
+	// Выполняем установку размера кластера
+	this->_core.clusterSize(size);
+}
+/**
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
@@ -276,14 +297,6 @@ void awh::server::Proxy::total(const u_short total) noexcept {
 void awh::server::Proxy::hosts(const string & filename) noexcept {
 	// Выполняем загрузку файла со списком хостов
 	this->_server.hosts(filename);
-}
-/**
- * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param mode флаг перезапуска процессов
- */
-void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага перезапуска процессов
-	this->_server.clusterAutoRestart(mode);
 }
 /**
  * user Метод установки параметров авторизации
@@ -654,7 +667,7 @@ void awh::server::Proxy::encryption(const string & pass, const string & salt, co
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : _callback(log), _core(fmk, log), _server(&_core, fmk, log), _fmk(fmk), _log(log) {
+awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : _core(fmk, log), _server(&_core, fmk, log), _callback(log), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета TCP
 	this->_core.sonet(awh::scheme_t::sonet_t::TCP);
 	// Устанавливаем активный протокол подключения
@@ -663,14 +676,14 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : _call
 	this->_server.identity(awh::http_t::identity_t::PROXY);
 	// Устанавливаем функцию извлечения пароля
 	this->_server.on((function <string (const uint64_t, const string &)>) std::bind(&proxy_t::passwordCallback, this, _1, _2));
+	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+	this->_server.on((function <void (const uint64_t, const web_t::mode_t)>) std::bind(&proxy_t::activeCallback, this, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	this->_server.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&proxy_t::authCallback, this, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	this->_server.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&proxy_t::activeCallback, this, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	this->_server.on((function <bool (const string &, const string &, const u_int)>) std::bind(&proxy_t::acceptCallback, this, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	this->_server.on((function <void (const int32_t, const uint64_t, const server::web_t::agent_t)>) std::bind(&proxy_t::handshakeCallback, this, _1, _2, _3));
+	this->_server.on((function <void (const int32_t, const uint64_t, const web_t::agent_t)>) std::bind(&proxy_t::handshakeCallback, this, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения запроса
 	this->_server.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&proxy_t::requestCallback, this, _1, _2, _3, _4));
 	// Установливаем функцию обратного вызова на событие получения тела сообщения

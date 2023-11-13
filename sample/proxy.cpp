@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/proxy.hpp>
+#include <server/proxy2.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -26,10 +26,11 @@ class Proxy {
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
+		 * @param bid   идентификатор брокера
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const string & login){
+		string password(const uint64_t bid, const string & login){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
@@ -37,11 +38,12 @@ class Proxy {
 		}
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
+		 * @param bid      идентификатор брокера
 		 * @param login    логин пользователя (от клиента)
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const string & login, const string & password){
+		bool auth(const uint64_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
@@ -50,13 +52,12 @@ class Proxy {
 	public:
 		/**
 		 * accept Метод активации клиента на сервере
-		 * @param ip    адрес интернет подключения
-		 * @param mac   аппаратный адрес подключения
-		 * @param port  порт подключения
-		 * @param proxy объект PROXY сервера
-		 * @return      результат проверки
+		 * @param ip   адрес интернет подключения
+		 * @param mac  аппаратный адрес подключения
+		 * @param port порт подключения
+		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, server::proxy_t * proxy){
+		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
@@ -64,23 +65,22 @@ class Proxy {
 		}
 		/**
 		 * active Метод идентификации активности на WebSocket сервере
-		 * @param aid   идентификатор адъютанта (клиента)
+		 * @param bid   идентификатор брокера
 		 * @param mode  режим события подключения
-		 * @param proxy объект PROXY сервера
 		 */
-		void active(const size_t aid, const server::proxy_t::mode_t mode, server::proxy_t * proxy){
+		void active(const uint64_t bid, const server::web_t::mode_t mode){
 			// Выводим информацию в лог
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::proxy_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
-		 * @param aid   идентификатор адъютанта (клиента)
+		 * @param bid   идентификатор брокера
 		 * @param event событие прокси-сервера (запрос / ответ)
 		 * @param http  объект http запроса
-		 * @param proxy объект прокси-сервера
 		 * @return      результат обработки запроса
 		 */
-		bool message(const size_t aid, const server::proxy_t::event_t event, awh::http_t * http, server::proxy_t * proxy){
+		/*
+		bool message(const uint64_t bid, const server::proxy_t::event_t event, awh::http_t * http){
 			// Определяем тип запроса
 			cout << (event == server::proxy_t::event_t::REQUEST ? "REQUEST" : "RESPONSE") << endl;
 			// Выводим список полученных заголовков
@@ -90,6 +90,7 @@ class Proxy {
 			// Разрешаем дальнейшую работу
 			return true;
 		}
+		*/
 	public:
 		/**
 		 * Proxy Конструктор
@@ -120,10 +121,10 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	proxy.mode(
-		// (uint8_t) server::proxy_t::flag_t::NOT_IFNO |
-		(uint8_t) server::proxy_t::flag_t::WAIT_MESS
-	);
+	proxy.mode({
+		// server::web_t::flag_t::NOT_IFNO,
+		server::web_t::flag_t::WAIT_MESS
+	});
 	// Устанавливаем адрес сертификата
 	// proxy.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
@@ -132,12 +133,12 @@ int main(int argc, char * argv[]){
 	// proxy.sonet(awh::scheme_t::sonet_t::DTLS);
 	// proxy.sonet(awh::scheme_t::sonet_t::TLS);
 	// proxy.sonet(awh::scheme_t::sonet_t::UDP);
-	proxy.sonet(awh::scheme_t::sonet_t::TCP);
+	// proxy.sonet(awh::scheme_t::sonet_t::TCP);
 	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
-	proxy.verifySSL(true);
+	proxy.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
-	proxy.clusterSize();
+	// proxy.clusterSize();
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
 	// Устанавливаем название сервера
@@ -145,13 +146,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем временный ключ сессии
 	// proxy.opaque("keySession");
 	// Устанавливаем тип авторизации
-	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	// proxy.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию прокси-сервера
-	// proxy.init(2222, "", {http_t::compress_t::GZIP});
-	proxy.init(2222, "127.0.0.1", {http_t::compress_t::GZIP});
-	// proxy.init("anyks", {http_t::compress_t::GZIP});
+	// proxy.init(2222, "", http_t::compress_t::GZIP);
+	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
 	/*
@@ -165,16 +166,16 @@ int main(int argc, char * argv[]){
 	// Устанавливаем шифрование
 	// proxy.crypto("PASS");
 	// Устанавливаем функцию извлечения пароля
-	// proxy.on((function <string (const string &)>) bind(&Proxy::password, &executor, _1));
+	proxy.on((function <string (const uint64_t, const string &)>) std::bind(&Proxy::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	// proxy.on((function <bool (const string &, const string &)>) bind(&Proxy::auth, &executor, _1, _2));
+	proxy.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Proxy::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on((function <void (const size_t, const server::proxy_t::mode_t, server::proxy_t *)>) bind(&Proxy::active, &executor, _1, _2, _3));
+	proxy.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	proxy.on((function <bool (const string &, const string &, const u_int, server::proxy_t *)>) bind(&Proxy::accept, &executor, _1, _2, _3, _4));
+	proxy.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Proxy::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	proxy.on((function <bool (const size_t, const server::proxy_t::event_t, awh::http_t *, server::proxy_t *)>) bind(&Proxy::message, &executor, _1, _2, _3, _4));
-	// Выполняем запуск Socks5 сервер
+	// proxy.on((function <bool (const size_t, const server::proxy_t::event_t, awh::http_t *, server::proxy_t *)>) std::bind(&Proxy::message, &executor, _1, _2, _3, _4));
+	// Выполняем запуск Proxy-сервер
 	proxy.start();
 	// Выводим результат
 	return 0;

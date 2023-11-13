@@ -105,14 +105,14 @@ namespace awh {
 					Client(const fmk_t * fmk, const log_t * log) noexcept : core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 			private:
+				// Объект сетевого ядра
+				core_t _core;
+				// Объект активного сервера
+				awh_t _server;
 				// Объект идентификации сервиса
 				ident_t _ident;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
-				// Объект сетевого ядра
-				server::core_t _core;
-				// Объект активного сервера
-				server::awh_t _server;
 				// Объект параметров шифрования
 				encryption_t _encryption;
 			private:
@@ -154,7 +154,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера (клиента)
 				 * @param mode режим события подключения
 				 */
-				void activeCallback(const uint64_t bid, const server::web_t::mode_t mode) noexcept;
+				void activeCallback(const uint64_t bid, const web_t::mode_t mode) noexcept;
 			private:
 				/**
 				 * handshakeCallback Метод получения удачного запроса
@@ -162,7 +162,7 @@ namespace awh {
 				 * @param bid   идентификатор брокера
 				 * @param agent идентификатор агента клиента
 				 */
-				void handshakeCallback(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept;
+				void handshakeCallback(const int32_t sid, const uint64_t bid, const web_t::agent_t agent) noexcept;
 				/**
 				 * requestCallback Метод запроса клиента
 				 * @param sid    идентификатор потока
@@ -304,6 +304,17 @@ namespace awh {
 				void close(const uint64_t bid) noexcept;
 			public:
 				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const bool mode) noexcept;
+				/**
+				 * clusterSize Метод установки количества процессов кластера
+				 * @param size количество рабочих процессов
+				 */
+				void clusterSize(const uint16_t size = 0) noexcept;
+			public:
+				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
@@ -313,11 +324,6 @@ namespace awh {
 				 * @param filename адрес файла для загрузки
 				 */
 				void hosts(const string & filename) noexcept;
-				/**
-				 * clusterAutoRestart Метод установки флага перезапуска процессов
-				 * @param mode флаг перезапуска процессов
-				 */
-				void clusterAutoRestart(const bool mode) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
