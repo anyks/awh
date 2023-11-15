@@ -99,7 +99,7 @@ namespace awh {
 					/**
 					 * Ident Конструктор
 					 */
-					Ident() noexcept : id{""}, ver{""}, name{""} {}
+					Ident() noexcept : id{AWH_SHORT_NAME}, ver{AWH_VERSION}, name{AWH_NAME} {}
 				} ident_t;
 				/**
 				 * Encryption Структура параметров шифрования

@@ -118,37 +118,28 @@ int main(int argc, char * argv[]){
 	log.name("Proxy Server");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
-	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
-	 */
-	proxy.mode({
-		// server::web_t::flag_t::NOT_IFNO,
-		server::web_t::flag_t::WAIT_MESS
-	});
-	// Устанавливаем адрес сертификата
-	// proxy.ca("./ca/cert.pem");
-	// Устанавливаем тип сокета unix-сокет
-	// proxy.family(awh::scheme_t::family_t::NIX);
-	// Устанавливаем тип сокета UDP TLS
-	// proxy.sonet(awh::scheme_t::sonet_t::DTLS);
-	// proxy.sonet(awh::scheme_t::sonet_t::TLS);
-	// proxy.sonet(awh::scheme_t::sonet_t::UDP);
-	// proxy.sonet(awh::scheme_t::sonet_t::TCP);
-	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
-	// Отключаем валидацию сертификата
-	proxy.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
 	// proxy.clusterSize();
-	// Устанавливаем таймаут ожидания получения сообщений
-	// proxy.waitTimeDetect(60, 60);
 	// Устанавливаем название сервера
 	// proxy.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
 	// proxy.opaque("keySession");
+	/**
+	 * 1. Устанавливаем запрет вывода информационных сообщений
+	 */
+	proxy.mode({server::proxy_t::flag_t::NOT_INFO});
+	// Отключаем валидацию сертификата
+	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);
+	// Устанавливаем адрес сертификата
+	proxy.ca(server::proxy_t::broker_t::SERVER, "./ca/cert.pem");
+	// Устанавливаем таймаут ожидания получения сообщений
+	// proxy.waitTimeDetect(server::proxy_t::broker_t::SERVER, 60, 60);
+	// Устанавливаем тип сокета unix-сокет
+	// proxy.family(server::proxy_t::broker_t::SERVER, awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип авторизации
-	proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
-	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
-	// proxy.authType(auth_t::type_t::BASIC);
+	// proxy.authType(proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
+	// proxy.authType(proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
+	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
 	// proxy.init(2222, "", http_t::compress_t::GZIP);
 	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
@@ -164,7 +155,7 @@ int main(int argc, char * argv[]){
 	*/
 	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
-	// proxy.crypto("PASS");
+	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
 	// Устанавливаем функцию извлечения пароля
 	proxy.on((function <string (const uint64_t, const string &)>) std::bind(&Proxy::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
