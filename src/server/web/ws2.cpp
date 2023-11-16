@@ -175,39 +175,46 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 void awh::server::WebSocket2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		// Получаем параметры активного клиента
-		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
-		// Если параметры активного клиента получены
-		if(options != nullptr){
-			// Если подключение закрыто
-			if(options->close){
-				// Принудительно выполняем отключение лкиента
-				dynamic_cast <server::core_t *> (core)->close(bid);
-				// Выходим из функции
-				return;
-			}
-			// Выполняем установку протокола подключения
-			options->proto = core->proto(bid);
-			// Если протокол подключения является HTTP/2
-			if(options->proto == engine_t::proto_t::HTTP2){
-				// Если получение данных не разрешено
-				if(!options->allow.receive)
+		// Если установлена функция обратного вызова для вывода данных в сыром виде
+		if(this->_callback.is("raw"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
+		// Выполняем обработку полученных данных
+		else {
+			// Получаем параметры активного клиента
+			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
+			// Если параметры активного клиента получены
+			if(options != nullptr){
+				// Если подключение закрыто
+				if(options->close){
+					// Принудительно выполняем отключение лкиента
+					dynamic_cast <server::core_t *> (core)->close(bid);
 					// Выходим из функции
 					return;
-				// Выполняем поиск брокера в списке активных сессий
-				auto it = this->_sessions.find(bid);
-				// Если активная сессия найдена
-				if(it != this->_sessions.end()){
-					// Если прочитать данные фрейма не удалось, выходим из функции
-					if(!it->second->frame((const uint8_t *) buffer, size)){
-						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), bid));
+				}
+				// Выполняем установку протокола подключения
+				options->proto = core->proto(bid);
+				// Если протокол подключения является HTTP/2
+				if(options->proto == engine_t::proto_t::HTTP2){
+					// Если получение данных не разрешено
+					if(!options->allow.receive)
 						// Выходим из функции
 						return;
+					// Выполняем поиск брокера в списке активных сессий
+					auto it = this->_sessions.find(bid);
+					// Если активная сессия найдена
+					if(it != this->_sessions.end()){
+						// Если прочитать данные фрейма не удалось, выходим из функции
+						if(!it->second->frame((const uint8_t *) buffer, size)){
+							// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+							it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), dynamic_cast <server::core_t *> (core), bid));
+							// Выходим из функции
+							return;
+						}
 					}
-				}
-			// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
-			} else this->_ws1.readCallback(buffer, size, bid, sid, core);
+				// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
+				} else this->_ws1.readCallback(buffer, size, bid, sid, core);
+			}
 		}
 	}
 }
@@ -1387,6 +1394,16 @@ void awh::server::WebSocket2::on(function <void (const uint64_t, const vector <c
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket2::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
+}
+/**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::server::WebSocket2::on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера

@@ -131,308 +131,315 @@ void awh::server::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::server::Http1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем передачу данных клиенту WebSocket
-			this->_ws1.readCallback(buffer, size, bid, sid, core);
-		// Иначе выполняем обработку входящих данных как Web-сервер
+		// Если установлена функция обратного вызова для вывода данных в сыром виде
+		if(this->_callback.is("raw"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
+		// Выполняем обработку полученных данных
 		else {
-			// Получаем параметры активного клиента
-			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(options != nullptr){
-				// Если подключение закрыто
-				if(options->close){
-					// Принудительно выполняем отключение лкиента
-					dynamic_cast <server::core_t *> (core)->close(bid);
-					// Выходим из функции
-					return;
-				}
-				// Добавляем полученные данные в буфер
-				options->buffer.insert(options->buffer.end(), buffer, buffer + size);
-				// Если функция обратного вызова активности потока установлена
-				if(!options->mode && (options->mode = this->_callback.is("stream")))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::OPEN);
-				// Выполняем обработку полученных данных
-				while(!options->close){
-					// Выполняем парсинг полученных данных
-					size_t bytes = options->http.parse(options->buffer.data(), options->buffer.size());
-					// Если все данные получены
-					if(options->http.is(http_t::state_t::END)){
-						// Если включён режим отладки
-						#if defined(DEBUG_MODE)
-							{
-								// Получаем данные запроса
-								const auto & request = options->http.process(http_t::process_t::REQUEST, options->http.request());
-								// Если параметры запроса получены
-								if(!request.empty()){
-									// Выводим заголовок запроса
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-									// Выводим параметры запроса
-									cout << string(request.begin(), request.end()) << endl << endl;
-									// Если тело запроса существует
-									if(!options->http.body().empty())
-										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
-									// Иначе устанавливаем перенос строки
-									else cout << endl;
+			// Выполняем поиск агента которому соответствует клиент
+			auto it = this->_agents.find(bid);
+			// Если агент соответствует WebSocket-у
+			if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+				// Выполняем передачу данных клиенту WebSocket
+				this->_ws1.readCallback(buffer, size, bid, sid, core);
+			// Иначе выполняем обработку входящих данных как Web-сервер
+			else {
+				// Получаем параметры активного клиента
+				scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+				// Если параметры активного клиента получены
+				if(options != nullptr){
+					// Если подключение закрыто
+					if(options->close){
+						// Принудительно выполняем отключение лкиента
+						dynamic_cast <server::core_t *> (core)->close(bid);
+						// Выходим из функции
+						return;
+					}
+					// Добавляем полученные данные в буфер
+					options->buffer.insert(options->buffer.end(), buffer, buffer + size);
+					// Если функция обратного вызова активности потока установлена
+					if(!options->mode && (options->mode = this->_callback.is("stream")))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::OPEN);
+					// Выполняем обработку полученных данных
+					while(!options->close){
+						// Выполняем парсинг полученных данных
+						size_t bytes = options->http.parse(options->buffer.data(), options->buffer.size());
+						// Если все данные получены
+						if(options->http.is(http_t::state_t::END)){
+							// Если включён режим отладки
+							#if defined(DEBUG_MODE)
+								{
+									// Получаем данные запроса
+									const auto & request = options->http.process(http_t::process_t::REQUEST, options->http.request());
+									// Если параметры запроса получены
+									if(!request.empty()){
+										// Выводим заголовок запроса
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+										// Выводим параметры запроса
+										cout << string(request.begin(), request.end()) << endl << endl;
+										// Если тело запроса существует
+										if(!options->http.body().empty())
+											// Выводим сообщение о выводе чанка тела
+											cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
+										// Иначе устанавливаем перенос строки
+										else cout << endl;
+									}
 								}
-							}
-						#endif
-						// Если подключение не установлено как постоянное
-						if(!this->_service.alive && !options->alive){
-							// Увеличиваем количество выполненных запросов
-							options->requests++;
-							// Если количество выполненных запросов превышает максимальный
-							if(options->requests >= this->_maxRequests)
-								// Устанавливаем флаг закрытия подключения
-								options->close = true;
-							// Получаем текущий штамп времени
-							else options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-						// Выполняем сброс количества выполненных запросов
-						} else options->requests = 0;
-						// Получаем флаг шифрованных данных
-						options->crypted = options->http.crypted();
-						// Получаем поддерживаемый метод компрессии
-						options->compress = options->http.compression();
-						// Выполняем проверку авторизации
-						switch(static_cast <uint8_t> (options->http.auth())){
-							// Если запрос выполнен удачно
-							case static_cast <uint8_t> (http_t::status_t::GOOD): {
-								// Если заголовок Upgrade установлен
-								if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
-									// Выполняем извлечение заголовка Upgrade
-									const string & header = options->http.header("upgrade");
-									// Если запрашиваемый протокол соответствует WebSocket
-									if(this->_webSocket && this->_fmk->compare(header, "websocket"))
-										// Выполняем инициализацию WebSocket-сервера
-										this->websocket(bid, sid, core);
-									// Если протокол запрещён или не поддерживается
-									else {
-										// Выполняем очистку HTTP-парсера
-										options->http.clear();
-										// Выполняем сброс состояния HTTP-парсера
-										options->http.reset();
-										// Выполняем очистку буфера полученных данных
-										options->buffer.clear();
-										// Формируем запрос авторизации
-										const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
-										// Если ответ получен
-										if(!response.empty()){
-											// Тело полезной нагрузки
-											vector <char> payload;
-											/**
-											 * Если включён режим отладки
-											 */
-											#if defined(DEBUG_MODE)
-												// Выводим заголовок ответа
-												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-												// Выводим параметры ответа
-												cout << string(response.begin(), response.end()) << endl << endl;
-											#endif
-											// Отправляем ответ брокеру
-											dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
-											// Получаем тело полезной нагрузки ответа
-											while(!(payload = options->http.payload()).empty()){
+							#endif
+							// Если подключение не установлено как постоянное
+							if(!this->_service.alive && !options->alive){
+								// Увеличиваем количество выполненных запросов
+								options->requests++;
+								// Если количество выполненных запросов превышает максимальный
+								if(options->requests >= this->_maxRequests)
+									// Устанавливаем флаг закрытия подключения
+									options->close = true;
+								// Получаем текущий штамп времени
+								else options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Выполняем сброс количества выполненных запросов
+							} else options->requests = 0;
+							// Получаем флаг шифрованных данных
+							options->crypted = options->http.crypted();
+							// Получаем поддерживаемый метод компрессии
+							options->compress = options->http.compression();
+							// Выполняем проверку авторизации
+							switch(static_cast <uint8_t> (options->http.auth())){
+								// Если запрос выполнен удачно
+								case static_cast <uint8_t> (http_t::status_t::GOOD): {
+									// Если заголовок Upgrade установлен
+									if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
+										// Выполняем извлечение заголовка Upgrade
+										const string & header = options->http.header("upgrade");
+										// Если запрашиваемый протокол соответствует WebSocket
+										if(this->_webSocket && this->_fmk->compare(header, "websocket"))
+											// Выполняем инициализацию WebSocket-сервера
+											this->websocket(bid, sid, core);
+										// Если протокол запрещён или не поддерживается
+										else {
+											// Выполняем очистку HTTP-парсера
+											options->http.clear();
+											// Выполняем сброс состояния HTTP-парсера
+											options->http.reset();
+											// Выполняем очистку буфера полученных данных
+											options->buffer.clear();
+											// Формируем запрос авторизации
+											const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
+											// Если ответ получен
+											if(!response.empty()){
+												// Тело полезной нагрузки
+												vector <char> payload;
 												/**
 												 * Если включён режим отладки
 												 */
 												#if defined(DEBUG_MODE)
-													// Выводим сообщение о выводе чанка полезной нагрузки
-													cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+													// Выводим заголовок ответа
+													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+													// Выводим параметры ответа
+													cout << string(response.begin(), response.end()) << endl << endl;
 												#endif
-												// Если тела данных для отправки больше не осталось
-												if(options->http.body().empty() && (options->http.trailers() == 0))
-													// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-													options->stopped = (!this->_service.alive && !options->alive);
-												// Выполняем отправку тела ответа клиенту
-												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
-											}
-											// Если список трейлеров установлен
-											if(options->http.trailers() > 0){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Выводим заголовок трейлеров
-													cout << "<Trailers>" << endl << endl;
-												#endif
-												// Получаем отправляемые трейлеры
-												while(!(payload = options->http.trailer()).empty()){
+												// Отправляем ответ брокеру
+												dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
+												// Получаем тело полезной нагрузки ответа
+												while(!(payload = options->http.payload()).empty()){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if defined(DEBUG_MODE)
-														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+														// Выводим сообщение о выводе чанка полезной нагрузки
+														cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 													#endif
-													// Устанавливаем флаг закрытия подключения
-													options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
-													// Выполняем отправку трейлера клиенту
+													// Если тела данных для отправки больше не осталось
+													if(options->http.body().empty() && (options->http.trailers() == 0))
+														// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+														options->stopped = (!this->_service.alive && !options->alive);
+													// Выполняем отправку тела ответа клиенту
 													dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 												}
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Выводим завершение вывода информации
-													cout << endl << endl;
-												#endif
-											}
-										// Выполняем отключение брокера
-										} else dynamic_cast <server::core_t *> (core)->close(bid);
-										// Если функция обратного вызова активности потока установлена
-										if(this->_callback.is("stream"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
-										// Если функция обратного вызова на на вывод ошибок установлена
-										if(this->_callback.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
-										// Если установлена функция отлова завершения запроса
-										if(this->_callback.is("end"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+												// Если список трейлеров установлен
+												if(options->http.trailers() > 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим заголовок трейлеров
+														cout << "<Trailers>" << endl << endl;
+													#endif
+													// Получаем отправляемые трейлеры
+													while(!(payload = options->http.trailer()).empty()){
+														/**
+														 * Если включён режим отладки
+														 */
+														#if defined(DEBUG_MODE)
+															// Выводим сообщение о выводе чанка тела
+															cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+														#endif
+														// Устанавливаем флаг закрытия подключения
+														options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+														// Выполняем отправку трейлера клиенту
+														dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+													}
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим завершение вывода информации
+														cout << endl << endl;
+													#endif
+												}
+											// Выполняем отключение брокера
+											} else dynamic_cast <server::core_t *> (core)->close(bid);
+											// Если функция обратного вызова активности потока установлена
+											if(this->_callback.is("stream"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callback.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
+											// Если установлена функция отлова завершения запроса
+											if(this->_callback.is("end"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+										}
+										// Завершаем обработку
+										goto Next;
 									}
+									// Выполняем извлечение параметров запроса
+									const auto & request = options->http.request();
+									// Если функция обратного вызова активности потока установлена
+									if(this->_callback.is("stream"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+									// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+									if(!options->http.body().empty() && this->_callback.is("entity"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, bid, request.method, request.url, options->http.body());
+									// Если функция обратного вызова на получение удачного запроса установлена
+									if(this->_callback.is("handshake"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", 1, bid, agent_t::HTTP);
+									// Если установлена функция отлова завершения запроса
+									if(this->_callback.is("end"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
 									// Завершаем обработку
 									goto Next;
-								}
-								// Выполняем извлечение параметров запроса
-								const auto & request = options->http.request();
-								// Если функция обратного вызова активности потока установлена
-								if(this->_callback.is("stream"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
-								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-								if(!options->http.body().empty() && this->_callback.is("entity"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, bid, request.method, request.url, options->http.body());
-								// Если функция обратного вызова на получение удачного запроса установлена
-								if(this->_callback.is("handshake"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", 1, bid, agent_t::HTTP);
-								// Если установлена функция отлова завершения запроса
-								if(this->_callback.is("end"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
-								// Завершаем обработку
-								goto Next;
-							} break;
-							// Если запрос неудачный
-							case static_cast <uint8_t> (http_t::status_t::FAULT): {
-								// Ответ на запрос об авторизации
-								vector <char> response;
-								// Выполняем очистку HTTP-парсера
-								options->http.clear();
-								// Выполняем сброс состояния HTTP-парсера
-								options->http.reset();
-								// Выполняем очистку буфера полученных данных
-								options->buffer.clear();
-								// Определяем идентичность сервера
-								switch(static_cast <uint8_t> (this->_identity)){
-									// Если сервер соответствует HTTP-серверу
-									case static_cast <uint8_t> (http_t::identity_t::HTTP):
-										// Формируем запрос авторизации
-										response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
-									break;
-									// Если сервер соответствует PROXY-серверу
-									case static_cast <uint8_t> (http_t::identity_t::PROXY):
-										// Формируем запрос авторизации
-										response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (407)));
-									break;
-								}
-								// Если ответ получен
-								if(!response.empty()){
-									// Тело полезной нагрузки
-									vector <char> payload;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Выводим заголовок ответа
-										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-										// Выводим параметры ответа
-										cout << string(response.begin(), response.end()) << endl << endl;
-									#endif
-									// Отправляем ответ брокеру
-									dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
-									// Получаем данные полезной нагрузки ответа
-									while(!(payload = options->http.payload()).empty()){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Выводим сообщение о выводе чанка полезной нагрузки
-											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
-										#endif
-										// Отправляем тело ответа клиенту
-										dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+								} break;
+								// Если запрос неудачный
+								case static_cast <uint8_t> (http_t::status_t::FAULT): {
+									// Ответ на запрос об авторизации
+									vector <char> response;
+									// Выполняем очистку HTTP-парсера
+									options->http.clear();
+									// Выполняем сброс состояния HTTP-парсера
+									options->http.reset();
+									// Выполняем очистку буфера полученных данных
+									options->buffer.clear();
+									// Определяем идентичность сервера
+									switch(static_cast <uint8_t> (this->_identity)){
+										// Если сервер соответствует HTTP-серверу
+										case static_cast <uint8_t> (http_t::identity_t::HTTP):
+											// Формируем запрос авторизации
+											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
+										break;
+										// Если сервер соответствует PROXY-серверу
+										case static_cast <uint8_t> (http_t::identity_t::PROXY):
+											// Формируем запрос авторизации
+											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (407)));
+										break;
 									}
-									// Если список трейлеров установлен
-									if(options->http.trailers() > 0){
+									// Если ответ получен
+									if(!response.empty()){
+										// Тело полезной нагрузки
+										vector <char> payload;
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
-											// Выводим заголовок трейлеров
-											cout << "<Trailers>" << endl << endl;
+											// Выводим заголовок ответа
+											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											// Выводим параметры ответа
+											cout << string(response.begin(), response.end()) << endl << endl;
 										#endif
-										// Получаем отправляемые трейлеры
-										while(!(payload = options->http.trailer()).empty()){
+										// Отправляем ответ брокеру
+										dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
+										// Получаем данные полезной нагрузки ответа
+										while(!(payload = options->http.payload()).empty()){
 											/**
 											 * Если включён режим отладки
 											 */
 											#if defined(DEBUG_MODE)
-												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+												// Выводим сообщение о выводе чанка полезной нагрузки
+												cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 											#endif
-											// Выполняем отправку трейлера клиенту
+											// Отправляем тело ответа клиенту
 											dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 										}
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Выводим завершение вывода информации
-											cout << endl << endl;
-										#endif
-									}
-								// Выполняем отключение брокера
-								} else dynamic_cast <server::core_t *> (core)->close(bid);
-								// Если функция обратного вызова активности потока установлена
-								if(this->_callback.is("stream"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
-								// Если функция обратного вызова на на вывод ошибок установлена
-								if(this->_callback.is("error"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
-								// Если установлена функция отлова завершения запроса
-								if(this->_callback.is("end"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
-								// Выходим из функции
-								return;
+										// Если список трейлеров установлен
+										if(options->http.trailers() > 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим заголовок трейлеров
+												cout << "<Trailers>" << endl << endl;
+											#endif
+											// Получаем отправляемые трейлеры
+											while(!(payload = options->http.trailer()).empty()){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим сообщение о выводе чанка тела
+													cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+												#endif
+												// Выполняем отправку трейлера клиенту
+												dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
+											}
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим завершение вывода информации
+												cout << endl << endl;
+											#endif
+										}
+									// Выполняем отключение брокера
+									} else dynamic_cast <server::core_t *> (core)->close(bid);
+									// Если функция обратного вызова активности потока установлена
+									if(this->_callback.is("stream"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+									// Если установлена функция отлова завершения запроса
+									if(this->_callback.is("end"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+									// Выходим из функции
+									return;
+								}
 							}
 						}
+						// Устанавливаем метку продолжения обработки пайплайна
+						Next:
+						// Если парсер обработал какое-то количество байт
+						if((bytes > 0) && !options->buffer.empty()){
+							// Если размер буфера больше количества удаляемых байт
+							if(options->buffer.size() >= bytes)
+								// Удаляем количество обработанных байт
+								options->buffer.assign(options->buffer.begin() + bytes, options->buffer.end());
+							// Если байт в буфере меньше, просто очищаем буфер
+							else options->buffer.clear();
+							// Если данных для обработки не осталось, выходим
+							if(options->buffer.empty()) break;
+						// Если данных для обработки недостаточно, выходим
+						} else break;
 					}
-					// Устанавливаем метку продолжения обработки пайплайна
-					Next:
-					// Если парсер обработал какое-то количество байт
-					if((bytes > 0) && !options->buffer.empty()){
-						// Если размер буфера больше количества удаляемых байт
-						if(options->buffer.size() >= bytes)
-							// Удаляем количество обработанных байт
-							options->buffer.assign(options->buffer.begin() + bytes, options->buffer.end());
-						// Если байт в буфере меньше, просто очищаем буфер
-						else options->buffer.clear();
-						// Если данных для обработки не осталось, выходим
-						if(options->buffer.empty()) break;
-					// Если данных для обработки недостаточно, выходим
-					} else break;
 				}
 			}
 		}
@@ -1330,6 +1337,16 @@ void awh::server::Http1::on(function <void (const uint64_t, const vector <char> 
  * @param callback функция обратного вызова
  */
 void awh::server::Http1::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-сервера
+	this->_ws1.on(callback);
+}
+/**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http1::on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера

@@ -135,115 +135,122 @@ void awh::client::WebSocket1::disconnectCallback(const uint64_t bid, const uint1
 void awh::client::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		// Если подключение закрыто
-		if(this->_close){
-			// Принудительно выполняем отключение лкиента
-			dynamic_cast <client::core_t *> (core)->close(bid);
-			// Выходим из функции
-			return;
-		}
-		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
-		// Если событие соответствует разрешённому
-		if(hold.access({event_t::CONNECT}, event_t::READ)){
-			// Если рукопожатие не выполнено
-			if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).is(http_t::state_t::HANDSHAKE))){
-				// Добавляем полученные данные в буфер
-				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-				// Выполняем парсинг полученных данных
-				const size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
-				// Есла данных передано больше чем обработано
-				if(this->_buffer.size() > bytes)
-					// Удаляем количество обработанных байт
-					this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
-				// Если данных в буфере больше нет, очищаем буфер собранных данных
-				else this->_buffer.clear();
-				// Если все данные получены
-				if(this->_http.is(http_t::state_t::END)){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						{
-							// Получаем объект работы с HTTP-запросами
-							const http_t & http = reinterpret_cast <http_t &> (this->_http);
-							// Получаем данные ответа
-							const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
-							// Если параметры ответа получены
-							if(!response.empty()){
-								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl << endl;
-								// Если тело ответа существует
-								if(!http.body().empty())
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
-								// Иначе устанавливаем перенос строки
-								else cout << endl;
+		// Если установлена функция обратного вызова для вывода данных в сыром виде
+		if(this->_callback.is("raw"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const char *, const size_t> ("raw", buffer, size);
+		// Выполняем обработку полученных данных
+		else {
+			// Если подключение закрыто
+			if(this->_close){
+				// Принудительно выполняем отключение лкиента
+				dynamic_cast <client::core_t *> (core)->close(bid);
+				// Выходим из функции
+				return;
+			}
+			// Создаём объект холдирования
+			hold_t <event_t> hold(this->_events);
+			// Если событие соответствует разрешённому
+			if(hold.access({event_t::CONNECT}, event_t::READ)){
+				// Если рукопожатие не выполнено
+				if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).is(http_t::state_t::HANDSHAKE))){
+					// Добавляем полученные данные в буфер
+					this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+					// Выполняем парсинг полученных данных
+					const size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
+					// Есла данных передано больше чем обработано
+					if(this->_buffer.size() > bytes)
+						// Удаляем количество обработанных байт
+						this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+					// Если данных в буфере больше нет, очищаем буфер собранных данных
+					else this->_buffer.clear();
+					// Если все данные получены
+					if(this->_http.is(http_t::state_t::END)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Получаем объект работы с HTTP-запросами
+								const http_t & http = reinterpret_cast <http_t &> (this->_http);
+								// Получаем данные ответа
+								const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
+								// Если параметры ответа получены
+								if(!response.empty()){
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl << endl;
+									// Если тело ответа существует
+									if(!http.body().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
+								}
 							}
+						#endif
+						// Выполняем препарирование полученных данных
+						switch(static_cast <uint8_t> (this->prepare(1, bid, dynamic_cast <client::core_t *> (core)))){
+							// Если необходимо выполнить остановку обработки
+							case static_cast <uint8_t> (status_t::STOP): {
+								// Выполняем сброс количества попыток
+								this->_attempt = 0;
+								// Завершаем работу
+								dynamic_cast <client::core_t *> (core)->close(bid);
+								// Если установлена функция отлова завершения запроса
+								if(this->_callback.is("end"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
+							} break;
 						}
-					#endif
+						// Если функция обратного вызова активности потока установлена
+						if(this->_resultCallback.is("stream"))
+							// Выполняем функцию обратного вызова
+							this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
+						// Если функция обратного вызова установлена, выводим сообщение
+						if(this->_resultCallback.is("entity"))
+							// Выполняем функцию обратного вызова дисконнекта
+							this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+						// Выполняем очистку функций обратного вызова
+						this->_resultCallback.clear();
+					}
+					// Завершаем работу
+					return;
+				// Если рукопожатие выполнено
+				} else if(this->_allow.receive) {
+					// Добавляем полученные данные в буфер
+					this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
 					// Выполняем препарирование полученных данных
 					switch(static_cast <uint8_t> (this->prepare(1, bid, dynamic_cast <client::core_t *> (core)))){
 						// Если необходимо выполнить остановку обработки
-						case static_cast <uint8_t> (status_t::STOP): {
-							// Выполняем сброс количества попыток
-							this->_attempt = 0;
-							// Завершаем работу
-							dynamic_cast <client::core_t *> (core)->close(bid);
-							// Если установлена функция отлова завершения запроса
-							if(this->_callback.is("end"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
-						} break;
+						case static_cast <uint8_t> (status_t::STOP):
+							// Выполняем завершение работы
+							goto End;
+						// Если необходимо выполнить переход к следующему этапу обработки
+						case static_cast <uint8_t> (status_t::NEXT):
+							// Выполняем реконнект
+							goto Reconnect;
 					}
-					// Если функция обратного вызова активности потока установлена
-					if(this->_resultCallback.is("stream"))
-						// Выполняем функцию обратного вызова
-						this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
-					// Если функция обратного вызова установлена, выводим сообщение
-					if(this->_resultCallback.is("entity"))
-						// Выполняем функцию обратного вызова дисконнекта
-						this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
-					// Выполняем очистку функций обратного вызова
-					this->_resultCallback.clear();
 				}
-				// Завершаем работу
-				return;
-			// Если рукопожатие выполнено
-			} else if(this->_allow.receive) {
-				// Добавляем полученные данные в буфер
-				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-				// Выполняем препарирование полученных данных
-				switch(static_cast <uint8_t> (this->prepare(1, bid, dynamic_cast <client::core_t *> (core)))){
-					// Если необходимо выполнить остановку обработки
-					case static_cast <uint8_t> (status_t::STOP):
-						// Выполняем завершение работы
-						goto End;
-					// Если необходимо выполнить переход к следующему этапу обработки
-					case static_cast <uint8_t> (status_t::NEXT):
-						// Выполняем реконнект
-						goto Reconnect;
-				}
+				// Устанавливаем метку реконнекта
+				Reconnect:
+				// Выполняем отправку сообщения об ошибке
+				this->sendError(this->_mess);
+				// Устанавливаем метку завершения работы
+				End:
+				// Если функция обратного вызова активности потока установлена
+				if(this->_resultCallback.is("stream"))
+					// Выполняем функцию обратного вызова
+					this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
+				// Выполняем очистку функций обратного вызова
+				this->_resultCallback.clear();
+				// Если установлена функция отлова завершения запроса
+				if(this->_callback.is("end"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
 			}
-			// Устанавливаем метку реконнекта
-			Reconnect:
-			// Выполняем отправку сообщения об ошибке
-			this->sendError(this->_mess);
-			// Устанавливаем метку завершения работы
-			End:
-			// Если функция обратного вызова активности потока установлена
-			if(this->_resultCallback.is("stream"))
-				// Выполняем функцию обратного вызова
-				this->_resultCallback.bind  <const int32_t, const mode_t> ("stream");
-			// Выполняем очистку функций обратного вызова
-			this->_resultCallback.clear();
-			// Если установлена функция отлова завершения запроса
-			if(this->_callback.is("end"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <const int32_t, const direct_t> ("end", 1, direct_t::RECV);
 		}
 	}
 }
@@ -1154,6 +1161,14 @@ void awh::client::WebSocket1::on(function <void (const log_t::flag_t, const http
 	web_t::on(callback);
 	// Устанавливаем функцию обратного вызова для вывода ошибок
 	this->_http.on(std::bind(&ws1_t::errors, this, _1, _2, _3, _4));
+}
+/**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket1::on(function <void (const char *, const size_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока

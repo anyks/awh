@@ -117,23 +117,30 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		// Если протокол подключения является HTTP/2
-		if(core->proto(bid) == engine_t::proto_t::HTTP2){
-			// Если прочитать данные фрейма не удалось, выходим из функции
-			if(!this->_http2.frame((const uint8_t *) buffer, size)){
-				// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-				this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
-				// Выходим из функции
-				return;
+		// Если установлена функция обратного вызова для вывода данных в сыром виде
+		if(this->_callback.is("raw"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const char *, const size_t> ("raw", buffer, size);
+		// Выполняем обработку полученных данных
+		else {
+			// Если протокол подключения является HTTP/2
+			if(core->proto(bid) == engine_t::proto_t::HTTP2){
+				// Если прочитать данные фрейма не удалось, выходим из функции
+				if(!this->_http2.frame((const uint8_t *) buffer, size)){
+					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+					this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
+					// Выходим из функции
+					return;
+				}
+			// Если активирован режим работы с HTTP/1.1 протоколом
+			} else {
+				// Если активирован WebSocket-клиент
+				if(this->_ws2._bid > 0)
+					// Выполняем переброс вызова чтения на клиент WebSocket
+					this->_ws2.readCallback(buffer, size, bid, sid, core);
+				// Выполняем переброс вызова чтения на клиент HTTP/1.1
+				else this->_http1.readCallback(buffer, size, bid, sid, core);
 			}
-		// Если активирован режим работы с HTTP/1.1 протоколом
-		} else {
-			// Если активирован WebSocket-клиент
-			if(this->_ws2._bid > 0)
-				// Выполняем переброс вызова чтения на клиент WebSocket
-				this->_ws2.readCallback(buffer, size, bid, sid, core);
-			// Выполняем переброс вызова чтения на клиент HTTP/1.1
-			else this->_http1.readCallback(buffer, size, bid, sid, core);
 		}
 	}
 }
@@ -1647,6 +1654,18 @@ void awh::client::Http2::on(function <void (const log_t::flag_t, const http::err
 	this->_http1.on(callback);
 	// Устанавливаем функцию обратного вызова для вывода ошибок
 	this->_http.on(std::bind(&http2_t::errors, this, _1, _2, _3, _4));
+}
+/**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http2::on(function <void (const char *, const size_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web2_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws2.on(callback);
+	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
+	this->_http1.on(callback);
 }
 /**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)

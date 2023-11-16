@@ -269,7 +269,10 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
  * @param agent идентификатор агента клиента
  */
 void awh::server::Proxy::handshakeClient(const int32_t sid, const uint64_t bid, const client::web_t::agent_t agent) noexcept {
-
+	// Если агент клиента соответствует HTTP протоколу
+	if(agent == client::web_t::agent_t::HTTP){
+	
+	}
 }
 /**
  * handshakeServer Метод получения удачного запроса
@@ -278,7 +281,21 @@ void awh::server::Proxy::handshakeClient(const int32_t sid, const uint64_t bid, 
  * @param agent идентификатор агента клиента
  */
 void awh::server::Proxy::handshakeServer(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept {
+	// Если агент клиента соответствует HTTP протоколу
+	if(agent == server::web_t::agent_t::HTTP){
+		// Выполняем получение объекта HTTP-парсера
+		const awh::http_t * http = this->parser(bid);
+		// Если данные HTTP-парсера получены
+		if(http != nullptr){
+			// Выполняем определение метода запроса
+			switch(static_cast <uint8_t> (http->request().method)){
+				// Если запрашивается клиентом метод CONNECT
+				case static_cast <uint8_t> (awh::web_t::method_t::CONNECT):
 
+				break;
+			}
+		}
+	}
 }
 /**
  * proto Метод извлечения поддерживаемого протокола подключения

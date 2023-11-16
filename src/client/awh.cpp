@@ -558,6 +558,14 @@ void awh::client::AWH::on(function <void (const int32_t, const vector <char> &)>
 	this->_http.on(callback);
 }
 /**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::AWH::on(function <void (const char *, const size_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
  * @param callback функция обратного вызова
  */

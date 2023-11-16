@@ -100,121 +100,128 @@ void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::client::Http1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
-		// Если событие соответствует разрешённому
-		if(hold.access({event_t::CONNECT}, event_t::READ)){
-			// Определяем тип агента
-			switch(static_cast <uint8_t> (this->_agent)){
-				// Если протоколом агента является HTTP-клиент
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Если список ответов получен
-					if(!this->_requests.empty()){
-						// Флаг удачного получения данных
-						bool receive = false;
-						// Флаг завершения работы
-						bool completed = false;
-						// Получаем идентификатор потока
-						const int32_t sid = this->_requests.begin()->first;
-						// Если функция обратного вызова активности потока установлена
-						if(!this->_mode && (this->_mode = this->_callback.is("stream")))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::OPEN);
-						// Добавляем полученные данные в буфер
-						this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-						// Выполняем обработку полученных данных
-						while(!this->_active){
-							// Выполняем парсинг полученных данных
-							size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
-							// Если все данные получены
-							if((completed = this->_http.is(http_t::state_t::END))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									{
-										// Получаем данные ответа
-										const auto & response = this->_http.process(http_t::process_t::RESPONSE, this->_http.response());
-										// Если параметры ответа получены
-										if(!response.empty()){
-											// Выводим заголовок ответа
-											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl << endl;
-											// Если тело ответа существует
-											if(!this->_http.body().empty())
-												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
-											// Иначе устанавливаем перенос строки
-											else cout << endl;
-										}
-									}
-								#endif
-								// Выполняем препарирование полученных данных
-								switch(static_cast <uint8_t> (this->prepare(sid, bid, dynamic_cast <client::core_t *> (core)))){
-									// Если необходимо выполнить остановку обработки
-									case static_cast <uint8_t> (status_t::STOP):
-										// Выполняем завершение работы
-										goto Stop;
-									// Если необходимо выполнить переход к следующему этапу обработки
-									case static_cast <uint8_t> (status_t::NEXT):
-										// Выполняем переход к следующему этапу обработки
-										goto Next;
-									// Если необходимо выполнить пропуск обработки данных
-									case static_cast <uint8_t> (status_t::SKIP):
-										// Завершаем работу
-										return;
-								}
-							}
-							// Устанавливаем метку продолжения обработки пайплайна
-							Next:
-							// Если парсер обработал какое-то количество байт
-							if((receive = ((bytes > 0) && !this->_buffer.empty()))){
-								// Если размер буфера больше количества удаляемых байт
-								if((receive = (this->_buffer.size() >= bytes)))
-									// Удаляем количество обработанных байт
-									this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-									// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
-							}
-							// Если данные мы все получили, выходим
-							if(!receive || this->_buffer.empty()) break;
-						}
-						// Устанавливаем метку завершения работы
-						Stop:
-						// Если получение данных выполнено
-						if(completed){
+		// Если установлена функция обратного вызова для вывода данных в сыром виде
+		if(this->_callback.is("raw"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <const char *, const size_t> ("raw", buffer, size);
+		// Выполняем обработку полученных данных
+		else {
+			// Создаём объект холдирования
+			hold_t <event_t> hold(this->_events);
+			// Если событие соответствует разрешённому
+			if(hold.access({event_t::CONNECT}, event_t::READ)){
+				// Определяем тип агента
+				switch(static_cast <uint8_t> (this->_agent)){
+					// Если протоколом агента является HTTP-клиент
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Если список ответов получен
+						if(!this->_requests.empty()){
+							// Флаг удачного получения данных
+							bool receive = false;
+							// Флаг завершения работы
+							bool completed = false;
+							// Получаем идентификатор потока
+							const int32_t sid = this->_requests.begin()->first;
 							// Если функция обратного вызова активности потока установлена
-							if(this->_callback.is("stream"))
+							if(!this->_mode && (this->_mode = this->_callback.is("stream")))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
-							// Если функция обратного вызова установлена, выводим сообщение
-							if(this->_resultCallback.is("entity"))
-								// Выполняем функцию обратного вызова дисконнекта
-								this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
-							// Выполняем очистку функций обратного вызова
-							this->_resultCallback.clear();
-							// Получаем параметры запроса
-							const u_int code = this->_http.response().code;
-							// Если установлена функция отлова завершения запроса
-							if((code >= 200) && this->_callback.is("end"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
-							// Выполняем очистку параметров HTTP-запроса
-							this->_http.clear();
-							// Выполняем сброс состояния HTTP-парсера
-							this->_http.reset();
-							// Если подключение выполнено и список запросов не пустой
-							if((code >= 200) && (this->_bid > 0) && !this->_requests.empty())
-								// Выполняем запрос на удалённый сервер
-								this->submit(this->_requests.begin()->second);
+								this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::OPEN);
+							// Добавляем полученные данные в буфер
+							this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+							// Выполняем обработку полученных данных
+							while(!this->_active){
+								// Выполняем парсинг полученных данных
+								size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
+								// Если все данные получены
+								if((completed = this->_http.is(http_t::state_t::END))){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										{
+											// Получаем данные ответа
+											const auto & response = this->_http.process(http_t::process_t::RESPONSE, this->_http.response());
+											// Если параметры ответа получены
+											if(!response.empty()){
+												// Выводим заголовок ответа
+												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												// Выводим параметры ответа
+												cout << string(response.begin(), response.end()) << endl << endl;
+												// Если тело ответа существует
+												if(!this->_http.body().empty())
+													// Выводим сообщение о выводе чанка тела
+													cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
+												// Иначе устанавливаем перенос строки
+												else cout << endl;
+											}
+										}
+									#endif
+									// Выполняем препарирование полученных данных
+									switch(static_cast <uint8_t> (this->prepare(sid, bid, dynamic_cast <client::core_t *> (core)))){
+										// Если необходимо выполнить остановку обработки
+										case static_cast <uint8_t> (status_t::STOP):
+											// Выполняем завершение работы
+											goto Stop;
+										// Если необходимо выполнить переход к следующему этапу обработки
+										case static_cast <uint8_t> (status_t::NEXT):
+											// Выполняем переход к следующему этапу обработки
+											goto Next;
+										// Если необходимо выполнить пропуск обработки данных
+										case static_cast <uint8_t> (status_t::SKIP):
+											// Завершаем работу
+											return;
+									}
+								}
+								// Устанавливаем метку продолжения обработки пайплайна
+								Next:
+								// Если парсер обработал какое-то количество байт
+								if((receive = ((bytes > 0) && !this->_buffer.empty()))){
+									// Если размер буфера больше количества удаляемых байт
+									if((receive = (this->_buffer.size() >= bytes)))
+										// Удаляем количество обработанных байт
+										this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+										// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+								}
+								// Если данные мы все получили, выходим
+								if(!receive || this->_buffer.empty()) break;
+							}
+							// Устанавливаем метку завершения работы
+							Stop:
+							// Если получение данных выполнено
+							if(completed){
+								// Если функция обратного вызова активности потока установлена
+								if(this->_callback.is("stream"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
+								// Если функция обратного вызова установлена, выводим сообщение
+								if(this->_resultCallback.is("entity"))
+									// Выполняем функцию обратного вызова дисконнекта
+									this->_resultCallback.bind <const int32_t, const u_int, const string, const vector <char>> ("entity");
+								// Выполняем очистку функций обратного вызова
+								this->_resultCallback.clear();
+								// Получаем параметры запроса
+								const u_int code = this->_http.response().code;
+								// Если установлена функция отлова завершения запроса
+								if((code >= 200) && this->_callback.is("end"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+								// Выполняем очистку параметров HTTP-запроса
+								this->_http.clear();
+								// Выполняем сброс состояния HTTP-парсера
+								this->_http.reset();
+								// Если подключение выполнено и список запросов не пустой
+								if((code >= 200) && (this->_bid > 0) && !this->_requests.empty())
+									// Выполняем запрос на удалённый сервер
+									this->submit(this->_requests.begin()->second);
+							}
 						}
-					}
-				} break;
-				// Если протоколом агента является WebSocket-клиент
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем переброс вызова чтения на клиент WebSocket
-					this->_ws1.readCallback(buffer, size, bid, sid, core);
-				break;
+					} break;
+					// Если протоколом агента является WebSocket-клиент
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем переброс вызова чтения на клиент WebSocket
+						this->_ws1.readCallback(buffer, size, bid, sid, core);
+					break;
+				}
 			}
 		}
 	}
@@ -999,6 +1006,16 @@ void awh::client::Http1::on(function <void (const log_t::flag_t, const http::err
 	this->_ws1.on(callback);
 	// Устанавливаем функцию обратного вызова для вывода ошибок
 	this->_http.on(std::bind(&http1_t::errors, this, _1, _2, _3, _4));
+}
+/**
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * @param callback функция обратного вызова
+ */
+void awh::client::Http1::on(function <void (const char *, const size_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
+	// Выполняем установку функции обратного вызова для WebSocket-клиента
+	this->_ws1.on(callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока

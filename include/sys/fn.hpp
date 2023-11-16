@@ -58,13 +58,13 @@ namespace awh {
 				virtual ~Function() noexcept {}
 			};
 			/**
-			 * Parameters Структура параметров функцкии
+			 * Signature Структура параметров функцкии
 			 */
-			struct Parameters {
+			struct Signature {
 				/**
-				 * ~Parameters Деструктор
+				 * ~Signature Деструктор
 				 */
-				virtual ~Parameters() noexcept {}
+				virtual ~Signature() noexcept {}
 			};
 			/**
 			 * Шаблон базовой функции
@@ -89,25 +89,142 @@ namespace awh {
 			 */
 			template <typename... A>
 			/**
-			 * BasicParameters Структура базовых параметров
+			 * BasicSignature Структура базовых параметров
 			 */
-			struct BasicParameters : Parameters {
+			struct BasicSignature : Signature {
 				// Параметры базовой функции
 				std::tuple <A...> pm;
 				/**
-				 * BasicParameters Конструктор
+				 * BasicSignature Конструктор
 				 * @param pm параметры базовой функции для установки
 				 */
-				BasicParameters(std::tuple <A...> pm) noexcept : pm(pm) {}
+				BasicSignature(std::tuple <A...> pm) noexcept : pm(pm) {}
 			};
+		public:
+			// Создаём тип данных функций обратного вызова
+			typedef map <uint64_t, std::shared_ptr <Function>> fns_t;
+			// Создаём тип данных сигнатур функций обратного вызова
+			typedef map <uint64_t, std::shared_ptr <Signature>> sigs_t;
 		private:
-			// Список параметров базовых функций
-			map <uint64_t, std::unique_ptr <Parameters>> _params;
 			// Список функций обратного вызова
-			map <uint64_t, std::unique_ptr <Function>> _callbacks;
+			fns_t _functions;
+			// Список сигнатур функций обратного вызова
+			sigs_t _signatures;
 		private:
 			// Создаём объект работы с логами
 			const log_t * _log;
+		public:
+			/**
+			 * dump Метод получения дампа функций обратного вызова
+			 * @return std::pair <const fns_t *, const sigs_t *> 
+			 */
+			std::pair <const fns_t *, const sigs_t *> dump() const noexcept {
+				// Выводим дамп функций обратного вызова
+				return std::make_pair(&this->_functions, &this->_signatures);
+			}
+			/**
+			 * dump Метод установки дампа функций обратного вызова
+			 * @param data данные функций обратного вызова
+			 */
+			void dump(const std::pair <const fns_t *, const sigs_t *> & data) noexcept {
+				// Выполняем очистку текущего списка функций обратного вызова
+				this->clear();
+				// Если данные функций обратного вызова переданы
+				if((data.first != nullptr) && !data.first->empty())
+					// Выполняем установку функций обратного вызова
+					this->_functions = (* data.first);
+				// Если данные сигнатур функций обратного вызова переданы
+				if((data.second != nullptr) && !data.second->empty())
+					// Выполняем установку сигнатур функций обратного вызова
+					this->_signatures = (* data.second);
+			}
+		public:
+			/**
+			 * dump Метод извлечения данных функции обратного вызова по её имени
+			 * @param name название функции обратного вызова
+			 * @return     дамп функции обратного вызова
+			 */
+			std::pair <std::shared_ptr <Function>, std::shared_ptr <Signature>> dump(const string & name) const noexcept {
+				// Если название функции обратного вызова передано
+				if(!name.empty())
+					// Выводим получение дампа функции обратного вызова
+					return this->dump(this->_idw.id(name));
+				// Выводим результат работы функции
+				return std::make_pair(nullptr, nullptr);
+			}
+			/**
+			 * dump Метод извлечения данных функции обратного вызова по её идентификатору
+			 * @param idw идентификатор функции обратного вызова
+			 * @return    дамп функции обратного вызова
+			 */
+			std::pair <std::shared_ptr <Function>, std::shared_ptr <Signature>> dump(const uint64_t idw) const noexcept {
+				// Результат работы функции
+				std::pair <std::shared_ptr <Function>, std::shared_ptr <Signature>> result = std::make_pair(nullptr, nullptr);
+				// Если название функции обратного вызова передано
+				if(idw > 0){
+					{
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_functions.find(idw);
+						// Если функция существует
+						if(it != this->_functions.end())
+							// Устанавливаем функцию обратного вызова
+							result.first = it->second;
+					}{
+						// Выполняем поиск существующих параметров функции обратного вызова
+						auto it = this->_signatures.find(idw);
+						// Если параметры функции обратного вызова существуют
+						if(it != this->_signatures.end())
+							// Устанавливаем существующие параметры функции обратного вызова
+							result.second = it->second;
+					}
+				}
+				// Выводим результат работы функции
+				return result;
+			}
+		public:
+			/**
+			 * dump Метод установки данных функции обратного вызова по её идентификатору
+			 * @param name название функции обратного вызова
+			 * @param data дамп функции обратного вызова
+			 */
+			void dump(const string & name, const std::pair <std::shared_ptr <Function>, std::shared_ptr <Signature>> & data) noexcept {
+				// Если название функции обратного вызова передано
+				if(!name.empty())
+					// Выполняем установку данных функции обратного вызова
+					this->dump(this->_idw.id(name), data);
+			}
+			/**
+			 * dump Метод установки данных функции обратного вызова по её идентификатору
+			 * @param idw  идентификатор функции обратного вызова
+			 * @param data дамп функции обратного вызова
+			 */
+			void dump(const uint64_t idw, const std::pair <std::shared_ptr <Function>, std::shared_ptr <Signature>> & data) noexcept {
+				// Если название функции обратного вызова передано
+				if(idw > 0){
+					// Если данные функции обратного вызова переданы
+					if(data.first != nullptr){
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_functions.find(idw);
+						// Если функция существует
+						if(it != this->_functions.end())
+							// Устанавливаем функцию обратного вызова
+							it->second = data.first;
+						// Устанавливаем новую функцию обратного вызова
+						else this->_functions.emplace(idw, data.first);
+					}
+					// Если параметры функции обратного вызова переданы
+					if(data.second != nullptr){
+						// Выполняем поиск существующих параметров функции обратного вызова
+						auto it = this->_signatures.find(idw);
+						// Если параметры функции обратного вызова существуют
+						if(it != this->_signatures.end())
+							// Устанавливаем существующие параметры функции обратного вызова
+							it->second = data.second;
+						// Устанавливаем новые параметры функции обратного вызова
+						else this->_signatures.emplace(idw, data.second);
+					}
+				}
+			}
 		public:
 			/**
 			 * is Метод проверки наличия функции обратного вызова
@@ -125,7 +242,7 @@ namespace awh {
 			 */
 			bool is(const uint64_t idw) const noexcept {
 				// Выводим результат проверки
-				return ((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end()));
+				return ((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end()));
 			}
 		public:
 			/**
@@ -133,9 +250,9 @@ namespace awh {
 			 */
 			void clear() noexcept {
 				// Выполняем очистку параметров функций обратного вызова
-				this->_params.clear();
+				this->_signatures.clear();
 				// Выполняем очистку функций обратного вызова
-				this->_callbacks.clear();
+				this->_functions.clear();
 			}
 		public:
 			/**
@@ -157,18 +274,18 @@ namespace awh {
 				if(idw > 0){
 					{
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_callbacks.find(idw);
+						auto it = this->_functions.find(idw);
 						// Если функция существует
-						if(it != this->_callbacks.end())
+						if(it != this->_functions.end())
 							// Удаляем функцию обратного вызова
-							this->_callbacks.erase(it);
+							this->_functions.erase(it);
 					}{
 						// Выполняем поиск существующих параметров функции обратного вызова
-						auto it = this->_params.find(idw);
+						auto it = this->_signatures.find(idw);
 						// Если параметры функции обратного вызова существуют
-						if(it != this->_params.end())
+						if(it != this->_signatures.end())
 							// Удаляем параметры функции обратного вызова
-							this->_params.erase(it);
+							this->_signatures.erase(it);
 					}
 				}
 			}
@@ -193,13 +310,13 @@ namespace awh {
 						// Получаем идентификатор обратного вызова
 						const uint64_t idw = this->_idw.id(name);
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_callbacks.find(idw);
+						auto it = this->_functions.find(idw);
 						// Если функция такая уже существует
-						if(it != this->_callbacks.end())
+						if(it != this->_functions.end())
 							// Устанавливаем новую функцию обратного вызова
-							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 						// Если функция ещё не существует, создаём новую функцию
-						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
 					/**
 					 * Если возникает ошибка
 					 */
@@ -227,13 +344,13 @@ namespace awh {
 					 */
 					try {
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_callbacks.find(idw);
+						auto it = this->_functions.find(idw);
 						// Если функция такая уже существует
-						if(it != this->_callbacks.end())
+						if(it != this->_functions.end())
 							// Устанавливаем новую функцию обратного вызова
-							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 						// Если функция ещё не существует, создаём новую функцию
-						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
 					/**
 					 * Если возникает ошибка
 					 */
@@ -267,21 +384,21 @@ namespace awh {
 						// Создаём объект параметров функции
 						std::tuple <Args...> pm = std::make_tuple(args...);
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_callbacks.find(idw);
+						auto it = this->_functions.find(idw);
 						// Если функция такая уже существует
-						if(it != this->_callbacks.end())
+						if(it != this->_functions.end())
 							// Устанавливаем новую функцию обратного вызова
-							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 						// Если функция ещё не существует, создаём новую функцию
-						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
 						// Выполняем поиск существующих параметров функции обратного вызова
-						auto jt = this->_params.find(idw);
+						auto jt = this->_signatures.find(idw);
 						// Если параметры уже существуют
-						if(jt != this->_params.end())
+						if(jt != this->_signatures.end())
 							// Устанавливаем новый список параметров
-							jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
+							jt->second = std::shared_ptr <Signature> (new BasicSignature <Args...> (std::forward <std::tuple <Args...>> (pm)));
 						// Если параметры ещё не существуют, создаём новую функцию
-						else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+						else this->_signatures.emplace(idw, std::shared_ptr <Signature> (new BasicSignature <Args...> (std::forward <std::tuple <Args...>> (pm))));
 					/**
 					 * Если возникает ошибка
 					 */
@@ -313,21 +430,21 @@ namespace awh {
 						// Создаём объект параметров функции
 						std::tuple <Args...> pm = std::make_tuple(args...);
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_callbacks.find(idw);
+						auto it = this->_functions.find(idw);
 						// Если функция такая уже существует
-						if(it != this->_callbacks.end())
+						if(it != this->_functions.end())
 							// Устанавливаем новую функцию обратного вызова
-							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 						// Если функция ещё не существует, создаём новую функцию
-						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
 						// Выполняем поиск существующих параметров функции обратного вызова
-						auto jt = this->_params.find(idw);
+						auto jt = this->_signatures.find(idw);
 						// Если параметры уже существуют
-						if(jt != this->_params.end())
+						if(jt != this->_signatures.end())
 							// Устанавливаем новый список параметров
-							jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
+							jt->second = std::shared_ptr <Signature> (new BasicSignature <Args...> (std::forward <std::tuple <Args...>> (pm)));
 						// Если параметры ещё не существуют, создаём новую функцию
-						else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+						else this->_signatures.emplace(idw, std::shared_ptr <Signature> (new BasicSignature <Args...> (std::forward <std::tuple <Args...>> (pm))));
 					/**
 					 * Если возникает ошибка
 					 */
@@ -356,9 +473,9 @@ namespace awh {
 					// Получаем идентификатор обратного вызова
 					const uint64_t idw = this->_idw.id(name);
 					// Выполняем поиск функции обратного вызова
-					auto it = this->_callbacks.find(idw);
+					auto it = this->_functions.find(idw);
 					// Если функция обратного вызова найдена
-					if(it != this->_callbacks.end()){
+					if(it != this->_functions.end()){
 						// Получаем функцию обратного вызова
 						const Function & fn = (* it->second);
 						// Получаем функцию обратного вызова в нужном нам виде
@@ -384,9 +501,9 @@ namespace awh {
 				// Если название функции передано
 				if(idw > 0){
 					// Выполняем поиск функции обратного вызова
-					auto it = this->_callbacks.find(idw);
+					auto it = this->_functions.find(idw);
 					// Если функция обратного вызова найдена
-					if(it != this->_callbacks.end()){
+					if(it != this->_functions.end()){
 						// Получаем функцию обратного вызова
 						const Function & fn = (* it->second);
 						// Получаем функцию обратного вызова в нужном нам виде
@@ -407,9 +524,9 @@ namespace awh {
 			 */
 			void call() const noexcept {
 				// Если функции обратного вызова существуют
-				if(!this->_callbacks.empty()){
+				if(!this->_functions.empty()){
 					// Выполняем переход по всему списку обратных функций
-					for(auto & item : this->_callbacks){
+					for(auto & item : this->_functions){
 						/**
 						 * Выполняем отлов ошибок
 						 */
@@ -441,7 +558,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -473,7 +590,7 @@ namespace awh {
 			 */
 			void call(const uint64_t idw) const noexcept {
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -509,7 +626,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -543,7 +660,7 @@ namespace awh {
 			 */
 			void call(const uint64_t idw, Args... args) const noexcept {
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -578,9 +695,9 @@ namespace awh {
 				// Результат работы функции
 				vector <A> result;
 				// Если функции обратного вызова существуют
-				if(!this->_callbacks.empty()){
+				if(!this->_functions.empty()){
 					// Выполняем переход по всему списку обратных функций
-					for(auto & item : this->_callbacks){
+					for(auto & item : this->_functions){
 						/**
 						 * Выполняем отлов ошибок
 						 */
@@ -617,7 +734,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -654,7 +771,7 @@ namespace awh {
 				// Результат работы функции
 				A result = A();
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -695,7 +812,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -734,7 +851,7 @@ namespace awh {
 				// Результат работы функции
 				A result = A();
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -768,25 +885,25 @@ namespace awh {
 			 */
 			void bind() const noexcept {
 				// Если функции обратного вызова существуют
-				if(!this->_callbacks.empty()){
+				if(!this->_functions.empty()){
 					// Выполняем переход по всему списку обратных функций
-					for(auto & item : this->_callbacks){
+					for(auto & item : this->_functions){
 						/**
 						 * Выполняем отлов ошибок
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(item.first);
+							auto it = this->_signatures.find(item.first);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем функцию обратного вызова
 								const Function & fn = (* item.second);
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Выполняем функцию обратного вызова
 								std::apply(
 									static_cast <const BasicFunction <void (A...)> &> (fn).fn,
-									static_cast <const BasicParameters <A...> &> (pm).pm
+									static_cast <const BasicSignature <A...> &> (pm).pm
 								);
 							}
 						/**
@@ -812,7 +929,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -822,13 +939,13 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(idw);
+							auto it = this->_signatures.find(idw);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Выполняем функцию обратного вызова
-								std::apply(fn, static_cast <const BasicParameters <A...> &> (pm).pm);
+								std::apply(fn, static_cast <const BasicSignature <A...> &> (pm).pm);
 							}
 						/**
 						 * Если возникает ошибка
@@ -851,7 +968,7 @@ namespace awh {
 			 */
 			void bind(const uint64_t idw) const noexcept {
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <void (A...)> (idw);
 					// Если функция получена, выполняем её
@@ -861,13 +978,13 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(idw);
+							auto it = this->_signatures.find(idw);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Выполняем функцию обратного вызова
-								std::apply(fn, static_cast <const BasicParameters <A...> &> (pm).pm);
+								std::apply(fn, static_cast <const BasicSignature <A...> &> (pm).pm);
 							}
 						/**
 						 * Если возникает ошибка
@@ -893,27 +1010,27 @@ namespace awh {
 				// Результат работы функции
 				vector <A> result;
 				// Если функции обратного вызова существуют
-				if(!this->_callbacks.empty()){
+				if(!this->_functions.empty()){
 					// Выполняем переход по всему списку обратных функций
-					for(auto & item : this->_callbacks){
+					for(auto & item : this->_functions){
 						/**
 						 * Выполняем отлов ошибок
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(item.first);
+							auto it = this->_signatures.find(item.first);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем функцию обратного вызова
 								const Function & fn = (* item.second);
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Добавляем полученный результат в массив
 								result.push_back(
 									// Выполняем функцию обратного вызова
 									std::apply(
 										static_cast <const BasicFunction <A (B...)> &> (fn).fn,
-										static_cast <const BasicParameters <B...> &> (pm).pm
+										static_cast <const BasicSignature <B...> &> (pm).pm
 									)
 								);
 							}
@@ -945,7 +1062,7 @@ namespace awh {
 				// Получаем идентификатор обратного вызова
 				const uint64_t idw = this->_idw.id(name);
 				// Если название функции передано
-				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -955,13 +1072,13 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(idw);
+							auto it = this->_signatures.find(idw);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Выполняем функцию обратного вызова
-								result = std::apply(fn, static_cast <const BasicParameters <B...> &> (pm).pm);
+								result = std::apply(fn, static_cast <const BasicSignature <B...> &> (pm).pm);
 							}
 						/**
 						 * Если возникает ошибка
@@ -989,7 +1106,7 @@ namespace awh {
 				// Результат работы функции
 				A result = A();
 				// Если название функции передано
-				if((idw > 0) && !this->_callbacks.empty() && (this->_callbacks.find(idw) != this->_callbacks.end())){
+				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
 					auto fn = this->get <A (B...)> (idw);
 					// Если функция получена, выполняем её
@@ -999,13 +1116,13 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск параметров функции обратного вызова
-							auto it = this->_params.find(idw);
+							auto it = this->_signatures.find(idw);
 							// Если параметры функции обратного вызова найдены
-							if(it != this->_params.end()){
+							if(it != this->_signatures.end()){
 								// Получаем параметры функции обратного вызова
-								const Parameters & pm = (* it->second);
+								const Signature & pm = (* it->second);
 								// Выполняем функцию обратного вызова
-								result = std::apply(fn, static_cast <const BasicParameters <B...> &> (pm).pm);
+								result = std::apply(fn, static_cast <const BasicSignature <B...> &> (pm).pm);
 							}
 						/**
 						 * Если возникает ошибка

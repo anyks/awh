@@ -127,7 +127,7 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем запрет вывода информационных сообщений
 	 */
-	proxy.mode({server::proxy_t::flag_t::NOT_INFO});
+	// proxy.mode({server::proxy_t::flag_t::NOT_INFO});
 	// Отключаем валидацию сертификата
 	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);
 	// Устанавливаем адрес сертификата

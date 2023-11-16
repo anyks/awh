@@ -336,6 +336,12 @@ namespace awh {
 				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const char *, const size_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
