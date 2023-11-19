@@ -192,6 +192,14 @@ namespace awh {
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
+				 * send Метод отправки данных в бинарном виде клиенту
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер бинарных данных передаваемых клиенту
+				 * @param size   размер сообщения в байтах
+				 */
+				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
@@ -246,7 +254,7 @@ namespace awh {
 				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept;
+				void on(function <bool (const uint64_t, const char *, const size_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока

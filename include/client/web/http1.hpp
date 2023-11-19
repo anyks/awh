@@ -187,6 +187,12 @@ namespace awh {
 				 */
 				int32_t send(const request_t & request) noexcept;
 				/**
+				 * send Метод отправки данных в бинарном виде серверу
+				 * @param buffer буфер бинарных данных передаваемых серверу
+				 * @param size   размер сообщения в байтах
+				 */
+				void send(const char * buffer, const size_t size) noexcept;
+				/**
 				 * send Метод отправки тела сообщения на сервер
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
@@ -247,7 +253,7 @@ namespace awh {
 				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const char *, const size_t)> callback) noexcept;
+				void on(function <bool (const char *, const size_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока

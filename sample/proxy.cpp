@@ -125,9 +125,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем временный ключ сессии
 	// proxy.opaque("keySession");
 	/**
-	 * 1. Устанавливаем запрет вывода информационных сообщений
+	 * 1. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
-	// proxy.mode({server::proxy_t::flag_t::NOT_INFO});
+	proxy.mode({server::proxy_t::flag_t::CONNECT_METHOD});
 	// Отключаем валидацию сертификата
 	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);
 	// Устанавливаем адрес сертификата

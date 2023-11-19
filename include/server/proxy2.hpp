@@ -64,7 +64,7 @@ namespace awh {
 					DECRYPT         = 0x05, // Флаг предписывающий выполнять расшифровку зашифрованного контента при передаче клиенту
 					VERIFY_SSL      = 0x06, // Флаг выполнения проверки сертификата SSL
 					RECOMPRESS      = 0x07, // Флаг выполнения рекомпрессинга передаваемых данных
-					CONNECT_METHOD  = 0x08, // Флаг запрещающий метод CONNECT
+					CONNECT_METHOD  = 0x08, // Флаг разрешающий метод CONNECT
 					PROXY_NOCONNECT = 0x09  // Флаг отключающий метод CONNECT для прокси-клиента 
 				};
 			private:
@@ -79,6 +79,22 @@ namespace awh {
 					 */
 					CA() noexcept : path{""}, trusted{""} {}
 				} ca_t;
+				/**
+				 * Request Объект параметров запроса
+				 */
+				typedef struct Request {
+					awh::web_t::req_t params;                    // Параметры запроса
+					vector <char> entity;                        // Тело запроса
+					unordered_multimap <string, string> headers; // Заголовки запроса
+				} request_t;
+				/**
+				 * Response Объект параметров ответа
+				 */
+				typedef struct Response {
+					awh::web_t::res_t params;                    // Параметры ответа
+					vector <char> entity;                        // Тело ответа
+					unordered_multimap <string, string> headers; // Заголовки ответа
+				} response_t;
 				/**
 				 * KeepAlive Структура параметров жизни подключения
 				 */
@@ -171,6 +187,12 @@ namespace awh {
 				 * Client Объект клиента
 				 */
 				typedef struct Client {
+					// Флаг установленного подключения
+					bool connected;
+					// Объект параметров запроса
+					request_t request;
+					// Объект параметров ответа
+					response_t response;
 					// Объект сетевого ядра
 					client::core_t core;
 					// Объект активного клиента
@@ -180,7 +202,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Client(const fmk_t * fmk, const log_t * log) noexcept : core(fmk, log), awh(&core, fmk, log) {}
+					Client(const fmk_t * fmk, const log_t * log) noexcept : connected(false), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента
@@ -215,6 +237,8 @@ namespace awh {
 					 compressors({http_t::compress_t::BROTLI, http_t::compress_t::GZIP, http_t::compress_t::DEFLATE}) {}
 				} settings_t;
 			private:
+				// Объект работы с URI ссылками
+				uri_t _uri;
 				// Объект сетевого ядра
 				core_t _core;
 				// Объект активного сервера
@@ -274,6 +298,15 @@ namespace awh {
 				void endClient(const int32_t sid, const uint64_t bid, const client::web_t::direct_t direct) noexcept;
 			private:
 				/**
+				 * responseClient Метод получения сообщения с удалённого сервера
+				 * @param id      идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 */
+				void responseClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message) noexcept;
+			private:
+				/**
 				 * activeClient Метод идентификации активности на Web сервере (для клиента)
 				 * @param bid  идентификатор брокера (клиента)
 				 * @param mode режим события подключения
@@ -287,19 +320,60 @@ namespace awh {
 				void activeServer(const uint64_t bid, const server::web_t::mode_t mode) noexcept;
 			private:
 				/**
-				 * handshakeClient Метод получения удачного запроса (для клиента)
-				 * @param sid   идентификатор потока
-				 * @param bid   идентификатор брокера
-				 * @param agent идентификатор агента клиента
+				 * entityClient Метод получения тела ответа с сервера клиенту
+				 * @param sid     идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 * @param entity  тело ответа клиенту с сервера
 				 */
-				void handshakeClient(const int32_t sid, const uint64_t bid, const client::web_t::agent_t agent) noexcept;
+				void entityClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const vector <char> & entity) noexcept;
 				/**
-				 * handshakeServer Метод получения удачного запроса (для сервера)
+				 * entityServer Метод получения тела запроса с клиента на сервере
+				 * @param sid    идентификатор потока
+				 * @param bid    идентификатор брокера (клиента)
+				 * @param method метод запроса на уделённый сервер
+				 * @param url    URL-адрес параметров запроса
+				 * @param entity тело запроса с клиента на сервере
+				 */
+				void entityServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity) noexcept;
+			private:
+				/**
+				 * headersClient Метод получения заголовков ответа с сервера клиенту
+				 * @param sid     идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 * @param headers заголовки HTTP-ответа
+				 */
+				void headersClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				/**
+				 * headersServer Метод получения заголовков запроса с клиента на сервере
+				 * @param sid     идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param method  метод запроса на уделённый сервер
+				 * @param url     URL-адрес параметров запроса
+				 * @param headers заголовки HTTP-запроса
+				 */
+				void headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
+			private:
+				/**
+				 * handshake Метод получения удачного запроса (для сервера)
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
 				 * @param agent идентификатор агента клиента
 				 */
-				void handshakeServer(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept;
+				void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept;
+			private:
+				/**
+				 * raw Метод получения сырых данных с сервера и клиента
+				 * @param broker брокер получивший данные
+				 * @param bid    идентификатор брокера (клиента)
+				 * @param buffer буфер бинарных данных
+				 * @param size   разбмер буфера бинарных данных
+				 * @return       флаг обязательной следующей обработки данных
+				 */
+				bool raw(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * proto Метод извлечения поддерживаемого протокола подключения

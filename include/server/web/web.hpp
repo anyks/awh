@@ -330,7 +330,7 @@ namespace awh {
 				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept;
+				virtual void on(function <bool (const uint64_t, const char *, const size_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока

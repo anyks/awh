@@ -57,6 +57,15 @@ int32_t awh::client::AWH::send(const web_t::request_t & request) noexcept {
 	return this->_http.send(request);
 }
 /**
+ * send Метод отправки данных в бинарном виде серверу
+ * @param buffer буфер бинарных данных передаваемых серверу
+ * @param size   размер сообщения в байтах
+ */
+void awh::client::AWH::send(const char * buffer, const size_t size) noexcept {
+	// Выполняем отправку сообщения на удалённый сервер в сыром виде
+	this->_http.send(buffer, size);
+}
+/**
  * send Метод отправки тела сообщения на сервер
  * @param id     идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
@@ -561,7 +570,7 @@ void awh::client::AWH::on(function <void (const int32_t, const vector <char> &)>
  * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const char *, const size_t)> callback) noexcept {
+void awh::client::AWH::on(function <bool (const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }

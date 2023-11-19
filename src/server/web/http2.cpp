@@ -141,12 +141,14 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		// Флаг выполнения обработки полученных данных
+		bool process = false;
 		// Если установлена функция обратного вызова для вывода данных в сыром виде
-		if(this->_callback.is("raw"))
+		if(!(process = !this->_callback.is("raw")))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
-		// Выполняем обработку полученных данных
-		else {
+			process = this->_callback.apply <bool, const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
+		// Если обработка полученных данных разрешена
+		if(process){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -2420,7 +2422,7 @@ void awh::server::Http2::on(function <void (const uint64_t, const log_t::flag_t,
  * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
  * @param callback функция обратного вызова
  */
-void awh::server::Http2::on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept {
+void awh::server::Http2::on(function <bool (const uint64_t, const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web2_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-сервера

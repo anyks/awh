@@ -100,12 +100,14 @@ void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::client::Http1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		// Флаг выполнения обработки полученных данных
+		bool process = false;
 		// Если установлена функция обратного вызова для вывода данных в сыром виде
-		if(this->_callback.is("raw"))
+		if(!(process = !this->_callback.is("raw")))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const char *, const size_t> ("raw", buffer, size);
-		// Выполняем обработку полученных данных
-		else {
+			process = this->_callback.apply <bool, const char *, const size_t> ("raw", buffer, size);
+		// Если обработка полученных данных разрешена
+		if(process){
 			// Создаём объект холдирования
 			hold_t <event_t> hold(this->_events);
 			// Если событие соответствует разрешённому
@@ -841,6 +843,17 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 	return -1;
 }
 /**
+ * send Метод отправки данных в бинарном виде серверу
+ * @param buffer буфер бинарных данных передаваемых серверу
+ * @param size   размер сообщения в байтах
+ */
+void awh::client::Http1::send(const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков запроса серверу
+		const_cast <client::core_t *> (this->_core)->write(buffer, size, this->_bid);
+}
+/**
  * send Метод отправки тела сообщения на сервер
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
@@ -1011,7 +1024,7 @@ void awh::client::Http1::on(function <void (const log_t::flag_t, const http::err
  * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
  * @param callback функция обратного вызова
  */
-void awh::client::Http1::on(function <void (const char *, const size_t)> callback) noexcept {
+void awh::client::Http1::on(function <bool (const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 	// Выполняем установку функции обратного вызова для WebSocket-клиента

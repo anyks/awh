@@ -149,12 +149,14 @@ void awh::server::WebSocket1::disconnectCallback(const uint64_t bid, const uint1
 void awh::server::WebSocket1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+		// Флаг выполнения обработки полученных данных
+		bool process = false;
 		// Если установлена функция обратного вызова для вывода данных в сыром виде
-		if(this->_callback.is("raw"))
+		if(!(process = !this->_callback.is("raw")))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
-		// Выполняем обработку полученных данных
-		else {
+			process = this->_callback.apply <bool, const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
+		// Если обработка полученных данных разрешена
+		if(process){
 			// Получаем параметры активного клиента
 			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -1041,6 +1043,18 @@ void awh::server::WebSocket1::sendMessage(const uint64_t bid, const vector <char
 	}
 }
 /**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ */
+void awh::server::WebSocket1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков ответа клиенту
+		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
+}
+/**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
@@ -1116,7 +1130,7 @@ void awh::server::WebSocket1::on(function <void (const uint64_t, const log_t::fl
  * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket1::on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept {
+void awh::server::WebSocket1::on(function <bool (const uint64_t, const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	web_t::on(callback);
 }

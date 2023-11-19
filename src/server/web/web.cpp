@@ -272,9 +272,9 @@ void awh::server::Web::on(function <void (const uint64_t, const log_t::flag_t, c
  * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
  * @param callback функция обратного вызова
  */
-void awh::server::Web::on(function <void (const uint64_t, const char *, const size_t)> callback) noexcept {
+void awh::server::Web::on(function <bool (const uint64_t, const char *, const size_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const char *, const size_t)> ("raw", callback);
+	this->_callback.set <bool (const uint64_t, const char *, const size_t)> ("raw", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока
