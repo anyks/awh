@@ -2750,10 +2750,12 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Добавляем заголовок в ответ
 								response.append(this->_fmk->format("Proxy-Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						}
+						/*
 						// Устанавливаем Content-Type если не передан
 						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "Content-Type"))
 							// Добавляем заголовок в ответ
 							response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
+						*/
 						// Если заголовок не запрещён
 						if(!available[4] && !this->is(suite_t::BLACK, "X-Powered-By"))
 							// Добавляем название рабочей системы в ответ
@@ -3437,10 +3439,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						if(!available[1] && !this->is(suite_t::BLACK, "server"))
 							// Добавляем название сервера в ответ
 							result.push_back(make_pair("server", this->_ident.name));
+						/*
 						// Устанавливаем Content-Type если не передан
 						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "content-type"))
 							// Добавляем заголовок в ответ
 							result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
+						*/
 						// Если заголовок не запрещён
 						if(!available[4] && !this->is(suite_t::BLACK, "x-powered-by"))
 							// Добавляем название рабочей системы в ответ

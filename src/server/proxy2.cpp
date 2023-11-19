@@ -456,7 +456,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				// Формируем тело ответа
 				const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
 				// Если метод CONNECT запрещено использовать
-				this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {{"Connection", "close"}});
+				this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {{"Connection", "close"},{"Content-type", "text/html; charset=utf-8"}});
 				// Выходим из функции
 				return;
 			}
