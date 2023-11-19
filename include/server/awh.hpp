@@ -103,14 +103,6 @@ namespace awh {
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
-				 * send Метод отправки данных в бинарном виде клиенту
-				 * @param bid    идентификатор брокера
-				 * @param buffer буфер бинарных данных передаваемых клиенту
-				 * @param size   размер сообщения в байтах
-				 */
-				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
-			public:
-				/**
 				 * send Метод отправки тела сообщения клиенту
 				 * @param id     идентификатор потока HTTP
 				 * @param bid    идентификатор брокера
@@ -131,6 +123,14 @@ namespace awh {
 				 * @return        идентификатор нового запроса
 				 */
 				int32_t send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+			public:
+				/**
+				 * send Метод отправки данных в бинарном виде клиенту
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер бинарных данных передаваемых клиенту
+				 * @param size   размер сообщения в байтах
+				 */
+				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param bid     идентификатор брокера

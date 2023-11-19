@@ -180,18 +180,21 @@ namespace awh {
 				 * @param request объект запроса на удалённый сервер
 				 */
 				void submit(const request_t & request) noexcept;
+			public:
 				/**
 				 * send Метод отправки сообщения на сервер
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
 				int32_t send(const request_t & request) noexcept;
+			public:
 				/**
 				 * send Метод отправки данных в бинарном виде серверу
 				 * @param buffer буфер бинарных данных передаваемых серверу
 				 * @param size   размер сообщения в байтах
 				 */
 				void send(const char * buffer, const size_t size) noexcept;
+			public:
 				/**
 				 * send Метод отправки тела сообщения на сервер
 				 * @param buffer буфер бинарных данных передаваемых на сервер
@@ -200,6 +203,7 @@ namespace awh {
 				 * @return       результат отправки данных указанному клиенту
 				 */
 				bool send(const char * buffer, const size_t size, const bool end) noexcept;
+			public:
 				/**
 				 * send Метод отправки заголовков на сервер
 				 * @param url     адрес запроса на сервере

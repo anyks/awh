@@ -714,6 +714,7 @@ namespace awh {
 				 * @return       результат отправки данных указанному клиенту
 				 */
 				bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
+			public:
 				/**
 				 * send Метод отправки заголовков
 				 * @param id      идентификатор потока
@@ -723,6 +724,7 @@ namespace awh {
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
 				int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+			public:
 				/**
 				 * push Метод отправки пуш-уведомлений
 				 * @param id      идентификатор потока

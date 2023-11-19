@@ -748,6 +748,7 @@ namespace awh {
 				 * @return       результат отправки данных указанному клиенту
 				 */
 				bool send(const int32_t id, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
+			public:
 				/**
 				 * send Метод отправки заголовков на сервер
 				 * @param id      идентификатор потока

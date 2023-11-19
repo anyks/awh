@@ -997,18 +997,6 @@ void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
 	}
 }
 /**
- * send Метод отправки данных в бинарном виде клиенту
- * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных передаваемых клиенту
- * @param size   размер сообщения в байтах
- */
-void awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
-	// Если данные переданы верные
-	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
-		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
-}
-/**
  * send Метод отправки тела сообщения клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
@@ -1145,6 +1133,18 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 	}
 	// Выводим значение по умолчанию
 	return result;
+}
+/**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ */
+void awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков ответа клиенту
+		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
 }
 /**
  * send Метод отправки сообщения брокеру
