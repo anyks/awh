@@ -152,6 +152,9 @@ namespace awh {
 			// Флаг активного последнего события
 			event_t _event;
 		private:
+			// Максимальный размер фрейма
+			size_t _frameSize;
+		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
 		private:
@@ -493,7 +496,7 @@ namespace awh {
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			 _frameSize(16384), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Http2 Деструктор
 			 */

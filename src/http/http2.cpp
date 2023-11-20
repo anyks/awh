@@ -1449,9 +1449,13 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Флаги фрейма передаваемого по сети
 				uint8_t flags = NGHTTP2_FLAG_NONE;
 				// Если флаг установлен завершения кадра
-				if(flag == flag_t::END_STREAM)
+				if(flag == flag_t::END_STREAM){
+
+					cout << " ============== END " << endl;
+
 					// Устанавливаем флаг фрейма передаваемого по сети
 					flags = NGHTTP2_FLAG_END_STREAM;
+				}
 				// Выполняем формирование данных фрейма для отправки
 				const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 				// Если сформировать данные фрейма не вышло
@@ -1476,7 +1480,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Получаем общий размер буфера данных
 			left = (size - offset);
 			// Определяем размер отправляемых данных
-			actual = (left >= 16384 ? 16384 : left);
+			actual = (left >= this->_frameSize ? this->_frameSize : left);
 			// Выполняем создание буфера отправляемых данных
 			auto ret = this->_streams.emplace(id, std::make_pair(unique_ptr <char []> (new char [actual]), actual));
 			// Выполняем обнуление буфера данных
@@ -1484,7 +1488,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выполняем копирование данных буфера
 			::memcpy(ret.first->second.first.get(), buffer + offset, actual);
 			// Выполняем отправку данных по сети
-			if(sendFn(id, (left >= 16384 ? flag_t::NONE : flag)))
+			if(sendFn(id, (size > offset ? flag_t::NONE : flag)))
 				// Увеличиваем смещение в буфере
 				offset += actual;
 			// Если данные не отправлены
@@ -1988,17 +1992,16 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
-			
+			// Выполняем перебор полученных настроек
 			for(auto & item : settings){
-
+				// Если максимальный размер фрейма получен
 				if(item.settings_id == NGHTTP2_SETTINGS_MAX_FRAME_SIZE){
-					cout << " =============== " << item.value << endl;
+					// Выполняем установку максимального размера буфера
+					this->_frameSize = static_cast <size_t> (item.value);
+					// Выходим из цикла
 					break;
-				}
-
-				
+				}	
 			}
-			
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
