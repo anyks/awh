@@ -814,18 +814,20 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 		
-		cout << " ==================== " << it->second.second << endl;
+		cout << " ==================== " << it->second.size << endl;
 		
 		// Если передаваемый размер соответствует размеру буфера данных
-		if(it->second.second <= size){
+		if(it->second.size <= size){
 			// Выполняем копирование буфера данных
-			::memcpy(buffer, it->second.first.get(), it->second.second);
+			::memcpy(buffer, it->second.data.get(), it->second.size);
 			// Выполняем удаление буфера бинарных данных
 			self->_streams.erase(it);
 			// Устанавливаем размер полученных данных
-			result = it->second.second;
-			// Устанавливаем флаг, завершения чтения данных
-			// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
+			result = it->second.size;
+
+			if(it->second.end)
+				// Устанавливаем флаг, завершения чтения данных
+				(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 		// Если передаваемый размер данных больше основного буфера данных
 		} else {
 		
@@ -1549,11 +1551,22 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Определяем размер отправляемых данных
 			actual = (left >= 16384 ? 16384 : left);
 			// Выполняем создание буфера отправляемых данных
-			auto ret = this->_streams.emplace(id, make_pair(unique_ptr <char []> (new char [actual]), actual));
+			auto ret = this->_streams.emplace(id, stream_t());
+
+			
+
+			ret.first->second.size = actual;
+			ret.first->second.end = (left <= 16384);
+			ret.first->second.data = unique_ptr <char []> (new char [actual]);
+			
+			
+			
 			// Выполняем обнуление буфера данных
-			::memset(ret.first->second.first.get(), 0, actual);
+			::memset(ret.first->second.data.get(), 0, actual);
 			// Выполняем копирование данных буфера
-			::memcpy(ret.first->second.first.get(), buffer + offset, actual);
+			::memcpy(ret.first->second.data.get(), buffer + offset, actual);
+
+			
 
 			cout << " -------------------- " << actual << endl;
 
