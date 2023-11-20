@@ -1988,6 +1988,17 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
+			
+			for(auto & item : settings){
+
+				if(item.settings_id == NGHTTP2_SETTINGS_MAX_FRAME_SIZE){
+					cout << " =============== " << item.value << endl;
+					break;
+				}
+
+				
+			}
+			
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
