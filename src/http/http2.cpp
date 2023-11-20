@@ -1466,9 +1466,144 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выходим из функции
 			return false;
 		}
+		
+		
+		auto sendFn = [&fds, this](const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept -> bool {
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Если данные небыли записаны в сокет
+				if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
+					// Выполняем закрытие сокета для чтения
+					::_close(fds[0]);
+					// Выполняем закрытие сокета для записи
+					::_close(fds[1]);
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_DATA);
+					// Выходим из функции
+					return false;
+				}
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Если данные небыли записаны в сокет
+				if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
+					// Выполняем закрытие сокета для чтения
+					::close(fds[0]);
+					// Выполняем закрытие сокета для записи
+					::close(fds[1]);
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_DATA);
+					// Выходим из функции
+					return false;
+				}
+			#endif
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем закрытие подключения
+				::_close(fds[1]);
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Выполняем закрытие подключения
+				::close(fds[1]);
+			#endif
+			// Создаём объект передачи данных тела полезной нагрузки
+			nghttp2_data_provider data;
+			// Зануляем передаваемый контекст
+			data.source.ptr = nullptr;
+			// Устанавливаем файловый дескриптор
+			data.source.fd = fds[0];
+			// Устанавливаем функцию обратного вызова
+			data.read_callback = &http2_t::read;
+			// Если сессия инициализированна
+			if(this->_session != nullptr){
+				// Флаги фрейма передаваемого по сети
+				uint8_t flags = NGHTTP2_FLAG_NONE;
+				// Если флаг установлен завершения кадра
+				if(flag == flag_t::END_STREAM)
+					// Устанавливаем флаг фрейма передаваемого по сети
+					flags = NGHTTP2_FLAG_END_STREAM;
+				// Выполняем формирование данных фрейма для отправки
+				const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
+				// Если сформировать данные фрейма не вышло
+				if(nghttp2_is_fatal(rv)){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
+					// Выходим из функции
+					return false;
+				}
+			}
+			// Выводим результат
+			return true;
+		};
+
+		// Cмещение в буфере и отправляемый размер данных
+		size_t offset = 0, actual = 0, left = 0;
+		// Выполняем отправку данных пока всё не отправим
+		while((size - offset) > 0){
+			// Получаем общий размер буфера данных
+			left = (size - offset);
+			// Определяем размер отправляемых данных
+			actual = (left >= 4096 ? 4096 : left);
+			// Выполняем отправку данных по сети
+			if(sendFn(id, buffer + offset, actual, flag))
+				// Увеличиваем смещение в буфере
+				offset += actual;
+			// Если данные не отправлены
+			else {
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+		}
+		// Если сессия инициализированна
+		if(this->_session != nullptr){
+			// Фиксируем отправленный результат
+			const int rv = nghttp2_session_send(this->_session);
+			// Если зафиксифровать результат не вышло
+			if(nghttp2_is_fatal(rv)){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+		}
+		
+		
+		
 		/**
 		 * Методы только для OS Windows
 		 */
+		/*
 		#if defined(_WIN32) || defined(_WIN64)
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
@@ -1487,25 +1622,18 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
+		*/
 		/**
 		 * Для всех остальных операционных систем
 		 */
+		/*
 		#else
-
-			cout << " ------------------ 1 " << size << endl;
-
-			if(size > 4096)
-				const_cast <size_t &> (size) = 4096;
-
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
 				::close(fds[0]);
 				// Выполняем закрытие сокета для записи
 				::close(fds[1]);
-
-				cout << " ------------------ 2 " << size << endl;
-
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -1517,22 +1645,26 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
-
-			cout << " ------------------ 3 " << size << endl;
 		#endif
+		*/
 		/**
 		 * Методы только для OS Windows
 		 */
+		/*
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие подключения
 			::_close(fds[1]);
+		*/
 		/**
 		 * Для всех остальных операционных систем
 		 */
+		/*
 		#else
 			// Выполняем закрытие подключения
 			::close(fds[1]);
 		#endif
+		*/
+		/*
 		// Создаём объект передачи данных тела полезной нагрузки
 		nghttp2_data_provider data;
 		// Зануляем передаваемый контекст
@@ -1583,6 +1715,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
+		*/
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат

@@ -460,6 +460,10 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 									}
 									// Если мы получили флаг завершения потока
 									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+										// Если функция обратного вызова на получение удачного ответа установлена
+										if(this->_callback.is("handshake"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <const int32_t, const agent_t> ("handshake", sid, it->second->agent);
 										// Выполняем удаление выполненного воркера
 										this->_workers.erase(sid);
 										// Если установлена функция отлова завершения запроса
