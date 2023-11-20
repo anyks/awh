@@ -338,7 +338,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 				// Выполняем отключение клиента от сетевого ядра
 				this->_core.unbind(&it->second->core);
 				// Выполняем удаление клиента из списка клиентов
-				this->_clients.erase(it);
+				// this->_clients.erase(it); // ++++++++++++++++++++++++++++++
 			}
 		} break;
 	}
