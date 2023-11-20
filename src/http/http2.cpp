@@ -814,7 +814,7 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 		
-		cout << " ==================== " << it->second.size << endl;
+		cout << " ==================== " << it->second.size << " == " << it->second.end << endl;
 		
 		// Если передаваемый размер соответствует размеру буфера данных
 		if(it->second.size <= size){
