@@ -1494,6 +1494,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 
 			cout << " ------------------ 1 " << size << endl;
 
+			const_cast <size_t &> (size) = 4096;
+
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
