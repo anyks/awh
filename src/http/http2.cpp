@@ -1449,13 +1449,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Флаги фрейма передаваемого по сети
 				uint8_t flags = NGHTTP2_FLAG_NONE;
 				// Если флаг установлен завершения кадра
-				if(flag == flag_t::END_STREAM){
-
-					cout << " ============== END2 " << endl;
-
+				if(flag == flag_t::END_STREAM)
 					// Устанавливаем флаг фрейма передаваемого по сети
 					flags = NGHTTP2_FLAG_END_STREAM;
-				}
 				// Выполняем формирование данных фрейма для отправки
 				const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 				// Если сформировать данные фрейма не вышло
@@ -1473,11 +1469,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выводим результат
 			return true;
 		};
-
-
-		if(flag == flag_t::END_STREAM)
-			cout << " ============== END1 " << endl;
-
 		// Cмещение в буфере и отправляемый размер данных
 		size_t offset = 0, actual = 0, left = 0;
 		// Выполняем отправку данных пока всё не отправим
@@ -1506,9 +1497,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		}
 		// Если сессия инициализированна
 		if((this->_session != nullptr) && (flag == flag_t::END_STREAM)){
-			
-			cout << " ============== END3 " << endl;
-			
 			// Фиксируем отправленный результат
 			const int rv = nghttp2_session_send(this->_session);
 			// Если зафиксифровать результат не вышло
