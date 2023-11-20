@@ -1451,7 +1451,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Если флаг установлен завершения кадра
 				if(flag == flag_t::END_STREAM){
 
-					cout << " ============== END " << endl;
+					cout << " ============== END2 " << endl;
 
 					// Устанавливаем флаг фрейма передаваемого по сети
 					flags = NGHTTP2_FLAG_END_STREAM;
@@ -1473,6 +1473,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выводим результат
 			return true;
 		};
+
+
+		if(flag == flag_t::END_STREAM)
+			cout << " ============== END1 " << endl;
+
 		// Cмещение в буфере и отправляемый размер данных
 		size_t offset = 0, actual = 0, left = 0;
 		// Выполняем отправку данных пока всё не отправим
