@@ -1493,7 +1493,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			cout << " ++++++++++++++++++++1 " << actual << endl;
 			
 			// Выполняем отправку данных по сети
-			if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
+			// if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
+			if(sendFn(id, flag_t::NONE))
 				// Увеличиваем смещение в буфере
 				offset += actual;
 			// Если данные не отправлены
@@ -1506,6 +1507,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		}
 		// Если сессия инициализированна
 		if((this->_session != nullptr) && (flag == flag_t::END_STREAM)){
+			
+			sendFn(id, flag);
+			
 			// Фиксируем отправленный результат
 			const int rv = nghttp2_session_send(this->_session);
 			// Если зафиксифровать результат не вышло
