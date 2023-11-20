@@ -1574,7 +1574,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 
 			
 
-			cout << " -------------------- " << actual << endl;
+			cout << " -------------------- " << actual << " === " << (flag == flag_t::END_STREAM) << endl;
 
 			// Выполняем отправку данных по сети
 			if(sendFn(id, (left >= 16384 ? flag_t::NONE : flag)))
