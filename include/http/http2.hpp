@@ -348,16 +348,6 @@ namespace awh {
 			 * @return       результат отправки данных фрейма
 			 */
 			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
-
-			/**
-			 * sendData Метод отправки бинарных данных
-			 * @param id     идентификатор потока
-			 * @param buffer буфер бинарных данных передаваемых
-			 * @param size   размер передаваемых данных в байтах
-			 * @param flag   флаг передаваемого потока по сети
-			 * @return       результат отправки данных фрейма
-			 */
-			bool sendData2(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
 		public:
 			/**
 			 * sendPush Метод отправки push-уведомлений

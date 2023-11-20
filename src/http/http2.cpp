@@ -1503,7 +1503,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Получаем общий размер буфера данных
 			left = (size - offset);
 			// Определяем размер отправляемых данных
-			actual = (left >= this->_frameSize ? this->_frameSize : left);
+			actual = (left >= (this->_frameSize - 10) ? (this->_frameSize - 10) : left);
 			// Выполняем создание буфера отправляемых данных
 			auto ret = this->_streams.emplace(id, std::make_pair(unique_ptr <char []> (new char [actual]), actual));
 			// Выполняем обнуление буфера данных
