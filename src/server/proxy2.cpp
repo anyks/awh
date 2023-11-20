@@ -80,7 +80,17 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 			// Отправляем сообщение клиенту
 			// this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
 			
-			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity);
+			const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
+				"<h1>\"Hello, World!\" program</h1>\n"
+				"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
+				"(Redirected from Hello, world!)<br>\n"
+				"Jump to navigationJump to search<br>\n"
+				"<strong>\"Hello World\"</strong> redirects here. For other uses, see Hello World (disambiguation).<br>\n"
+				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
+				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
+				"</div>\n</body>\n</html>\n";
+
+			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, vector <char> (body.begin(), body.end()));
 
 			// Выполняем отключение клиента от сетевого ядра
 			this->_core.unbind(&it->second->core);
