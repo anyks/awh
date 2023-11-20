@@ -1491,6 +1491,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		 * Для всех остальных операционных систем
 		 */
 		#else
+
+			cout << " ------------------ -2 " << size << endl;
+
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
@@ -1509,6 +1512,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		#endif
+
+		cout << " ------------------ -1 " << size << endl;
+
 		/**
 		 * Методы только для OS Windows
 		 */
