@@ -1504,6 +1504,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
+
+		/*
 		// Если сессия инициализированна
 		if((this->_session != nullptr) && (flag == flag_t::END_STREAM)){
 			// Фиксируем отправленный результат
@@ -1520,6 +1522,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
+		*/
+
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат
