@@ -161,6 +161,9 @@ namespace awh {
 			// Список отправляемых альтернативных сервисов
 			unordered_multimap <string, string> _altsvc;
 		private:
+			// Данные подготовленные для отправки
+			map <int32_t, pair <unique_ptr <char []>, size_t>> _streams;
+		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
 		private:
@@ -261,6 +264,7 @@ namespace awh {
 			 */
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
 		public:
+			
 			/**
 			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
 			 * @param session объект сессии
@@ -273,6 +277,19 @@ namespace awh {
 			 * @return        количество отправленных байт
 			 */
 			static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+			
+			/**
+			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
+			 * @param session объект сессии
+			 * @param sid     идентификатор потока
+			 * @param buffer  буфер данных которые следует отправить
+			 * @param size    размер буфера данных для отправки
+			 * @param flags   флаги события для сессии
+			 * @param source  объект промежуточных данных локального подключения
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        количество отправленных байт
+			 */
+			static ssize_t read2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
 			 * completed Метод завершения выполнения операции
@@ -342,6 +359,16 @@ namespace awh {
 			 * @return       результат отправки данных фрейма
 			 */
 			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
+
+			/**
+			 * sendData Метод отправки бинарных данных
+			 * @param id     идентификатор потока
+			 * @param buffer буфер бинарных данных передаваемых
+			 * @param size   размер передаваемых данных в байтах
+			 * @param flag   флаг передаваемого потока по сети
+			 * @return       результат отправки данных фрейма
+			 */
+			bool sendData2(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
 		public:
 			/**
 			 * sendPush Метод отправки push-уведомлений
