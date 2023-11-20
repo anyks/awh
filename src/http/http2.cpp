@@ -807,9 +807,6 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 	(void) session;
 	// Результат работы функции
 	ssize_t result = -1;
-
-	cout << " --------------- SENDING " << size << endl;
-
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -1476,8 +1473,14 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			 * Методы только для OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
+				
+				cout << " ---------------1 " << endl;
+				
 				// Если данные небыли записаны в сокет
 				if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
+					
+					cout << " ---------------2 " << endl;
+					
 					// Выполняем закрытие сокета для чтения
 					::_close(fds[0]);
 					// Выполняем закрытие сокета для записи
@@ -1499,6 +1502,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			#else
 				// Если данные небыли записаны в сокет
 				if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
+					
+					cout << " ---------------3 " << endl;
+					
 					// Выполняем закрытие сокета для чтения
 					::close(fds[0]);
 					// Выполняем закрытие сокета для записи
