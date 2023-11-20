@@ -815,10 +815,13 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	auto it = self->_streams.find(sid);
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
+		
+		cout << " ============2 " << it->second.second << endl;
+		
 		// Если передаваемый размер соответствует размеру буфера данных
 		if(it->second.second <= size){
 			
-			cout << " ============2 " << it->second.second << endl;
+			cout << " ============3 " << it->second.second << endl;
 			
 			// Выполняем копирование буфера данных
 			::memcpy(buffer, it->second.first.get(), it->second.second);
