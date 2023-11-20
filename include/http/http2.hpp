@@ -144,13 +144,6 @@ namespace awh {
 				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
 			};
 		private:
-			typedef struct Stream {
-				bool end;
-				size_t size;
-				unique_ptr <char []> data;
-				Stream() noexcept : end(false), size(0), data(nullptr) {}
-			} stream_t;
-		private:
 			// Флаг требования закрыть подключение
 			bool _close;
 		private:
@@ -169,7 +162,7 @@ namespace awh {
 			unordered_multimap <string, string> _altsvc;
 		private:
 			// Данные подготовленные для отправки
-			map <int32_t, stream_t> _streams;
+			map <int32_t, pair <unique_ptr <char []>, size_t>> _streams;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -271,9 +264,8 @@ namespace awh {
 			 */
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
 		public:
-			
 			/**
-			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
+			 * send Функция отправки подготовленного буфера данных
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
@@ -283,20 +275,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
 			 */
-			static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
-			
-			/**
-			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
-			 * @param session объект сессии
-			 * @param sid     идентификатор потока
-			 * @param buffer  буфер данных которые следует отправить
-			 * @param size    размер буфера данных для отправки
-			 * @param flags   флаги события для сессии
-			 * @param source  объект промежуточных данных локального подключения
-			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        количество отправленных байт
-			 */
-			static ssize_t read2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
 			 * completed Метод завершения выполнения операции
