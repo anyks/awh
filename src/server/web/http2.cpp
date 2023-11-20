@@ -1872,6 +1872,10 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 												cout << string(buffer.begin(), buffer.end()) << endl << endl;
 										}
 									#endif
+
+									for(auto & item : headers)
+										cout << " ----------------- " << item.first << " == " << item.second << endl;
+
 									// Флаг отправляемого фрейма
 									awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 									// Если тело запроса не существует
