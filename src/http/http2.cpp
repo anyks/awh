@@ -1593,7 +1593,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		}
 
 		// Если сессия инициализированна
-		if(this->_session != nullptr){
+		if((flag == flag_t::END_STREAM) && (this->_session != nullptr)){
 			// Фиксируем отправленный результат
 			const int rv = nghttp2_session_send(this->_session);
 			// Если зафиксифровать результат не вышло
