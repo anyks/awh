@@ -379,6 +379,9 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			it->second->response.entity.assign(entity.begin(), entity.end());
 			// Получаем флаг завершения запроса после отправки результата
 			const bool end = ((http == nullptr) || !http->is(awh::http_t::state_t::ALIVE));
+			
+			cout << " -------------- " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
+			
 			// Выполняем отправку тела полученного клиентом с удалённого сервера
 			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), end);
 		// Выполняем очистку тела ответа
