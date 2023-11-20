@@ -828,6 +828,7 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 			if(it->second.end)
 				// Устанавливаем флаг, завершения чтения данных
 				(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+			else (* flags) = NGHTTP2_DATA_FLAG_NONE;
 		// Если передаваемый размер данных больше основного буфера данных
 		} else {
 		
