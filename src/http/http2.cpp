@@ -1554,6 +1554,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			::memset(ret.first->second.first.get(), 0, actual);
 			// Выполняем копирование данных буфера
 			::memcpy(ret.first->second.first.get(), buffer + offset, actual);
+
+			cout << " -------------------- " << actual << endl;
+
 			// Выполняем отправку данных по сети
 			if(sendFn(id, (left >= 16384 ? flag_t::NONE : flag)))
 				// Увеличиваем смещение в буфере

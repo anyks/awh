@@ -144,6 +144,13 @@ namespace awh {
 				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
 			};
 		private:
+			typedef struct Stream {
+				bool end;
+				size_t size;
+				unique_ptr <char []> data;
+				Stream() noexcept : end(false), size(0), data(nullptr) {}
+			} stream_t;
+		private:
 			// Флаг требования закрыть подключение
 			bool _close;
 		private:
