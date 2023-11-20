@@ -2051,7 +2051,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		if(!settings.empty()){
 			
 			for(auto & item : settings){
-				cout << " ========== " << item.first << " == " << NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL << " == " << item.second << endl;
+				cout << " ========== " << item.settings_id << " == " << NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL << " == " << item.value << endl;
 			}
 			
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
