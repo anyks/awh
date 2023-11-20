@@ -1455,6 +1455,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				if(flag == flag_t::END_STREAM)
 					// Устанавливаем флаг фрейма передаваемого по сети
 					flags = NGHTTP2_FLAG_END_STREAM;
+				
+				cout << " ++++++++++++++++++++2 " << actual << endl;
+
 				// Выполняем формирование данных фрейма для отправки
 				const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 				// Если сформировать данные фрейма не вышло
@@ -1486,6 +1489,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			::memset(ret.first->second.first.get(), 0, actual);
 			// Выполняем копирование данных буфера
 			::memcpy(ret.first->second.first.get(), buffer + offset, actual);
+			
+			cout << " ++++++++++++++++++++1 " << actual << endl;
+			
 			// Выполняем отправку данных по сети
 			if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
 				// Увеличиваем смещение в буфере
