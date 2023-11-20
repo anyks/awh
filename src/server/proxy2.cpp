@@ -149,7 +149,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						// Если активирован протокол подключения HTTP/2
 						// if(it->second->awh.proto() == engine_t::proto_t::HTTP2)
 							// Выполняем установку защищённого протокола
-							request.url.schema = "https";
+							// request.url.schema = "https";
 						// Выполняем запрос на сервер
 						it->second->awh.send(std::move(request));
 					} break;
@@ -492,6 +492,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				// Выходим из функции
 				return;
 			}
+
+			// Выполняем установку защищённого протокола
+			it->second->request.params.url.schema = "https";
+
 			// Выполняем инициализацию подключения
 			it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
 				awh::http_t::compress_t::BROTLI,
