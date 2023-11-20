@@ -278,7 +278,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
 			// Устанавливаем тип протокола интернета HTTP/2
-			// ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
+			ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
 			// Устанавливаем флаг верификации доменного имени
 			ret.first->second->core.verifySSL(this->_settings.encryption.verify);
 			// Выполняем установку CA-файлов сертификата
