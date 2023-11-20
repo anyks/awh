@@ -243,9 +243,9 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://support.apple.com/ru-ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
-	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
+	uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
-	uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
+	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	/*
 
 	// Устанавливаем метод активации подключения
