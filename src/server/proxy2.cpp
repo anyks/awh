@@ -77,7 +77,7 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 
 			cout << " +================ " << it->second->response.entity.size() << endl;
 			
-			cout << " ------------------ " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
+			// cout << " ------------------ " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
 
 			// Отправляем сообщение клиенту
 			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
