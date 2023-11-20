@@ -1494,7 +1494,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			return true;
 		};
 		// Выполняем отправку данных пока всё не отправим
-		while(ret.first->second.size != ret.first->second.offset){
+		while(this->_streams.count(id) > 0){
 			// Если данные не отправлены
 			if(!sendFn(id, flag_t::NONE)){
 				// Выполняем вызов метода выполненного события
