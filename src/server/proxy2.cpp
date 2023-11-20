@@ -429,6 +429,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			it->second->response.params.message = message;
 			// Устанавливаем флаг завершения запроса, если запрос не должен содержать тело или тело ответа не существует
 			const bool end = !((code >= 200) && (code != 204) && (code != 304) && (code != 308));
+
+			if(end)
 			// Выполняем отправку заголовков полученных клиентом с удалённого сервера
 			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.headers, end);
 		}
