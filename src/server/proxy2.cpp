@@ -75,11 +75,13 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 		// Если мы получили данные
 		if(direct == client::web_t::direct_t::RECV){
 
-			
+			cout << " +================ " << it->second->response.entity.size() << endl;
 			
 			// Отправляем сообщение клиенту
-			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+			// this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
 			
+			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity);
+
 			// Выполняем отключение клиента от сетевого ядра
 			this->_core.unbind(&it->second->core);
 		}
