@@ -205,6 +205,9 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 				switch(static_cast <uint8_t> (it->second->agent)){
 					// Если агент является клиентом HTTP
 					case static_cast <uint8_t> (agent_t::HTTP): {
+						
+						cout << " ++++++++++++++++++ " << string(buffer, buffer + size) << endl;
+						
 						// Добавляем полученный чанк в тело данных
 						it->second->http.payload(vector <char> (buffer, buffer + size));
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
