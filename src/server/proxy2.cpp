@@ -167,7 +167,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				// Запоминаем что подключение остановлено
 				it->second->connected = false;
 				// Выполняем закрытие подключения
-				this->close(bid);
+				// this->close(bid);
 				// Выполняем удаление клиента из списка клиентов
 				// this->_clients.erase(it);
 			} break;
@@ -347,9 +347,9 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Если клиент в списке найден
 			if(it != this->_clients.end()){
 				// Снимаем флаг установленного подключения
-				it->second->connected = false;
+				// it->second->connected = false;
 				// Выполняем отключение клиента от сетевого ядра
-				this->_core.unbind(&it->second->core);
+				// this->_core.unbind(&it->second->core);
 			}
 		} break;
 	}
