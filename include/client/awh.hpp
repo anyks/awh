@@ -93,50 +93,50 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки тела сообщения на сервер
-				 * @param id     идентификатор потока HTTP
+				 * @param sid    идентификатор потока HTTP
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const int32_t sid, const char * buffer, const size_t size, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки заголовков на сервер
-				 * @param id      идентификатор потока HTTP
+				 * @param sid     идентификатор потока HTTP
 				 * @param url     адрес запроса на сервере
 				 * @param method  метод запроса на сервере
 				 * @param headers заголовки отправляемые на сервер
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
-				 * @param id   идентификатор потока
+				 * @param sid  идентификатор потока
 				 * @param size размер нового окна
 				 * @return     результат установки размера офна фрейма
 				 */
-				bool windowUpdate2(const int32_t id, const int32_t size) noexcept;
+				bool windowUpdate2(const int32_t sid, const int32_t size) noexcept;
 			public:
 				/**
 				 * send2 Метод HTTP/2 отправки сообщения на сервер
-				 * @param id     идентификатор потока
+				 * @param sid    идентификатор потока
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send2(const int32_t id, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
+				bool send2(const int32_t sid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
 				/**
 				 * send2 Метод HTTP/2 отправки заголовков на сервер
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param headers заголовки отправляемые на сервер
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send2(const int32_t id, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента WebSocket

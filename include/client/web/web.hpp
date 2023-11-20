@@ -298,12 +298,12 @@ namespace awh {
 			protected:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @param id   идентификатор запроса
+				 * @param sid  идентификатор запроса
 				 * @param bid  идентификатор брокера
 				 * @param core объект сетевого ядра
 				 * @return     результат препарирования
 				 */
-				virtual status_t prepare(const int32_t id, const uint64_t bid, client::core_t * core) noexcept = 0;
+				virtual status_t prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации клиента
@@ -733,30 +733,30 @@ namespace awh {
 			public:
 				/**
 				 * windowUpdate Метод обновления размера окна фрейма
-				 * @param id   идентификатор потока
+				 * @param sid  идентификатор потока
 				 * @param size размер нового окна
 				 * @return     результат установки размера офна фрейма
 				 */
-				bool windowUpdate(const int32_t id, const int32_t size) noexcept;
+				bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер
-				 * @param id     идентификатор потока
+				 * @param sid    идентификатор потока
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
 				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t id, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
+				bool send(const int32_t sid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * send Метод отправки заголовков на сервер
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param headers заголовки отправляемые на сервер
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t id, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t send(const int32_t sid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

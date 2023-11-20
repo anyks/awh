@@ -178,12 +178,12 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
 }
 /**
  * reject Метод выполнения сброса подключения
- * @param id    идентификатор потока
+ * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const http2_t::error_t error) noexcept {
+bool awh::server::Web2::reject(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -193,7 +193,7 @@ bool awh::server::Web2::reject(const int32_t id, const uint64_t bid, const http2
 		// Если активная сессия найдена
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем закрытие подключения клиента
-			if(!(result = it->second->reject(id, error))){
+			if(!(result = it->second->reject(sid, error))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -236,12 +236,12 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 }
 /**
  * send Метод отправки трейлеров
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -251,7 +251,7 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector 
 		// Если активная сессия найдена
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку трейлеров
-			if(!(result = it->second->sendTrailers(id, headers))){
+			if(!(result = it->second->sendTrailers(sid, headers))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -264,14 +264,14 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector 
 }
 /**
  * send Метод отправки сообщения клиенту
- * @param id     идентификатор потока
+ * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -281,7 +281,7 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 		// Если активная сессия найдена
 		if((result = (it != this->_sessions.end()))){
 			// Выполняем отправку тела ответа
-			if(!(result = it->second->sendData(id, reinterpret_cast <const uint8_t *> (buffer), size, flag))){
+			if(!(result = it->second->sendData(sid, reinterpret_cast <const uint8_t *> (buffer), size, flag))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -294,13 +294,13 @@ bool awh::server::Web2::send(const int32_t id, const uint64_t bid, const char * 
 }
 /**
  * send Метод отправки заголовков
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -310,7 +310,7 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
 			// Если ответ не получилось отправить
-			if((result = it->second->sendHeaders(id, headers, flag)) < 0){
+			if((result = it->second->sendHeaders(sid, headers, flag)) < 0){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -323,13 +323,13 @@ int32_t awh::server::Web2::send(const int32_t id, const uint64_t bid, const vect
 }
 /**
  * push Метод отправки push-уведомлений
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -339,7 +339,7 @@ int32_t awh::server::Web2::push(const int32_t id, const uint64_t bid, const vect
 		// Если активная сессия найдена
 		if(it != this->_sessions.end()){
 			// Если ответ не получилось отправить push-уведомление
-			if((result = it->second->sendPush(id, headers, flag)) < 0)
+			if((result = it->second->sendPush(sid, headers, flag)) < 0)
 				// Выходим из функции
 				return result;
 		}

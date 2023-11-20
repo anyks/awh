@@ -104,17 +104,17 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту
-				 * @param id     идентификатор потока HTTP
+				 * @param sid    идентификатор потока HTTP
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых клиенту
 				 * @param size   размер сообщения в байтах
 				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
 				 * send Метод отправки заголовков клиенту
-				 * @param id      идентификатор потока HTTP
+				 * @param sid     идентификатор потока HTTP
 				 * @param bid     идентификатор брокера
 				 * @param code    код сообщения для брокера
 				 * @param mess    отправляемое сообщение об ошибке
@@ -122,7 +122,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки данных в бинарном виде клиенту
@@ -150,12 +150,12 @@ namespace awh {
 			public:
 				/**
 				 * reject2 Метод HTTP/2 выполнения сброса подключения
-				 * @param id    идентификатор потока
+				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
 				 * @param error код отправляемой ошибки
 				 * @return      результат отправки сообщения
 				 */
-				bool reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
+				bool reject2(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 			public:
 				/**
 				 * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
@@ -170,41 +170,41 @@ namespace awh {
 			public:
 				/**
 				 * send2 HTTP/2 Метод отправки трейлеров
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send2 HTTP/2 Метод отправки сообщения клиенту
-				 * @param id     идентификатор потока
+				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых
 				 * @param size   размер сообщения в байтах
 				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
+				bool send2(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
 				/**
 				 * send2 HTTP/2 Метод отправки заголовков
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * push2 HTTP/2 Метод отправки пуш-уведомлений
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения

@@ -1657,12 +1657,12 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 }
 /**
  * send Метод отправки трейлеров
- * @param id      идентификатор потока HTTP/2
+ * @param sid     идентификатор потока HTTP/2
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -1680,7 +1680,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
-							return web2_t::send(id, bid, headers);
+							return web2_t::send(sid, bid, headers);
 					}
 				}
 			}
@@ -1691,14 +1691,14 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const vector
 }
 /**
  * send Метод отправки тела сообщения клиенту
- * @param id     идентификатор потока HTTP
+ * @param sid    идентификатор потока HTTP
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
@@ -1756,7 +1756,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку данных на удалённый сервер
-									result = web2_t::send(id, bid, entity.data(), entity.size(), flag);
+									result = web2_t::send(sid, bid, entity.data(), entity.size(), flag);
 								}
 								// Если список трейлеров установлен
 								if(result && (options->http.trailers() > 0)){
@@ -1783,7 +1783,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 										cout << endl << endl;
 									#endif
 									// Выполняем отправку трейлеров
-									if((result = !web2_t::send(id, bid, trailers)))
+									if((result = !web2_t::send(sid, bid, trailers)))
 										// Выходим из функции
 										return result;
 								}
@@ -1799,7 +1799,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
 }
 /**
  * send Метод отправки заголовков клиенту
- * @param id      идентификатор потока HTTP
+ * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
@@ -1807,7 +1807,7 @@ bool awh::server::Http2::send(const int32_t id, const uint64_t bid, const char *
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Если заголовки запроса переданы
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -1879,7 +1879,7 @@ int32_t awh::server::Http2::send(const int32_t id, const uint64_t bid, const u_i
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем заголовки запроса на сервер
-									return web2_t::send(id, bid, headers, flag);
+									return web2_t::send(sid, bid, headers, flag);
 								}
 							} break;
 						}
@@ -2092,12 +2092,12 @@ bool awh::server::Http2::shutdown2(const uint64_t bid) noexcept {
 }
 /**
  * reject2 Метод HTTP/2 выполнения сброса подключения
- * @param id    идентификатор потока
+ * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+bool awh::server::Http2::reject2(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -2115,7 +2115,7 @@ bool awh::server::Http2::reject2(const int32_t id, const uint64_t bid, const awh
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем сброс подключения
-							return web2_t::reject(id, bid, error);
+							return web2_t::reject(sid, bid, error);
 					}
 				}
 			}
@@ -2162,12 +2162,12 @@ bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const a
 }
 /**
  * send2 Метод HTTP/2 отправки трейлеров
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -2185,7 +2185,7 @@ bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vecto
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
-							return web2_t::send(id, bid, headers);
+							return web2_t::send(sid, bid, headers);
 					}
 				}
 			}
@@ -2196,14 +2196,14 @@ bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vecto
 }
 /**
  * send2 Метод HTTP/2 отправки сообщения клиенту
- * @param id     идентификатор потока
+ * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -2221,7 +2221,7 @@ bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const char 
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку сообщения клиенту
-							return web2_t::send(id, bid, buffer, size, flag);
+							return web2_t::send(sid, bid, buffer, size, flag);
 					}
 				}
 			}
@@ -2232,13 +2232,13 @@ bool awh::server::Http2::send2(const int32_t id, const uint64_t bid, const char 
 }
 /**
  * send2 Метод HTTP/2 отправки заголовков
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Http2::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -2256,7 +2256,7 @@ int32_t awh::server::Http2::send2(const int32_t id, const uint64_t bid, const ve
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку заголовков
-							return web2_t::send(id, bid, headers, flag);
+							return web2_t::send(sid, bid, headers, flag);
 					}
 				}
 			}
@@ -2267,13 +2267,13 @@ int32_t awh::server::Http2::send2(const int32_t id, const uint64_t bid, const ve
 }
 /**
  * push2 Метод HTTP/2 отправки push-уведомлений
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Http2::push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -2308,7 +2308,7 @@ int32_t awh::server::Http2::push2(const int32_t id, const uint64_t bid, const ve
 								}
 							#endif
 							// Выполняем отправку push-уведомлений
-							return web2_t::push(id, bid, headers, flag);
+							return web2_t::push(sid, bid, headers, flag);
 						}
 					}
 				}

@@ -678,12 +678,12 @@ namespace awh {
 			public:
 				/**
 				 * reject Метод выполнения сброса подключения
-				 * @param id    идентификатор потока
+				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
 				 * @param error код отправляемой ошибки
 				 * @return      результат отправки сообщения
 				 */
-				bool reject(const int32_t id, const uint64_t bid, http2_t::error_t error) noexcept;
+				bool reject(const int32_t sid, const uint64_t bid, http2_t::error_t error) noexcept;
 			public:
 				/**
 				 * goaway Метод отправки сообщения закрытия всех потоков
@@ -698,42 +698,42 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки трейлеров
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения клиенту
-				 * @param id     идентификатор потока
+				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых
 				 * @param size   размер сообщения в байтах
 				 * @param flag   флаг передаваемого потока по сети
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * send Метод отправки заголовков
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * push Метод отправки пуш-уведомлений
-				 * @param id      идентификатор потока
+				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера
 				 * @param headers заголовки отправляемые
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * addOrigin Метод добавления разрешённого источника

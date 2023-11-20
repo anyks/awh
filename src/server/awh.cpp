@@ -92,20 +92,20 @@ void awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & mes
 }
 /**
  * send Метод отправки тела сообщения на клиенту
- * @param id     идентификатор потока HTTP
+ * @param sid    идентификатор потока HTTP
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Выполняем отправку тела сообщения клиенту
-	return this->_http.send(id, bid, buffer, size, end);
+	return this->_http.send(sid, bid, buffer, size, end);
 }
 /**
  * send Метод отправки заголовков на клиенту
- * @param id      идентификатор потока HTTP
+ * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
@@ -113,9 +113,9 @@ bool awh::server::AWH::send(const int32_t id, const uint64_t bid, const char * b
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::AWH::send(const int32_t id, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков сообщения клиенту
-	return this->_http.send(id, bid, code, mess, headers, end);
+	return this->_http.send(sid, bid, code, mess, headers, end);
 }
 /**
  * send Метод отправки данных в бинарном виде клиенту
@@ -150,14 +150,14 @@ bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
 }
 /**
  * reject2 Метод HTTP/2 выполнения сброса подключения
- * @param id    идентификатор потока
+ * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::AWH::reject2(const int32_t id, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+bool awh::server::AWH::reject2(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
 	// Выполняем сброс подключения
-	return this->_http.reject2(id, bid, error);
+	return this->_http.reject2(sid, bid, error);
 }
 /**
  * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
@@ -174,51 +174,51 @@ bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh
 }
 /**
  * send2 HTTP/2 Метод отправки трейлеров
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
 	// Выполняем отправку трейлеров
-	return this->_http.send2(id, bid, headers);
+	return this->_http.send2(sid, bid, headers);
 }
 /**
  * send2 HTTP/2 Метод отправки сообщения клиенту
- * @param id     идентификатор потока
+ * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t id, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку сообщения клиенту
-	return this->_http.send2(id, bid, buffer, size, flag);
+	return this->_http.send2(sid, bid, buffer, size, flag);
 }
 /**
  * send2 HTTP/2 Метод отправки заголовков
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::send2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку заголовков
-	return this->_http.send2(id, bid, headers, flag);
+	return this->_http.send2(sid, bid, headers, flag);
 }
 /**
  * push2 HTTP/2 Метод отправки пуш-уведомлений
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::push2(const int32_t id, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку пуш-уведомлений
-	return this->_http.push2(id, bid, headers, flag);
+	return this->_http.push2(sid, bid, headers, flag);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения

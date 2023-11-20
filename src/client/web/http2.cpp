@@ -1420,13 +1420,13 @@ void awh::client::Http2::send(const char * buffer, const size_t size) noexcept {
 }
 /**
  * send Метод отправки тела сообщения на сервер
- * @param id     идентификатор потока HTTP
+ * @param sid    идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
@@ -1459,7 +1459,7 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем отправку данных на удалённый сервер
-					result = web2_t::send(id, entity.data(), entity.size(), flag);
+					result = web2_t::send(sid, entity.data(), entity.size(), flag);
 				}
 			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
 			} else result = this->_http1.send(buffer, size, end);
@@ -1470,14 +1470,14 @@ bool awh::client::Http2::send(const int32_t id, const char * buffer, const size_
 }
 /**
  * send Метод отправки заголовков на сервер
- * @param id      идентификатор потока HTTP
+ * @param sid     идентификатор потока HTTP
  * @param url     адрес запроса на сервере
  * @param method  метод запроса на сервере
  * @param headers заголовки отправляемые на сервер
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -1523,7 +1523,7 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif
 					// Выполняем заголовки запроса на сервер
-					result = web2_t::send(id, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
+					result = web2_t::send(sid, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
 				}
 			// Если протокол HTTP/2 не активирован, передаём запрос через протокол HTTP/1.1
 			} else result = this->_http1.send(url, method, headers, end);
@@ -1534,11 +1534,11 @@ int32_t awh::client::Http2::send(const int32_t id, const uri_t::url_t & url, con
 }
 /**
  * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param id   идентификатор потока
+ * @param sid  идентификатор потока
  * @param size размер нового окна
  * @return     результат установки размера офна фрейма
  */
-bool awh::client::Http2::windowUpdate2(const int32_t id, const int32_t size) noexcept {
+bool awh::client::Http2::windowUpdate2(const int32_t sid, const int32_t size) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -1546,20 +1546,20 @@ bool awh::client::Http2::windowUpdate2(const int32_t id, const int32_t size) noe
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
 		if((size >= 0) && this->_http2.is())
 			// Выполняем обновление размера окна фрейма
-			return web2_t::windowUpdate(id, size);
+			return web2_t::windowUpdate(sid, size);
 	}
 	// Выводим результат
 	return false;
 }
 /**
  * send2 Метод HTTP/2 отправки сообщения на сервер
- * @param id     идентификатор потока HTTP/2
+ * @param sid    идентификатор потока HTTP/2
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::client::Http2::send2(const int32_t id, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+bool awh::client::Http2::send2(const int32_t sid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -1567,19 +1567,19 @@ bool awh::client::Http2::send2(const int32_t id, const char * buffer, const size
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
 		if((buffer != nullptr) && (size > 0) && this->_http2.is())
 			// Выполняем отправку сообщения на сервер
-			return web2_t::send(id, buffer, size, flag);
+			return web2_t::send(sid, buffer, size, flag);
 	}
 	// Выводим результат
 	return false;
 }
 /**
  * send2 Метод HTTP/2 отправки заголовков на сервер
- * @param id      идентификатор потока HTTP/2
+ * @param sid     идентификатор потока HTTP/2
  * @param headers заголовки отправляемые на сервер
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Http2::send2(const int32_t id, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::client::Http2::send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -1587,7 +1587,7 @@ int32_t awh::client::Http2::send2(const int32_t id, const vector <pair <string, 
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
 		if(!headers.empty() && this->_http2.is())
 			// Выполняем отправку заголовков на сервер
-			return web2_t::send(id, headers, flag);
+			return web2_t::send(sid, headers, flag);
 	}
 	// Выводим результат
 	return -1;

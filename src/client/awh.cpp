@@ -67,61 +67,61 @@ void awh::client::AWH::send(const char * buffer, const size_t size) noexcept {
 }
 /**
  * send Метод отправки тела сообщения на сервер
- * @param id     идентификатор потока HTTP
+ * @param sid    идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::client::AWH::send(const int32_t id, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::client::AWH::send(const int32_t sid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Выполняем отправку данных на удалённый сервер HTTP/2
-	return this->_http.send(id, buffer, size, end);
+	return this->_http.send(sid, buffer, size, end);
 }
 /**
  * send Метод отправки заголовков на сервер
- * @param id      идентификатор потока HTTP
+ * @param sid     идентификатор потока HTTP
  * @param url     адрес запроса на сервере
  * @param method  метод запроса на сервере
  * @param headers заголовки отправляемые на сервер
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::AWH::send(const int32_t id, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::client::AWH::send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков на удалённый сервер HTTP/2
-	return this->_http.send(id, url, method, headers, end);
+	return this->_http.send(sid, url, method, headers, end);
 }
 /**
  * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param id   идентификатор потока
+ * @param sid  идентификатор потока
  * @param size размер нового окна
  * @return     результат установки размера офна фрейма
  */
-bool awh::client::AWH::windowUpdate2(const int32_t id, const int32_t size) noexcept {
+bool awh::client::AWH::windowUpdate2(const int32_t sid, const int32_t size) noexcept {
 	// Выполняем обновление размера окна фрейма
-	return this->_http.windowUpdate2(id, size);
+	return this->_http.windowUpdate2(sid, size);
 }
 /**
  * send2 Метод HTTP/2 отправки сообщения на сервер
- * @param id     идентификатор потока
+ * @param sid    идентификатор потока
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::client::AWH::send2(const int32_t id, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+bool awh::client::AWH::send2(const int32_t sid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку сообщения на сервер
-	return this->_http.send2(id, buffer, size, flag);
+	return this->_http.send2(sid, buffer, size, flag);
 }
 /**
  * send2 Метод HTTP/2 отправки заголовков на сервер
- * @param id      идентификатор потока
+ * @param sid     идентификатор потока
  * @param headers заголовки отправляемые на сервер
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::AWH::send2(const int32_t id, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::client::AWH::send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку заголовков на сервер
-	return this->_http.send2(id, headers, flag);
+	return this->_http.send2(sid, headers, flag);
 }
 /**
  * pause Метод установки на паузу клиента WebSocket
@@ -419,13 +419,13 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 	if(!url.empty()){
 		/**
 		 * Подписываемся на получение сообщения сервера
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		this->on([this](const int32_t id, const u_int code, const string & message) noexcept -> void {
+		this->on([this](const int32_t sid, const u_int code, const string & message) noexcept -> void {
 			// Блокируем пустую переменную
-			(void) id;
+			(void) sid;
 			// Если возникла ошибка, выводим сообщение
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -433,12 +433,12 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		/**
 		 * Подписываемся на завершение выполнения запроса
-		 * @param id     идентификатор потока
+		 * @param sid    идентификатор потока
 		 * @param direct направление передачи данных
 		 */
-		this->on([this](const int32_t id, const web_t::direct_t direct) noexcept -> void {
+		this->on([this](const int32_t sid, const web_t::direct_t direct) noexcept -> void {
 			// Блокируем пустую переменную
-			(void) id;
+			(void) sid;
 			// Если мы получили данные
 			if(direct == web_t::direct_t::RECV)
 				// Выполняем остановку
@@ -468,14 +468,14 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		/**
 		 * Подписываемся на событие получения тела ответа
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученного тела сообщения
 		 */
-		this->on([&entity, this](const int32_t id, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
+		this->on([&entity, this](const int32_t sid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Блокируем пустую переменную
-			(void) id;
+			(void) sid;
 			// Если тело ответа получено
 			if(!data.empty())
 				// Формируем результат ответа
@@ -487,14 +487,14 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		/**
 		 * Подписываем на событие получения заголовков ответа
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		this->on([&headers, this](const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+		this->on([&headers, this](const int32_t sid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
-			(void) id;
+			(void) sid;
 			// Если заголовки ответа получены
 			if(!data.empty())
 				// Извлекаем полученный список заголовков
