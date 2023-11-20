@@ -73,9 +73,16 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 		// Блокируем пустую переменную
 		(void) sid;
 		// Если мы получили данные
-		if(direct == client::web_t::direct_t::RECV)
+		if(direct == client::web_t::direct_t::RECV){
+
+			
+			
+			// Отправляем сообщение клиенту
+			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+			
 			// Выполняем отключение клиента от сетевого ядра
 			this->_core.unbind(&it->second->core);
+		}
 	}
 }
 /**
@@ -377,13 +384,14 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			const awh::http_t * http = this->parser(bid);
 			// Устанавливаем полученные данные тела ответа
 			it->second->response.entity.assign(entity.begin(), entity.end());
+			
+			/*
 			// Получаем флаг завершения запроса после отправки результата
 			const bool end = ((http == nullptr) || !http->is(awh::http_t::state_t::ALIVE));
-			
-			cout << " -------------- " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
-			
 			// Выполняем отправку тела полученного клиентом с удалённого сервера
-			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), true);
+			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), end);
+			*/
+
 		// Выполняем очистку тела ответа
 		} else it->second->response.entity.clear();
 	}
@@ -430,10 +438,14 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			it->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			it->second->response.params.message = message;
+
+			/*
 			// Устанавливаем флаг завершения запроса, если запрос не должен содержать тело или тело ответа не существует
 			const bool end = !((code >= 200) && (code != 204) && (code != 304) && (code != 308));
 			// Выполняем отправку заголовков полученных клиентом с удалённого сервера
 			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.headers, end);
+			*/
+
 		}
 	}
 }
