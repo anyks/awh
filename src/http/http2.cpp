@@ -808,6 +808,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	ssize_t result = -1;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	
+	cout << " ============1 " << sid << endl;
+	
 	// Выполняем поиск указанного потока
 	auto it = self->_streams.find(sid);
 	// Если буфер передаваемых данных найден
@@ -815,7 +818,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Если передаваемый размер соответствует размеру буфера данных
 		if(it->second.second <= size){
 			
-			cout << " ============ " << it->second.second << endl;
+			cout << " ============2 " << it->second.second << endl;
 			
 			// Выполняем копирование буфера данных
 			::memcpy(buffer, it->second.first.get(), it->second.second);
@@ -1434,21 +1437,21 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
+		// Создаём объект передачи данных тела полезной нагрузки
+		nghttp2_data_provider data;
+		// Зануляем передаваемый контекст
+		data.source.ptr = this;
+		// Устанавливаем функцию обратного вызова
+		data.read_callback = &http2_t::send;
 		/**
 		 * sendFn Функция отправки данных по сети
 		 * @param id   идентификатор потока
 		 * @param flag флаг передаваемого потока по сети
 		 * @return     результат отправки данных
 		 */
-		auto sendFn = [this](const int32_t id, const flag_t flag) noexcept -> bool {
+		auto sendFn = [&data, this](const int32_t id, const flag_t flag) noexcept -> bool {
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
-				// Создаём объект передачи данных тела полезной нагрузки
-				nghttp2_data_provider data;
-				// Зануляем передаваемый контекст
-				data.source.ptr = this;
-				// Устанавливаем функцию обратного вызова
-				data.read_callback = &http2_t::send;
 				// Флаги фрейма передаваемого по сети
 				uint8_t flags = NGHTTP2_FLAG_NONE;
 				// Если флаг установлен завершения кадра
@@ -1493,8 +1496,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			cout << " ++++++++++++++++++++1 " << actual << endl;
 			
 			// Выполняем отправку данных по сети
-			// if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
-			if(sendFn(id, flag_t::NONE))
+			if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
 				// Увеличиваем смещение в буфере
 				offset += actual;
 			// Если данные не отправлены
@@ -1507,11 +1509,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		}
 		// Если сессия инициализированна
 		if((this->_session != nullptr) && (flag == flag_t::END_STREAM)){
-			
-			sendFn(id, flag);
-
-			cout << " ++++++++++++++++++++3 " << endl;
-			
 			// Фиксируем отправленный результат
 			const int rv = nghttp2_session_send(this->_session);
 			// Если зафиксифровать результат не вышло
