@@ -172,7 +172,7 @@ namespace awh {
 			unordered_multimap <string, string> _altsvc;
 		private:
 			// Данные подготовленные для отправки
-			map <int32_t, pair <unique_ptr <char []>, size_t>> _streams;
+			map <int32_t, stream_t> _streams;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;

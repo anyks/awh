@@ -808,46 +808,22 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	ssize_t result = -1;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	
-	cout << " ============1 " << sid << endl;
-	
 	// Выполняем поиск указанного потока
 	auto it = self->_streams.find(sid);
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
-		
-		cout << " ============2 " << it->second.second << " === " << size << endl;
-
-		// Если передаваемый размер соответствует размеру буфера данных
-		if(it->second.second <= size){
-			
-			cout << " ============3 " << it->second.second << endl;
-			
-			// Выполняем копирование буфера данных
-			::memcpy(buffer, it->second.first.get(), it->second.second);
+		// Определяем размер передаваемых данных
+		result = static_cast <ssize_t> (size > it->second.size ? it->second.size : size);
+		// Выполняем копирование буфера данных
+		::memcpy(buffer, it->second.data.get(), static_cast <size_t> (result));
+		// Выполняем смещение в буфере данных
+		it->second.offset += static_cast <size_t> (result);
+		// Если все данные были переданы
+		if(it->second.offset == it->second.size)
 			// Выполняем удаление буфера бинарных данных
 			self->_streams.erase(it);
-			// Устанавливаем размер полученных данных
-			result = it->second.second;
-			// Устанавливаем флаг, завершения чтения данных
-			(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-		// Если передаваемый размер данных больше основного буфера данных
-		} else {
-			
-			cout << " ============4 " << it->second.second << endl;
-
-			result = 0;
-
-			// Устанавливаем флаг, завершения чтения данных
-			(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-			
-			/*
-			// Выполняем удаление буфера бинарных данных
-			self->_streams.erase(it);
-			// Выводим сообщение об полученной ошибке
-			self->_log->print("Received data is larger than the HTTP2 buffer size that can accommodate it", log_t::flag_t::CRITICAL);
-			*/
-		}
+		// Устанавливаем флаг, завершения чтения данных
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 	}
 	// Если данные не прочитанны из сокета
 	if(result < 0)
@@ -1455,6 +1431,14 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		data.source.ptr = this;
 		// Устанавливаем функцию обратного вызова
 		data.read_callback = &http2_t::send;
+		// Выполняем создание объекта потока передачи данных
+		auto ret = this->_streams.emplace(id, stream_t());
+		// Создаём буфер данных для отправки
+		ret.first->second.data = unique_ptr <char []> (new char [size]);
+		// Выполняем установку размера буфера данных
+		ret.first->second.size = size;
+		// Выполняем копирование данных буфера
+		::memcpy(ret.first->second.data.get(), buffer, size);
 		/**
 		 * sendFn Функция отправки данных по сети
 		 * @param id   идентификатор потока
@@ -1509,32 +1493,56 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выводим результат
 			return true;
 		};
-		// Cмещение в буфере и отправляемый размер данных
-		size_t offset = 0, actual = 0, left = 0;
 		// Выполняем отправку данных пока всё не отправим
-		while((size - offset) > 0){
-			// Получаем общий размер буфера данных
-			left = (size - offset);
-			// Определяем размер отправляемых данных
-			actual = (left >= this->_frameSize ? this->_frameSize : left);
-			// Выполняем создание буфера отправляемых данных
-			auto ret = this->_streams.emplace(id, std::make_pair(unique_ptr <char []> (new char [actual]), actual));
-			// Выполняем обнуление буфера данных
-			::memset(ret.first->second.first.get(), 0, actual);
-			// Выполняем копирование данных буфера
-			::memcpy(ret.first->second.first.get(), buffer + offset, actual);
-			// Выполняем отправку данных по сети
-			if(sendFn(id, (size > (offset + actual) ? flag_t::NONE : flag)))
-				// Увеличиваем смещение в буфере
-				offset += actual;
+		while(ret.first->second.size != ret.first->second.offset){
 			// Если данные не отправлены
-			else {
+			if(!sendFn(id, flag_t::NONE)){
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
 				// Выходим из функции
 				return false;
 			}
 		}
+
+		// Если флаг установлен завершения кадра
+		if(flag == flag_t::END_STREAM){
+			// Выполняем формирование данных фрейма для отправки
+			const int rv = nghttp2_submit_data(this->_session, NGHTTP2_FLAG_END_STREAM, id, nullptr);
+			// Если сформировать данные фрейма не вышло
+			if(nghttp2_is_fatal(rv)){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+			// Если сессия инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				const int rv = nghttp2_session_send(this->_session);				
+				// Если зафиксифровать результат не вышло
+				if(nghttp2_is_fatal(rv)){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_DATA);
+					// Выходим из функции
+					return false;
+				}
+			}
+		}
+
+
+
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат
