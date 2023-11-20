@@ -144,6 +144,13 @@ namespace awh {
 				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
 			};
 		private:
+			typedef struct Stream {
+				size_t size;
+				size_t offset;
+				unique_ptr <char []> data;
+				Stream() noexcept : size(0), offset(0), data(nullptr) {}
+			} stream_t;
+		private:
 			// Флаг требования закрыть подключение
 			bool _close;
 		private:
@@ -165,7 +172,7 @@ namespace awh {
 			unordered_multimap <string, string> _altsvc;
 		private:
 			// Данные подготовленные для отправки
-			map <int32_t, pair <unique_ptr <char []>, size_t>> _streams;
+			map <int32_t, stream_t> _streams;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
