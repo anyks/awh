@@ -1438,17 +1438,21 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
+
 		// Список файловых дескрипторов
-		int fds[2];
+		// int fds[2];
 		/**
 		 * Методы только для OS Windows
 		 */
+		/*
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
 			const int rv = _pipe(fds, 4096, O_BINARY);
+		*/
 		/**
 		 * Для всех остальных операционных систем
 		 */
+		/*
 		#else
 			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
 			const int rv = ::pipe(fds);
@@ -1466,21 +1470,43 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выходим из функции
 			return false;
 		}
+		*/
 		
-		
-		auto sendFn = [&fds, this](const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept -> bool {
+		auto sendFn = [this](const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept -> bool {
+			// Список файловых дескрипторов
+			int fds[2];
 			/**
 			 * Методы только для OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
-				
-				cout << " ---------------1 " << endl;
-				
+				// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+				const int rv = _pipe(fds, 4096, O_BINARY);
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+				const int rv = ::pipe(fds);
+			#endif
+			// Выполняем подписку на основной канал передачи данных
+			if(rv != 0){
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
 				// Если данные небыли записаны в сокет
 				if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
-					
-					cout << " ---------------2 " << endl;
-					
 					// Выполняем закрытие сокета для чтения
 					::_close(fds[0]);
 					// Выполняем закрытие сокета для записи
@@ -1502,9 +1528,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			#else
 				// Если данные небыли записаны в сокет
 				if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
-					
-					cout << " ---------------3 " << endl;
-					
 					// Выполняем закрытие сокета для чтения
 					::close(fds[0]);
 					// Выполняем закрытие сокета для записи
@@ -1577,7 +1600,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Определяем размер отправляемых данных
 			actual = (left >= 4096 ? 4096 : left);
 			// Выполняем отправку данных по сети
-			if(sendFn(id, buffer + offset, actual, flag))
+			if(sendFn(id, buffer + offset, actual, left >= 4096 ? flag_t::NONE : flag))
 				// Увеличиваем смещение в буфере
 				offset += actual;
 			// Если данные не отправлены
