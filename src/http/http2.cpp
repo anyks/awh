@@ -1556,7 +1556,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			
 
 			ret.first->second.size = actual;
-			ret.first->second.end = (left <= 16384);
+			ret.first->second.end = ((left <= 16384) && (flag == flag_t::END_STREAM));
 			ret.first->second.data = unique_ptr <char []> (new char [actual]);
 			
 			
