@@ -808,7 +808,7 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Результат работы функции
 	ssize_t result = -1;
 
-	cout << " ^^^^^^^^^^^^^^^^^^^^^^ " << size << endl;
+	cout << " ^^^^^^^^^^^^^^^^^^^^^^1 " << size << endl;
 
 	/**
 	 * Методы только для OS Windows
@@ -823,6 +823,9 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Выполняем чтение данных из сокета в буфер данных
 		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
 	#endif
+	
+	cout << " ^^^^^^^^^^^^^^^^^^^^^^2 " << result << endl;
+	
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
