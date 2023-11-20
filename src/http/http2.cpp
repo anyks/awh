@@ -2049,6 +2049,11 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
+			
+			for(auto & item : settings){
+				cout << " ========== " << item.first << " == " << NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL << " == " << item.second << endl;
+			}
+			
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
