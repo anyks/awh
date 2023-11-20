@@ -1522,6 +1522,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выполняем закрытие подключения
 			::close(fds[1]);
 		#endif
+
+		cout << " -----------------0 " << size << endl;
+
 		// Создаём объект передачи данных тела полезной нагрузки
 		nghttp2_data_provider data;
 		// Зануляем передаваемый контекст
