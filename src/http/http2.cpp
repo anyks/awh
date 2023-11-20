@@ -721,6 +721,9 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("header")){
+		
+		cout << " ------------------- " << string(reinterpret_cast <const char *> (key), keySize) << " == " << string(reinterpret_cast <const char *> (val), valSize) << endl;
+		
 		// Выполняем определение типа фрейма
 		switch(frame->hd.type){
 			// Если мы получили push-уведомление
@@ -2049,11 +2052,6 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
-			
-			for(auto & item : settings){
-				cout << " ========== " << item.settings_id << " == " << NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL << " == " << item.value << endl;
-			}
-			
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
