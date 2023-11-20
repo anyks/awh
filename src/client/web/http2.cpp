@@ -1239,11 +1239,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							if(this->_proxy.mode && !this->_proxy.connect){
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
 								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
-								
-								cout << " ------------------ " << header << endl;
-
-								
-								
 								// Если заголовок авторизации получен
 								if(!header.empty())
 									// Выполняем установки заголовка авторизации на прокси-сервере
