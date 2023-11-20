@@ -807,6 +807,9 @@ ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t *
 	(void) session;
 	// Результат работы функции
 	ssize_t result = -1;
+
+	cout << " ^^^^^^^^^^^^^^^^^^^^^^ " << size << endl;
+
 	/**
 	 * Методы только для OS Windows
 	 */
