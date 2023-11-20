@@ -85,6 +85,9 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 					break;
 					// Если мы получили разрешение использования метода CONNECT
 					case static_cast <uint8_t> (settings_t::CONNECT):
+						
+						cout << " ------------- CONNECT " << setting.second << endl;
+						
 						// Устанавливаем разрешение применения метода CONNECT
 						iv.push_back({NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL, setting.second});
 					break;
