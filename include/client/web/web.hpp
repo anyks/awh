@@ -113,12 +113,13 @@ namespace awh {
 				 */
 				typedef struct Proxy {
 					int32_t sid;  // Идентификатор потока HTTP/2
+					bool mode;    // Флаг активации работы прокси-сервера
 					bool connect; // Флаг применения метода CONNECT
 					u_int answer; // Статус ответа прокси-сервера
 					/**
 					 * Proxy Конструктор
 					 */
-					Proxy() noexcept : sid(-1), connect(true), answer(0) {}
+					Proxy() noexcept : sid(-1), mode(false), connect(true), answer(0) {}
 				} __attribute__((packed)) proxy_t;
 				/**
 				 * Encryption Структура параметров шифрования

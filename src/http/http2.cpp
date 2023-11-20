@@ -721,9 +721,6 @@ int awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, c
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("header")){
-		
-		cout << " ------------------- " << string(reinterpret_cast <const char *> (key), keySize) << " == " << string(reinterpret_cast <const char *> (val), valSize) << endl;
-		
 		// Выполняем определение типа фрейма
 		switch(frame->hd.type){
 			// Если мы получили push-уведомление

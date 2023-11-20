@@ -310,7 +310,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если мы получили флаг завершения потока
 									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
-										// Выполняем коммит полученного результата
+										// Выполняем фиксацию полученного результата
 										it->second->http.commit();
 										/**
 										 * Если включён режим отладки
@@ -419,6 +419,22 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										#endif
 										// Получаем параметры запроса
 										const auto & response = it->second->http.response();
+										// Если метод CONNECT запрещён для прокси-сервера
+										if(this->_proxy.mode && !this->_proxy.connect){
+											// Выполняем сброс заголовков прокси-сервера
+											this->_scheme.proxy.http.clear();
+											// Выполняем перебор всех полученных заголовков
+											for(auto & item : it->second->http.headers()){
+												// Если заголовок соответствует прокси-серверу
+												if(this->_fmk->exists("proxy-", item.first))
+													// Выполняем добавление заголовков прокси-сервера
+													this->_scheme.proxy.http.header(item.first, item.second);
+											}
+											// Устанавливаем статус ответа прокси-серверу
+											this->_scheme.proxy.http.response(response);
+											// Выполняем фиксацию полученного результата
+											this->_scheme.proxy.http.commit();
+										}
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 										if(this->_callback.is("response"))
 											// Выполняем функцию обратного вызова
@@ -1220,9 +1236,14 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Создаём объек запроса
 							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
 							// Если метод CONNECT запрещён для прокси-сервера
-							if(!this->_proxy.connect){
+							if(this->_proxy.mode && !this->_proxy.connect){
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
 								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+								
+								cout << " ------------------ " << header << endl;
+
+								
+								
 								// Если заголовок авторизации получен
 								if(!header.empty())
 									// Выполняем установки заголовка авторизации на прокси-сервере
@@ -1499,7 +1520,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 				// Создаём объек запроса
 				awh::web_t::req_t query(2.0f, method, this->_scheme.url);
 				// Если метод CONNECT запрещён для прокси-сервера
-				if(!this->_proxy.connect){
+				if(this->_proxy.mode && !this->_proxy.connect){
 					// Выполняем извлечение заголовка авторизации на прокси-сервера
 					const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 					// Если заголовок авторизации получен

@@ -691,7 +691,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, this->_scheme.url);
 			// Если метод CONNECT запрещён для прокси-сервера
-			if(!this->_proxy.connect){
+			if(this->_proxy.mode && !this->_proxy.connect){
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
 				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
@@ -922,7 +922,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 			// Создаём объек запроса
 			awh::web_t::req_t query(method, this->_scheme.url);
 			// Если метод CONNECT запрещён для прокси-сервера
-			if(!this->_proxy.connect){
+			if(this->_proxy.mode && !this->_proxy.connect){
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
 				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен

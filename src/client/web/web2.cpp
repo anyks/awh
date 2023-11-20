@@ -286,7 +286,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
 								// Выполняем заголовки запроса на сервер
-								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, http2_t::flag_t::END_STREAM);
+								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, http2_t::flag_t::NONE);
 								// Если запрос не получилось отправить
 								if(this->_proxy.sid < 0){
 									// Выполняем закрытие подключения

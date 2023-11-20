@@ -55,7 +55,7 @@ void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 		// Создаём объек запроса
 		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
 		// Если метод CONNECT запрещён для прокси-сервера
-		if(!this->_proxy.connect){
+		if(this->_proxy.mode && !this->_proxy.connect){
 			// Выполняем извлечение заголовка авторизации на прокси-сервера
 			const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 			// Если заголовок авторизации получен

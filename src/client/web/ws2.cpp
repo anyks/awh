@@ -44,7 +44,7 @@ void awh::client::WebSocket2::send(const uint64_t bid, client::core_t * core) no
 	// Создаём объек запроса
 	awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 	// Если метод CONNECT запрещён для прокси-сервера
-	if(!this->_proxy.connect){
+	if(this->_proxy.mode && !this->_proxy.connect){
 		// Выполняем извлечение заголовка авторизации на прокси-сервера
 		const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 		// Если заголовок авторизации получен
@@ -342,7 +342,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const http2_t::direc
 						if(!this->_shake){
 							// Если мы получили флаг завершения потока
 							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
-								// Выполняем коммит полученного результата
+								// Выполняем фиксацию полученного результата
 								this->_http.commit();
 								/**
 								 * Если включён режим отладки
@@ -422,7 +422,7 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const http2_t::direc
 					case static_cast <uint8_t> (http2_t::frame_t::HEADERS): {
 						// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 						if(flags.count(http2_t::flag_t::END_HEADERS) > 0){
-							// Выполняем коммит полученного результата
+							// Выполняем фиксацию полученного результата
 							this->_http.commit();
 							/**
 							 * Если включён режим отладки
@@ -441,6 +441,22 @@ int awh::client::WebSocket2::frameSignal(const int32_t sid, const http2_t::direc
 							#endif
 							// Получаем параметры запроса
 							const auto & response = this->_http.response();
+							// Если метод CONNECT запрещён для прокси-сервера
+							if(this->_proxy.mode && !this->_proxy.connect){
+								// Выполняем сброс заголовков прокси-сервера
+								this->_scheme.proxy.http.clear();
+								// Выполняем перебор всех полученных заголовков
+								for(auto & item : this->_http.headers()){
+									// Если заголовок соответствует прокси-серверу
+									if(this->_fmk->exists("proxy-", item.first))
+										// Выполняем добавление заголовков прокси-сервера
+										this->_scheme.proxy.http.header(item.first, item.second);
+								}
+								// Устанавливаем статус ответа прокси-серверу
+								this->_scheme.proxy.http.response(response);
+								// Выполняем фиксацию полученного результата
+								this->_scheme.proxy.http.commit();
+							}
 							// Если ответ пришел успешный или фрейм закрыт
 							if((response.code == 200) || (flags.count(http2_t::flag_t::END_STREAM) > 0)){
 								// Получаем объект биндинга ядра TCP/IP

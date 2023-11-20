@@ -651,7 +651,7 @@ void awh::client::Web::waitTimeDetect(const time_t read, const time_t write, con
  */
 void awh::client::Web::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если URI параметры переданы
-	if(!uri.empty()){
+	if((this->_proxy.mode = !uri.empty())){
 		// Устанавливаем семейство интернет протоколов
 		this->_scheme.proxy.family = family;
 		// Устанавливаем параметры прокси-сервера

@@ -169,7 +169,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				// Выполняем закрытие подключения
 				this->close(bid);
 				// Выполняем удаление клиента из списка клиентов
-				this->_clients.erase(it);
+				// this->_clients.erase(it);
 			} break;
 		}
 	}
@@ -830,12 +830,10 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 	if(flags.count(flag_t::VERIFY_SSL) > 0)
 		// Выполняем установку флага проверки домена
 		server.emplace(server::web_t::flag_t::VERIFY_SSL);
-	/*
 	// Если флаг разрешающий метод CONNECT установлен
 	if(flags.count(flag_t::CONNECT_METHOD) > 0)
 		// разрешаем метод CONNECT на уровне протокола
 		this->_server.settings({{server::web2_t::settings_t::CONNECT, 1}});
-	*/
 	// Устанавливаем флаги настроек модуля
 	this->_server.mode(std::move(server));
 }
