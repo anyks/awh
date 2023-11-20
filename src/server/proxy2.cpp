@@ -383,7 +383,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			cout << " -------------- " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
 			
 			// Выполняем отправку тела полученного клиентом с удалённого сервера
-			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), end);
+			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), true);
 		// Выполняем очистку тела ответа
 		} else it->second->response.entity.clear();
 	}
