@@ -1434,16 +1434,10 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
  * @return       результат отправки данных фрейма
  */
 bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept {
-	
-	cout << " -----------------1 " << size << endl;
-	
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
-		
-		cout << " -----------------2 " << size << endl;
-		
 		// Список файловых дескрипторов
 		int fds[2];
 		/**
@@ -1497,9 +1491,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		 * Для всех остальных операционных систем
 		 */
 		#else
-			
-			cout << " -----------------3 " << size << endl;
-			
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
@@ -1547,6 +1538,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			if(flag == flag_t::END_STREAM)
 				// Устанавливаем флаг фрейма передаваемого по сети
 				flags = NGHTTP2_FLAG_END_STREAM;
+			
+			cout << " -----------------1 " << size << endl;
+			
 			// Выполняем формирование данных фрейма для отправки
 			int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 			// Если сформировать данные фрейма не вышло
@@ -1564,6 +1558,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
+				
+				cout << " -----------------2 " << size << endl;
+				
 				// Фиксируем отправленный результат
 				rv = nghttp2_session_send(this->_session);
 				// Если зафиксифровать результат не вышло
@@ -1581,6 +1578,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
+
+		cout << " -----------------3 " << size << endl;
+
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат
