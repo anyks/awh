@@ -1587,6 +1587,24 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					return false;
 				}
 			}
+			// Если сессия инициализированна
+			if(this->_session != nullptr){
+				// Фиксируем отправленный результат
+				const int rv = nghttp2_session_send(this->_session);
+				// Если зафиксифровать результат не вышло
+				if(nghttp2_is_fatal(rv)){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_DATA);
+					// Выходим из функции
+					return false;
+				}
+			}
 			// Выводим результат
 			return true;
 		};
@@ -1611,24 +1629,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
-		// Если сессия инициализированна
-		if(this->_session != nullptr){
-			// Фиксируем отправленный результат
-			const int rv = nghttp2_session_send(this->_session);
-			// Если зафиксифровать результат не вышло
-			if(nghttp2_is_fatal(rv)){
-				// Выводим сообщение об полученной ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-		}
+		
 		
 		
 		
