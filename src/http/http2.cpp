@@ -815,7 +815,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Если передаваемый размер соответствует размеру буфера данных
 		if(it->second.second <= size){
 			
-			cout << " ============ " << string((const char *) it->second.first.get(), it->second.second) << " === " << it->second.second << endl;
+			cout << " ============ " << it->second.second << endl;
 			
 			// Выполняем копирование буфера данных
 			::memcpy(buffer, it->second.first.get(), it->second.second);
@@ -1504,8 +1504,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
-
-		/*
 		// Если сессия инициализированна
 		if((this->_session != nullptr) && (flag == flag_t::END_STREAM)){
 			// Фиксируем отправленный результат
@@ -1522,8 +1520,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
-		*/
-
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат
