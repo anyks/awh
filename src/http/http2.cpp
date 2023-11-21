@@ -1383,7 +1383,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
 		
-		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, id, 500000);
+		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, id, 250000);
 
 		this->commit();
 		
