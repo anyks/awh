@@ -782,6 +782,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
 	(void) session;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+
+	cout << " ±±±±±±±±±±±±±±±±±±±±±± " << size << endl;
+
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
 		// Выполняем функцию обратного вызова
