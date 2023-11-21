@@ -813,7 +813,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 		// Определяем размер передаваемых данных
-		result = static_cast <ssize_t> (size > 4096 ? 4096 : size);
+		result = static_cast <ssize_t> (size > (it->second.size - it->second.offset) ? ((it->second.size - it->second.offset) > 4096 ? 4096 : (it->second.size - it->second.offset)) : size);
 
 		cout << " ----------------1 " << (it->second.size - it->second.offset) << " == " << size << endl;
 
