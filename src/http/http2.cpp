@@ -1528,6 +1528,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				flags = NGHTTP2_FLAG_END_STREAM;
 			
 			cout << " ---------------------4 " << size << endl;
+
+			nghttp2_session_resume_data(this->_session, id);
 			
 			// Выполняем формирование данных фрейма для отправки
 			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
