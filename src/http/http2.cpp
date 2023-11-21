@@ -826,7 +826,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			// Выполняем удаление буфера бинарных данных
 			self->_streams.erase(it);
 		// Устанавливаем флаг, завершения чтения данных
-		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
 	} else result = 0;
 
 	cout << " ----------------2 " << result << " == " << size << endl;
