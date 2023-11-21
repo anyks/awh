@@ -813,9 +813,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 		// Определяем размер передаваемых данных
-		result = static_cast <ssize_t> (size > it->second.size ? it->second.size : size);
+		result = static_cast <ssize_t> (size > (it->second.size + it->second.offset) ? (it->second.size + it->second.offset) : size);
 
-		cout << " ----------------1 " << it->second.size << " == " << size << endl;
+		cout << " ----------------1 " << (it->second.size + it->second.offset) << " == " << size << endl;
 
 		// Выполняем копирование буфера данных
 		::memcpy(buffer, it->second.data.get(), static_cast <size_t> (result));
@@ -827,11 +827,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			self->_streams.erase(it);
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	} else result = 0;
+	}
 
 	cout << " ----------------2 " << result << " == " << size << endl;
-	
-	(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
 	// Если данные не прочитанны из сокета
 	if(result < 0)
