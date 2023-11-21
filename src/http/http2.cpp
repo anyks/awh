@@ -813,7 +813,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 
-		// const_cast <size_t &> (size) = 16384;
+		
 
 		// Определяем размер передаваемых данных
 		result = static_cast <ssize_t> (size > (it->second.size - it->second.offset) ? (it->second.size - it->second.offset) : size);
@@ -826,18 +826,19 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		::memcpy(buffer, it->second.data.get(), static_cast <size_t> (result));
 		// Выполняем смещение в буфере данных
 		it->second.offset += static_cast <size_t> (result);
+		
+		cout << " ----------------2 " << it->second.offset << " == " << it->second.size << endl;
+		
 		// Если все данные были переданы
-		if(it->second.offset == it->second.size)
+		if(it->second.offset == it->second.size){
 			// Выполняем удаление буфера бинарных данных
 			self->_streams.erase(it);
-		// Устанавливаем флаг, завершения чтения данных
-		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	} else result = 0;
+			// Устанавливаем флаг, завершения чтения данных
+			(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+		}
+	}
 
-	cout << " ----------------2 " << result << " == " << size << endl;
-	
-	if(self->_streams.count(sid) < 1)
-		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	cout << " ----------------3 " << result << " == " << size << endl;
 
 	// Если данные не прочитанны из сокета
 	if(result < 0)
@@ -1448,93 +1449,23 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		// Выполняем копирование данных буфера
 		::memcpy(ret.first->second.data.get(), buffer, size);
 
-		cout << " @@@@@@@@@@@@@@ " << string((const char *) buffer, size) << endl;
-
-		/**
-		 * sendFn Функция отправки данных по сети
-		 * @param id   идентификатор потока
-		 * @param flag флаг передаваемого потока по сети
-		 * @return     результат отправки данных
-		 */
-		auto sendFn = [this](const int32_t id, const flag_t flag) noexcept -> bool {
-			// Если сессия инициализированна
-			if(this->_session != nullptr){
-				// Создаём объект передачи данных тела полезной нагрузки
-				nghttp2_data_provider data;
-				// Зануляем передаваемый контекст
-				data.source.ptr = this;
-				// Устанавливаем функцию обратного вызова
-				data.read_callback = &http2_t::send;
-				// Флаги фрейма передаваемого по сети
-				uint8_t flags = NGHTTP2_FLAG_NONE;
-				// Если флаг установлен завершения кадра
-				if(flag == flag_t::END_STREAM)
-					// Устанавливаем флаг фрейма передаваемого по сети
-					flags = NGHTTP2_FLAG_END_STREAM;
-				// Выполняем формирование данных фрейма для отправки
-				const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
-				// Если сформировать данные фрейма не вышло
-				if(nghttp2_is_fatal(rv)){
-					// Выводим сообщение об полученной ошибке
-					this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
-					// Выходим из функции
-					return false;
-				}
-				// Если сессия инициализированна
-				if(this->_session != nullptr){
-					
-					// ssize_t nghttp2_session_mem_send(nghttp2_session *session, const uint8_t **data_ptr)
-					
-					// Фиксируем отправленный результат
-					const int rv = nghttp2_session_send(this->_session);
-					
-					cout << " --------------- nghttp2_session_send " << rv << endl;
-					
-					// Если зафиксифровать результат не вышло
-					if(nghttp2_is_fatal(rv)){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-						// Выходим из функции
-						return false;
-					}
-				}
-			}
-			// Выводим результат
-			return true;
-		};
-
-		// Выполняем отправку данных пока всё не отправим
-		// while(this->_streams.count(id) > 0){
-			// Если данные не отправлены
-			if(!sendFn(id, flag)){
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-		// }
 		
-			this->_streams.erase(id);
-		
-		/*
-		// Если флаг установлен завершения кадра
-		if(flag == flag_t::END_STREAM){
+		// Если сессия инициализированна
+		if(this->_session != nullptr){
 			// Создаём объект передачи данных тела полезной нагрузки
 			nghttp2_data_provider data;
 			// Зануляем передаваемый контекст
 			data.source.ptr = this;
 			// Устанавливаем функцию обратного вызова
 			data.read_callback = &http2_t::send;
+			// Флаги фрейма передаваемого по сети
+			uint8_t flags = NGHTTP2_FLAG_NONE;
+			// Если флаг установлен завершения кадра
+			if(flag == flag_t::END_STREAM)
+				// Устанавливаем флаг фрейма передаваемого по сети
+				flags = NGHTTP2_FLAG_END_STREAM;
 			// Выполняем формирование данных фрейма для отправки
-			const int rv = nghttp2_submit_data(this->_session, NGHTTP2_FLAG_END_STREAM, id, &data);
+			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 			// Если сформировать данные фрейма не вышло
 			if(nghttp2_is_fatal(rv)){
 				// Выводим сообщение об полученной ошибке
@@ -1550,8 +1481,12 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
+				
 				// Фиксируем отправленный результат
-				const int rv = nghttp2_session_send(this->_session);				
+				const int rv = nghttp2_session_send(this->_session);
+				
+				cout << " --------------- nghttp2_session_send " << rv << endl;
+				
 				// Если зафиксифровать результат не вышло
 				if(nghttp2_is_fatal(rv)){
 					// Выводим сообщение об полученной ошибке
@@ -1567,8 +1502,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
-		*/
-
+		
+		
+		
 
 
 		// Выполняем вызов метода выполненного события
