@@ -1425,7 +1425,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 
 			cout << " =========3 " << nghttp2_session_want_write(this->_session) << endl;
 
-			while(nghttp2_session_want_write(this->_session)){
+			while(!nghttp2_session_want_write(this->_session)){
 
 				cout << " !!!!!!!!! " << endl;
 
