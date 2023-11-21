@@ -1447,6 +1447,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		ret.first->second.size = size;
 		// Выполняем копирование данных буфера
 		::memcpy(ret.first->second.data.get(), buffer, size);
+
+		cout << " @@@@@@@@@@@@@@ " << string((const char *) buffer, size) << endl;
+
 		/**
 		 * sendFn Функция отправки данных по сети
 		 * @param id   идентификатор потока
