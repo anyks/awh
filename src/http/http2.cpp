@@ -853,7 +853,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Устанавливаем флаг, завершения чтения данных
 		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
-		result = NGHTTP2_ERR_DEFERRED;
+		result = NGHTTP2_ERR_PAUSE;
 	}
 
 	(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
