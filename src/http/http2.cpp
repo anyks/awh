@@ -1867,6 +1867,13 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 	// Выводим результат
 	return false;
 }
+
+void awh::Http2::test() noexcept {
+	nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
+
+	this->commit();
+}
+
 /**
  * free Метод очистки активной сессии
  */
@@ -2040,7 +2047,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 			break;
 		}
 
-		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
+		// nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
 
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);

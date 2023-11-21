@@ -1988,6 +1988,9 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										if((code >= 200) && options->http.body().empty())
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;
+										
+										web2_t::test(bid);
+										
 										// Выполняем ответ подключившемуся клиенту
 										int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 										// Если запрос не получилось отправить, выходим из функции

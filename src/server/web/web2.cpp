@@ -234,6 +234,19 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 	// Выводим результат
 	return result;
 }
+
+void awh::server::Web2::test(const uint64_t bid) noexcept {
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end()){
+			it->second->test();
+		}
+	}
+}
+
 /**
  * send Метод отправки трейлеров
  * @param sid     идентификатор потока

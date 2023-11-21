@@ -374,6 +374,11 @@ namespace awh {
 			 * @return       результат отправки данных фрейма
 			 */
 			bool goaway(const int32_t last, const error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
+
+		public:
+
+			void test() noexcept;
+
 		public:
 			/**
 			 * free Метод очистки активной сессии
