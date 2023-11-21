@@ -1421,8 +1421,13 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		cout << " =========2 " << nghttp2_session_get_remote_window_size(this->_session) << " == " << nghttp2_session_get_stream_remote_window_size(this->_session, id) << " || " << nghttp2_session_get_effective_local_window_size(this->_session) << endl;
 
 		
-		if(nghttp2_session_get_remote_window_size(this->_session) == 0)
-			nghttp2_session_want_write(this->_session);
+		if(nghttp2_session_get_remote_window_size(this->_session) == 0){
+
+			while(nghttp2_session_want_write(this->_session))
+    			nghttp2_session_send(this->_session);
+		
+		}
+		// nghttp2_session_want_write(this->_session);
 		
 		
 		// Список файловых дескрипторов
