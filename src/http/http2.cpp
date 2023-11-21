@@ -852,7 +852,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		#endif
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	} else (* flags) |= NGHTTP2_DATA_FLAG_NO_COPY;
+	}
 
 	// Выводим количество прочитанных байт
 	return result;
@@ -1458,7 +1458,10 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		#else
 			
 			cout << " ---------------------1 " << size << endl;
+
+			// ::write(fds[1], buffer, size);
 			
+			/*
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
 				// Выполняем закрытие сокета для чтения
@@ -1476,6 +1479,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
+			*/
 		#endif
 
 		cout << " ---------------------2 " << size << endl;
@@ -1491,7 +1495,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		 */
 		#else
 			// Выполняем закрытие подключения
-			::close(fds[1]);
+			// ::close(fds[1]);
 		#endif
 
 		cout << " ---------------------3 " << size << endl;
@@ -1532,6 +1536,10 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 
 			cout << " ---------------------5 " << size << endl;
+
+			::write(fds[1], buffer, size);
+
+			::close(fds[1]);
 
 			// Выполняем применение изменений
 			if(!this->commit()){
