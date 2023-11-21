@@ -651,6 +651,9 @@ void awh::Core::unbind(core_t * core) noexcept {
 			core->_dns->clear();
 		
 		cout << " !!!!!!!!!!!! UNBIND1 " << endl;
+
+		// Зануляем базу событий
+		core->_dispatch.base = nullptr;
 		
 		// Запускаем метод деактивации базы событий
 		core->closedown();
