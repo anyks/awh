@@ -1257,6 +1257,8 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 				} else ++it;
 			}
 		}
+
+		cout << " ################# " << bid << endl;
 	}
 }
 /**
