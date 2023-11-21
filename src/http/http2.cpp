@@ -857,9 +857,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Устанавливаем флаг, завершения чтения данных
 		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
-		// result = NGHTTP2_ERR_DEFERRED;
-
-		(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+		result = NGHTTP2_ERR_DEFERRED;
 	}
 
 	if(result == size)
@@ -1540,7 +1538,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			
 			cout << " ---------------------4 " << size << endl;
 
-			// nghttp2_session_resume_data(this->_session, id);
+			nghttp2_session_resume_data(this->_session, id);
 			
 			// Выполняем формирование данных фрейма для отправки
 			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
