@@ -831,7 +831,8 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 
 	cout << " ----------------2 " << result << " == " << size << endl;
 	
-	(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	if(self->_streams.count(sid) < 1)
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
 	// Если данные не прочитанны из сокета
 	if(result < 0)
@@ -1502,8 +1503,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			return true;
 		};
 
-		size_t k = 0;
-
 		// Выполняем отправку данных пока всё не отправим
 		while(this->_streams.count(id) > 0){
 			// Если данные не отправлены
@@ -1513,8 +1512,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
-
-			if(++k > 10) break;
 		}
 		
 		
