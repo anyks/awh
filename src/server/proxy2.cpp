@@ -67,13 +67,9 @@ void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
-
-		cout << " ++++++++++++++++++++++ " << bid << endl;
-
+	if(it != this->_clients.end())
 		// Выполняем удаление клиента из списка клиентов
 		this->_clients.erase(it);
-	}
 }
 /**
  * endClient Метод завершения запроса клиента

@@ -263,6 +263,9 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 		// Создаем новую базу
 		this->base = ev::loop_ref(ev_default_loop(ev::KQUEUE | ev::NOENV | EVFLAG_NOINOTIFY));
 	#endif
+
+	cout << " --------------------INIT BASE " << endl;
+
 	// Если работа уже запущена
 	if(this->_work)
 		// Выполняем разблокировку чтения данных
@@ -350,6 +353,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 awh::Core::Dispatch::~Dispatch() noexcept {
 	// Выполняем остановку работы
 	this->stop();
+
+	cout << " --------------------DELETE BASE " << this->_init << " === " << this->_work << endl;
+
 	// Удаляем объект базы событий
 	ev_loop_destroy(this->base);
 	/**
@@ -645,7 +651,7 @@ void awh::Core::unbind(core_t * core) noexcept {
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 		// Зануляем базу событий
-		core->_dispatch.base = nullptr;
+		// core->_dispatch.base = nullptr;
 	}
 }
 /**
