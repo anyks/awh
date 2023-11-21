@@ -2033,7 +2033,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				// Выполняем создание клиента
 				// nghttp2_session_client_new(&this->_session, callbacks, this);
 
-				// nghttp2_option_set_no_auto_window_update(option, 1);
+				nghttp2_option_set_no_auto_window_update(option, 1);
 
 				// Выполняем создание клиента
 				nghttp2_session_client_new2(&this->_session, callbacks, this, option);
@@ -2047,7 +2047,7 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 			break;
 		}
 
-		// nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
+		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
 
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
