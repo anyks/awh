@@ -813,8 +813,6 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 
 	cout << " ^^^^^^^^^^^^^^^^^^^^1 " << size << endl;
 
-	cout << " $$$$$$$$ " << string((const char *) buffer, size) << endl;
-
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -828,6 +826,8 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Выполняем чтение данных из сокета в буфер данных
 		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
 	#endif
+
+	cout << " $$$$$$$$ " << string((const char *) buffer, result) << endl;
 	
 	cout << " ^^^^^^^^^^^^^^^^^^^^2 " << result << endl;
 	
