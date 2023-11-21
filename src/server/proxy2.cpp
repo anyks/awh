@@ -378,10 +378,11 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			it->second->response.entity.assign(entity.begin(), entity.end());
 		// Выполняем очистку тела ответа
 		else it->second->response.entity.clear();
+		
+		cout << " -------------------4 " << endl;
+		
 		// Выводим полученный результат
 		this->completed(bid);
-
-		cout << " -------------------4 " << endl;
 	}
 }
 /**
