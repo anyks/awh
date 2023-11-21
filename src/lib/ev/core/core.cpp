@@ -350,6 +350,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 awh::Core::Dispatch::~Dispatch() noexcept {
 	// Выполняем остановку работы
 	this->stop();
+
+	cout << " ----------------- DISPATCH " << this->base << endl;
+
 	// Удаляем объект базы событий
 	ev_loop_destroy(this->base);
 	/**

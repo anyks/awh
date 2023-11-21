@@ -69,13 +69,9 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 	// Блокируем пустую переменную
 	(void) sid;
 	// Если мы получили данные
-	if(direct == client::web_t::direct_t::RECV){
-
-		cout << " -------------------1 " << endl;
-
+	if(direct == client::web_t::direct_t::RECV)
 		// Выводим полученный результат
 		this->completed(bid);
-	}
 }
 /**
  * responseClient Метод получения сообщения с удалённого сервера
@@ -372,9 +368,6 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			it->second->response.entity.assign(entity.begin(), entity.end());
 		// Выполняем очистку тела ответа
 		else it->second->response.entity.clear();
-		
-		cout << " -------------------2 " << endl;
-		
 		// Выводим полученный результат
 		this->completed(bid);
 	}
@@ -544,9 +537,6 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
 	if(!it->second->returned && (it->second->returned = (it != this->_clients.end()))){
-		
-		cout << " -------------------3 " << it->second->response.entity.size() << endl;
-		
 		// Если заголовки ответа получены
 		if(!it->second->response.headers.empty())
 			// Отправляем сообщение клиенту
