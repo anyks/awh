@@ -931,6 +931,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
+					
+					adj->_ectx.noblock();
+					
 					// Выполняем чтение данных с сокета
 					do {
 						// Если подключение выполнено и чтение данных разрешено
@@ -1051,6 +1054,9 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					max = ((max > 0) && (adj->_marker.write.max > max) ? max : adj->_marker.write.max);
 					// Активируем ожидание записи данных
 					this->events(mode_t::ENABLED, engine_t::method_t::WRITE, bid);
+					
+					adj->_ectx.block();
+					
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Получаем общий размер буфера данных
