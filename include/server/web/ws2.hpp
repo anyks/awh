@@ -452,7 +452,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения

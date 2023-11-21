@@ -45,51 +45,6 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 	if((this->_sessions.count(bid) == 0) && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
-			// Создаём параметры сессии и активируем запрет использования той самой неудачной системы приоритизации из первой итерации HTTP/2.
-			vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
-			// Выполняем переход по всему списку настроек
-			for(auto & setting : this->_settings){
-				// Определяем тип настройки
-				switch(static_cast <uint8_t> (setting.first)){
-					// Если мы получили разрешение присылать push-уведомления
-					case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
-						// Устанавливаем разрешение присылать push-уведомления
-						iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, setting.second});
-					break;
-					// Если мы получили максимальный размер фрейма
-					case static_cast <uint8_t> (settings_t::FRAME_SIZE):
-						/**
-						 * Устанавливаем максимальный размер кадра в октетах, который собеседнику разрешено отправлять.
-						 * Значение по умолчанию, оно же минимальное — 16 384=214 октетов.
-						 */
-						iv.push_back({NGHTTP2_SETTINGS_MAX_FRAME_SIZE, setting.second});
-					break;
-					// Если мы получили максимальный размер таблицы заголовков
-					case static_cast <uint8_t> (settings_t::HEADER_TABLE_SIZE):
-						// Устанавливаем максимальный размер таблицы заголовков
-						iv.push_back({NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, setting.second});
-					break;
-					// Если мы получили максимальный размер окна полезной нагрузки
-					case static_cast <uint8_t> (settings_t::WINDOW_SIZE):
-						// Устанавливаем элемент управления потоком (flow control)
-						iv.push_back({NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, setting.second});
-					break;
-					// Если мы получили максимальное количество потоков
-					case static_cast <uint8_t> (settings_t::STREAMS):
-						/**
-						 * Устанавливаем максимальное количество потоков, которое собеседнику разрешается использовать одновременно.
-						 * Считаются только открытые потоки, то есть по которым что-то ещё передаётся.
-						 * Можно указать значение 0: тогда собеседник не сможет отправлять новые сообщения, пока сторона его снова не увеличит.
-						 */
-						iv.push_back({NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, setting.second});
-					break;
-					// Если мы получили разрешение использования метода CONNECT
-					case static_cast <uint8_t> (settings_t::CONNECT):
-						// Устанавливаем разрешение применения метода CONNECT
-						iv.push_back({NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL, setting.second});
-					break;
-				}
-			}
 			// Выполняем создание нового объекта сессии HTTP/2
 			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова начала открытии потока
@@ -109,7 +64,7 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 				// Выполняем установку функции обратного вызова на событие получения ошибки
 				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
 			// Если инициализация модуля NgHttp2 не выполнена
-			if(!ret.first->second->init(http2_t::mode_t::SERVER, std::move(iv)))
+			if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
 				// Выполняем удаление созданного ранее объекта
 				this->_sessions.erase(ret.first);
 			// Если список разрешённых источников установлен
@@ -234,19 +189,6 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 	// Выводим результат
 	return result;
 }
-
-void awh::server::Web2::test(const uint64_t bid) noexcept {
-	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working()){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
-			it->second->test();
-		}
-	}
-}
-
 /**
  * send Метод отправки трейлеров
  * @param sid     идентификатор потока
@@ -401,44 +343,48 @@ void awh::server::Web2::setAltSvc(const unordered_multimap <string, string> & or
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Web2::settings(const map <settings_t, uint32_t> & settings) noexcept {
+void awh::server::Web2::settings(const map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек
 		this->_settings = settings;
 	// Если максимальное количество потоков не установлено
-	if(this->_settings.count(settings_t::STREAMS) == 0)
+	if(this->_settings.count(http2_t::settings_t::STREAMS) == 0)
 		// Выполняем установку максимального количества потоков
-		this->_settings.emplace(settings_t::STREAMS, CONCURRENT_STREAMS);
+		this->_settings.emplace(http2_t::settings_t::STREAMS, http2_t::CONCURRENT_STREAMS);
 	// Если максимальный размер фрейма не установлен
-	if(this->_settings.count(settings_t::FRAME_SIZE) == 0)
+	if(this->_settings.count(http2_t::settings_t::FRAME_SIZE) == 0)
 		// Выполняем установку максимального размера фрейма
-		this->_settings.emplace(settings_t::FRAME_SIZE, MAX_FRAME_SIZE_MIN);
+		this->_settings.emplace(http2_t::settings_t::FRAME_SIZE, http2_t::MAX_FRAME_SIZE_MIN);
 	// Если максимальный размер фрейма установлен
 	else {
 		// Выполняем извлечение максимального размера фрейма
-		auto it = this->_settings.find(settings_t::FRAME_SIZE);
+		auto it = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
 		// Если максимальный размер фрейма больше самого максимального значения
-		if(it->second > MAX_FRAME_SIZE_MAX)
+		if(it->second > http2_t::MAX_FRAME_SIZE_MAX)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = MAX_FRAME_SIZE_MAX;
+			it->second = http2_t::MAX_FRAME_SIZE_MAX;
 		// Если максимальный размер фрейма меньше самого минимального значения
-		else if(it->second < MAX_FRAME_SIZE_MIN)
+		else if(it->second < http2_t::MAX_FRAME_SIZE_MIN)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = MAX_FRAME_SIZE_MIN;
+			it->second = http2_t::MAX_FRAME_SIZE_MIN;
 	}
 	// Если максимальный размер окна фрейма не установлен
-	if(this->_settings.count(settings_t::WINDOW_SIZE) == 0)
+	if(this->_settings.count(http2_t::settings_t::WINDOW_SIZE) == 0)
 		// Выполняем установку максимального размера окна фрейма
-		this->_settings.emplace(settings_t::WINDOW_SIZE, MAX_WINDOW_SIZE);
+		this->_settings.emplace(http2_t::settings_t::WINDOW_SIZE, http2_t::MAX_WINDOW_SIZE);
+	// Если максимальный размер буфера полезной нагрузки не установлен
+	if(this->_settings.count(http2_t::settings_t::PAYLOAD_SIZE) == 0)
+		// Выполняем установку максимального размера буфера полезной нагрузки
+		this->_settings.emplace(http2_t::settings_t::PAYLOAD_SIZE, http2_t::MAX_PAYLOAD_SIZE);
 	// Если максимальный размер блока заголовоков не установлен
-	if(this->_settings.count(settings_t::HEADER_TABLE_SIZE) == 0)
+	if(this->_settings.count(http2_t::settings_t::HEADER_TABLE_SIZE) == 0)
 		// Выполняем установку максимального размера блока заголовоков
-		this->_settings.emplace(settings_t::HEADER_TABLE_SIZE, HEADER_TABLE_SIZE);
+		this->_settings.emplace(http2_t::settings_t::HEADER_TABLE_SIZE, http2_t::HEADER_TABLE_SIZE);
 	// Если флаг разрешения принимать push-уведомления не установлено
-	if(this->_settings.count(settings_t::ENABLE_PUSH) == 0)
+	if(this->_settings.count(http2_t::settings_t::ENABLE_PUSH) == 0)
 		// Выполняем установку флага отключения принёма push-уведомлений
-		this->_settings.emplace(settings_t::ENABLE_PUSH, 0);
+		this->_settings.emplace(http2_t::settings_t::ENABLE_PUSH, 0);
 }
 /**
  * Web2 Конструктор

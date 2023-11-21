@@ -460,7 +460,7 @@ void awh::server::WebSocket::setAltSvc(const unordered_multimap <string, string>
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::WebSocket::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::WebSocket::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_ws.settings(settings);
 }

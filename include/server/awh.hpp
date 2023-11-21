@@ -442,7 +442,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <web2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера

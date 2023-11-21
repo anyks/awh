@@ -106,6 +106,21 @@ namespace awh {
 				PRIORITY_UPDATE = 0x0D  // Фрейм обновления приоритетов
 			};
 			/**
+			 * Параметры настроек HTTP/2
+			 */
+			enum class settings_t : uint8_t {
+				NONE              = 0x00, // Настройки не установлены
+				STREAMS           = 0x01, // Максимальное количество потоков
+				CONNECT           = 0x02, // Разрешение использования метода CONNECT
+				FRAME_SIZE        = 0x03, // Максимальный размер фрейма
+				ENABLE_PUSH       = 0x04, // Разрешение присылать push-уведомления
+				WINDOW_SIZE       = 0x05, // Максимальный размер окна полезной нагрузки
+				PAYLOAD_SIZE      = 0x06, // Максимальный размер буфера полезной нагурзки
+				ENABLE_ALTSVC     = 0x07, // Разрешение передавать расширения ALTSVC
+				ENABLE_ORIGIN     = 0x08, // Разрешение передавать расширение ORIGIN
+				HEADER_TABLE_SIZE = 0x09  // Максимальный размер таблицы заголовков
+			};
+			/**
 			 * Флаги ошибок протокола HTTP/2
 			 */
 			enum class error_t : uint8_t {
@@ -124,6 +139,19 @@ namespace awh {
 				FLOW_CONTROL_ERROR  = 0x0C, // Ошибка превышения предела управления потоком
 				INADEQUATE_SECURITY = 0x0D  // Согласованные параметры SSL не приемлемы
 			};
+		public:
+			// Количество потоков по умолчанию
+			static constexpr uint32_t CONCURRENT_STREAMS = 0x80;
+			// Максимальный размер таблицы заголовков по умолчанию
+			static constexpr uint32_t HEADER_TABLE_SIZE = 0x1000;
+			// Минимальный размер фрейма по умолчанию
+			static constexpr uint32_t MAX_FRAME_SIZE_MIN = 0x4000;
+			// Максимальный размер окна по умолчанию
+			static constexpr uint32_t MAX_WINDOW_SIZE = 0x7FFFFFFF;
+			// Максимальный размер буфера полезной нагрузки
+			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0x6400000;
+			// Максимальный размер фрейма по умолчанию
+			static constexpr uint32_t MAX_FRAME_SIZE_MAX = 0xFFFFFF;
 		private:
 			/**
 			 * Событие обмена данными
@@ -374,11 +402,6 @@ namespace awh {
 			 * @return       результат отправки данных фрейма
 			 */
 			bool goaway(const int32_t last, const error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
-
-		public:
-
-			void test() noexcept;
-
 		public:
 			/**
 			 * free Метод очистки активной сессии
@@ -413,7 +436,7 @@ namespace awh {
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept;
+			bool init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова триггера выполнения операции

@@ -856,7 +856,7 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 	// Если флаг разрешающий метод CONNECT установлен
 	if(flags.count(flag_t::CONNECT_METHOD) > 0)
 		// разрешаем метод CONNECT на уровне протокола
-		this->_server.settings({{server::web2_t::settings_t::CONNECT, 1}});
+		this->_server.settings({{awh::http2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем флаги настроек модуля
 	this->_server.mode(std::move(server));
 }
@@ -897,7 +897,7 @@ void awh::server::Proxy::setAltSvc(const unordered_multimap <string, string> & o
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Proxy::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Proxy::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_server.settings(settings);
 }

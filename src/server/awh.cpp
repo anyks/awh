@@ -561,7 +561,7 @@ void awh::server::AWH::setAltSvc(const unordered_multimap <string, string> & ori
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::AWH::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::AWH::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списка настроек протокола HTTP/2
 	this->_http.settings(settings);
 }

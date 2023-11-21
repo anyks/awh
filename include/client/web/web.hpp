@@ -537,31 +537,6 @@ namespace awh {
 		 * Web2 Базовый класс web2-клиента
 		 */
 		typedef class Web2 : public web_t {
-			public:
-				// Количество потоков по умолчанию
-				static constexpr uint32_t CONCURRENT_STREAMS = 128;
-				// Максимальный размер таблицы заголовков по умолчанию
-				static constexpr uint32_t HEADER_TABLE_SIZE = 4096;
-				// Минимальный размер фрейма по умолчанию
-				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16384;
-				// Максимальный размер фрейма по умолчанию
-				static constexpr uint32_t MAX_FRAME_SIZE_MAX = 16777215;
-				// Максимальный размер окна по умолчанию
-				static constexpr uint32_t MAX_WINDOW_SIZE = 2147483647;
-			public:
-				/**
-				 * Параметры настроек HTTP/2
-				 */
-				enum class settings_t : uint8_t {
-					NONE              = 0x00, // Настройки не установлены
-					STREAMS           = 0x01, // Максимальное количество потоков
-					FRAME_SIZE        = 0x02, // Максимальный размер фрейма
-					ENABLE_PUSH       = 0x03, // Разрешение присылать push-уведомления
-					WINDOW_SIZE       = 0x04, // Максимальный размер окна полезной нагрузки
-					ENABLE_ALTSVC     = 0x05, // Разрешение передавать расширения ALTSVC
-					ENABLE_ORIGIN     = 0x06, // Разрешение передавать расширение ORIGIN
-					HEADER_TABLE_SIZE = 0x07  // Максимальный размер таблицы заголовков
-				};
 			protected:
 				/**
 				 * Ident Структура идентификации сервиса
@@ -593,7 +568,7 @@ namespace awh {
 				size_t _chunkSize;
 			private:
 				// Список параметров настроек протокола HTTP/2
-				map <settings_t, uint32_t> _settings;
+				map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
@@ -769,7 +744,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				virtual void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
+				virtual void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

@@ -559,39 +559,15 @@ namespace awh {
 		 * Web2 Базовый класс web2-сервера
 		 */
 		typedef class Web2 : public web_t {
-			public:
-				// Количество потоков по умолчанию
-				static constexpr uint32_t CONCURRENT_STREAMS = 128;
-				// Максимальный размер таблицы заголовков по умолчанию
-				static constexpr uint32_t HEADER_TABLE_SIZE = 4096;
-				// Минимальный размер фрейма по умолчанию
-				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16384;
-				// Максимальный размер фрейма по умолчанию
-				static constexpr uint32_t MAX_FRAME_SIZE_MAX = 16777215;
-				// Максимальный размер окна по умолчанию
-				static constexpr uint32_t MAX_WINDOW_SIZE = 2147483647;
-			public:
-				/**
-				 * Параметры настроек HTTP/2
-				 */
-				enum class settings_t : uint8_t {
-					NONE              = 0x00, // Настройки не установлены
-					STREAMS           = 0x01, // Максимальное количество потоков
-					CONNECT           = 0x02, // Разрешение использования метода CONNECT
-					FRAME_SIZE        = 0x03, // Максимальный размер фрейма
-					ENABLE_PUSH       = 0x04, // Разрешение присылать пуш-уведомления
-					WINDOW_SIZE       = 0x05, // Максимальный размер окна полезной нагрузки
-					HEADER_TABLE_SIZE = 0x06  // Максимальный размер таблицы заголовков
-				};
 			protected:
 				// Список доступных источников для подключения HTTP/2
 				vector <string> _origins;
 			protected:
-				// Список параметров настроек протокола HTTP/2
-				map <settings_t, uint32_t> _settings;
-			protected:
 				// Список отправляемых альтернативных сервисов HTTP/2
 				unordered_multimap <string, string> _altsvc;
+			protected:
+				// Список параметров настроек протокола HTTP/2
+				map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
 				map <uint64_t, unique_ptr <http2_t>> _sessions;
@@ -695,11 +671,6 @@ namespace awh {
 				 * @return       результат отправки данных фрейма
 				 */
 				bool goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
-			
-			public:
-
-				void test(const uint64_t bid) noexcept;
-			
 			public:
 				/**
 				 * send Метод отправки трейлеров
@@ -767,7 +738,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * Web2 Конструктор

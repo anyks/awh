@@ -1867,13 +1867,6 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 	// Выводим результат
 	return false;
 }
-
-void awh::Http2::test() noexcept {
-	nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
-
-	this->commit();
-}
-
 /**
  * free Метод очистки активной сессии
  */
@@ -1940,7 +1933,7 @@ void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noe
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> & settings) noexcept {
+bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы
@@ -1978,6 +1971,8 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, &http2_t::frameSend);
 		// Выполняем установку функции обратного вызова при получении чанка
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &http2_t::chunk);
+		// Создаём параметры сессии и активируем запрет использования той самой неудачной системы приоритизации из первой итерации HTTP/2.
+		vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
 		// Определяем идентификатор сервиса
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
@@ -1998,63 +1993,163 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				 */
 				nghttp2_option_set_no_auto_window_update(option, 1);
 				// Выполняем перебор полученных настроек
-				for(auto it = settings.begin(); it != settings.end();){
+				for(auto & item : settings){
 					// Определяем код параметра настроек
-					switch(it->settings_id){
-						// Если активированно разрешенение на передачу расширения ALTSVC
-						case NGHTTP2_ALTSVC: {
+					switch(static_cast <uint8_t> (item.first)){
+						// Если разрешено передавать расширения ALTSVC
+						case static_cast <uint8_t> (settings_t::ENABLE_ALTSVC):
 							// Если параметр активирован в настройках
-							if(it->value > 0)
+							if(item.second > 0)
 								// Выполняем установку зарешения использования расширения ALTSVC
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
-							// Выполняем удаление лишних параметров настроек
-							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
-						} break;
+						break;
 						// Если активированно разрешенение на передачу расширения ORIGIN
-						case NGHTTP2_ORIGIN: {
+						case static_cast <uint8_t> (settings_t::ENABLE_ORIGIN):
 							// Если параметр активирован в настройках
-							if(it->value > 0)
+							if(item.second > 0)
 								// Выполняем установку зарешения использования расширения ORIGIN
 								nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
-							// Выполняем удаление лишних параметров настроек
-							it = const_cast <vector <nghttp2_settings_entry> &> (settings).erase(it);
-						} break;
+						break;
+						// Если мы получили разрешение присылать push-уведомления
+						case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
+							// Устанавливаем разрешение присылать push-уведомления
+							iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, item.second});
+						break;
+						// Если мы получили максимальный размер фрейма
+						case static_cast <uint8_t> (settings_t::FRAME_SIZE):
+							/**
+							 * Устанавливаем максимальный размер кадра в октетах, который собеседнику разрешено отправлять.
+							 * Значение по умолчанию, оно же минимальное — 16 384=214 октетов.
+							 */
+							iv.push_back({NGHTTP2_SETTINGS_MAX_FRAME_SIZE, item.second});
+						break;
+						// Если мы получили максимальный размер таблицы заголовков
+						case static_cast <uint8_t> (settings_t::HEADER_TABLE_SIZE):
+							// Устанавливаем максимальный размер таблицы заголовков
+							iv.push_back({NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, item.second});
+						break;
+						// Если мы получили максимальный размер окна полезной нагрузки
+						case static_cast <uint8_t> (settings_t::WINDOW_SIZE):
+							// Устанавливаем элемент управления потоком (flow control)
+							iv.push_back({NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, item.second});
+						break;
 						// Если настройки соответствуют количествам доступных потоков
-						case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS: {
+						case static_cast <uint8_t> (settings_t::STREAMS): {
 							// Выполняем установку количество потоков разрешенных использовать в подключении
-							nghttp2_option_set_peer_max_concurrent_streams(option, it->value);
-							// Выполняем увеличение итератора
-							++it;
+							nghttp2_option_set_peer_max_concurrent_streams(option, item.second);
+							/**
+							 * Устанавливаем максимальное количество потоков, которое собеседнику разрешается использовать одновременно.
+							 * Считаются только открытые потоки, то есть по которым что-то ещё передаётся.
+							 * Можно указать значение 0: тогда собеседник не сможет отправлять новые сообщения, пока сторона его снова не увеличит.
+							 */
+							iv.push_back({NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, item.second});
 						} break;
-						// Для всех остальных настроек
-						default: ++it;
+						// Если мы получили размер максимального буфера полезной нагрузки
+						case static_cast <uint8_t> (settings_t::PAYLOAD_SIZE): {
+							// Если максимальный размер буфера полезной нагрузки передан
+							if(item.second > 0){
+								// Выполняем установку максимального размера полезной нагрузки
+								const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, item.second);
+								// Если настройки для сессии установить не удалось
+								if(!(result = !nghttp2_is_fatal(rv))){
+									// Выводим сообщение об ошибке
+									this->_log->print("Could not set PAYLOAD SIZE: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not set PAYLOAD SIZE: %s", nghttp2_strerror(rv)));
+									// Выполняем очистку предыдущей сессии
+									this->free();
+									// Выходим из функции
+									return result;
+								}
+							}
+						} break;
 					}
 				}
 				// Выполняем создание клиента
 				// nghttp2_session_client_new(&this->_session, callbacks, this);
-
-				nghttp2_option_set_no_auto_window_update(option, 1);
-
 				// Выполняем создание клиента
 				nghttp2_session_client_new2(&this->_session, callbacks, this, option);
 				// Выполняем удаление памяти объекта опции
 				nghttp2_option_del(option);
 			} break;
 			// Если сервис идентифицирован как сервер
-			case static_cast <uint8_t> (mode_t::SERVER):
+			case static_cast <uint8_t> (mode_t::SERVER): {
 				// Выполняем создание сервера
 				nghttp2_session_server_new(&this->_session, callbacks, this);
-			break;
+				// Выполняем переход по всему списку настроек
+				for(auto & item : settings){
+					// Определяем тип настройки
+					switch(static_cast <uint8_t> (item.first)){
+						// Если мы получили разрешение присылать push-уведомления
+						case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
+							// Устанавливаем разрешение присылать push-уведомления
+							iv.push_back({NGHTTP2_SETTINGS_ENABLE_PUSH, item.second});
+						break;
+						// Если мы получили максимальный размер фрейма
+						case static_cast <uint8_t> (settings_t::FRAME_SIZE):
+							/**
+							 * Устанавливаем максимальный размер кадра в октетах, который собеседнику разрешено отправлять.
+							 * Значение по умолчанию, оно же минимальное — 16 384=214 октетов.
+							 */
+							iv.push_back({NGHTTP2_SETTINGS_MAX_FRAME_SIZE, item.second});
+						break;
+						// Если мы получили максимальный размер таблицы заголовков
+						case static_cast <uint8_t> (settings_t::HEADER_TABLE_SIZE):
+							// Устанавливаем максимальный размер таблицы заголовков
+							iv.push_back({NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, item.second});
+						break;
+						// Если мы получили максимальный размер окна полезной нагрузки
+						case static_cast <uint8_t> (settings_t::WINDOW_SIZE):
+							// Устанавливаем элемент управления потоком (flow control)
+							iv.push_back({NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, item.second});
+						break;
+						// Если мы получили максимальное количество потоков
+						case static_cast <uint8_t> (settings_t::STREAMS):
+							/**
+							 * Устанавливаем максимальное количество потоков, которое собеседнику разрешается использовать одновременно.
+							 * Считаются только открытые потоки, то есть по которым что-то ещё передаётся.
+							 * Можно указать значение 0: тогда собеседник не сможет отправлять новые сообщения, пока сторона его снова не увеличит.
+							 */
+							iv.push_back({NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, item.second});
+						break;
+						// Если мы получили разрешение использования метода CONNECT
+						case static_cast <uint8_t> (settings_t::CONNECT):
+							// Устанавливаем разрешение применения метода CONNECT
+							iv.push_back({NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL, item.second});
+						break;
+						// Если мы получили размер максимального буфера полезной нагрузки
+						case static_cast <uint8_t> (settings_t::PAYLOAD_SIZE): {
+							// Если максимальный размер буфера полезной нагрузки передан
+							if(item.second > 0){
+								// Выполняем установку максимального размера полезной нагрузки
+								const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, item.second);
+								// Если настройки для сессии установить не удалось
+								if(!(result = !nghttp2_is_fatal(rv))){
+									// Выводим сообщение об ошибке
+									this->_log->print("Could not set PAYLOAD SIZE: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not set PAYLOAD SIZE: %s", nghttp2_strerror(rv)));
+									// Выполняем очистку предыдущей сессии
+									this->free();
+									// Выходим из функции
+									return result;
+								}
+							}
+						} break;
+					}
+				}
+			} break;
 		}
-
-		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
-
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
-		if(!settings.empty()){
+		if(!iv.empty()){
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
-			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
+			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
 			// Если настройки для сессии установить не удалось
 			if(!(result = !nghttp2_is_fatal(rv))){
 				// Выводим сообщение об ошибке

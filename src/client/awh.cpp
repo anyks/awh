@@ -743,7 +743,7 @@ void awh::client::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::client::AWH::settings(const map <web2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::client::AWH::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списока настроек протокола HTTP/2
 	this->_http.settings(settings);
 }
