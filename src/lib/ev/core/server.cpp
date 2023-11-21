@@ -929,11 +929,20 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				if(size > 0){
 					// Количество полученных байт
 					int64_t bytes = -1;
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета установлен как TCP/IP
+						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+						// Если тип сокета установлен как TCP/IP TLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+						// Если тип сокета установлен как SCTP
+						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+							// Переводим сокет в неблокирующий режим
+							adj->_ectx.noblock();
+						break;
+					}
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
-					
-					adj->_ectx.noblock();
-					
 					// Выполняем чтение данных с сокета
 					do {
 						// Если подключение выполнено и чтение данных разрешено
@@ -1038,6 +1047,18 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 			awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 			// Если сокет подключения активен
 			if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
+				// Определяем тип сокета
+				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как TCP/IP
+					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+					// Если тип сокета установлен как TCP/IP TLS
+					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+					// Если тип сокета установлен как SCTP
+					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+						// Переводим сокет в неблокирующий режим
+						adj->_ectx.block();
+					break;
+				}
 				// Устанавливаем текущий метод режима работы
 				adj->_method = engine_t::method_t::WRITE;
 				// Получаем объект схемы сети
@@ -1054,9 +1075,6 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					max = ((max > 0) && (adj->_marker.write.max > max) ? max : adj->_marker.write.max);
 					// Активируем ожидание записи данных
 					this->events(mode_t::ENABLED, engine_t::method_t::WRITE, bid);
-					
-					adj->_ectx.block();
-					
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Получаем общий размер буфера данных
