@@ -825,6 +825,8 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 	} else result = 0;
+
+	cout << " ---------------- " << result << " == " << size << endl;
 	
 	(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
