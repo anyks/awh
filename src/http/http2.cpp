@@ -1421,6 +1421,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		cout << " =========2 " << nghttp2_session_get_remote_window_size(this->_session) << " == " << nghttp2_session_get_stream_remote_window_size(this->_session, id) << " || " << nghttp2_session_get_effective_local_window_size(this->_session) << endl;
 
 		
+		/*
 		if(nghttp2_session_get_remote_window_size(this->_session) == 0){
 
 			cout << " =========3 " << nghttp2_session_want_write(this->_session) << endl;
@@ -1432,8 +1433,16 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
     			nghttp2_session_send(this->_session);
 
 			}
+
+			// SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE
+			// SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE
+			// SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE
+			// SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE
+
+			// NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE
 		
 		}
+		*/
 		// nghttp2_session_want_write(this->_session);
 		
 		
@@ -2030,6 +2039,9 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				nghttp2_session_server_new(&this->_session, callbacks, this);
 			break;
 		}
+
+		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, (100 * 1024 * 1024));
+
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
