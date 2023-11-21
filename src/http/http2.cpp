@@ -813,7 +813,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	// Если буфер передаваемых данных найден
 	if(it != self->_streams.end()){
 
-		const_cast <size_t &> (size) = 16384;
+		// const_cast <size_t &> (size) = 16384;
 
 		// Определяем размер передаваемых данных
 		result = static_cast <ssize_t> (size > (it->second.size - it->second.offset) ? (it->second.size - it->second.offset) : size);
@@ -1509,7 +1509,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		};
 
 		// Выполняем отправку данных пока всё не отправим
-		while(this->_streams.count(id) > 0){
+		// while(this->_streams.count(id) > 0){
 			// Если данные не отправлены
 			if(!sendFn(id, flag_t::NONE)){
 				// Выполняем вызов метода выполненного события
@@ -1517,7 +1517,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
-		}
+		// }
 		
 		
 		// Если флаг установлен завершения кадра
