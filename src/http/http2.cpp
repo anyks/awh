@@ -782,9 +782,6 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
 	(void) session;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-
-	cout << " ±±±±±±±±±±±±±±±±±±±±±± " << size << endl;
-
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
 		// Выполняем функцию обратного вызова
@@ -810,13 +807,6 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	(void) session;
 	// Результат работы функции
 	ssize_t result = -1;
-
-	cout << " ^^^^^^^^^^^^^^^^^^^^1 " << size << endl;
-
-	// delete [] buffer;
-
-	// buffer = new uint8_t[size];
-
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -830,11 +820,6 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Выполняем чтение данных из сокета в буфер данных
 		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
 	#endif
-
-	cout << " $$$$$$$$ " << string((const char *) buffer, result) << endl;
-	
-	cout << " ^^^^^^^^^^^^^^^^^^^^2 " << result << endl;
-	
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
@@ -856,19 +841,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		#endif
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-
-		// result = NGHTTP2_ERR_DEFERRED;
 	}
-
-	/*
-	if(result == size)
-		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	*/
-
-	// (* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
-	// (* flags) |= NGHTTP2_DATA_FLAG_NO_COPY;
-	
-
 	// Выводим количество прочитанных байт
 	return result;
 }
@@ -1015,24 +988,21 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, nghttp2_strerror(static_cast <int> (bytes)));
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::RECV_FRAME);
-				// Выходим из функции
-				return false;
+				// Выполняем завершение работы
+				goto End;
 			}
 			// Выполняем применение изменений
-			if(!this->commit()){
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::RECV_FRAME);
-				// Выходим из функции
-				return false;
-			}
+			if(!this->commit())
+				// Выполняем завершение работы
+				goto End;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::RECV_FRAME);
 		// Выводим результат
 		return true;
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::RECV_FRAME);
 	// Выводим результат
@@ -1138,21 +1108,22 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 				if(nghttp2_is_fatal(rv)){
 					// Выводим сообщение об полученной ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-					// Выполняем вызов метода выполненного события
-					this->completed(event_t::SEND_REJECT);
-					// Выходим из функции
-					return false;
+					// Выполняем завершение работы
+					goto End;
 				}
 				// Выполняем применение изменений
-				if(!this->commit()){
-					// Выполняем вызов метода выполненного события
-					this->completed(event_t::SEND_REJECT);
-					// Выходим из функции
-					return false;
-				}
+				if(!this->commit())
+					// Выполняем завершение работы
+					goto End;
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_REJECT);
+				// Выводим результат
+				return true;
 			}
 		} break;
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_REJECT);
 	// Выводим результат
@@ -1181,18 +1152,17 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 					if(nghttp2_is_fatal(rv)){
 						// Выводим сообщение об полученной ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::WINDOW_UPDATE);
-						// Выходим из функции
-						return false;
+						// Выполняем завершение работы
+						goto End;
 					}
 					// Выполняем применение изменений
-					if(!this->commit()){
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::WINDOW_UPDATE);
-						// Выходим из функции
-						return false;
-					}
+					if(!this->commit())
+						// Выполняем завершение работы
+						goto End;
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::WINDOW_UPDATE);
+					// Выводим результат
+					return true;
 				}
 			} break;
 			// Если сервис идентифицирован как сервер
@@ -1206,6 +1176,8 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 			} break;
 		}
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::WINDOW_UPDATE);
 	// Выводим результат
@@ -1317,7 +1289,9 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 								goto End;
 							}
 							// Выполняем применение изменений
-							this->commit();
+							if(!this->commit())
+								// Выходим из функции
+								goto End;
 						}
 					}
 				}
@@ -1376,21 +1350,22 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
-					// Выполняем вызов метода выполненного события
-					this->completed(event_t::SEND_TRAILERS);
 					// Выходим из функции
-					return false;
+					goto End;
 				}
 				// Выполняем применение изменений
-				if(!this->commit()){
-					// Выполняем вызов метода выполненного события
-					this->completed(event_t::SEND_TRAILERS);
+				if(!this->commit())
 					// Выходим из функции
-					return false;
-				}
-			} break;
+					goto End;
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_TRAILERS);
+				// Выводим результат
+				return true;
+			}
 		}
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_TRAILERS);
 	// Выводим результат
@@ -1409,194 +1384,159 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
-		
-		/*
-		nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, id, 250000);
-
-		this->commit();
-		*/
-
-		cout << " =========1 " << nghttp2_session_get_local_window_size(this->_session) << " == " << nghttp2_session_get_stream_local_window_size(this->_session, id) << endl;
-
-		cout << " =========2 " << nghttp2_session_get_remote_window_size(this->_session) << " == " << nghttp2_session_get_stream_remote_window_size(this->_session, id) << " || " << nghttp2_session_get_effective_local_window_size(this->_session) << endl;
-
-		
-		/*
-		if(nghttp2_session_get_remote_window_size(this->_session) == 0){
-
-			cout << " =========3 " << nghttp2_session_want_write(this->_session) << endl;
-
-			while(!nghttp2_session_want_write(this->_session)){
-
-				cout << " !!!!!!!!! " << endl;
-
-    			nghttp2_session_send(this->_session);
-
-			}
-
-			// SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE
-			// SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE
-			// SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE
-			// SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE
-
-			// NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE
-		
-		}
-		*/
-		// nghttp2_session_want_write(this->_session);
-		
-		
-		// Список файловых дескрипторов
-		int fds[2];
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-			const int rv = _pipe(fds, 4096, O_BINARY);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-			const int rv = ::pipe(fds);
-		#endif
-		// Выполняем подписку на основной канал передачи данных
-		if(rv != 0){
-			// Выводим в лог сообщение
-			this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
-			// Выполняем вызов метода выполненного события
-			this->completed(event_t::SEND_DATA);
-			// Выходим из функции
-			return false;
-		}
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Если данные небыли записаны в сокет
-			if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
-				// Выполняем закрытие сокета для чтения
-				::_close(fds[0]);
-				// Выполняем закрытие сокета для записи
-				::_close(fds[1]);
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			
-			cout << " ---------------------1 " << size << endl;
-
-			::write(fds[1], buffer, size);
-			
-			/*
-			// Если данные небыли записаны в сокет
-			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
-				// Выполняем закрытие сокета для чтения
-				::close(fds[0]);
-				// Выполняем закрытие сокета для записи
-				::close(fds[1]);
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-			*/
-		#endif
-
-		cout << " ---------------------2 " << size << endl;
-
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем закрытие подключения
-			::_close(fds[1]);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем закрытие подключения
-			::close(fds[1]);
-		#endif
-
-		cout << " ---------------------3 " << size << endl;
-
-		// Создаём объект передачи данных тела полезной нагрузки
-		nghttp2_data_provider data;
-		// Зануляем передаваемый контекст
-		data.source.ptr = nullptr;
-		// Устанавливаем файловый дескриптор
-		data.source.fd = fds[0];
-		// Устанавливаем функцию обратного вызова
-		data.read_callback = &http2_t::send;
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
-			// Флаги фрейма передаваемого по сети
-			uint8_t flags = NGHTTP2_FLAG_NONE;
-			// Если флаг установлен завершения кадра
-			if(flag == flag_t::END_STREAM)
-				// Устанавливаем флаг фрейма передаваемого по сети
-				flags = NGHTTP2_FLAG_END_STREAM;
-			
-			cout << " ---------------------4 " << size << endl;
-
-			// nghttp2_session_resume_data(this->_session, id);
-			
-			// Выполняем формирование данных фрейма для отправки
-			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
-			// Если сформировать данные фрейма не вышло
-			if(nghttp2_is_fatal(rv)){
-				// Выводим сообщение об полученной ошибке
-				this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
+			// Если место в буфере данных ещё есть
+			if(nghttp2_session_get_remote_window_size(this->_session) > 0){
+				/**
+				 * sendFn Функция отправки данных полезной нагрузки по сети
+				 * @param id     идентификатор потока
+				 * @param buffer буфер бинарных данных передаваемых
+				 * @param size   размер передаваемых данных в байтах
+				 * @param flag   флаг передаваемого потока по сети
+				 * @return       результат отправки данных фрейма
+				 */
+				auto sendFn = [this](const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept -> bool {
+					// Список файловых дескрипторов
+					int fds[2];
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+						const int rv = _pipe(fds, 4096, O_BINARY);
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+						const int rv = ::pipe(fds);
+					#endif
+					// Выполняем подписку на основной канал передачи данных
+					if(rv != 0){
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
+						// Выходим из функции
+						return false;
+					}
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Если данные небыли записаны в сокет
+						if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
+							// Выполняем закрытие сокета для чтения
+							::_close(fds[0]);
+							// Выполняем закрытие сокета для записи
+							::_close(fds[1]);
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+							// Выходим из функции
+							return false;
+						}
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Если данные небыли записаны в сокет
+						if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
+							// Выполняем закрытие сокета для чтения
+							::close(fds[0]);
+							// Выполняем закрытие сокета для записи
+							::close(fds[1]);
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+							// Выходим из функции
+							return false;
+						}
+					#endif
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем закрытие подключения
+						::_close(fds[1]);
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем закрытие подключения
+						::close(fds[1]);
+					#endif
+					// Создаём объект передачи данных тела полезной нагрузки
+					nghttp2_data_provider data;
+					// Зануляем передаваемый контекст
+					data.source.ptr = nullptr;
+					// Устанавливаем файловый дескриптор
+					data.source.fd = fds[0];
+					// Устанавливаем функцию обратного вызова
+					data.read_callback = &http2_t::send;
+					// Если сессия инициализированна
+					if(this->_session != nullptr){
+						// Флаги фрейма передаваемого по сети
+						uint8_t flags = NGHTTP2_FLAG_NONE;
+						// Если флаг установлен завершения кадра
+						if(flag == flag_t::END_STREAM)
+							// Устанавливаем флаг фрейма передаваемого по сети
+							flags = NGHTTP2_FLAG_END_STREAM;
+						// Выполняем формирование данных фрейма для отправки
+						const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
+						// Если сформировать данные фрейма не вышло
+						if(nghttp2_is_fatal(rv)){
+							// Выводим сообщение об полученной ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, nghttp2_strerror(rv));
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_SUBMIT, nghttp2_strerror(rv));
+							// Выходим из функции
+							return false;
+						}
+						// Выполняем применение изменений
+						if(!this->commit())
+							// Выходим из функции
+							return false;
+					}
+					// Выводим результат
+					return true;
+				};
+				// Cмещение в буфере и отправляемый размер данных
+				size_t offset = 0, actual = 0, left = 0;
+				// Выполняем отправку данных пока всё не отправим
+				while((size - offset) > 0){
+					// Получаем общий размер буфера данных
+					left = (size - offset);
+					// Определяем размер отправляемых данных
+					actual = (left >= 4096 ? 4096 : left);
+					// Если отправить данные по сети не удалось
+					if(!sendFn(id, buffer + offset, actual, ((size == (offset + actual)) ? flag : flag_t::NONE)))
+						// Выполняем завершение работы
+						goto End;
+					// Увеличиваем смещение в буфере
+					offset += actual;
+				}
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-
-			cout << " ---------------------5 " << size << endl;
-
-			// Выполняем применение изменений
-			if(!this->commit()){
-				// Выполняем вызов метода выполненного события
-				this->completed(event_t::SEND_DATA);
-				// Выходим из функции
-				return false;
-			}
-
-			cout << " ---------------------6 " << size << endl;
+				// Выводим результат
+				return true;
+			// Выводим сообщение об ошибке
+			} else this->_log->print("Payload buffer HTTP/2 is out of space", log_t::flag_t::CRITICAL);
 		}
-		// Выполняем вызов метода выполненного события
-		this->completed(event_t::SEND_DATA);
-		// Выводим результат
-		return true;
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_DATA);
 	// Выводим результат
@@ -1846,22 +1786,23 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 					if(nghttp2_is_fatal(rv)){
 						// Выводим сообщение об полученной ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_GOAWAY);
-						// Выходим из функции
-						return false;
+						// Выполняем завершение работы
+						goto End;
 					}
 					// Выполняем применение изменений
-					if(!this->commit()){
-						// Выполняем вызов метода выполненного события
-						this->completed(event_t::SEND_GOAWAY);
-						// Выходим из функции
-						return false;
-					}
+					if(!this->commit())
+						// Выполняем завершение работы
+						goto End;
+					// Выполняем вызов метода выполненного события
+					this->completed(event_t::SEND_GOAWAY);
+					// Выводим результат
+					return true;
 				}
 			} break;
 		}
 	}
+	// Устанавливаем метку завершения работы
+	End:
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_GOAWAY);
 	// Выводим результат
