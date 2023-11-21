@@ -1433,12 +1433,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
-		// Создаём объект передачи данных тела полезной нагрузки
-		nghttp2_data_provider data;
-		// Зануляем передаваемый контекст
-		data.source.ptr = this;
-		// Устанавливаем функцию обратного вызова
-		data.read_callback = &http2_t::send;
 		// Выполняем создание объекта потока передачи данных
 		auto ret = this->_streams.emplace(id, stream_t());
 		// Создаём буфер данных для отправки
@@ -1456,6 +1450,12 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		auto sendFn = [&data, this](const int32_t id, const flag_t flag) noexcept -> bool {
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
+				// Создаём объект передачи данных тела полезной нагрузки
+				nghttp2_data_provider data;
+				// Зануляем передаваемый контекст
+				data.source.ptr = this;
+				// Устанавливаем функцию обратного вызова
+				data.read_callback = &http2_t::send;
 				// Флаги фрейма передаваемого по сети
 				uint8_t flags = NGHTTP2_FLAG_NONE;
 				// Если флаг установлен завершения кадра
@@ -1503,11 +1503,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		};
 		// Выполняем отправку данных пока всё не отправим
 		while(this->_streams.count(id) > 0){
-
-			if(this->_streams.at(id).offset > 0)
-				nghttp2_session_mem_send(this->_session, &data);
 			// Если данные не отправлены
-			else if(!sendFn(id, flag_t::NONE)){
+			if(!sendFn(id, flag_t::NONE)){
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
 				// Выходим из функции
