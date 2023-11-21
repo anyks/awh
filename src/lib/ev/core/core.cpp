@@ -350,15 +350,8 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 awh::Core::Dispatch::~Dispatch() noexcept {
 	// Выполняем остановку работы
 	this->stop();
-
-	if(this->base != nullptr){
-
-	cout << " #################### DISPATCH " << endl;
-
 	// Удаляем объект базы событий
 	ev_loop_destroy(this->base);
-
-	}
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -649,17 +642,8 @@ void awh::Core::unbind(core_t * core) noexcept {
 		if(core->_dns != nullptr)
 			// Выполняем удаление модуля DNS-резолвера
 			core->_dns->clear();
-		
-		cout << " !!!!!!!!!!!! UNBIND1 " << endl;
-
-		// Зануляем базу событий
-		core->_dispatch.base = nullptr;
-		
 		// Запускаем метод деактивации базы событий
 		core->closedown();
-		
-		cout << " !!!!!!!!!!!! UNBIND2 " << endl;
-		
 		// Зануляем базу событий
 		core->_dispatch.base = nullptr;
 	}

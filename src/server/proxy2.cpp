@@ -160,7 +160,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				// Выполняем закрытие подключения
 				this->close(bid);
 				// Выполняем удаление клиента из списка клиентов
-				this->_clients.erase(it);
+				// this->_clients.erase(it);
 			} break;
 		}
 	}
