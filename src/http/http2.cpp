@@ -815,7 +815,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		// Определяем размер передаваемых данных
 		result = static_cast <ssize_t> (size > (it->second.size - it->second.offset) ? ((it->second.size - it->second.offset) > 4096 ? 4096 : (it->second.size - it->second.offset)) : size);
 
-		cout << " ----------------1 " << (it->second.size - it->second.offset) << " == " << size << endl;
+		cout << " ----------------1 " << (it->second.size - it->second.offset) << " == " << size << " == " << result << endl;
 
 		// Выполняем копирование буфера данных
 		::memcpy(buffer, it->second.data.get(), static_cast <size_t> (result));
