@@ -190,6 +190,8 @@ namespace awh {
 					bool _work;
 					// Флаг инициализации базы событий
 					bool _init;
+					// Флаг виртуальной базы данных
+					bool _virt;
 				public:
 					// База событий
 					ev::loop_ref base;
@@ -225,6 +227,17 @@ namespace awh {
 					 * start Метод запуска чтения базы событий
 					 */
 					void start() noexcept;
+				public:
+					/**
+					 * virt Метод проверки является ли база событий виртуальной
+					 * @return результат проверки
+					 */
+					bool virt() const noexcept;
+					/**
+					 * virt Метод активации виртуальной базы событий
+					 * @param mode флаг активации
+					 */
+					void virt(const bool mode) noexcept;
 				public:
 					/**
 					 * freeze Метод заморозки чтения данных
