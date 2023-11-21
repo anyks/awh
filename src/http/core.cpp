@@ -769,7 +769,7 @@ set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
  */
 const vector <char> awh::Http::payload() const noexcept {
 	
-	// const_cast <size_t &> (this->_chunk) = 4000;
+	const_cast <size_t &> (this->_chunk) = 16374;
 	
 	// Результат работы функции
 	vector <char> result;
