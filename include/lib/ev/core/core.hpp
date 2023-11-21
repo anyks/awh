@@ -192,6 +192,10 @@ namespace awh {
 					bool _init;
 					// Флаг виртуальной базы данных
 					bool _virt;
+				private:
+
+					time_t _id = 0;
+
 				public:
 					// База событий
 					ev::loop_ref base;

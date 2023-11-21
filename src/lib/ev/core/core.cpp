@@ -122,6 +122,9 @@ void awh::Core::Dispatch::kick() noexcept {
 void awh::Core::Dispatch::stop() noexcept {
 	// Если чтение базы событий уже началось
 	if(this->_work && !this->_virt){
+		
+		cout << " ------------------ DISPATCH STOP STOP " << this->_virt << " === " << this->_id << endl;
+		
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
@@ -204,7 +207,7 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 	// Выполняем установку флага виртуальной базы событий
 	this->_virt = mode;
 
-	cout << " ------------------ DISPATCH SET " << this->_virt << endl;
+	cout << " ------------------ DISPATCH SET " << this->_virt << " === " << this->_id << endl;
 }
 /**
  * freeze Метод заморозки чтения данных
@@ -345,7 +348,13 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
  * @param core объект сетевого ядра
  */
 awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
- _core(core), _easy(false), _work(false), _init(true), base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
+ _core(core), _easy(false), _work(false), _init(true), _virt(false),
+ base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
+	
+	this->_id = core->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+
+	cout << " ------------------ DISPATCH START " << this->_id << endl;
+	
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -381,7 +390,7 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
  */
 awh::Core::Dispatch::~Dispatch() noexcept {
 	
-	cout << " ------------------ DISPATCH STOP " << this->_virt << endl;
+	cout << " ------------------ DISPATCH STOP " << this->_virt << " === " << this->_id << " || " << this->_work << endl;
 	
 	// Если база данных не является виртуальной
 	if(!this->_virt){
