@@ -203,6 +203,8 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку флага виртуальной базы событий
 	this->_virt = mode;
+
+	cout << " ------------------ DISPATCH SET " << this->_virt << endl;
 }
 /**
  * freeze Метод заморозки чтения данных
@@ -378,6 +380,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
  * ~Dispatch Деструктор
  */
 awh::Core::Dispatch::~Dispatch() noexcept {
+	
+	cout << " ------------------ DISPATCH STOP " << this->_virt << endl;
+	
 	// Если база данных не является виртуальной
 	if(!this->_virt){
 		// Выполняем остановку работы
@@ -638,6 +643,9 @@ void awh::Core::bind(core_t * core) noexcept {
 			this->_cores++;
 			// Устанавливаем флаг запуска
 			core->_mode = true;
+
+			cout << " ################# BIND " << endl;
+
 			// Отмечаем что база событий виртуальная
 			core->_dispatch.virt(true);
 			// Выполняем разблокировку потока
@@ -677,12 +685,15 @@ void awh::Core::unbind(core_t * core) noexcept {
 		if(core->_dns != nullptr)
 			// Выполняем удаление модуля DNS-резолвера
 			core->_dns->clear();
-		// Запускаем метод деактивации базы событий
-		core->closedown();
+		
+		cout << " ################# UNBIND " << core->_dispatch.virt() << endl;
+		
 		// Если база событий не виртуальная
 		if(!core->_dispatch.virt())
 			// Зануляем базу событий
 			core->_dispatch.base = nullptr;
+		// Запускаем метод деактивации базы событий
+		core->closedown();
 	}
 }
 /**
