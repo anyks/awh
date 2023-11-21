@@ -1454,7 +1454,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		 */
 		#else
 			
-			cout << " --------------------- " << size << endl;
+			cout << " ---------------------1 " << size << endl;
 			
 			// Если данные небыли записаны в сокет
 			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
@@ -1474,6 +1474,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		#endif
+
+		cout << " ---------------------2 " << size << endl;
+
 		/**
 		 * Методы только для OS Windows
 		 */
@@ -1487,6 +1490,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выполняем закрытие подключения
 			::close(fds[1]);
 		#endif
+
+		cout << " ---------------------3 " << size << endl;
+
 		// Создаём объект передачи данных тела полезной нагрузки
 		nghttp2_data_provider data;
 		// Зануляем передаваемый контекст
@@ -1503,6 +1509,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			if(flag == flag_t::END_STREAM)
 				// Устанавливаем флаг фрейма передаваемого по сети
 				flags = NGHTTP2_FLAG_END_STREAM;
+			
+			cout << " ---------------------4 " << size << endl;
+			
 			// Выполняем формирование данных фрейма для отправки
 			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 			// Если сформировать данные фрейма не вышло
@@ -1518,6 +1527,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
+
+			cout << " ---------------------5 " << size << endl;
+
 			// Выполняем применение изменений
 			if(!this->commit()){
 				// Выполняем вызов метода выполненного события
@@ -1525,6 +1537,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
+
+			cout << " ---------------------6 " << size << endl;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
