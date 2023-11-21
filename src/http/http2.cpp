@@ -1515,6 +1515,12 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		
 		// Если флаг установлен завершения кадра
 		if(flag == flag_t::END_STREAM){
+			// Создаём объект передачи данных тела полезной нагрузки
+			nghttp2_data_provider data;
+			// Зануляем передаваемый контекст
+			data.source.ptr = this;
+			// Устанавливаем функцию обратного вызова
+			data.read_callback = &http2_t::send;
 			// Выполняем формирование данных фрейма для отправки
 			const int rv = nghttp2_submit_data(this->_session, NGHTTP2_FLAG_END_STREAM, id, &data);
 			// Если сформировать данные фрейма не вышло
