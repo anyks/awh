@@ -376,6 +376,12 @@ namespace awh {
 				 * @return       флаг обязательной следующей обработки данных
 				 */
 				bool raw(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * completed Метод завершения получения данных
+				 * @param bid идентификатор брокера (клиента)
+				 */
+				void completed(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * proto Метод извлечения поддерживаемого протокола подключения

@@ -66,28 +66,12 @@ bool awh::server::Proxy::acceptServer(const string & ip, const string & mac, con
  * @param direct направление передачи данных
  */
 void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const client::web_t::direct_t direct) noexcept {
-	// Выполняем поиск объекта клиента
-	auto it = this->_clients.find(bid);
-	// Если активный клиент найден
-	if(it != this->_clients.end()){
-		// Блокируем пустую переменную
-		(void) sid;
-		// Если мы получили данные
-		if(direct == client::web_t::direct_t::RECV){
-
-			cout << " +================ " << it->second->response.entity.size() << endl;
-			
-			// cout << " ------------------ " << string(it->second->response.entity.begin(), it->second->response.entity.end()) << endl;
-
-			// Отправляем сообщение клиенту
-			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
-			
-			
-
-			// Выполняем отключение клиента от сетевого ядра
-			// this->_core.unbind(&it->second->core);
-		}
-	}
+	// Блокируем пустую переменную
+	(void) sid;
+	// Если мы получили данные
+	if(direct == client::web_t::direct_t::RECV)
+		// Выводим полученный результат
+		this->completed(bid);
 }
 /**
  * responseClient Метод получения сообщения с удалённого сервера
@@ -157,10 +141,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 							// Пропускаем установленный заголовок
 							else ++it;
 						}
-						// Если активирован протокол подключения HTTP/2
-						// if(it->second->awh.proto() == engine_t::proto_t::HTTP2)
-							// Выполняем установку защищённого протокола
-							// request.url.schema = "https";
 						// Выполняем запрос на сервер
 						it->second->awh.send(std::move(request));
 					} break;
@@ -178,9 +158,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				// Запоминаем что подключение остановлено
 				it->second->connected = false;
 				// Выполняем закрытие подключения
-				// this->close(bid);
-				// Выполняем удаление клиента из списка клиентов
-				// this->_clients.erase(it);
+				this->close(bid);
+				// Выводим полученный результат
+				this->completed(bid);
 			} break;
 		}
 	}
@@ -358,9 +338,9 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Если клиент в списке найден
 			if(it != this->_clients.end()){
 				// Снимаем флаг установленного подключения
-				// it->second->connected = false;
+				it->second->connected = false;
 				// Выполняем отключение клиента от сетевого ядра
-				// this->_core.unbind(&it->second->core);
+				this->_core.unbind(&it->second->core);
 			}
 		} break;
 	}
@@ -383,21 +363,13 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 	// Если активный клиент найден
 	if(it != this->_clients.end()){
 		// Если тело ответа с сервера получено
-		if(!entity.empty()){
-			// Получаем объект HTTP-парсера запроса клиента
-			const awh::http_t * http = this->parser(bid);
+		if(!entity.empty())
 			// Устанавливаем полученные данные тела ответа
 			it->second->response.entity.assign(entity.begin(), entity.end());
-			
-			/*
-			// Получаем флаг завершения запроса после отправки результата
-			const bool end = ((http == nullptr) || !http->is(awh::http_t::state_t::ALIVE));
-			// Выполняем отправку тела полученного клиентом с удалённого сервера
-			this->_server.send(it->second->sid, bid, it->second->response.entity.data(), it->second->response.entity.size(), end);
-			*/
-
 		// Выполняем очистку тела ответа
-		} else it->second->response.entity.clear();
+		else it->second->response.entity.clear();
+		// Выводим полученный результат
+		this->completed(bid);
 	}
 }
 /**
@@ -442,14 +414,6 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			it->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			it->second->response.params.message = message;
-
-			/*
-			// Устанавливаем флаг завершения запроса, если запрос не должен содержать тело или тело ответа не существует
-			const bool end = !((code >= 200) && (code != 204) && (code != 304) && (code != 308));
-			// Выполняем отправку заголовков полученных клиентом с удалённого сервера
-			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.headers, end);
-			*/
-
 		}
 	}
 }
@@ -563,6 +527,25 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * completed Метод завершения получения данных
+ * @param bid идентификатор брокера (клиента)
+ */
+void awh::server::Proxy::completed(const uint64_t bid) noexcept {
+	// Выполняем поиск объекта клиента
+	auto it = this->_clients.find(bid);
+	// Если активный клиент найден
+	if(it != this->_clients.end()){
+		// Выполняем отключение клиента от сетевого ядра
+		this->_core.unbind(&it->second->core);
+		// Если заголовки ответа получены
+		if(!it->second->response.headers.empty())
+			// Отправляем сообщение клиенту
+			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+		// Выполняем удаление клиента из списка клиентов
+		this->_clients.erase(it);
+	}
 }
 /**
  * proto Метод извлечения поддерживаемого протокола подключения
