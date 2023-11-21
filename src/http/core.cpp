@@ -768,6 +768,9 @@ set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
  * @return текущий чанк полезной нагрузки
  */
 const vector <char> awh::Http::payload() const noexcept {
+	
+	static_cast <size_t &> (this->_chunk) = 4096;
+	
 	// Результат работы функции
 	vector <char> result;
 	// Выполняем компрессию полезной нагрузки
