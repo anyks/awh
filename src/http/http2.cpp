@@ -1423,8 +1423,13 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		
 		if(nghttp2_session_get_remote_window_size(this->_session) == 0){
 
-			while(nghttp2_session_want_write(this->_session))
+			while(nghttp2_session_want_write(this->_session)){
+
+				cout << " !!!!!!!!! " << endl;
+
     			nghttp2_session_send(this->_session);
+
+			}
 		
 		}
 		// nghttp2_session_want_write(this->_session);
