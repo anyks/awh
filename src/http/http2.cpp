@@ -1511,7 +1511,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		// Выполняем отправку данных пока всё не отправим
 		// while(this->_streams.count(id) > 0){
 			// Если данные не отправлены
-			if(!sendFn(id, flag_t::NONE)){
+			if(!sendFn(id, flag)){
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
 				// Выходим из функции
@@ -1519,7 +1519,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 		// }
 		
+			this->_streams.erase(id);
 		
+		/*
 		// Если флаг установлен завершения кадра
 		if(flag == flag_t::END_STREAM){
 			// Создаём объект передачи данных тела полезной нагрузки
@@ -1562,7 +1564,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
-		
+		*/
 
 
 
