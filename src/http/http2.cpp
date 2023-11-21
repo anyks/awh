@@ -838,7 +838,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		}
 	}
 
-	cout << " ----------------3 " << result << " == " << size << endl;
+	cout << " ----------------3 " << result << " == " << size << " === " << (it->second.size - it->second.offset) << endl;
 
 	// Если данные не прочитанны из сокета
 	if(result < 0)
