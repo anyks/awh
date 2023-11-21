@@ -144,13 +144,6 @@ namespace awh {
 				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
 			};
 		private:
-			typedef struct Stream {
-				size_t size;
-				size_t offset;
-				unique_ptr <char []> data;
-				Stream() noexcept : size(0), offset(0), data(nullptr) {}
-			} stream_t;
-		private:
 			// Флаг требования закрыть подключение
 			bool _close;
 		private:
@@ -158,9 +151,6 @@ namespace awh {
 			mode_t _mode;
 			// Флаг активного последнего события
 			event_t _event;
-		private:
-			// Максимальный размер фрейма
-			size_t _frameSize;
 		private:
 			// Объект функций обратного вызова
 			fn_t _callback;
@@ -170,9 +160,6 @@ namespace awh {
 		private:
 			// Список отправляемых альтернативных сервисов
 			unordered_multimap <string, string> _altsvc;
-		private:
-			// Данные подготовленные для отправки
-			map <int32_t, stream_t> _streams;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -275,7 +262,7 @@ namespace awh {
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
 		public:
 			/**
-			 * send Функция отправки подготовленного буфера данных
+			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
@@ -285,7 +272,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
 			 */
-			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+			static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
 			 * completed Метод завершения выполнения операции
@@ -493,7 +480,7 @@ namespace awh {
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _frameSize(16384), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Http2 Деструктор
 			 */

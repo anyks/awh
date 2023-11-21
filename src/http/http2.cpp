@@ -790,7 +790,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
 	return static_cast <ssize_t> (size);
 }
 /**
- * send Функция отправки подготовленного буфера данных
+ * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
  * @param session объект сессии
  * @param sid     идентификатор потока
  * @param buffer  буфер данных которые следует отправить
@@ -800,53 +800,48 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
+ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) sid;
+	(void) ctx;
 	(void) session;
 	// Результат работы функции
 	ssize_t result = -1;
-	// Получаем объект родительского объекта
-	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	// Выполняем поиск указанного потока
-	auto it = self->_streams.find(sid);
-	// Если буфер передаваемых данных найден
-	if(it != self->_streams.end()){
-
-		
-
-		// Определяем размер передаваемых данных
-		result = static_cast <ssize_t> (size > (it->second.size - it->second.offset) ? (it->second.size - it->second.offset) : size);
-
-		result = (result > 4096 ? 4096 : result);
-
-		cout << " ----------------1 " << (it->second.size - it->second.offset) << " == " << size << " == " << result << endl;
-
-		// Выполняем копирование буфера данных
-		::memcpy(buffer, it->second.data.get(), static_cast <size_t> (result));
-		// Выполняем смещение в буфере данных
-		it->second.offset += static_cast <size_t> (result);
-		
-		cout << " ----------------2 " << it->second.offset << " == " << it->second.size << endl;
-		
-		// Если все данные были переданы
-		if(it->second.offset == it->second.size){
-			// Выполняем удаление буфера бинарных данных
-			self->_streams.erase(it);
-			// Устанавливаем флаг, завершения чтения данных
-			(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-		}
-	}
-
-	cout << " ----------------3 " << result << " == " << size << " === " << (it->second.size - it->second.offset) << endl;
-
-	
-	result = (it->second.size - it->second.offset);
-
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем чтение данных из сокета в буфер данных
+		while(((result = _read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Выполняем чтение данных из сокета в буфер данных
+		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+	#endif
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
 		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+	// Если все данные прочитаны полностью
+	else if(result == 0) {
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие подключения
+			::_close(source->fd);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем закрытие подключения
+			::close(source->fd);
+		#endif
+		// Устанавливаем флаг, завершения чтения данных
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	}
 	// Выводим количество прочитанных байт
 	return result;
 }
@@ -1443,24 +1438,100 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	this->_event = event_t::SEND_DATA;
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
-		// Выполняем создание объекта потока передачи данных
-		auto ret = this->_streams.emplace(id, stream_t());
-		// Создаём буфер данных для отправки
-		ret.first->second.data = unique_ptr <char []> (new char [size]);
-		// Выполняем установку размера буфера данных
-		ret.first->second.size = size;
-		// Выполняем копирование данных буфера
-		::memcpy(ret.first->second.data.get(), buffer, size);
-
-		
+		// Список файловых дескрипторов
+		int fds[2];
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+			const int rv = _pipe(fds, 4096, O_BINARY);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+			const int rv = ::pipe(fds);
+		#endif
+		// Выполняем подписку на основной канал передачи данных
+		if(rv != 0){
+			// Выводим в лог сообщение
+			this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, strerror(errno));
+			// Выполняем вызов метода выполненного события
+			this->completed(event_t::SEND_DATA);
+			// Выходим из функции
+			return false;
+		}
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если данные небыли записаны в сокет
+			if(static_cast <int> (_write(fds[1], buffer, size)) != static_cast <int> (size)){
+				// Выполняем закрытие сокета для чтения
+				::_close(fds[0]);
+				// Выполняем закрытие сокета для записи
+				::_close(fds[1]);
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Если данные небыли записаны в сокет
+			if(static_cast <int> (::write(fds[1], buffer, size)) != static_cast <int> (size)){
+				// Выполняем закрытие сокета для чтения
+				::close(fds[0]);
+				// Выполняем закрытие сокета для записи
+				::close(fds[1]);
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, strerror(errno));
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выходим из функции
+				return false;
+			}
+		#endif
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие подключения
+			::_close(fds[1]);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем закрытие подключения
+			::close(fds[1]);
+		#endif
+		// Создаём объект передачи данных тела полезной нагрузки
+		nghttp2_data_provider data;
+		// Зануляем передаваемый контекст
+		data.source.ptr = nullptr;
+		// Устанавливаем файловый дескриптор
+		data.source.fd = fds[0];
+		// Устанавливаем функцию обратного вызова
+		data.read_callback = &http2_t::read;
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
-			// Создаём объект передачи данных тела полезной нагрузки
-			nghttp2_data_provider data;
-			// Зануляем передаваемый контекст
-			data.source.ptr = this;
-			// Устанавливаем функцию обратного вызова
-			data.read_callback = &http2_t::send;
 			// Флаги фрейма передаваемого по сети
 			uint8_t flags = NGHTTP2_FLAG_NONE;
 			// Если флаг установлен завершения кадра
@@ -1468,7 +1539,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Устанавливаем флаг фрейма передаваемого по сети
 				flags = NGHTTP2_FLAG_END_STREAM;
 			// Выполняем формирование данных фрейма для отправки
-			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
+			int rv = nghttp2_submit_data(this->_session, flags, id, &data);
 			// Если сформировать данные фрейма не вышло
 			if(nghttp2_is_fatal(rv)){
 				// Выводим сообщение об полученной ошибке
@@ -1484,12 +1555,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
-				
 				// Фиксируем отправленный результат
-				const int rv = nghttp2_session_send(this->_session);
-				
-				cout << " --------------- nghttp2_session_send " << rv << endl;
-				
+				rv = nghttp2_session_send(this->_session);
 				// Если зафиксифровать результат не вышло
 				if(nghttp2_is_fatal(rv)){
 					// Выводим сообщение об полученной ошибке
@@ -1505,11 +1572,6 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
-		
-		
-		
-
-
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::SEND_DATA);
 		// Выводим результат
@@ -1987,16 +2049,6 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 		nghttp2_session_callbacks_del(callbacks);
 		// Если список параметров настроек не пустой
 		if(!settings.empty()){
-			// Выполняем перебор полученных настроек
-			for(auto & item : settings){
-				// Если максимальный размер фрейма получен
-				if(item.settings_id == NGHTTP2_SETTINGS_MAX_FRAME_SIZE){
-					// Выполняем установку максимального размера буфера
-					this->_frameSize = static_cast <size_t> (item.value);
-					// Выходим из цикла
-					break;
-				}	
-			}
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 			const int rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, settings.data(), settings.size());
 			// Если настройки для сессии установить не удалось
