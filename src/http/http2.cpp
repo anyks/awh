@@ -1501,6 +1501,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			// Выводим результат
 			return true;
 		};
+
+		size_t k = 0;
+
 		// Выполняем отправку данных пока всё не отправим
 		while(this->_streams.count(id) > 0){
 			// Если данные не отправлены
@@ -1510,6 +1513,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Выходим из функции
 				return false;
 			}
+
+			if(++k > 10) break;
 		}
 		
 		
