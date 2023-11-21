@@ -1447,7 +1447,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		 * @param flag флаг передаваемого потока по сети
 		 * @return     результат отправки данных
 		 */
-		auto sendFn = [&data, this](const int32_t id, const flag_t flag) noexcept -> bool {
+		auto sendFn = [this](const int32_t id, const flag_t flag) noexcept -> bool {
 			// Если сессия инициализированна
 			if(this->_session != nullptr){
 				// Создаём объект передачи данных тела полезной нагрузки
