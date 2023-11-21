@@ -1503,8 +1503,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		};
 		// Выполняем отправку данных пока всё не отправим
 		while(this->_streams.count(id) > 0){
+
+			if(this->_streams.at(id).offset > 0)
+				nghttp2_session_mem_send(this->_session, &data);
 			// Если данные не отправлены
-			if(!sendFn(id, flag_t::NONE)){
+			else if(!sendFn(id, flag_t::NONE)){
 				// Выполняем вызов метода выполненного события
 				this->completed(event_t::SEND_DATA);
 				// Выходим из функции
