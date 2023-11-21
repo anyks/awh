@@ -813,9 +813,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 
 	cout << " ^^^^^^^^^^^^^^^^^^^^1 " << size << endl;
 
-	delete [] buffer;
+	// delete [] buffer;
 
-	buffer = new uint8_t[size];
+	// buffer = new uint8_t[size];
 
 	/**
 	 * Методы только для OS Windows
