@@ -1503,7 +1503,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				return false;
 			}
 		}
-
+		
+		/*
 		// Если флаг установлен завершения кадра
 		if(flag == flag_t::END_STREAM){
 			// Выполняем формирование данных фрейма для отправки
@@ -1540,6 +1541,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
+		*/
 
 
 
