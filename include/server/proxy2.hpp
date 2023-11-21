@@ -189,6 +189,9 @@ namespace awh {
 				typedef struct Client {
 					// Идентификатор потока
 					int32_t sid;
+
+					bool returned;
+
 					// Флаг установленного подключения
 					bool connected;
 					// Объект параметров запроса
@@ -204,7 +207,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Client(const fmk_t * fmk, const log_t * log) noexcept : sid(-1), connected(false), core(fmk, log), awh(&core, fmk, log) {}
+					Client(const fmk_t * fmk, const log_t * log) noexcept : sid(-1), returned(false), connected(false), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента

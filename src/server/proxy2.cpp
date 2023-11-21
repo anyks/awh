@@ -71,7 +71,7 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 	// Если мы получили данные
 	if(direct == client::web_t::direct_t::RECV){
 
-		cout << " -------------------3 " << endl;
+		cout << " -------------------1 " << endl;
 
 		// Выводим полученный результат
 		this->completed(bid);
@@ -159,15 +159,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			} break;
 			// Если производится отключение клиента от сервера
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
-				
-				cout << " -------------------2 " << endl;
-				
 				// Запоминаем что подключение остановлено
 				it->second->connected = false;
 				// Выполняем закрытие подключения
 				this->close(bid);
-				// Выводим полученный результат
-				this->completed(bid);
+				// Выполняем удаление клиента из списка клиентов
+				this->_clients.erase(it);
 			} break;
 		}
 	}
@@ -344,9 +341,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			auto it = this->_clients.find(bid);
 			// Если клиент в списке найден
 			if(it != this->_clients.end()){
-
-				cout << " -------------------1 " << endl;
-
 				// Снимаем флаг установленного подключения
 				it->second->connected = false;
 				// Выполняем отключение клиента от сетевого ядра
@@ -379,7 +373,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 		// Выполняем очистку тела ответа
 		else it->second->response.entity.clear();
 		
-		cout << " -------------------4 " << endl;
+		cout << " -------------------2 " << endl;
 		
 		// Выводим полученный результат
 		this->completed(bid);
@@ -546,21 +540,17 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
  * @param bid идентификатор брокера (клиента)
  */
 void awh::server::Proxy::completed(const uint64_t bid) noexcept {
-	
-	cout << " -------------------5 " << endl;
-	
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
-		// Выполняем отключение клиента от сетевого ядра
-		this->_core.unbind(&it->second->core);
+	if(!it->second->returned && (it->second->returned = (it != this->_clients.end()))){
+		
+		cout << " -------------------3 " << it->second->response.entity.size() << endl;
+		
 		// Если заголовки ответа получены
 		if(!it->second->response.headers.empty())
 			// Отправляем сообщение клиенту
 			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
-		// Выполняем удаление клиента из списка клиентов
-		// this->_clients.erase(it);
 	}
 }
 /**
