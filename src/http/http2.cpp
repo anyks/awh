@@ -824,7 +824,10 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			self->_streams.erase(it);
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	}
+	} else result = 0;
+	
+	(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
