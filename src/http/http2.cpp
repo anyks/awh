@@ -824,7 +824,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			self->_streams.erase(it);
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
-	}
+	} else result = 0;
+	
+
 	// Если данные не прочитанны из сокета
 	if(result < 0)
 		// Выводим сообщение об ошибке
@@ -1504,11 +1506,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 		}
 		
-		/*
+		
 		// Если флаг установлен завершения кадра
 		if(flag == flag_t::END_STREAM){
 			// Выполняем формирование данных фрейма для отправки
-			const int rv = nghttp2_submit_data(this->_session, NGHTTP2_FLAG_END_STREAM, id, nullptr);
+			const int rv = nghttp2_submit_data(this->_session, NGHTTP2_FLAG_END_STREAM, id, &data);
 			// Если сформировать данные фрейма не вышло
 			if(nghttp2_is_fatal(rv)){
 				// Выводим сообщение об полученной ошибке
@@ -1541,7 +1543,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				}
 			}
 		}
-		*/
+		
 
 
 
