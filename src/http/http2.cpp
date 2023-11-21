@@ -855,10 +855,15 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			::close(source->fd);
 		#endif
 		// Устанавливаем флаг, завершения чтения данных
-		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
 		// result = NGHTTP2_ERR_DEFERRED;
+
+		(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
 	}
+
+	if(result == size)
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
 	// (* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
 	// (* flags) |= NGHTTP2_DATA_FLAG_NO_COPY;
@@ -1998,6 +2003,9 @@ bool awh::Http2::init(const mode_t mode, const vector <nghttp2_settings_entry> &
 				}
 				// Выполняем создание клиента
 				// nghttp2_session_client_new(&this->_session, callbacks, this);
+
+				// nghttp2_option_set_no_auto_window_update(option, 1);
+
 				// Выполняем создание клиента
 				nghttp2_session_client_new2(&this->_session, callbacks, this, option);
 				// Выполняем удаление памяти объекта опции
