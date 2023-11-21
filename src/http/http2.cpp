@@ -2044,27 +2044,6 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 							 */
 							iv.push_back({NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, item.second});
 						} break;
-						// Если мы получили размер максимального буфера полезной нагрузки
-						case static_cast <uint8_t> (settings_t::PAYLOAD_SIZE): {
-							// Если максимальный размер буфера полезной нагрузки передан
-							if(item.second > 0){
-								// Выполняем установку максимального размера полезной нагрузки
-								const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, item.second);
-								// Если настройки для сессии установить не удалось
-								if(!(result = !nghttp2_is_fatal(rv))){
-									// Выводим сообщение об ошибке
-									this->_log->print("Could not set PAYLOAD SIZE: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-									// Если функция обратного вызова на на вывод ошибок установлена
-									if(this->_callback.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not set PAYLOAD SIZE: %s", nghttp2_strerror(rv)));
-									// Выполняем очистку предыдущей сессии
-									this->free();
-									// Выходим из функции
-									return result;
-								}
-							}
-						} break;
 					}
 				}
 				// Выполняем создание клиента
@@ -2119,33 +2098,35 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 							// Устанавливаем разрешение применения метода CONNECT
 							iv.push_back({NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL, item.second});
 						break;
-						// Если мы получили размер максимального буфера полезной нагрузки
-						case static_cast <uint8_t> (settings_t::PAYLOAD_SIZE): {
-							// Если максимальный размер буфера полезной нагрузки передан
-							if(item.second > 0){
-								// Выполняем установку максимального размера полезной нагрузки
-								const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, item.second);
-								// Если настройки для сессии установить не удалось
-								if(!(result = !nghttp2_is_fatal(rv))){
-									// Выводим сообщение об ошибке
-									this->_log->print("Could not set PAYLOAD SIZE: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-									// Если функция обратного вызова на на вывод ошибок установлена
-									if(this->_callback.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not set PAYLOAD SIZE: %s", nghttp2_strerror(rv)));
-									// Выполняем очистку предыдущей сессии
-									this->free();
-									// Выходим из функции
-									return result;
-								}
-							}
-						} break;
 					}
 				}
 			} break;
 		}
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
+		// Выполняем поиск максимального размера буфера полезной нагрузки
+		auto it = settings.find(settings_t::PAYLOAD_SIZE);
+		// Если параметр настроек максимального размера буфера полезной нагрузки установлен
+		if(it != settings.end()){
+			// Если максимальный размер буфера полезной нагрузки передан
+			if(it->second > 0){
+				// Выполняем установку максимального размера полезной нагрузки
+				const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, it->second);
+				// Если настройки для сессии установить не удалось
+				if(!(result = !nghttp2_is_fatal(rv))){
+					// Выводим сообщение об ошибке
+					this->_log->print("Could not set PAYLOAD SIZE: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SETTINGS, this->_fmk->format("Could not set PAYLOAD SIZE: %s", nghttp2_strerror(rv)));
+					// Выполняем очистку предыдущей сессии
+					this->free();
+					// Выходим из функции
+					return result;
+				}
+			}
+		}
 		// Если список параметров настроек не пустой
 		if(!iv.empty()){
 			// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
