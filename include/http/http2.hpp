@@ -260,9 +260,8 @@ namespace awh {
 			 * @return        количество отправленных байт
 			 */
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
-		public:
 			/**
-			 * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
+			 * send Функция отправки подготовленного буфера данных по сети
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
@@ -272,7 +271,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
 			 */
-			static ssize_t read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
 			 * completed Метод завершения выполнения операции

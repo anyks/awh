@@ -565,7 +565,7 @@ namespace awh {
 				// Максимальный размер таблицы заголовков по умолчанию
 				static constexpr uint32_t HEADER_TABLE_SIZE = 4096;
 				// Минимальный размер фрейма по умолчанию
-				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16777215;// 16384;
+				static constexpr uint32_t MAX_FRAME_SIZE_MIN = 16384;
 				// Максимальный размер фрейма по умолчанию
 				static constexpr uint32_t MAX_FRAME_SIZE_MAX = 16777215;
 				// Максимальный размер окна по умолчанию

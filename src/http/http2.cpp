@@ -790,7 +790,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
 	return static_cast <ssize_t> (size);
 }
 /**
- * read Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить
+ * send Функция отправки подготовленного буфера данных по сети
  * @param session объект сессии
  * @param sid     идентификатор потока
  * @param buffer  буфер данных которые следует отправить
@@ -800,7 +800,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::Http2::read(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
+ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) sid;
 	(void) ctx;
@@ -1529,7 +1529,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		// Устанавливаем файловый дескриптор
 		data.source.fd = fds[0];
 		// Устанавливаем функцию обратного вызова
-		data.read_callback = &http2_t::read;
+		data.read_callback = &http2_t::send;
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
 			// Флаги фрейма передаваемого по сети
