@@ -274,6 +274,12 @@ namespace awh {
 			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
+			 * commit Метод применения изменений
+			 * @return результат отправки
+			 */
+			bool commit() noexcept;
+		private:
+			/**
 			 * completed Метод завершения выполнения операции
 			 * @param event событие выполненной операции
 			 */
