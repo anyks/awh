@@ -855,13 +855,15 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			::close(source->fd);
 		#endif
 		// Устанавливаем флаг, завершения чтения данных
-		// (* flags) |= NGHTTP2_DATA_FLAG_EOF;
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 
-		result = NGHTTP2_ERR_DEFERRED;
+		// result = NGHTTP2_ERR_DEFERRED;
 	}
 
+	/*
 	if(result == size)
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	*/
 
 	// (* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
 	// (* flags) |= NGHTTP2_DATA_FLAG_NO_COPY;
@@ -1419,7 +1421,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 		cout << " =========2 " << nghttp2_session_get_remote_window_size(this->_session) << " == " << nghttp2_session_get_stream_remote_window_size(this->_session, id) << " || " << nghttp2_session_get_effective_local_window_size(this->_session) << endl;
 
 		
-
+		if(nghttp2_session_get_remote_window_size(this->_session) == 0)
+			nghttp2_session_want_write(this->_session);
 		
 		
 		// Список файловых дескрипторов
@@ -1538,7 +1541,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			
 			cout << " ---------------------4 " << size << endl;
 
-			nghttp2_session_resume_data(this->_session, id);
+			// nghttp2_session_resume_data(this->_session, id);
 			
 			// Выполняем формирование данных фрейма для отправки
 			const int rv = nghttp2_submit_data(this->_session, flags, id, &data);
