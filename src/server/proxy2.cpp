@@ -544,7 +544,7 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 			// Отправляем сообщение клиенту
 			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
 		// Выполняем удаление клиента из списка клиентов
-		this->_clients.erase(it);
+		// this->_clients.erase(it);
 	}
 }
 /**
