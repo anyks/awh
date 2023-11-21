@@ -221,6 +221,14 @@ int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vec
 	return this->_http.push2(sid, bid, headers, flag);
 }
 /**
+ * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+ * @param callback функция обратного вызова
+ */
+void awh::server::AWH::on(function <void (const uint64_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */

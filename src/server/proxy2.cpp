@@ -59,6 +59,22 @@ bool awh::server::Proxy::acceptServer(const string & ip, const string & mac, con
 	// Запрещаем выполнение подключения
 	return false;
 }
+/** 
+ * eraseClient Метод удаления подключённого клиента
+ * @param bid идентификатор брокера
+ */
+void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
+	// Выполняем поиск объекта клиента
+	auto it = this->_clients.find(bid);
+	// Если активный клиент найден
+	if(it != this->_clients.end()){
+
+		cout << " ++++++++++++++++++++++ " << bid << endl;
+
+		// Выполняем удаление клиента из списка клиентов
+		this->_clients.erase(it);
+	}
+}
 /**
  * endClient Метод завершения запроса клиента
  * @param sid    идентификатор потока
@@ -159,8 +175,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				it->second->connected = false;
 				// Выполняем закрытие подключения
 				this->close(bid);
-				// Выполняем удаление клиента из списка клиентов
-				// this->_clients.erase(it);
 			} break;
 		}
 	}
@@ -536,7 +550,7 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(!it->second->returned && (it->second->returned = (it != this->_clients.end()))){
+	if(!it->second->sending && (it->second->sending = (it != this->_clients.end()))){
 		// Если заголовки ответа получены
 		if(!it->second->response.headers.empty())
 			// Отправляем сообщение клиенту
@@ -1491,6 +1505,8 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Выполняем установку идентичности протокола модуля
 	this->_server.identity(awh::http_t::identity_t::PROXY);
+	// Устанавливаем функцию удаления клиента из стека подключений сервера
+	this->_server.on((function <void (const uint64_t)>) std::bind(&server::proxy_t::eraseClient, this, _1));
 	// Устанавливаем функцию извлечения пароля
 	this->_server.on((function <string (const uint64_t, const string &)>) std::bind(&server::proxy_t::passwordCallback, this, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

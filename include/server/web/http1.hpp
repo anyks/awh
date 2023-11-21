@@ -203,6 +203,12 @@ namespace awh {
 				void send(const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */

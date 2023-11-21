@@ -276,6 +276,12 @@ namespace awh {
 				virtual void init(const u_int port, const string & host = "", const vector <http_t::compress_t> & compressors = {}) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const uint64_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */

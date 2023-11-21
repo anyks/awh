@@ -189,9 +189,8 @@ namespace awh {
 				typedef struct Client {
 					// Идентификатор потока
 					int32_t sid;
-
-					bool returned;
-
+					// Флаг отправки результата
+					bool sending;
 					// Флаг установленного подключения
 					bool connected;
 					// Объект параметров запроса
@@ -207,7 +206,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Client(const fmk_t * fmk, const log_t * log) noexcept : sid(-1), returned(false), connected(false), core(fmk, log), awh(&core, fmk, log) {}
+					Client(const fmk_t * fmk, const log_t * log) noexcept : sid(-1), sending(false), connected(false), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента
@@ -293,6 +292,12 @@ namespace awh {
 				 * @return     результат проверки
 				 */
 				bool acceptServer(const string & ip, const string & mac, const u_int port) noexcept;
+			private:
+				/** 
+				 * eraseClient Метод удаления подключённого клиента
+				 * @param bid идентификатор брокера
+				 */
+				void eraseClient(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * endClient Метод завершения запроса клиента

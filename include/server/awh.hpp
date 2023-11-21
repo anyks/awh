@@ -207,6 +207,12 @@ namespace awh {
 				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */

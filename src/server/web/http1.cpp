@@ -809,6 +809,10 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			auto it = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
 			if((it != this->_disconected.end()) && ((date - it->second) >= 5000)){
+				// Если установлена функция детекции удаление брокера сообщений установлена
+				if(this->_callback.is("erase"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const uint64_t> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
 				eraseFn(it->first);
 				// Выполняем удаление брокера
@@ -820,6 +824,10 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
 				// Если брокер уже давно отключился
 				if((date - it->second) >= 5000){
+					// Если установлена функция детекции удаление брокера сообщений установлена
+					if(this->_callback.is("erase"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const uint64_t> ("erase", it->first);
 					// Выполняем удаление отключившегося брокера
 					eraseFn(it->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
@@ -1257,6 +1265,14 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 			}
 		}
 	}
+}
+/**
+ * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+ * @param callback функция обратного вызова
+ */
+void awh::server::Http1::on(function <void (const uint64_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	web_t::on(callback);
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения

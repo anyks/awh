@@ -197,6 +197,14 @@ void awh::server::Web::init(const u_int port, const string & host, const vector 
 	#endif
 }
 /**
+ * on Метод установки функция обратного вызова при удаление клиента из стека сервера
+ * @param callback функция обратного вызова
+ */
+void awh::server::Web::on(function <void (const uint64_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const uint64_t)> ("erase", callback);
+}
+/**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
