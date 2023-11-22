@@ -927,11 +927,10 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 							request.headers = jt->second->headers;
 						// Выполняем очистку полученных заголовков
 						else request.headers.clear();
-						
 						// Выполняем поиск заголовка хоста
 						for(auto it = request.headers.begin(); it != request.headers.end();){
 							// Если заголовок хоста найден
-							if(this->_fmk->compare("host", it->second)){
+							if(this->_fmk->compare("host", it->first)){
 								// Выполняем удаление заголовка
 								request.headers.erase(it);
 								// Выходим из цикла
@@ -939,7 +938,6 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 							// Продолжаем перебор заголовков дальше
 							} else ++it;
 						}
-						
 						// Если тело запроса существует
 						if(!jt->second->entity.empty())
 							// Устанавливаем тело запроса
