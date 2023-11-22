@@ -708,7 +708,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			cout << " ################### SUBMIT " << request.url << " == " << this->_scheme.url << endl;
 
 			for(auto & header : this->_http.headers())
-				cout << " ============= HEADER " << header.first << " == " << header.seacond << endl;
+				cout << " ============= HEADER " << header.first << " == " << header.second << endl;
 
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, this->_scheme.url);
