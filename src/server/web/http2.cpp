@@ -317,9 +317,13 @@ int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, cons
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end())
+		if(it != this->_sessions.end()){
+			
+			cout << " ++++++++++++++++ CLOSE " << bid << endl;
+			
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
 			it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+		}
 	}
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callback.is("stream"))

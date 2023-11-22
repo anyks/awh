@@ -852,6 +852,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 bool awh::Http2::commit() noexcept {
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
+		
+		cout << " **************** COMMIT " << endl;
+		
 		// Фиксируем отправленный результат
 		const int rv = nghttp2_session_send(this->_session);
 		// Если зафиксифровать результат не вышло
@@ -991,6 +994,9 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				// Выполняем завершение работы
 				goto End;
 			}
+
+			cout << " ################ FRAME " << endl;
+
 			// Выполняем применение изменений
 			if(!this->commit())
 				// Выполняем завершение работы
@@ -2105,12 +2111,24 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 void awh::Http2::on(function <void (void)> callback) noexcept {
 	// Если функция обратного вызова передана
 	if(callback != nullptr){
+		
+		cout << " +++++++++++++++++ END1 " << endl;
+		
 		// Если активное событие не установлено
-		if(this->_event == event_t::NONE)
+		if(this->_event == event_t::NONE){
+			
+			cout << " +++++++++++++++++ END2 " << endl;
+
 			// Выполняем функцию обратного вызова
 			callback();
 		// Устанавливаем функцию обратного вызова
-		else this->_callback.set <void (void)> ("trigger", callback);
+		} else {
+
+			cout << " +++++++++++++++++ END3 " << endl;
+
+			this->_callback.set <void (void)> ("trigger", callback);
+
+		}
 	}
 }
 /**
