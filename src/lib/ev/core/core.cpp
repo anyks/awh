@@ -361,7 +361,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	// Выполняем установку функции активации базы событий
 	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	
-	// cout << " -----------------!!!!!!!!1 " << EV_AX << endl;
+	struct ev_loop * k1 = this->base;
+
+	cout << " -----------------!!!!!!!!1 " << k1 << endl;
 
 	// struct ev_loop * ()
 
@@ -370,9 +372,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
 
-	struct ev_loop * k = this->base;
+	struct ev_loop * k2 = this->base;
 
-	cout << " -----------------!!!!!!!!2 " << k << endl;
+	cout << " -----------------!!!!!!!!2 " << k2 << endl;
 }
 /**
  * ~Dispatch Деструктор
