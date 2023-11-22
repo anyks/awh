@@ -805,7 +805,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 						// Если протоколом агента является HTTP-клиент
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							
-							cout << " ===================== HTTP1 " << request.url << endl;
+							cout << " ===================== HTTP1 " << request.url << " === " << this->_requests.size() << endl;
 							
 							// Выполняем добавление активного запроса
 							this->_requests.emplace(result, request);

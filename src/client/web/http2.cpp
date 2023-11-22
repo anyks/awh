@@ -1318,7 +1318,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							this->_attempt++;
 
 							this->_http1._attempt = 0;
-						}
+						
+						} else return result;
 						
 						// Если список доступных компрессоров установлен
 						if(!request.compressors.empty())
