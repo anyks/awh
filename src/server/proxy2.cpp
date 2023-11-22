@@ -163,7 +163,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 							// Выполняем отправку ответа клиенту
-							// this->_server.send(bid);
+							this->_server.send(bid);
 						}
 					} break;
 				}
@@ -556,7 +556,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 						// cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
-						it->second->awh.send(buffer, size);
+						// it->second->awh.send(buffer, size);
 
 						
 					break;
