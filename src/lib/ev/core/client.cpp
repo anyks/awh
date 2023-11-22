@@ -905,9 +905,6 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::client::Core::close(const uint64_t bid) noexcept {
-	
-	return;
-	
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если блокировка брокера не установлена
@@ -1416,6 +1413,9 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							actual = (left >= max ? max : left);
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->_ectx.write(buffer + offset, actual);
+							
+							cout << " +++++++++++++++ WRITE CLIENT " << bytes << endl;
+							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение
