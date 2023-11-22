@@ -919,17 +919,6 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 					if(dynamic_cast <request_t *> (&request) != jt->second.get()){
 						// Выполняем установку адреса URL-запроса
 						request.url = jt->second->url;
-						// Выполняем поиск заголовка хоста
-						for(auto it = jt->second->headers.begin(); it != jt->second->headers.end();){
-							// Если заголовок хоста найден
-							if(this->_fmk->compare("host", it->second)){
-								// Выполняем удаление заголовка
-								jt->second->headers.erase(it);
-								// Выходим из цикла
-								break;
-							// Продолжаем перебор заголовков дальше
-							} else ++it;
-						}
 						// Выполняем копирование метода запроса
 						request.method = jt->second->method;
 						// Если список заголовков получен
@@ -938,6 +927,19 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 							request.headers = jt->second->headers;
 						// Выполняем очистку полученных заголовков
 						else request.headers.clear();
+						
+						// Выполняем поиск заголовка хоста
+						for(auto it = request.headers.begin(); it != request.headers.end();){
+							// Если заголовок хоста найден
+							if(this->_fmk->compare("host", it->second)){
+								// Выполняем удаление заголовка
+								request.headers.erase(it);
+								// Выходим из цикла
+								break;
+							// Продолжаем перебор заголовков дальше
+							} else ++it;
+						}
+						
 						// Если тело запроса существует
 						if(!jt->second->entity.empty())
 							// Устанавливаем тело запроса
