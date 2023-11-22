@@ -370,7 +370,9 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
 
-	cout << " -----------------!!!!!!!!2 " << ev::loop_ref() << endl;
+	struct ev_loop * k = this->_base;
+
+	cout << " -----------------!!!!!!!!2 " << k << endl;
 }
 /**
  * ~Dispatch Деструктор
