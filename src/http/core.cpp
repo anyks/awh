@@ -1964,6 +1964,8 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 		const_cast <http_t *> (this)->black("Accept-Language");
 		// Добавляем в чёрный список заголовок Accept-Encoding
 		const_cast <http_t *> (this)->black("Accept-Encoding");
+		// Добавляем заголовок протокола подключения
+		const_cast <http_t *> (this)->header(":protocol", "proxy");
 		// Устанавливаем параметры REST-запроса
 		this->_auth.client.uri(this->_uri.url(req.url));
 		// Устанавливаем парарметр запроса

@@ -341,6 +341,9 @@ int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, cons
 	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
+		
+		cout << " +++++++++++++++++ " << key << " == " << val << endl;
+		
 		// Устанавливаем полученные заголовки
 		options->http.header2(key, val);
 		// Если функция обратного вызова на полученного заголовка с сервера установлена
