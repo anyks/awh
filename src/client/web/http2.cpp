@@ -663,23 +663,14 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если протокол подключения установлен как HTTP/2
 					if(it->second->proto == engine_t::proto_t::HTTP2){
-						
-						cout << " ==============1 REDIRECT HTTP/2 " << bid << endl;
-						
 						// Если мы нашли нужный нам воркер
 						if(it->second->update){
-							
-							cout << " ==============2 REDIRECT HTTP/2 " << bid << endl;
-							
 							// Если список ответов получен
 							if((result = !this->_stopped)){
 								// Получаем параметры запроса
 								const auto & response = it->second->http.response();
 								// Если необходимо выполнить ещё одну попытку выполнения авторизации
 								if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
-									
-									cout << " ==============3 REDIRECT HTTP/2 " << bid << endl;
-									
 									// Увеличиваем количество попыток
 									this->_attempt++;
 									// Выполняем установку следующего экшена на открытие подключения
@@ -706,9 +697,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								}
 								// Если адрес для выполнения переадресации указан
 								if((result = it->second->http.is(http_t::suite_t::HEADER, "location"))){
-									
-									cout << " ==============4 REDIRECT HTTP/2 " << bid << endl;
-									
 									// Получаем новый адрес запроса
 									const uri_t::url_t & url = it->second->http.url();
 									// Если адрес запроса получен
@@ -732,7 +720,7 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 											}
 										}
 										
-										cout << " ==============5 REDIRECT HTTP/2 " << bid << endl;
+										cout << " ============== REDIRECT HTTP/2 " << bid << " == " << url << endl;
 										
 										// Выполняем установку следующего экшена на открытие подключения
 										this->open();
