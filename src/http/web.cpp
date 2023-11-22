@@ -587,6 +587,8 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								if(this->_fmk->compare(key, "host")){
 									// Создаём объект работы с IP-адресами
 									net_t net;
+									// Выполняем установку порта по умолчанию
+									this->_req.url.port = 80;
 									// Выполняем установку схемы запроса
 									this->_req.url.schema = "http";
 									// Выполняем установку хоста

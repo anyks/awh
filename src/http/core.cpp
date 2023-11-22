@@ -1136,6 +1136,8 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		web_t::req_t request = this->_web.request();
 		// Получаем хост запрашиваемого сервера
 		request.url.host = val;
+		// Выполняем установку порта по умолчанию
+		request.url.port = 80;
 		// Выполняем установку схемы запроса
 		request.url.schema = "http";
 		// Выполняем поиск разделителя
