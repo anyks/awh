@@ -114,8 +114,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
-				// Запоминаем что подключение установлено
-				it->second->connected = true;
+				
 				// Определяем активный метод запроса клиента
 				switch(static_cast <uint8_t> (it->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
@@ -158,10 +157,15 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-						it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
-						// Выполняем отправку ответа клиенту
-						this->_server.send(bid);
+						// Если подключение ещё не выполнено
+						if(!it->second->connected){
+							// Запоминаем что подключение установлено
+							it->second->connected = !it->second->connected;
+							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
+							// Выполняем отправку ответа клиенту
+							this->_server.send(bid);
+						}
 					} break;
 				}
 			} break;
@@ -554,7 +558,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 						
 						cout << " --------------------6 " << bid << " === " << size << endl;
 
-						cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
+						// cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
