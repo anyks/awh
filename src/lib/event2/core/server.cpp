@@ -939,18 +939,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				if(size > 0){
 					// Количество полученных байт
 					int64_t bytes = -1;
-					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						// Если тип сокета установлен как TCP/IP
-						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-						// Если тип сокета установлен как TCP/IP TLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-							// Переводим сокет в неблокирующий режим
-							adj->_ectx.noblock();
-						break;
-					}
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
 					// Выполняем чтение данных с сокета
@@ -1065,7 +1053,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 					// Если тип сокета установлен как SCTP
 					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-						// Переводим сокет в неблокирующий режим
+						// Переводим сокет в блокирующий режим
 						adj->_ectx.block();
 					break;
 				}
@@ -1104,6 +1092,21 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						}
 						// Увеличиваем смещение в буфере
 						offset += bytes;
+					}
+					// Если дисконнекта от сервера не произошло
+					if(bytes > 0){
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Переводим сокет в неблокирующий режим
+								adj->_ectx.noblock();
+							break;
+						}
 					}
 					// Останавливаем ожидание записи данных
 					this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
