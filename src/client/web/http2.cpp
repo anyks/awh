@@ -919,11 +919,17 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 					if(dynamic_cast <request_t *> (&request) != jt->second.get()){
 						// Выполняем установку адреса URL-запроса
 						request.url = jt->second->url;
-						
-						cout << " ------------------ " << request.url << endl;
-
-						jt->second->rm(awh::http_t::suite_t::HEADER, "host");
-						
+						// Выполняем поиск заголовка хоста
+						for(auto it = jt->second->headers.begin(); it != jt->second->headers.end();){
+							// Если заголовок хоста найден
+							if(this->_fmk->compare("host", it->second)){
+								// Выполняем удаление заголовка
+								jt->second->headers.erase(it);
+								// Выходим из цикла
+								break;
+							// Продолжаем перебор заголовков дальше
+							} else ++it;
+						}
 						// Выполняем копирование метода запроса
 						request.method = jt->second->method;
 						// Если список заголовков получен
