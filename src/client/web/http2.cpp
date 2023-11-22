@@ -1317,7 +1317,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Увеличиваем количество попыток
 							this->_attempt++;
 
-							this->_http1._attempt = 0;
+							if(this->_http1._requests.empty())
+								this->_http1._attempt = 0;
 						
 						} else return result;
 						
