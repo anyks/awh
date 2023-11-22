@@ -114,7 +114,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
-				
 				// Определяем активный метод запроса клиента
 				switch(static_cast <uint8_t> (it->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
@@ -172,7 +171,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			// Если производится отключение клиента от сервера
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
 				// Выполняем закрытие подключения
-				// this->close(bid);
+				this->close(bid);
 
 				cout << " ++++++++++++++++ DISCONNECT CLIENT " << endl;
 			} break;
