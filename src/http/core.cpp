@@ -706,6 +706,14 @@ void awh::Http::commit() noexcept {
 	}
 }
 /**
+ * precise Метод установки флага точной установки хоста
+ * @param mode флаг для установки
+ */
+void awh::Http::precise(const bool mode) noexcept {
+	// Выполняем установку флага точной установки хоста
+	this->_precise = mode;
+}
+/**
  * clear Метод очистки собранных данных
  */
 void awh::Http::clear() noexcept {
@@ -2276,9 +2284,14 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							}
 						}
 						// Устанавливаем Host если не передан
-						if(!available[1] && !this->is(suite_t::BLACK, "Host"))
+						if(!available[1] && !this->is(suite_t::BLACK, "Host")){
+							// Если флаг точной установки хоста не установлен
+							if(!this->_precise)
+								// Добавляем заголовок в запрос
+								request.append(this->_fmk->format("Host: %s\r\n", req.url.host.c_str()));
 							// Добавляем заголовок в запрос
-							request.append(this->_fmk->format("Host: %s\r\n", req.url.host.c_str()));
+							else request.append(this->_fmk->format("Host: %s:%u\r\n", req.url.host.c_str(), req.url.port));
+						}
 						// Устанавливаем Accept если не передан
 						if(!available[2] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept"))
 							// Добавляем заголовок в запрос
@@ -2988,7 +3001,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				// Выполняем установку схемы протокола
 				result.push_back(make_pair(":scheme", "https"));
 				// Если метод подключения установлен как CONNECT
-				if(req.method == web_t::method_t::CONNECT)
+				if(this->_precise || (req.method == web_t::method_t::CONNECT))
 					// Формируем URI запроса
 					result.push_back(make_pair(":authority", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port)));
 				// Если метод подключения не является методом CONNECT, выполняем установку хоста сервера
@@ -3748,7 +3761,7 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log),
- _crypted(false), _encryption(false), _chunk(BUFFER_CHUNK),
+ _crypted(false), _encryption(false), _precise(false), _chunk(BUFFER_CHUNK),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта

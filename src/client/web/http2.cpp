@@ -1241,6 +1241,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
 							// Если метод CONNECT запрещён для прокси-сервера
 							if(this->_proxy.mode && !this->_proxy.connect){
+								// Активируем точную установку хоста
+								this->_http.precise(true);
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
 								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 								// Если заголовок авторизации получен

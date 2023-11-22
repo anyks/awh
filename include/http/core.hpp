@@ -231,6 +231,9 @@ namespace awh {
 			// Флаг зашифрованных данных
 			bool _encryption;
 		private:
+			// Флаг точной установки хоста
+			bool _precise;
+		private:
 			// Размер одного чанка
 			size_t _chunk;
 		private:
@@ -298,6 +301,12 @@ namespace awh {
 			 * @return результат проверки текущего статуса
 			 */
 			virtual status_t status() noexcept = 0;
+		public:
+			/**
+			 * precise Метод установки флага точной установки хоста
+			 * @param mode флаг для установки
+			 */
+			void precise(const bool mode) noexcept;
 		public:
 			/**
 			 * clear Метод очистки собранных данных
