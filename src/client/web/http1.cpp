@@ -712,8 +712,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
 				if(!header.empty())
-					// Выполняем установки заголовка авторизации на прокси-сервере
+					// Выполняем установку заголовка авторизации на прокси-сервере
 					this->_http.header("Proxy-Authorization", header);
+				// Выполняем установку заголовка хоста запроса
+				this->_http.header("Host", this->_fmk->format("%s:%u", this->_scheme.url.host.c_str(), this->_scheme.url.port));
 			}
 			// Получаем бинарные данные HTTP-запроса
 			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
