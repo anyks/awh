@@ -1312,6 +1312,13 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						sid = this->update(* const_cast <request_t *> (&request));
 						
 						cout << " -------------------2 " << request.url << " == " << this->_scheme.url << endl;
+
+						if(this->_attempt < this->_attempts){
+							// Увеличиваем количество попыток
+							this->_attempt++;
+
+							this->_http1._attempt = 0;
+						}
 						
 						// Если список доступных компрессоров установлен
 						if(!request.compressors.empty())
