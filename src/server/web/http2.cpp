@@ -24,9 +24,6 @@
 void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
-		
-		cout << " ################## CONNECT1 " << bid << endl;
-		
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем активацию HTTP/2 протокола
@@ -35,9 +32,6 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		auto it = this->_sessions.find(bid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
-			
-			cout << " ################## CONNECT2 " << bid << endl;
-			
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -91,9 +85,6 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
-			
-			cout << " ################## CONNECT3 " << bid << endl;
-			
 			// Выполняем установку сетевого ядра
 			this->_http1._core = dynamic_cast <server::core_t *> (core);
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -175,25 +166,16 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 				switch(static_cast <uint8_t> (options->proto)){
 					// Если протокол подключения соответствует HTTP/1.1
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
-						
-						cout << " +=================1 " << size << endl;
-						
 						// Выполняем поиск агента которому соответствует клиент
 						auto it = this->_http1._agents.find(bid);
 						// Если активный агент клиента установлен
 						if(it != this->_http1._agents.end()){
-							
-							cout << " +=================2 " << size << endl;
-							
 							// Определяем тип активного протокола
 							switch(static_cast <uint8_t> (it->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
 								// Если протокол соответствует протоколу WebSocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
-									
-									cout << " +=================3 " << size << endl;
-									
 									// Выполняем переброс вызова чтения клиенту HTTP
 									this->_http1.readCallback(buffer, size, bid, sid, core);
 								break;

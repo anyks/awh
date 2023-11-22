@@ -41,14 +41,8 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param core объект сетевого ядра
  */
 void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
-	
-	cout << " @@@@@@@@@@@@@@@@@@1 " << bid << " == " << (core->proto(bid) == engine_t::proto_t::HTTP2) << endl;
-	
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
 	if((this->_sessions.count(bid) == 0) && (core->proto(bid) == engine_t::proto_t::HTTP2)){
-		
-		cout << " @@@@@@@@@@@@@@@@@@12 " << bid << endl;
-		
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Выполняем создание нового объекта сессии HTTP/2
