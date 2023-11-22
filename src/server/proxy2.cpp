@@ -461,6 +461,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				flags.emplace(client::web_t::flag_t::PROXY_NOCONNECT);
 			// Если метод запроса не является методом CONNECT
 			if(it->second->request.params.method != awh::web_t::method_t::CONNECT){
+				
+				/*
 				// Определяем тип активного сокета
 				switch(static_cast <uint8_t> (this->_core.sonet())){
 					// Если тип сокета установлен как TCP/IP
@@ -474,6 +476,15 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						it->second->request.params.url.schema = "https";
 					break;
 				}
+				*/
+
+				cout << " *********************** " << it->second->request.params.url << endl;
+
+				// Выполняем установку защищённого протокола
+				it->second->request.params.url.schema = "https";
+
+				
+
 				// Подписываемся на получение сообщения сервера
 				it->second->awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3));
 				// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту

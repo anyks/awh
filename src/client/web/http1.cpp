@@ -500,7 +500,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если нужно попытаться ещё раз
 		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 			// Если функция обратного вызова на на вывод ошибок установлена
-			if((response.code == 401) && this->_callback.is("error"))
+			if(((response.code == 401) || (response.code == 407)) && this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 			// Если попытки повторить переадресацию ещё не закончились
@@ -537,6 +537,22 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 						}
 					// Если URL-адрес запроса не получен
 					} else {
+						// Если метод CONNECT запрещён для прокси-сервера и требуется авторизация
+						if((response.code == 407) && this->_proxy.mode && !this->_proxy.connect){
+							// Выполняем сброс заголовков прокси-сервера
+							this->_scheme.proxy.http.clear();
+							// Выполняем перебор всех полученных заголовков
+							for(auto & item : this->_http.headers()){
+								// Если заголовок соответствует прокси-серверу
+								if(this->_fmk->exists("proxy-", item.first))
+									// Выполняем добавление заголовков прокси-сервера
+									this->_scheme.proxy.http.header(item.first, item.second);
+							}
+							// Устанавливаем статус ответа прокси-серверу
+							this->_scheme.proxy.http.response(response);
+							// Выполняем фиксацию полученного результата
+							this->_scheme.proxy.http.commit();
+						}
 						// Если соединение является постоянным
 						if(this->_http.is(http_t::state_t::ALIVE)){
 							// Выполняем сброс параметров запроса
