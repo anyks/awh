@@ -114,8 +114,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
-				// Запоминаем что подключение установлено
-				it->second->connected = true;
 				// Определяем активный метод запроса клиента
 				switch(static_cast <uint8_t> (it->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
@@ -158,13 +156,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-						
-						cout << " !!!!!!!!!!!!!!!! " << endl;
-						
 						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 						it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 						// Выполняем отправку ответа клиенту
 						this->_server.send(bid);
+						// Запоминаем что подключение установлено
+						it->second->connected = true;
 					} break;
 				}
 			} break;
@@ -528,26 +525,14 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = true;
-	
-	cout << " --------------------1 " << bid << " === " << size << endl;
-	
 	// Если бинарные данные получены
 	if((buffer != nullptr) && (size > 0)){
-		
-		cout << " --------------------2 " << bid << " === " << size << endl;
-		
 		// Выполняем поиск объекта клиента
 		auto it = this->_clients.find(bid);
 		// Если активный клиент найден и подключение установлено
 		if((it != this->_clients.end()) && (it->second->connected)){
-			
-			cout << " --------------------3 " << bid << " === " << size << endl;
-			
 			// Если установлен метод CONNECT
 			if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
-				
-				cout << " --------------------4 " << bid << " === " << size << endl;
-				
 				// Определяем переданного брокера
 				switch(static_cast <uint8_t> (broker)){
 					// Если брокером является клиент
