@@ -432,9 +432,6 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
  * @param agent идентификатор агента клиента
  */
 void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept {
-	
-	cout << " ^^^^^^^^^^^^^^^^^^ " << bid << endl;
-	
 	// Если агент клиента соответствует HTTP протоколу
 	if(agent == server::web_t::agent_t::HTTP){
 		// Выполняем поиск объекта клиента

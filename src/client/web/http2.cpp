@@ -663,6 +663,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если протокол подключения установлен как HTTP/2
 					if(it->second->proto == engine_t::proto_t::HTTP2){
+						
+						cout << " ============== REDIRECT HTTP/2 " << bid << endl;
+						
 						// Если мы нашли нужный нам воркер
 						if(it->second->update){
 							// Если список ответов получен
@@ -729,6 +732,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 						}
 					// Если активирован режим работы с HTTP/1.1 протоколом
 					} else {
+						
+						cout << " ============== REDIRECT2 HTTP/1.1 " << bid << endl;
+						
 						// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
 						this->_http1.disconnectCallback(bid, sid, core);
 						// Если список ответов получен
