@@ -1366,7 +1366,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
  */
 void awh::client::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
 	
-	cout << " +++++++++++++++++ " << size << endl;
+	cout << " +++++++++++++++++1 " << size << endl;
 	
 	// Если данные переданы
 	if(this->working() && (bid > 0) && (buffer != nullptr) && (size > 0)){
@@ -1416,6 +1416,9 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							actual = (left >= max ? max : left);
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->_ectx.write(buffer + offset, actual);
+							
+							cout << " +++++++++++++++++2 " << bytes << endl;
+							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение
@@ -1428,6 +1431,24 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							// Увеличиваем смещение в буфере
 							offset += bytes;
 						}
+
+						if(bytes > 0){
+
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Переводим сокет в неблокирующий режим
+								adj->_ectx.noblock();
+							break;
+						}
+
+						}
+
 						// Останавливаем ожидание записи данных
 						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
