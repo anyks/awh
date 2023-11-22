@@ -171,6 +171,8 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				it->second->connected = false;
 				// Выполняем закрытие подключения
 				// this->close(bid);
+
+				cout << " ++++++++++++++++ DISCONNECT CLIENT " << endl;
 			} break;
 		}
 	}
@@ -348,6 +350,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 				it->second->connected = false;
 				// Выполняем отключение клиента от сетевого ядра
 				// this->_core.unbind(&it->second->core);
+
+				cout << " ++++++++++++++++ DISCONNECT SERVER " << endl;
 			}
 		} break;
 	}
