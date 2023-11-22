@@ -1242,16 +1242,10 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							this->_uri.combine(this->_scheme.url, request.url);
 							// Создаём объек запроса
 							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
-							
-							cout << " -------------------2 " << request.url << " == " << this->_scheme.url << endl;
-							
 							// Если метод CONNECT запрещён для прокси-сервера
 							if(this->_proxy.mode && !this->_proxy.connect){
 								// Активируем точную установку хоста
 								this->_http.precise(true);
-								
-								cout << " -------------------!!!! " << request.url << " == " << this->_scheme.url << endl;
-								
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
 								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 								// Если заголовок авторизации получен
@@ -1316,6 +1310,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
+						
+						cout << " -------------------2 " << request.url << " == " << this->_scheme.url << endl;
+						
 						// Если список доступных компрессоров установлен
 						if(!request.compressors.empty())
 							// Устанавливаем список поддерживаемых компрессоров
