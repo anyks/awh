@@ -1318,18 +1318,16 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
-						
-						cout << " -------------------2 " << request.url << " == " << this->_scheme.url << endl;
-
+						// Если количество попыток ещё достаточно
 						if(this->_attempt < this->_attempts){
 							// Увеличиваем количество попыток
 							this->_attempt++;
-
+							// Если в списке больше запросов нет
 							if(this->_http1._requests.empty())
+								// Выполняем сброс количества попыток в модуле протокола HTTP/1.1
 								this->_http1._attempt = 0;
-						
+						// Если попытки исчерпаны, выходим из функции
 						} else return result;
-						
 						// Если список доступных компрессоров установлен
 						if(!request.compressors.empty())
 							// Устанавливаем список поддерживаемых компрессоров

@@ -704,12 +704,6 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				this->_http.body(request.entity);
 			// Устанавливаем новый адрес запроса
 			this->_uri.combine(this->_scheme.url, request.url);
-
-			cout << " ################### SUBMIT " << request.url << " == " << this->_scheme.url << endl;
-
-			for(auto & header : this->_http.headers())
-				cout << " ============= HEADER " << header.first << " == " << header.second << endl;
-
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, this->_scheme.url);
 			// Если метод CONNECT запрещён для прокси-сервера
@@ -768,6 +762,9 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
  * @return        идентификатор отправленного запроса
  */
 int32_t awh::client::Http1::send(const request_t & request) noexcept {
+	
+	cout << " !!!!!!!!!!!! " << endl;
+	
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
