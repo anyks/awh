@@ -22,6 +22,9 @@
  * @param core объект сетевого ядра
  */
 void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ============= " << bid << endl;
+	
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -762,9 +765,6 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
  * @return        идентификатор отправленного запроса
  */
 int32_t awh::client::Http1::send(const request_t & request) noexcept {
-	
-	cout << " !!!!!!!!!!!! " << endl;
-	
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -807,9 +807,6 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 					switch(static_cast <uint8_t> (this->_agent)){
 						// Если протоколом агента является HTTP-клиент
 						case static_cast <uint8_t> (agent_t::HTTP): {
-							
-							cout << " =====================1 HTTP1 " << request.url << " === " << this->_requests.size() << endl;
-							
 							// Выполняем добавление активного запроса
 							this->_requests.emplace(result, request);
 							// Если В списке запросов ещё нет активных запросов
@@ -840,14 +837,11 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 					// Выводим результат
 					return result;
 				// Если список запросов не пустой
-				} else if(!this->_requests.empty()) {
-					
-					cout << " =====================2 HTTP1 " << request.url << " === " << this->_requests.size() << endl;
-					
+				} else if(!this->_requests.empty())
 					// Выполняем запрос на удалённый сервер
 					this->submit(this->_requests.begin()->second);
 				// Если мы получили ошибку
-				} else {
+				else {
 					// Выводим сообщение об ошибке
 					this->_log->print("Number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
 					// Если функция обратного вызова на на вывод ошибок установлена
