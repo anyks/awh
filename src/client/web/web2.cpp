@@ -64,6 +64,8 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 							else cout << endl;
 						}
 					#endif
+
+					/*
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Если функция обратного вызова активности потока установлена
@@ -78,6 +80,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					if(this->_core != nullptr)
 						// Завершаем работу
 						const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					*/
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа

@@ -779,9 +779,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					if(options->http.body().empty())
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
-					
-					cout << " +++++++++++++++++=1 " << (flag == awh::http2_t::flag_t::END_STREAM) << endl;
-					
 					// Выполняем заголовки запроса на сервер
 					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
 					// Если запрос не получилось отправить
@@ -805,9 +802,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							if(options->http.body().empty() && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
-							
-							cout << " +++++++++++++++++=2 " << (flag == awh::http2_t::flag_t::END_STREAM) << endl;
-							
 							// Выполняем отправку тела запроса на сервер
 							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
 								// Выходим из функции
