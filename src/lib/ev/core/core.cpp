@@ -290,7 +290,7 @@ void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если база событий передана
-	if(base != nullptr){
+	if((base != nullptr) && (base != this->base)){
 		// Если работа уже запущена
 		if(this->_work){
 			// Выполняем блокировку получения данных
@@ -333,48 +333,41 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
  _core(core), _easy(false), _work(false), _init(true), _virt(false),
  base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		WSACleanup();
-		// Идентификатор ошибки
-		int error = 0;
-		// Выполняем инициализацию сетевого контекста
-		if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
+	// Выполняем получение базы событий
+	struct ev_loop * base = ev_default_loop_uc_();
+	// Если база событий ещё не проинициализированна
+	if(base == nullptr){
+		/**
+		 * Если операционной системой является Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
 			// Очищаем сетевой контекст
 			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-		// Выполняем проверку версии WinSocket
-		if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-	#endif
-	// Выполняем установку функции активации базы событий
-	this->_launching = std::bind(&awh::Core::launching, this->_core);
-	// Выполняем установку функции активации базы событий
-	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
-	
-	struct ev_loop * k1 = this->base;
-
-	cout << " -----------------!!!!!!!!1 " << k1 << " === " << ev_default_loop_uc_() << endl;
-
-	// struct ev_loop * ()
-
-	// ev::loop_ref()
-	
-	// Выполняем инициализацию базы событий
-	this->rebase(false);
-
-	struct ev_loop * k2 = this->base;
-
-	cout << " -----------------!!!!!!!!2 " << k2 << endl;
+			// Идентификатор ошибки
+			int error = 0;
+			// Выполняем инициализацию сетевого контекста
+			if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
+			// Выполняем проверку версии WinSocket
+			if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
+		#endif
+		// Выполняем установку функции активации базы событий
+		this->_launching = std::bind(&awh::Core::launching, this->_core);
+		// Выполняем установку функции активации базы событий
+		this->_closedown = std::bind(&awh::Core::closedown, this->_core);
+		// Выполняем инициализацию базы событий
+		this->rebase(false);
+	// Выполняем установку базы событий
+	} else this->base = ev::loop_ref(base);
 }
 /**
  * ~Dispatch Деструктор
