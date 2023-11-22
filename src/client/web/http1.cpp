@@ -805,7 +805,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 						// Если протоколом агента является HTTP-клиент
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							
-							cout << " ===================== HTTP1 " << request.url << " === " << this->_requests.size() << endl;
+							cout << " =====================1 HTTP1 " << request.url << " === " << this->_requests.size() << endl;
 							
 							// Выполняем добавление активного запроса
 							this->_requests.emplace(result, request);
@@ -837,11 +837,14 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 					// Выводим результат
 					return result;
 				// Если список запросов не пустой
-				} else if(!this->_requests.empty())
+				} else if(!this->_requests.empty()) {
+					
+					cout << " =====================2 HTTP1 " << request.url << " === " << this->_requests.size() << endl;
+					
 					// Выполняем запрос на удалённый сервер
 					this->submit(this->_requests.begin()->second);
 				// Если мы получили ошибку
-				else {
+				} else {
 					// Выводим сообщение об ошибке
 					this->_log->print("Number of redirect attempts has not been reset", log_t::flag_t::CRITICAL);
 					// Если функция обратного вызова на на вывод ошибок установлена
