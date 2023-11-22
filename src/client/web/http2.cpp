@@ -22,6 +22,9 @@
  * @param core объект сетевого ядра
  */
 void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ============= " << bid << endl;
+	
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
