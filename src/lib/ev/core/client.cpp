@@ -905,6 +905,9 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::client::Core::close(const uint64_t bid) noexcept {
+
+	cout << " !!!!!!!!!!!!!!!! CLOSE CLIENT " << bid << endl;
+
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если блокировка брокера не установлена
