@@ -136,10 +136,6 @@ void awh::Core::Dispatch::stop() noexcept {
 void awh::Core::Dispatch::start() noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
-	// Если база событий не проинициализированна
-	if(!this->_init)
-		// Выполняем инициализацию базы событий
-		this->rebase(false);
 	// Если чтение базы событий ещё не началось
 	if(!this->_work && this->_init){
 		// Устанавливаем флаг работы модуля
@@ -364,6 +360,13 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	this->_launching = std::bind(&awh::Core::launching, this->_core);
 	// Выполняем установку функции активации базы событий
 	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
+	
+	cout << " -----------------!!!!!!!!1 " << ev::loop_ref::is_default() << endl;
+	
+	// Выполняем инициализацию базы событий
+	this->rebase(false);
+
+	cout << " -----------------!!!!!!!!2 " << ev::loop_ref::is_default() << endl;
 }
 /**
  * ~Dispatch Деструктор
