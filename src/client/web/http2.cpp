@@ -30,8 +30,14 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		this->_bid = bid;
 		// Выполняем установку идентификатора объекта
 		this->_http.id(bid);
+		
+		cout <<  " $$$$$$$$$$$$$ CONNECT1 " << endl;
+		
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectCallback(bid, sid, core);
+
+		cout <<  " $$$$$$$$$$$$$ CONNECT2 " << endl;
+
 		// Если флаг инициализации сессии HTTP/2 не установлен
 		if(!this->_http2.is()){
 			// Запоминаем идентификатор брокера
@@ -59,6 +65,9 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		if(this->_threads > -1)
 			// Выполняем инициализацию нового тредпула
 			this->_ws2.multiThreads(this->_threads);
+		
+		cout <<  " $$$$$$$$$$$$$ CONNECT3 " << endl;
+		
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выполняем функцию обратного вызова

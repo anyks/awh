@@ -551,18 +551,14 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 					// Если брокером является сервер
 					case static_cast <uint8_t> (broker_t::SERVER):
 
-						cout << " --------------------6 1 " << bid << " === " << size << endl;
-
-						if(size != 517){
-						
-						cout << " --------------------6 2 " << bid << " === " << size << endl;
+						cout << " --------------------6 " << bid << " === " << size << endl;
 
 						// cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
 
-						}
+						
 					break;
 				}
 			}
