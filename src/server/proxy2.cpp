@@ -487,7 +487,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				// Если тип сокета установлен как TCP/IP
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP):
 					// Выполняем установку протокола подключения
-					it->second->request.params.url.schema = "http";
+					// it->second->request.params.url.schema = "http";
 				break;
 				// Если тип сокета установлен как TCP/IP TLS
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS):
