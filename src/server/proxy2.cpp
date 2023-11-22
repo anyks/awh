@@ -160,10 +160,24 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						if(!it->second->connected){
 							// Запоминаем что подключение установлено
 							it->second->connected = !it->second->connected;
+							
+
+							// Создаём объект запроса
+							client::web_t::request_t request;
+							// Устанавливаем адрес запроса
+							request.url = this->_uri.parse("https://ru.wikipedia.org/wiki/HTTP");
+							// Устанавливаем метод запроса
+							request.method = awh::web_t::method_t::GET;
+
+							it->second->awh.send(std::move(request));
+
+							/*
 							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 							// Выполняем отправку ответа клиенту
 							this->_server.send(bid);
+							*/
+
 						}
 					} break;
 				}
@@ -556,7 +570,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 						// cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
-						// it->second->awh.send(buffer, size);
+						it->second->awh.send(buffer, size);
 
 						
 					break;
