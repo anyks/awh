@@ -229,12 +229,6 @@ namespace awh {
 					void start() noexcept;
 				public:
 					/**
-					 * virt Метод проверки является ли база событий виртуальной
-					 * @return результат проверки
-					 */
-					bool virt() const noexcept;
-				public:
-					/**
 					 * freeze Метод заморозки чтения данных
 					 * @param mode флаг активации
 					 */

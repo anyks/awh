@@ -108,13 +108,10 @@ void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
-	// Если база событий проинициализированна
-	if(this->_init){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Выполняем остановку всех событий
-		this->base.break_loop(ev::how_t::ALL);
-	}
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем остановку всех событий
+	this->base.break_loop(ev::how_t::ALL);
 }
 /**
  * stop Метод остановки чтения базы событий
@@ -184,29 +181,18 @@ void awh::Core::Dispatch::start() noexcept {
 	} else this->_mtx.unlock();
 }
 /**
- * virt Метод проверки является ли база событий виртуальной
- * @return результат проверки
- */
-bool awh::Core::Dispatch::virt() const noexcept {
-	// Выводим результат проверки
-	return this->_virt;
-}
-/**
  * freeze Метод заморозки чтения данных
  * @param mode флаг активации
  */
 void awh::Core::Dispatch::freeze(const bool mode) noexcept {
-	// Если база событий проинициализированна
-	if(this->_init){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Если запрещено использовать простое чтение базы событий
-		if(mode)
-			// Выполняем фриз чтения данных
-			ev_suspend(this->base);
-		// Продолжаем чтение данных
-		else ev_resume(this->base);
-	}
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Если запрещено использовать простое чтение базы событий
+	if(mode)
+		// Выполняем фриз чтения данных
+		ev_suspend(this->base);
+	// Продолжаем чтение данных
+	else ev_resume(this->base);
 }
 /**
  * easily Метод активации простого режима чтения базы событий
@@ -232,7 +218,7 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 		// Если работа уже запущена
 		if(this->_work){
 			// Выполняем блокировку чтения данных
-			this->_init = !this->_init;
+			this->_init = false;
 			// Выполняем пинок
 			this->kick();
 		}
@@ -276,10 +262,12 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 			// Создаем новую базу
 			this->base = ev::loop_ref(ev_default_loop(ev::KQUEUE | ev::NOENV | EVFLAG_NOINOTIFY));
 		#endif
-		// Если работа уже запущена
-		if(this->_work)
-			// Выполняем разблокировку чтения данных
-			this->_init = !this->_init;
+		// Выполняем разблокировку чтения данных
+		this->_init = true;
+		// Выполняем установку функции активации базы событий
+		this->_launching = std::bind(&awh::Core::launching, this->_core);
+		// Выполняем установку функции активации базы событий
+		this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	}
 }
 /**
@@ -293,8 +281,8 @@ void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	if((base != nullptr) && (base != this->base)){
 		// Если работа уже запущена
 		if(this->_work){
-			// Выполняем блокировку получения данных
-			this->_init = !this->_init;
+			// Выполняем блокировку чтения данных
+			this->_init = false;
 			// Выполняем пинок
 			this->kick();
 		}
@@ -304,12 +292,14 @@ void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 			ev_loop_destroy(this->base);
 		// Создаем новую базу
 		this->base = ev::loop_ref(base);
-		// Если работа уже запущена
-		if(this->_work)
-			// Выполняем разблокировку получения данных
-			this->_init = !this->_init;
+		// Выполняем разблокировку чтения данных
+		this->_init = true;
 		// Отмечаем, что база событий является виртуальной
 		this->_virt = true;
+		// Выполняем установку функции активации базы событий
+		this->_launching = std::bind(&awh::Core::launching, this->_core);
+		// Выполняем установку функции активации базы событий
+		this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	}
 }
 /**
@@ -331,7 +321,7 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
  * @param core объект сетевого ядра
  */
 awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
- _core(core), _easy(false), _work(false), _init(true), _virt(false),
+ _core(core), _easy(false), _work(false), _init(false), _virt(false),
  base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
 	// Выполняем получение базы событий
 	struct ev_loop * base = ev_default_loop_uc_();
@@ -360,14 +350,15 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 				exit(EXIT_FAILURE);
 			}
 		#endif
-		// Выполняем установку функции активации базы событий
-		this->_launching = std::bind(&awh::Core::launching, this->_core);
-		// Выполняем установку функции активации базы событий
-		this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 		// Выполняем инициализацию базы событий
 		this->rebase(false);
-	// Выполняем установку базы событий
-	} else this->base = ev::loop_ref(base);
+	// Если база событий уже инициализированна
+	} else {
+		// Отмечаем, что база событий является виртуальной
+		this->_virt = true;
+		// Выполняем установку базы событий
+		this->base = ev::loop_ref(base);
+	}
 }
 /**
  * ~Dispatch Деструктор
@@ -672,10 +663,6 @@ void awh::Core::unbind(core_t * core) noexcept {
 		if(core->_dns != nullptr)
 			// Выполняем удаление модуля DNS-резолвера
 			core->_dns->clear();
-		// Если база событий не виртуальная
-		if(!core->_dispatch.virt())
-			// Зануляем базу событий
-			core->_dispatch.base = nullptr;
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 	}
