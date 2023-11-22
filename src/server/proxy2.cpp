@@ -478,7 +478,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				}
 				*/
 
-				cout << " *********************** " << it->second->request.params.url << " == " << it->second->request.params.port << endl;
+				cout << " *********************** " << it->second->request.params.url << " == " << it->second->request.params.url.port << endl;
 
 				// Выполняем установку защищённого протокола
 				it->second->request.params.url.schema = "https";
