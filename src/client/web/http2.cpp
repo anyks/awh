@@ -1318,21 +1318,21 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
-						
-						cout << " ----------------- " << sid << endl;
-						
 						// Если количество попыток ещё достаточно
-						if((sid > 0) && (this->_attempt < this->_attempts)){
+						if(this->_attempt < this->_attempts){
 							// Увеличиваем количество попыток
 							this->_attempt++;
 							// Если в списке больше запросов нет
 							if(this->_http1._requests.empty())
 								// Выполняем сброс количества попыток в модуле протокола HTTP/1.1
 								this->_http1._attempt = 0;
-							// Выполняем удаление указанного воркера
-							this->_workers.erase(sid);
-							// Выполняем удаление параметра запроса
-							this->_requests.erase(sid);
+							// Если нужно удалить предыдущие коннекты
+							if(sid > 0){
+								// Выполняем удаление указанного воркера
+								this->_workers.erase(sid);
+								// Выполняем удаление параметра запроса
+								this->_requests.erase(sid);
+							}
 						// Если попытки исчерпаны, выходим из функции
 						} else return result;
 						// Если список доступных компрессоров установлен
