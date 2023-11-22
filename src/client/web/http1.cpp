@@ -1189,6 +1189,8 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
 	// Устанавливаем флаг разрешающий выполнять редиректы
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
+	// Если установлен флаг запрещающий переключение контекста SSL
+	this->_noinitssl = (flags.count(flag_t::NO_INIT_SSL) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket

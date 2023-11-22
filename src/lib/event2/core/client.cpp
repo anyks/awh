@@ -1246,9 +1246,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
-
-								cout << " ############# CLIENT READ " << bytes << endl;
-								
 								// Если данные получены
 								if(bytes > 0){
 									// Если флаг ожидания входящих сообщений, активирован
@@ -1411,14 +1408,8 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							left = (size - offset);
 							// Определяем размер отправляемых данных
 							actual = (left >= max ? max : left);
-							
-							cout << " ############# CLIENT WRITE1 " << actual << endl;
-							
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->_ectx.write(buffer + offset, actual);
-							
-							cout << " ############# CLIENT WRITE2 " << bytes << endl;
-							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение

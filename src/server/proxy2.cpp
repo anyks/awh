@@ -169,12 +169,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				}
 			} break;
 			// Если производится отключение клиента от сервера
-			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
+			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT):
 				// Выполняем закрытие подключения
 				this->close(bid);
-
-				cout << " ++++++++++++++++ DISCONNECT CLIENT " << endl;
-			} break;
+			break;
 		}
 	}
 }
@@ -192,27 +190,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			this->_server.alive(bid, true);
 			// Выполняем создание клиента
 			auto ret = this->_clients.emplace(bid, unique_ptr <client_t> (new client_t(this->_fmk, this->_log)));
-			// Создаём список флагов клиента
-			set <client::web_t::flag_t> flags = {
-				client::web_t::flag_t::ALIVE,
-				client::web_t::flag_t::NOT_STOP,
-				// client::web_t::flag_t::NOT_INFO,
-				client::web_t::flag_t::REDIRECTS
-			};
-			// Если флаг ожидания входящих сообщений установлен
-			if(this->_flags.count(flag_t::WAIT_MESS) > 0)
-				// Устанавливаем флаг ожидания входящих сообщений
-				flags.emplace(client::web_t::flag_t::WAIT_MESS);
-			// Если флаг проверки домена установлен
-			if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
-				// Выполняем установку флага проверки домена
-				flags.emplace(client::web_t::flag_t::VERIFY_SSL);
-			// Если флаг отключающий метод CONNECT для прокси-клиента установлен
-			if(this->_flags.count(flag_t::PROXY_NOCONNECT) > 0)
-				// Выполняем установку флага отключающего метод CONNECT для прокси-клиента
-				flags.emplace(client::web_t::flag_t::PROXY_NOCONNECT);
-			// Устанавливаем флаги настроек модуля
-			ret.first->second->awh.mode(std::move(flags));
 			// Если чёрный список DNS-адресов установлен
 			if(!this->_settings.dns.blacklist.empty()){
 				// Выполняем перебор всего чёрного списка DNS-адресов
@@ -346,12 +323,9 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Выполняем поиск клиента в списке
 			auto it = this->_clients.find(bid);
 			// Если клиент в списке найден
-			if(it != this->_clients.end()){
+			if(it != this->_clients.end())
 				// Выполняем отключение клиента от сетевого ядра
 				this->_core.unbind(&it->second->core);
-
-				cout << " ++++++++++++++++ DISCONNECT SERVER " << endl;
-			}
 		} break;
 	}
 	// Если функция обратного вызова установлена
@@ -466,8 +440,40 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 		if(it != this->_clients.end()){
 			// Запоминаем идентификатор потока
 			it->second->sid = sid;
+			// Создаём список флагов клиента
+			set <client::web_t::flag_t> flags = {
+				client::web_t::flag_t::ALIVE,
+				client::web_t::flag_t::NOT_STOP,
+				// client::web_t::flag_t::NOT_INFO,
+				client::web_t::flag_t::REDIRECTS
+			};
+			// Если флаг ожидания входящих сообщений установлен
+			if(this->_flags.count(flag_t::WAIT_MESS) > 0)
+				// Устанавливаем флаг ожидания входящих сообщений
+				flags.emplace(client::web_t::flag_t::WAIT_MESS);
+			// Если флаг проверки домена установлен
+			if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
+				// Выполняем установку флага проверки домена
+				flags.emplace(client::web_t::flag_t::VERIFY_SSL);
+			// Если флаг отключающий метод CONNECT для прокси-клиента установлен
+			if(this->_flags.count(flag_t::PROXY_NOCONNECT) > 0)
+				// Выполняем установку флага отключающего метод CONNECT для прокси-клиента
+				flags.emplace(client::web_t::flag_t::PROXY_NOCONNECT);
 			// Если метод запроса не является методом CONNECT
 			if(it->second->request.params.method != awh::web_t::method_t::CONNECT){
+				// Определяем тип активного сокета
+				switch(static_cast <uint8_t> (this->_core.sonet())){
+					// Если тип сокета установлен как TCP/IP
+					case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP):
+						// Выполняем установку протокола подключения
+						it->second->request.params.url.schema = "http";
+					break;
+					// Если тип сокета установлен как TCP/IP TLS
+					case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS):
+						// Выполняем установку защищённого протокола
+						it->second->request.params.url.schema = "https";
+					break;
+				}
 				// Подписываемся на получение сообщения сервера
 				it->second->awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3));
 				// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
@@ -484,28 +490,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {{"Connection", "close"},{"Content-type", "text/html; charset=utf-8"}});
 				// Выходим из функции
 				return;
-			}
-			/*
-			// Определяем тип активного сокета
-			switch(static_cast <uint8_t> (this->_core.sonet())){
-				// Если тип сокета установлен как TCP/IP
-				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP):
-					// Выполняем установку протокола подключения
-					it->second->request.params.url.schema = "http";
-				break;
-				// Если тип сокета установлен как TCP/IP TLS
-				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS):
-					// Выполняем установку защищённого протокола
-					it->second->request.params.url.schema = "https";
-				break;
-			}
-			*/
-
-			// Выполняем установку защищённого протокола
-			// it->second->request.params.url.schema = "https";
-			
-			cout << " ******************** " << it->second->request.params.url << endl;
-
+			// Если метод CONNECT разрешён, выполняем запрет инициализации SSL-контекста
+			} else flags.emplace(client::web_t::flag_t::NO_INIT_SSL);
+			// Устанавливаем флаги настроек модуля
+			it->second->awh.mode(std::move(flags));
 			// Выполняем инициализацию подключения
 			it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
 				awh::http_t::compress_t::BROTLI,
@@ -540,19 +528,11 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 				switch(static_cast <uint8_t> (broker)){
 					// Если брокером является клиент
 					case static_cast <uint8_t> (broker_t::CLIENT):
-						
-						cout << " --------------------5 " << bid << " === " << size << endl;
-						
 						// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
 						this->_server.send(bid, buffer, size);
 					break;
 					// Если брокером является сервер
 					case static_cast <uint8_t> (broker_t::SERVER):
-
-						cout << " --------------------6 " << bid << " === " << size << endl;
-
-
-						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
 					break;

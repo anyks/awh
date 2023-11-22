@@ -584,6 +584,8 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
 void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	// Если установлен флаг запрещающий переключение контекста SSL
+	this->_noinitssl = (flags.count(flag_t::NO_INIT_SSL) > 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
 	// Устанавливаем флаг разрешающий выполнять редиректы

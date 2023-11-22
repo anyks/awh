@@ -356,7 +356,7 @@ bool awh::client::Web::enableSSLCallback(const uri_t::url_t & url, const uint64_
 	(void) sid;
 	(void) core;
 	// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
-	return (!url.empty() && (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss")));
+	return (!this->_noinitssl && (!url.empty() && (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss"))));
 }
 /**
  * chunking Метод обработки получения чанков
@@ -803,9 +803,9 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk), _callback(log), _scheme(fmk, log), _unbind(true),
- _active(false), _stopped(false), _redirects(false), _attempt(0),
- _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
+ _bid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
+ _unbind(true), _active(false), _stopped(false), _redirects(false), _noinitssl(false),
+ _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
@@ -833,7 +833,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callback(log), _scheme(fmk, log),
- _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _unbind(true), _active(false), _stopped(false), _redirects(false), _noinitssl(false),
  _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
