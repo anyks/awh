@@ -482,15 +482,19 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				// Выходим из функции
 				return;
 			}
-
-			const awh::scheme_t::sonet_t sonet = this->_core.sonet();
-
-			if(sonet == awh::scheme_t::sonet_t::TLS)
-				cout << " ++++++++++++++++++++++++++ TLS " << endl;
-
-			// Выполняем установку защищённого протокола
-			it->second->request.params.url.schema = "https";
-
+			// Определяем тип активного сокета
+			switch(static_cast <uint8_t> (this->_core.sonet())){
+				// Если тип сокета установлен как TCP/IP
+				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP):
+					// Выполняем установку протокола подключения
+					it->second->request.params.url.schema = "http";
+				break;
+				// Если тип сокета установлен как TCP/IP TLS
+				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS):
+					// Выполняем установку защищённого протокола
+					it->second->request.params.url.schema = "https";
+				break;
+			}
 			// Выполняем инициализацию подключения
 			it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
 				awh::http_t::compress_t::BROTLI,
