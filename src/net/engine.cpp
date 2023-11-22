@@ -1155,6 +1155,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						break;
 					}
 
+					if(result == 0)
+					result = -1;
+
 					cout << " ####################### READ ENGINE3 " << result << endl;
 				}
 			}
