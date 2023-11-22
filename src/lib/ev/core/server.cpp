@@ -838,6 +838,9 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::server::Core::close(const uint64_t bid) noexcept {
+	
+	return;
+	
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если тип сокета установлен как не UDP, останавливаем чтение
