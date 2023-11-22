@@ -41,10 +41,10 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
  * @param core объект сетевого ядра
  */
 void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
-	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if((this->_sessions.count(bid) == 0) && (core->proto(bid) == engine_t::proto_t::HTTP2)){
-		// Если список параметров настроек не пустой
-		if(!this->_settings.empty()){
+	// Если флаг инициализации сессии HTTP/2 не активирован
+	if(this->_sessions.find(bid) == this->_sessions.end()){
+		// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером
+		if(!this->_settings.empty() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
 			// Выполняем создание нового объекта сессии HTTP/2
 			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова начала открытии потока
