@@ -341,9 +341,6 @@ int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, cons
 	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
-		
-		cout << " +++++++++++++++++ " << key << " == " << val << endl;
-		
 		// Устанавливаем полученные заголовки
 		options->http.header2(key, val);
 		// Если функция обратного вызова на полученного заголовка с сервера установлена
@@ -516,6 +513,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
+										
+										cout << " +++++++++++++++++ " << endl;
+										
 										// Выполняем коммит полученного результата
 										options->http.commit();
 										// Выполняем извлечение параметров запроса
