@@ -363,7 +363,7 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	
 	struct ev_loop * k1 = this->base;
 
-	cout << " -----------------!!!!!!!!1 " << k1 << " === " << ev_default_loop_ptr << endl;
+	cout << " -----------------!!!!!!!!1 " << k1 << " === " << ev_default_loop_uc_() << endl;
 
 	// struct ev_loop * ()
 
