@@ -719,9 +719,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 												jt->second->method = awh::web_t::method_t::GET;
 											}
 										}
-										
-										cout << " ============== REDIRECT HTTP/2 " << bid << " == " << url << endl;
-										
 										// Выполняем установку следующего экшена на открытие подключения
 										this->open();
 										// Завершаем работу
@@ -1329,8 +1326,17 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							if(this->_http1._requests.empty())
 								// Выполняем сброс количества попыток в модуле протокола HTTP/1.1
 								this->_http1._attempt = 0;
+							
+							// Выполняем удаление указанного воркера
+							this->_workers.erase(sid);
+							// Выполняем удаление параметра запроса
+							this->_requests.erase(sid);
+
 						// Если попытки исчерпаны, выходим из функции
 						} else return result;
+
+
+
 						// Если список доступных компрессоров установлен
 						if(!request.compressors.empty())
 							// Устанавливаем список поддерживаемых компрессоров
