@@ -847,14 +847,14 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 }
 /**
  * commit Метод применения изменений
- * @return результат отправки
+ * @param event событие которому соответствует фиксация
+ * @return      результат отправки
  */
-bool awh::Http2::commit() noexcept {
+bool awh::Http2::commit(const event_t event) noexcept {
+	// Выполняем установку активного события
+	this->_event = event;
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
-		
-		cout << " **************** COMMIT1 " << (this->_event == event_t::NONE) << endl;
-		
 		// Фиксируем отправленный результат
 		const int rv = nghttp2_session_send(this->_session);
 		// Если зафиксифровать результат не вышло
@@ -868,8 +868,6 @@ bool awh::Http2::commit() noexcept {
 			// Выходим из функции
 			return false;
 		}
-
-		cout << " **************** COMMIT2 " << (this->_event == event_t::NONE) << endl;
 	}
 	// Выводим результат
 	return true;
@@ -921,7 +919,7 @@ bool awh::Http2::ping() noexcept {
 			return false;
 		}
 		// Выполняем применение изменений
-		if(!this->commit()){
+		if(!this->commit(event_t::SEND_PING)){
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_PING);
 			// Выходим из функции
@@ -958,7 +956,7 @@ bool awh::Http2::shutdown() noexcept {
 			return false;
 		}
 		// Выполняем применение изменений
-		if(!this->commit()){
+		if(!this->commit(event_t::SEND_SHUTDOWN)){
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_SHUTDOWN);
 			// Выходим из функции
@@ -996,15 +994,10 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				// Выполняем завершение работы
 				goto End;
 			}
-
-			cout << " ################ FRAME1 " << (this->_event == event_t::NONE) << endl;
-
 			// Выполняем применение изменений
-			if(!this->commit())
+			if(!this->commit(event_t::RECV_FRAME))
 				// Выполняем завершение работы
 				goto End;
-			
-			cout << " ################ FRAME2 " << (this->_event == event_t::NONE) << endl;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::RECV_FRAME);
@@ -1013,9 +1006,6 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	}
 	// Устанавливаем метку завершения работы
 	End:
-
-	cout << " ################ FRAME3 " << (this->_event == event_t::NONE) << endl;
-
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::RECV_FRAME);
 	// Выводим результат
@@ -1125,7 +1115,7 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 					goto End;
 				}
 				// Выполняем применение изменений
-				if(!this->commit())
+				if(!this->commit(event_t::SEND_REJECT))
 					// Выполняем завершение работы
 					goto End;
 				// Выполняем вызов метода выполненного события
@@ -1169,7 +1159,7 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 						goto End;
 					}
 					// Выполняем применение изменений
-					if(!this->commit())
+					if(!this->commit(event_t::WINDOW_UPDATE))
 						// Выполняем завершение работы
 						goto End;
 					// Выполняем вызов метода выполненного события
@@ -1235,7 +1225,7 @@ void awh::Http2::sendOrigin() noexcept {
 						goto End;
 					}
 					// Выполняем применение изменений
-					this->commit();
+					this->commit(event_t::SEND_ORIGIN);
 				}
 			}
 		}
@@ -1285,7 +1275,7 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 									goto End;
 								}
 								// Выполняем применение изменений
-								if(!this->commit())
+								if(!this->commit(event_t::SEND_ALTSVC))
 									// Выходим из функции
 									goto End;
 							}
@@ -1302,7 +1292,7 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 								goto End;
 							}
 							// Выполняем применение изменений
-							if(!this->commit())
+							if(!this->commit(event_t::SEND_ALTSVC))
 								// Выходим из функции
 								goto End;
 						}
@@ -1367,7 +1357,7 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 					goto End;
 				}
 				// Выполняем применение изменений
-				if(!this->commit())
+				if(!this->commit(event_t::SEND_TRAILERS))
 					// Выходим из функции
 					goto End;
 				// Выполняем вызов метода выполненного события
@@ -1518,7 +1508,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 							return false;
 						}
 						// Выполняем применение изменений
-						if(!this->commit())
+						if(!this->commit(event_t::SEND_DATA))
 							// Выходим из функции
 							return false;
 					}
@@ -1613,7 +1603,7 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 			return result;
 		}
 		// Выполняем применение изменений
-		if(!this->commit()){
+		if(!this->commit(event_t::SEND_PUSH)){
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_PUSH);
 			// Выходим из функции
@@ -1683,7 +1673,7 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 			return result;
 		}
 		// Выполняем применение изменений
-		if(!this->commit()){
+		if(!this->commit(event_t::SEND_HEADERS)){
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_HEADERS);
 			// Выходим из функции
@@ -1803,7 +1793,7 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 						goto End;
 					}
 					// Выполняем применение изменений
-					if(!this->commit())
+					if(!this->commit(event_t::SEND_GOAWAY))
 						// Выполняем завершение работы
 						goto End;
 					// Выполняем вызов метода выполненного события
@@ -2118,24 +2108,12 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 void awh::Http2::on(function <void (void)> callback) noexcept {
 	// Если функция обратного вызова передана
 	if(callback != nullptr){
-		
-		cout << " +++++++++++++++++ END1 " << endl;
-		
 		// Если активное событие не установлено
-		if(this->_event == event_t::NONE){
-			
-			cout << " +++++++++++++++++ END2 " << endl;
-
+		if(this->_event == event_t::NONE)
 			// Выполняем функцию обратного вызова
 			callback();
 		// Устанавливаем функцию обратного вызова
-		} else {
-
-			cout << " +++++++++++++++++ END3 " << endl;
-
-			this->_callback.set <void (void)> ("trigger", callback);
-
-		}
+		else this->_callback.set <void (void)> ("trigger", callback);
 	}
 }
 /**

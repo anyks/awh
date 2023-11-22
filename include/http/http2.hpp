@@ -303,9 +303,10 @@ namespace awh {
 		private:
 			/**
 			 * commit Метод применения изменений
-			 * @return результат отправки
+			 * @param event событие которому соответствует фиксация
+			 * @return      результат отправки
 			 */
-			bool commit() noexcept;
+			bool commit(const event_t event) noexcept;
 		private:
 			/**
 			 * completed Метод завершения выполнения операции
