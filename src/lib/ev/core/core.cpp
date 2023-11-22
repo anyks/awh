@@ -362,11 +362,15 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	
 	cout << " -----------------!!!!!!!!1 " << EV_AX << endl;
+
+	// struct ev_loop * ()
+
+	// ev::loop_ref
 	
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
 
-	cout << " -----------------!!!!!!!!2 " << this->base.is_default() << endl;
+	cout << " -----------------!!!!!!!!2 " << this->base() << endl;
 }
 /**
  * ~Dispatch Деструктор
