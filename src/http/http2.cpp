@@ -853,7 +853,7 @@ bool awh::Http2::commit() noexcept {
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
 		
-		cout << " **************** COMMIT " << endl;
+		cout << " **************** COMMIT1 " << (this->_event == event_t::NONE) << endl;
 		
 		// Фиксируем отправленный результат
 		const int rv = nghttp2_session_send(this->_session);
@@ -868,6 +868,8 @@ bool awh::Http2::commit() noexcept {
 			// Выходим из функции
 			return false;
 		}
+
+		cout << " **************** COMMIT2 " << (this->_event == event_t::NONE) << endl;
 	}
 	// Выводим результат
 	return true;
@@ -995,12 +997,14 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 				goto End;
 			}
 
-			cout << " ################ FRAME " << endl;
+			cout << " ################ FRAME1 " << (this->_event == event_t::NONE) << endl;
 
 			// Выполняем применение изменений
 			if(!this->commit())
 				// Выполняем завершение работы
 				goto End;
+			
+			cout << " ################ FRAME2 " << (this->_event == event_t::NONE) << endl;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::RECV_FRAME);
@@ -1009,6 +1013,9 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	}
 	// Устанавливаем метку завершения работы
 	End:
+
+	cout << " ################ FRAME3 " << (this->_event == event_t::NONE) << endl;
+
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::RECV_FRAME);
 	// Выводим результат
