@@ -24,6 +24,9 @@
 void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
+		
+		cout << " ################## CONNECT1 " << bid << endl;
+		
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем активацию HTTP/2 протокола
@@ -32,6 +35,9 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		auto it = this->_sessions.find(bid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
 		if(it != this->_sessions.end()){
+			
+			cout << " ################## CONNECT2 " << bid << endl;
+			
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -85,6 +91,9 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
+			
+			cout << " ################## CONNECT3 " << bid << endl;
+			
 			// Выполняем установку сетевого ядра
 			this->_http1._core = dynamic_cast <server::core_t *> (core);
 			// Устанавливаем метод компрессии поддерживаемый сервером
