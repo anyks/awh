@@ -517,23 +517,41 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = true;
+	
+	cout << " --------------------1 " << bid << " === " << size << endl;
+	
 	// Если бинарные данные получены
 	if((buffer != nullptr) && (size > 0)){
+		
+		cout << " --------------------2 " << bid << " === " << size << endl;
+		
 		// Выполняем поиск объекта клиента
 		auto it = this->_clients.find(bid);
 		// Если активный клиент найден и подключение установлено
 		if((it != this->_clients.end()) && (it->second->connected)){
+			
+			cout << " --------------------3 " << bid << " === " << size << endl;
+			
 			// Если установлен метод CONNECT
 			if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
+				
+				cout << " --------------------4 " << bid << " === " << size << endl;
+				
 				// Определяем переданного брокера
 				switch(static_cast <uint8_t> (broker)){
 					// Если брокером является клиент
 					case static_cast <uint8_t> (broker_t::CLIENT):
+						
+						cout << " --------------------5 " << bid << " === " << size << endl;
+						
 						// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
 						this->_server.send(bid, buffer, size);
 					break;
 					// Если брокером является сервер
 					case static_cast <uint8_t> (broker_t::SERVER):
+						
+						cout << " --------------------6 " << bid << " === " << size << endl;
+						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
 					break;
