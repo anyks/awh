@@ -192,10 +192,6 @@ namespace awh {
 					bool _init;
 					// Флаг виртуальной базы данных
 					bool _virt;
-				private:
-
-					time_t _id = 0;
-
 				public:
 					// База событий
 					ev::loop_ref base;
@@ -237,11 +233,6 @@ namespace awh {
 					 * @return результат проверки
 					 */
 					bool virt() const noexcept;
-					/**
-					 * virt Метод активации виртуальной базы событий
-					 * @param mode флаг активации
-					 */
-					void virt(const bool mode) noexcept;
 				public:
 					/**
 					 * freeze Метод заморозки чтения данных
