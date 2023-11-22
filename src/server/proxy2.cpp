@@ -160,24 +160,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						if(!it->second->connected){
 							// Запоминаем что подключение установлено
 							it->second->connected = !it->second->connected;
-							
-
-							// Создаём объект запроса
-							client::web_t::request_t request;
-							// Устанавливаем адрес запроса
-							request.url = this->_uri.parse("https://ru.wikipedia.org/wiki/HTTP");
-							// Устанавливаем метод запроса
-							request.method = awh::web_t::method_t::GET;
-
-							it->second->awh.send(std::move(request));
-
-							/*
 							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 							// Выполняем отправку ответа клиенту
 							this->_server.send(bid);
-							*/
-
 						}
 					} break;
 				}
@@ -293,7 +279,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
 			// Устанавливаем тип протокола интернета HTTP/2
-			ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
+			// ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
 			// Устанавливаем флаг верификации доменного имени
 			ret.first->second->core.verifySSL(this->_settings.encryption.verify);
 			// Выполняем установку CA-файлов сертификата
@@ -313,7 +299,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем функцию обратного вызова активности на Web-сервере
 			ret.first->second->awh.on((function <void (const client::web_t::mode_t)>) std::bind(&server::proxy_t::activeClient, this, bid, _1));
 			// Устанавливаем функцию обратного вызова при завершении работы потока передачи данных клиента
-			ret.first->second->awh.on((function <void (const int32_t, const client::web_t::direct_t)>) std::bind(&server::proxy_t::endClient, this, _1, bid, _2));
+			// ret.first->second->awh.on((function <void (const int32_t, const client::web_t::direct_t)>) std::bind(&server::proxy_t::endClient, this, _1, bid, _2));
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("response"))
 				// Выполняем установку функции обратного вызова получения ответа с сервера
