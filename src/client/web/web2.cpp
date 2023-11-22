@@ -41,8 +41,14 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 		switch(static_cast <uint8_t> (frame)){
 			// Если мы получили входящие данные тела ответа
 			case static_cast <uint8_t> (http2_t::frame_t::DATA): {
+				
+				cout << " ---------------1 " << endl;
+				
 				// Если мы получили флаг завершения потока
 				if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+					
+					cout << " ---------------2 " << endl;
+					
 					// Выполняем коммит полученного результата
 					this->_scheme.proxy.http.commit();
 					/**
@@ -91,6 +97,8 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 								cout << string(response.begin(), response.end()) << endl << endl;
 						}
 					#endif
+					
+					/*
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Получаем статус ответа
@@ -152,6 +160,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					if(this->_core != nullptr)
 						// Завершаем работу
 						const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					*/
 				}
 			} break;
 		}
