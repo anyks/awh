@@ -167,18 +167,24 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 					// Если протокол подключения соответствует HTTP/1.1
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 						
-						cout << " +================= " << size << endl;
+						cout << " +=================1 " << size << endl;
 						
 						// Выполняем поиск агента которому соответствует клиент
 						auto it = this->_http1._agents.find(bid);
 						// Если активный агент клиента установлен
 						if(it != this->_http1._agents.end()){
+							
+							cout << " +=================2 " << size << endl;
+							
 							// Определяем тип активного протокола
 							switch(static_cast <uint8_t> (it->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
 								// Если протокол соответствует протоколу WebSocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
+									
+									cout << " +=================3 " << size << endl;
+									
 									// Выполняем переброс вызова чтения клиенту HTTP
 									this->_http1.readCallback(buffer, size, bid, sid, core);
 								break;
