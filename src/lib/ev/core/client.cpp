@@ -1349,7 +1349,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 										cout << " ±±±±±±±±±±±±±±±±±±§6 " << endl;
 										
 										// Выполняем закрытие подключения
-										this->close(bid);
+										// this->close(bid);
 									}
 									// Выходим из цикла
 									break;
