@@ -1318,6 +1318,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					} else {
 						// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 						sid = this->update(* const_cast <request_t *> (&request));
+						
+						cout << " ----------------- " << sid << endl;
+						
 						// Если количество попыток ещё достаточно
 						if((sid > 0) && (this->_attempt < this->_attempts)){
 							// Увеличиваем количество попыток
