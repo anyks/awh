@@ -1152,6 +1152,10 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				request.url.port = static_cast <u_int> (::stoi(port));
 				// Выполняем получение хоста сервера
 				request.url.host = request.url.host.substr(0, pos);
+				// Если порт установлен как 443
+				if(request.url.port == 443)
+					// Выполняем установку защищённую схему запроса
+					request.url.schema = "https";
 			}
 		}
 		// Определяем тип домена

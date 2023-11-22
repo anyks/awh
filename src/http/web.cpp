@@ -605,6 +605,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											this->_req.url.port = static_cast <u_int> (::stoi(port));
 											// Выполняем получение хоста сервера
 											this->_req.url.host = this->_req.url.host.substr(0, pos);
+											// Если порт установлен как 443
+											if(this->_req.url.port == 443)
+												// Выполняем установку защищённую схему запроса
+												this->_req.url.schema = "https";
 										}
 									}
 									// Определяем тип домена
