@@ -270,9 +270,6 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 	switch(static_cast <uint8_t> (this->_agent)){
 		// Если протоколом агента является HTTP-клиент
 		case static_cast <uint8_t> (agent_t::HTTP): {
-			
-			cout << " ============== REDIRECT HTTP/1.1 " << bid << endl;
-			
 			// Если список ответов получен
 			if((result = !this->_stopped && !this->_requests.empty())){
 				// Получаем параметры запроса

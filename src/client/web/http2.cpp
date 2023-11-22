@@ -664,16 +664,22 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					// Если протокол подключения установлен как HTTP/2
 					if(it->second->proto == engine_t::proto_t::HTTP2){
 						
-						cout << " ============== REDIRECT HTTP/2 " << bid << endl;
+						cout << " ==============1 REDIRECT HTTP/2 " << bid << endl;
 						
 						// Если мы нашли нужный нам воркер
 						if(it->second->update){
+							
+							cout << " ==============2 REDIRECT HTTP/2 " << bid << endl;
+							
 							// Если список ответов получен
 							if((result = !this->_stopped)){
 								// Получаем параметры запроса
 								const auto & response = it->second->http.response();
 								// Если необходимо выполнить ещё одну попытку выполнения авторизации
 								if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+									
+									cout << " ==============3 REDIRECT HTTP/2 " << bid << endl;
+									
 									// Увеличиваем количество попыток
 									this->_attempt++;
 									// Выполняем установку следующего экшена на открытие подключения
@@ -700,6 +706,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								}
 								// Если адрес для выполнения переадресации указан
 								if((result = it->second->http.is(http_t::suite_t::HEADER, "location"))){
+									
+									cout << " ==============4 REDIRECT HTTP/2 " << bid << endl;
+									
 									// Получаем новый адрес запроса
 									const uri_t::url_t & url = it->second->http.url();
 									// Если адрес запроса получен
@@ -722,6 +731,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 												jt->second->method = awh::web_t::method_t::GET;
 											}
 										}
+										
+										cout << " ==============5 REDIRECT HTTP/2 " << bid << endl;
+										
 										// Выполняем установку следующего экшена на открытие подключения
 										this->open();
 										// Завершаем работу
@@ -732,9 +744,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 						}
 					// Если активирован режим работы с HTTP/1.1 протоколом
 					} else {
-						
-						cout << " ============== REDIRECT2 HTTP/1.1 " << bid << endl;
-						
 						// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
 						this->_http1.disconnectCallback(bid, sid, core);
 						// Если список ответов получен
