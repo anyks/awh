@@ -361,7 +361,7 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 	// Выполняем установку функции активации базы событий
 	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	
-	cout << " -----------------!!!!!!!!1 " << this->base.is_default() << endl;
+	cout << " -----------------!!!!!!!!1 " << EV_AX << endl;
 	
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
