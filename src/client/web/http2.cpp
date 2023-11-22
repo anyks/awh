@@ -919,6 +919,9 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 					if(dynamic_cast <request_t *> (&request) != jt->second.get()){
 						// Выполняем установку адреса URL-запроса
 						request.url = jt->second->url;
+						
+						cout << " ------------------ " << request.url << endl;
+						
 						// Выполняем копирование метода запроса
 						request.method = jt->second->method;
 						// Если список заголовков получен
@@ -993,9 +996,6 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								(this->_fmk->compare(url.host, jt->second->url.host)) &&
 								(this->_fmk->compare(url.schema, jt->second->url.schema))
 							);
-
-							cout << " ++++++++++++++++++++++ " << schema << " === " << url.host << " === " << jt->second->url.host << endl;
-
 							// Если соединение является постоянным
 							if(schema && it->second->http.is(http_t::state_t::ALIVE)){
 								// Увеличиваем количество попыток
