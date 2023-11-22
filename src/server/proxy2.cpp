@@ -158,9 +158,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-						
-						cout << " ################## CONNECT " << endl;
-						
 						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 						it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 						// Выполняем отправку ответа клиенту
@@ -498,9 +495,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					it->second->request.params.url.schema = "https";
 				break;
 			}
-
-			cout << " ^^^^^^^^^^^^^^^^^ handshake " << it->second->request.params.url << endl;
-
 			// Выполняем инициализацию подключения
 			it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
 				awh::http_t::compress_t::BROTLI,
