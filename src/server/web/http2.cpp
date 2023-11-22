@@ -141,9 +141,6 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
-		
-		cout << " ###################### READ SERVER " << size << endl;
-		
 		// Флаг выполнения обработки полученных данных
 		bool process = false;
 		// Если установлена функция обратного вызова для вывода данных в сыром виде

@@ -1246,8 +1246,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
-								
-								cout << " @@@@@@@@@@@@@@@@ READ " << bytes << endl;
+
+								cout << " ############# CLIENT READ " << bytes << endl;
 								
 								// Если данные получены
 								if(bytes > 0){
@@ -1412,13 +1412,13 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							// Определяем размер отправляемых данных
 							actual = (left >= max ? max : left);
 							
-							cout << " =============== WRITE1 " << actual << endl;
+							cout << " ############# CLIENT WRITE1 " << actual << endl;
 							
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->_ectx.write(buffer + offset, actual);
-
-							cout << " =============== WRITE2 " << bytes << endl;
-
+							
+							cout << " ############# CLIENT WRITE2 " << bytes << endl;
+							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение

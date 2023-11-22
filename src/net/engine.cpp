@@ -1121,9 +1121,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			ERR_clear_error();
 			// Если подключение ещё активно
 			if(!(SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
-				
-				cout << " ####################### READ ENGINE1 " << endl;
-				
 				// Если подключение выполнено
 				if((result = ((this->_type == type_t::SERVER) ? SSL_accept(this->_ssl) : SSL_connect(this->_ssl))) > 0){
 					/**
@@ -1138,9 +1135,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							this->info();
 						}
 					#endif
-
-					cout << " ####################### READ ENGINE2 " << endl;
-
 					// Определяем сокет подключения
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
@@ -1154,8 +1148,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							result = BIO_read(this->_bio, buffer, size);
 						break;
 					}
-
-					cout << " ####################### READ ENGINE3 " << result << endl;
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1271,9 +1263,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			ERR_clear_error();
 			// Если подключение ещё активно
 			if(!(SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
-				
-				cout << " ####################### WRITE ENGINE1 " << endl;
-				
 				// Если подключение выполнено
 				if((result = ((this->_type == type_t::SERVER) ? SSL_accept(this->_ssl) : SSL_connect(this->_ssl))) > 0){
 					/**
@@ -1302,9 +1291,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							this->info();
 						}
 					#endif
-
-					cout << " ####################### WRITE ENGINE2 " << endl;
-
 					// Определяем сокет подключения
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
@@ -1318,8 +1304,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							result = BIO_write(this->_bio, buffer, size);
 						break;
 					}
-
-					cout << " ####################### WRITE ENGINE3 " << result << endl;
 				}
 			}
 		// Выполняем отправку сообщения в сокет

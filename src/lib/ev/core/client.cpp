@@ -335,9 +335,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						if(!url.domain.empty())
 							// Выполняем очистку IP-адреса
 							(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
-						
-						cout << " ±±±±±±±±±±±±±±±±±±§1 " << endl;
-						
 						// Выполняем отключение от сервера
 						this->close(ret.first->first);
 						// Выходим из функции
@@ -563,14 +560,11 @@ void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
 	// Если блокировка брокера не установлена
 	if(this->_locking.count(bid) < 1){
 		// Если брокер существует
-		if(this->_brokers.count(bid) > 0){
-			
-			cout << " ±±±±±±±±±±±±±±±±±±§2 " << endl;
-
+		if(this->_brokers.count(bid) > 0)
 			// Выполняем отключение от сервера
 			this->close(bid);
 		// Если брокер не существует
-		} else if(!this->_schemes.empty()) {
+		else if(!this->_schemes.empty()) {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.reset);
 			// Переходим по всему списку схем сети
@@ -584,9 +578,6 @@ void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
 				// Если работы запрещены, выходим
 				else return;
 			}
-
-			cout << " ±±±±±±±±±±±±±±±±±±§3 " << endl;
-
 			// Выполняем отключение всех подключённых брокеров
 			this->close();
 			// Выполняем пинок базе событий
@@ -914,9 +905,6 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::client::Core::close(const uint64_t bid) noexcept {
-
-	cout << " !!!!!!!!!!!!!!!! CLOSE CLIENT " << bid << endl;
-
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если блокировка брокера не установлена
@@ -1112,9 +1100,6 @@ void awh::client::Core::timeout(const uint64_t bid) noexcept {
 					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
 			} break;
 		}
-
-		cout << " ±±±±±±±±±±±±±±±±±±§4 " << endl;
-
 		// Останавливаем чтение данных
 		this->events(mode_t::DISABLED, engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
@@ -1209,9 +1194,6 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 			// Выходим из функции
 			return;
 		}
-
-		cout << " ±±±±±±±±±±±±±±±±±±§5 " << endl;
-
 		// Выполняем отключение от сервера
 		this->close(it->first);
 	}
@@ -1267,9 +1249,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
-								
-								cout << " ################# " << bytes << endl;
-								
 								// Если данные получены
 								if(bytes > 0){
 									// Если флаг ожидания входящих сообщений, активирован
@@ -1344,13 +1323,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								// Если данные небыли получены
 								} else if(bytes <= 0) {
 									// Если чтение не выполнена, закрываем подключение
-									if(bytes == 0){
-										
-										cout << " ±±±±±±±±±±±±±±±±±±§6 " << endl;
-										
+									if(bytes == 0)
 										// Выполняем закрытие подключения
 										this->close(bid);
-									}
 									// Выходим из цикла
 									break;
 								}
@@ -1363,17 +1338,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							// Запускаем чтение данных с клиента
 							adj->_bev.event.read.start();
 					// Выполняем отключение клиента
-					} else {
-						
-						cout << " ±±±±±±±±±±±±±±±±±±§7 " << endl;
-
-						this->close(bid);
-					}
+					} else this->close(bid);
 				// Если подключение завершено
 				} else {
-					
-					cout << " ±±±±±±±±±±±±±±±±±±§8 " << endl;
-					
 					// Останавливаем чтение данных
 					this->events(mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Останавливаем запись данных
@@ -1446,19 +1413,12 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							actual = (left >= max ? max : left);
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->_ectx.write(buffer + offset, actual);
-							
-							cout << " +++++++++++++++ WRITE CLIENT " << bytes << endl;
-							
 							// Если данные небыли записаны
 							if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение
-								if(bytes == 0){
-									
-									cout << " ±±±±±±±±±±±±±±±±±±§9 " << endl;
-									
+								if(bytes == 0)
 									// Выполняем закрытие подключения
 									this->close(bid);
-								}
 								// Выходим из цикла
 								break;
 							}
@@ -1486,9 +1446,6 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 						adj->_bev.event.read.start();
 				// Если подключение завершено
 				} else {
-
-					cout << " ±±±±±±±±±±±±±±±±±±§10 " << endl;
-
 					// Останавливаем чтение данных
 					this->events(mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Останавливаем запись данных

@@ -129,8 +129,10 @@ int main(int argc, char * argv[]){
 	 */
 	proxy.mode({server::proxy_t::flag_t::CONNECT_METHOD});
 	// Отключаем валидацию сертификата
+	proxy.verifySSL(server::proxy_t::broker_t::CLIENT, false);
 	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);
 	// Устанавливаем адрес сертификата
+	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
 	proxy.ca(server::proxy_t::broker_t::SERVER, "./ca/cert.pem");
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(server::proxy_t::broker_t::SERVER, 60, 60);
@@ -141,8 +143,8 @@ int main(int argc, char * argv[]){
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
-	proxy.init(2222, "", http_t::compress_t::GZIP);
-	// proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+	// proxy.init(2222, "", http_t::compress_t::GZIP);
+	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
