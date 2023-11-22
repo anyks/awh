@@ -45,8 +45,9 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 	if(this->_sessions.find(bid) == this->_sessions.end()){
 		// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером
 		if(!this->_settings.empty() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
-			
-			cout << " !!!!!!!!!! " << (core->proto(bid) == engine_t::proto_t::HTTP2) << endl;
+
+			if(core->proto(bid) != engine_t::proto_t::HTTP2)
+				cout << " !!!!!!!!!! " << (core->proto(bid) == engine_t::proto_t::HTTP2) << endl;
 			
 			// Выполняем создание нового объекта сессии HTTP/2
 			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
