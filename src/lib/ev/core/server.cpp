@@ -929,6 +929,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				if(size > 0){
 					// Количество полученных байт
 					int64_t bytes = -1;
+					
+					/*
 					// Определяем тип сокета
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как TCP/IP
@@ -941,6 +943,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							adj->_ectx.noblock();
 						break;
 					}
+					*/
+
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
 					// Выполняем чтение данных с сокета
@@ -1047,6 +1051,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 			awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
 			// Если сокет подключения активен
 			if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
+				
+				/*
 				// Определяем тип сокета
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как TCP/IP
@@ -1059,6 +1065,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						adj->_ectx.block();
 					break;
 				}
+				*/
+
 				// Устанавливаем текущий метод режима работы
 				adj->_method = engine_t::method_t::WRITE;
 				// Получаем объект схемы сети

@@ -1246,6 +1246,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
+								
+								cout << " @@@@@@@@@@@@@@@@ READ " << bytes << endl;
+								
 								// Если данные получены
 								if(bytes > 0){
 									// Если флаг ожидания входящих сообщений, активирован
