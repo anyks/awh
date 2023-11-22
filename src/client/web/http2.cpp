@@ -115,6 +115,9 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ###################### READ CLIENT " << size << endl;
+	
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
