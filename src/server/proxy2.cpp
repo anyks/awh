@@ -158,6 +158,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
+						
+						cout << " !!!!!!!!!!!!!!!! " << endl;
+						
 						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 						it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 						// Выполняем отправку ответа клиенту
