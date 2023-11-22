@@ -513,9 +513,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
-										
-										cout << " +++++++++++++++++ " << endl;
-										
 										// Выполняем коммит полученного результата
 										options->http.commit();
 										// Выполняем извлечение параметров запроса
@@ -540,8 +537,8 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 											if(this->_callback.is("end"))
 												// Выполняем функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
-										// Если заголовок WebSocket активирован
-										} else if(options->http.identity() == awh::http_t::identity_t::WS)
+										// Если заголовок WebSocket или прокси-сервер активирован
+										} else if((options->http.identity() == awh::http_t::identity_t::WS) || (options->http.identity() == awh::http_t::identity_t::PROXY))
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
 									}
