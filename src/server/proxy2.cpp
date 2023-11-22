@@ -114,6 +114,8 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
+				// Запоминаем что подключение установлено
+				it->second->connected = true;
 				// Определяем активный метод запроса клиента
 				switch(static_cast <uint8_t> (it->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
@@ -160,8 +162,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
 						// Выполняем отправку ответа клиенту
 						this->_server.send(bid);
-						// Запоминаем что подключение установлено
-						it->second->connected = true;
 					} break;
 				}
 			} break;
@@ -545,8 +545,10 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 					break;
 					// Если брокером является сервер
 					case static_cast <uint8_t> (broker_t::SERVER):
+
 						
-						cout << " --------------------6 " << bid << " === " << size << endl;
+						
+						cout << " --------------------6 " << bid << " === " << size << " === " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
