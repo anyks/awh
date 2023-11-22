@@ -139,9 +139,6 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
-	
-	cout << " +================= " << size << endl;
-	
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -169,6 +166,9 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 				switch(static_cast <uint8_t> (options->proto)){
 					// Если протокол подключения соответствует HTTP/1.1
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+						
+						cout << " +================= " << size << endl;
+						
 						// Выполняем поиск агента которому соответствует клиент
 						auto it = this->_http1._agents.find(bid);
 						// Если активный агент клиента установлен
