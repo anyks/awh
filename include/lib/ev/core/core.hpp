@@ -245,11 +245,6 @@ namespace awh {
 					void rebase(const bool clear = true) noexcept;
 				public:
 					/**
-					 * setBase Метод установки базы событий
-					 * @param base база событий
-					 */
-					void setBase(struct ev_loop * base) noexcept;
-					/**
 					 * frequency Метод установки частоты обновления базы событий
 					 * @param msec частота обновления базы событий в миллисекундах
 					 */

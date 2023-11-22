@@ -271,38 +271,6 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 	}
 }
 /**
- * setBase Метод установки базы событий
- * @param base база событий
- */
-void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если база событий передана
-	if((base != nullptr) && (base != this->base)){
-		// Если работа уже запущена
-		if(this->_work){
-			// Выполняем блокировку чтения данных
-			this->_init = false;
-			// Выполняем пинок
-			this->kick();
-		}
-		// Если база событий не является виртуальной
-		if(!this->_virt)
-			// Удаляем объект базы событий
-			ev_loop_destroy(this->base);
-		// Создаем новую базу
-		this->base = ev::loop_ref(base);
-		// Выполняем разблокировку чтения данных
-		this->_init = true;
-		// Отмечаем, что база событий является виртуальной
-		this->_virt = true;
-		// Выполняем установку функции активации базы событий
-		this->_launching = std::bind(&awh::Core::launching, this->_core);
-		// Выполняем установку функции активации базы событий
-		this->_closedown = std::bind(&awh::Core::closedown, this->_core);
-	}
-}
-/**
  * frequency Метод установки частоты обновления базы событий
  * @param msec частота обновления базы событий в миллисекундах
  */
@@ -602,24 +570,8 @@ void awh::Core::bind(core_t * core) noexcept {
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
 	if((core != nullptr) && (core != this)){
-		// Если базы событий отличаются
-		if(core->_dispatch.base != this->_dispatch.base){
-			// Выполняем остановку базы событий
-			core->stop();
-			// Устанавливаем новую базу событий
-			core->_dispatch.setBase(this->_dispatch.base);
-			// Выполняем блокировку потока
-			core->_mtx.status.lock();
-			// Увеличиваем количество подключённых потоков
-			this->_cores++;
-			// Устанавливаем флаг запуска
-			core->_mode = true;
-			// Выполняем установку объекта DNS-резолвера
-			core->_dns = this->_dns;
-			// Выполняем разблокировку потока
-			core->_mtx.status.unlock();
 		// Если базы событий совпадают
-		} else {
+		if(core->_dispatch.base == this->_dispatch.base){
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
 			// Увеличиваем количество подключённых потоков
