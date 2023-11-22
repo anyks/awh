@@ -483,7 +483,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				return;
 			}
 
-			const awh::scheme_t::sonet_t sonet = this->_server.sonet();
+			const awh::scheme_t::sonet_t sonet = this->_core.sonet();
 
 			if(sonet == awh::scheme_t::sonet_t::TLS)
 				cout << " ++++++++++++++++++++++++++ TLS " << endl;
