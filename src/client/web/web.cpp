@@ -160,6 +160,9 @@ void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t s
  * @param core   объект сетевого ядра
  */
 void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ###################### READ PROXY " << size << endl;
+	
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования

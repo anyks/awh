@@ -553,6 +553,8 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 						
 						
 						cout << " --------------------6 " << bid << " === " << size << endl;
+
+						cout << " ^^^^^^^^^^^^^^^^^ " << string(buffer, size) << endl;
 						
 						// Выполняем отправку сообщения клиенту в бинарном виде
 						it->second->awh.send(buffer, size);
