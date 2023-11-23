@@ -228,9 +228,6 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											// Выводим сообщение о выводе чанка полезной нагрузки
 											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 										#endif
-
-										cout << " ================== " << string(payload.begin(), payload.end()) << endl;
-
 										// Если тела данных для отправки больше не осталось
 										if(options->http.body().empty() && (options->http.trailers() == 0))
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
@@ -1688,6 +1685,9 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
 	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
+
+	cout << " ++++++++++++++++ " << this->_methodConnect << endl;
+
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
