@@ -127,7 +127,7 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
-	proxy.mode({server::proxy_t::flag_t::CONNECT_METHOD});
+	proxy.mode({server::proxy_t::flag_t::CONNECT_METHOD_SERVER});
 	// Отключаем валидацию сертификата
 	proxy.verifySSL(server::proxy_t::broker_t::CLIENT, false);
 	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);

@@ -257,7 +257,8 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::VERIFY_SSL,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER,
-		server::web_t::flag_t::WEBSOCKET_ENABLE
+		server::web_t::flag_t::WEBSOCKET_ENABLE,
+		server::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
@@ -332,8 +333,6 @@ int main(int argc, char * argv[]){
 	awh.addAltSvc("example.com", "h2=\":8000\"");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
-	// Разрешаем метод CONNECT для сервера
-	awh.settings({{awh::http2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем функцию извлечения пароля
 	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации

@@ -219,6 +219,13 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									}
 								}
 							#endif
+							// Если выполняется запрос метода CONNECT
+							if(options->http.request().method == awh::web_t::method_t::CONNECT){
+								// Получаем бинарные данные REST ответа
+								buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
+								// Выполняем запрет работы подключения
+								goto Reject;
+							}
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (options->http.auth())){
 								// Если запрос выполнен удачно
@@ -350,6 +357,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Если результат определить не получилось
 								default: buffer = http.reject(awh::web_t::res_t(static_cast <u_int> (506), "Unknown request"));
 							}
+							// Устанавливаем метку запрета протокола
+							Reject:
 							// Если бинарные данные запроса получены, отправляем клиенту
 							if(!buffer.empty()){
 								// Тело полезной нагрузки

@@ -274,9 +274,9 @@ int main(int argc, char * argv[]){
 		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::VERIFY_SSL,
-		// client::web_t::flag_t::PROXY_NOCONNECT,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
-		client::web_t::flag_t::TAKEOVER_SERVER
+		client::web_t::flag_t::TAKEOVER_SERVER,
+		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);

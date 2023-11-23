@@ -190,6 +190,104 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									}
 								}
 							#endif
+							/**
+							 * rejectFn Функция завершения подключения
+							 * @param bid  идентификатор брокера
+							 * @param core объект сетевого ядра
+							 */
+							auto rejectFn = [&options, this](const uint64_t bid, server::core_t * core) noexcept -> void {
+								// Выполняем очистку HTTP-парсера
+								options->http.clear();
+								// Выполняем сброс состояния HTTP-парсера
+								options->http.reset();
+								// Выполняем очистку буфера полученных данных
+								options->buffer.clear();
+								// Формируем запрос авторизации
+								const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
+								// Если ответ получен
+								if(!response.empty()){
+									// Тело полезной нагрузки
+									vector <char> payload;
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										// Выводим параметры ответа
+										cout << string(response.begin(), response.end()) << endl << endl;
+									#endif
+									// Отправляем ответ брокеру
+									core->write(response.data(), response.size(), bid);
+									// Получаем тело полезной нагрузки ответа
+									while(!(payload = options->http.payload()).empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение о выводе чанка полезной нагрузки
+											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+										#endif
+										// Если тела данных для отправки больше не осталось
+										if(options->http.body().empty() && (options->http.trailers() == 0))
+											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+											options->stopped = (!this->_service.alive && !options->alive);
+										// Выполняем отправку тела ответа клиенту
+										core->write(payload.data(), payload.size(), bid);
+									}
+									// Если список трейлеров установлен
+									if(options->http.trailers() > 0){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим заголовок трейлеров
+											cout << "<Trailers>" << endl << endl;
+										#endif
+										// Получаем отправляемые трейлеры
+										while(!(payload = options->http.trailer()).empty()){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о выводе чанка тела
+												cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+											#endif
+											// Устанавливаем флаг закрытия подключения
+											options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
+											// Выполняем отправку трейлера клиенту
+											core->write(payload.data(), payload.size(), bid);
+										}
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим завершение вывода информации
+											cout << endl << endl;
+										#endif
+									}
+								// Выполняем отключение брокера
+								} else core->close(bid);
+								// Если функция обратного вызова активности потока установлена
+								if(this->_callback.is("stream"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
+								// Если установлена функция отлова завершения запроса
+								if(this->_callback.is("end"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+							};
+							// Если метод CONNECT на сервере запрещён и в данный момент он выполняется
+							if(!this->_methodConnect && (options->http.request().method == awh::web_t::method_t::CONNECT)){
+								// Выполняем закрытие подключения
+								rejectFn(bid, dynamic_cast <server::core_t *> (core));
+								// Завершаем обработку
+								goto Next;
+							}
 							// Если подключение не установлено как постоянное
 							if(!this->_service.alive && !options->alive){
 								// Увеличиваем количество выполненных запросов
@@ -218,93 +316,8 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										if(this->_webSocket && this->_fmk->compare(header, "websocket"))
 											// Выполняем инициализацию WebSocket-сервера
 											this->websocket(bid, sid, core);
-										// Если протокол запрещён или не поддерживается
-										else {
-											// Выполняем очистку HTTP-парсера
-											options->http.clear();
-											// Выполняем сброс состояния HTTP-парсера
-											options->http.reset();
-											// Выполняем очистку буфера полученных данных
-											options->buffer.clear();
-											// Формируем запрос авторизации
-											const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
-											// Если ответ получен
-											if(!response.empty()){
-												// Тело полезной нагрузки
-												vector <char> payload;
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Выводим заголовок ответа
-													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-													// Выводим параметры ответа
-													cout << string(response.begin(), response.end()) << endl << endl;
-												#endif
-												// Отправляем ответ брокеру
-												dynamic_cast <server::core_t *> (core)->write(response.data(), response.size(), bid);
-												// Получаем тело полезной нагрузки ответа
-												while(!(payload = options->http.payload()).empty()){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if defined(DEBUG_MODE)
-														// Выводим сообщение о выводе чанка полезной нагрузки
-														cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
-													#endif
-													// Если тела данных для отправки больше не осталось
-													if(options->http.body().empty() && (options->http.trailers() == 0))
-														// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-														options->stopped = (!this->_service.alive && !options->alive);
-													// Выполняем отправку тела ответа клиенту
-													dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
-												}
-												// Если список трейлеров установлен
-												if(options->http.trailers() > 0){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if defined(DEBUG_MODE)
-														// Выводим заголовок трейлеров
-														cout << "<Trailers>" << endl << endl;
-													#endif
-													// Получаем отправляемые трейлеры
-													while(!(payload = options->http.trailer()).empty()){
-														/**
-														 * Если включён режим отладки
-														 */
-														#if defined(DEBUG_MODE)
-															// Выводим сообщение о выводе чанка тела
-															cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
-														#endif
-														// Устанавливаем флаг закрытия подключения
-														options->stopped = (!this->_service.alive && !options->alive && (options->http.trailers() == 0));
-														// Выполняем отправку трейлера клиенту
-														dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
-													}
-													/**
-													 * Если включён режим отладки
-													 */
-													#if defined(DEBUG_MODE)
-														// Выводим завершение вывода информации
-														cout << endl << endl;
-													#endif
-												}
-											// Выполняем отключение брокера
-											} else dynamic_cast <server::core_t *> (core)->close(bid);
-											// Если функция обратного вызова активности потока установлена
-											if(this->_callback.is("stream"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
-											// Если функция обратного вызова на на вывод ошибок установлена
-											if(this->_callback.is("error"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
-											// Если установлена функция отлова завершения запроса
-											if(this->_callback.is("end"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
-										}
+										// Если протокол запрещён или не поддерживается, выполняем закрытие подключения
+										else rejectFn(bid, dynamic_cast <server::core_t *> (core));
 										// Завершаем обработку
 										goto Next;
 									}
@@ -1670,6 +1683,8 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
+	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
+	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -1838,7 +1853,7 @@ void awh::server::Http1::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
+ web_t(fmk, log), _webSocket(false), _methodConnect(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http1_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -1859,7 +1874,7 @@ awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
+ web_t(core, fmk, log), _webSocket(false), _methodConnect(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы

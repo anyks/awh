@@ -1348,12 +1348,12 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
-	// Устанавливаем флаг запрещающий выполнять метод CONNECT для прокси-клиента
-	this->_proxy.connect = (flags.count(flag_t::PROXY_NOCONNECT) == 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
+	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

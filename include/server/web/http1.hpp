@@ -49,6 +49,8 @@ namespace awh {
 			private:
 				// Флаг разрешения использования протокол WebSocket
 				bool _webSocket;
+				// Флаг разрешения метода CONNECT на сервере
+				bool _methodConnect;
 			private:
 				// Идентичность протокола
 				http_t::identity_t _identity;

@@ -2921,6 +2921,10 @@ void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
+	if(flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0)
+		// Выполняем установку разрешения использования метода CONNECT
+		this->_settings.emplace(awh::http2_t::settings_t::CONNECT, 1);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

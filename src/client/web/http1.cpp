@@ -1215,8 +1215,8 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
-	// Устанавливаем флаг запрещающий выполнять метод CONNECT для прокси-клиента
-	this->_proxy.connect = (flags.count(flag_t::PROXY_NOCONNECT) == 0);
+	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
+	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
