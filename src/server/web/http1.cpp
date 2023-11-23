@@ -1686,7 +1686,7 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
 	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 
-	cout << " ++++++++++++++++ " << this->_methodConnect << endl;
+	cout << " ++++++++++++++++2 " << this->_methodConnect << endl;
 
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
