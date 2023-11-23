@@ -228,6 +228,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											// Выводим сообщение о выводе чанка полезной нагрузки
 											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 										#endif
+
+										cout << " ================== " << string(payload.begin(), payload.end()) << endl;
+
 										// Если тела данных для отправки больше не осталось
 										if(options->http.body().empty() && (options->http.trailers() == 0))
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
