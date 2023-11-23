@@ -537,8 +537,8 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 						}
 					// Если URL-адрес запроса не получен
 					} else {
-						// Если метод CONNECT запрещён для прокси-сервера и требуется авторизация
-						if((response.code == 407) && this->_proxy.mode && !this->_proxy.connect){
+						// Если активирован режим работы прокси-сервера и требуется авторизация
+						if((response.code == 407) && this->_proxy.mode){
 							// Выполняем сброс заголовков прокси-сервера
 							this->_scheme.proxy.http.clear();
 							// Выполняем перебор всех полученных заголовков

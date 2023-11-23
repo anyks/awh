@@ -880,9 +880,9 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 			::memcpy(reinterpret_cast <void *> (url.data()), data.data() + offset, length);
 			// Устанавливаем URL-адрес запроса
 			this->_req.url = this->_uri.parse(std::move(url));
+			// Выполняем смещение в буфере
+			offset += length;
 		}
-		// Выполняем смещение в буфере
-		offset += length;
 		// Выполняем получение размера сообщения HTTP ответа
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
@@ -896,52 +896,60 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 			// Выполняем смещение в буфере
 			offset += length;
 		}
-		// Выполняем получение размера HTTP заголовка
-		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-		// Выполняем смещение в буфере
-		offset += sizeof(length);
 		// Выполняем получение размера тела сообщения
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных тела сообщения
-		this->_body.resize(length, 0);
-		// Выполняем получение данных тела сообщения
-		::memcpy(reinterpret_cast <void *> (this->_body.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если сообщение ответа установлено
+		if(length > 0){
+			// Выделяем память для данных тела сообщения
+			this->_body.resize(length, 0);
+			// Выполняем получение данных тела сообщения
+			::memcpy(reinterpret_cast <void *> (this->_body.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение количества HTTP заголовков
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс заголовков
 		this->_headers.clear();
-		// Выполняем последовательную загрузку всех заголовков
-		for(size_t i = 0; i < count; i++){
-			// Выполняем получение размера названия HTTP заголовка
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
-			// Выпделяем память для ключа заголовка
-			string key(length, 0);
-			// Выполняем получение ключа заголовка
-			::memcpy(reinterpret_cast <void *> (key.data()), data.data() + offset, length);
-			// Выполняем смещение в буфере
-			offset += length;
-			// Выполняем получение размера значения HTTP заголовка
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
-			// Выпделяем память для значения заголовка
-			string value(length, 0);
-			// Выполняем получение значения заголовка
-			::memcpy(reinterpret_cast <void *> (value.data()), data.data() + offset, length);
-			// Выполняем смещение в буфере
-			offset += length;
-			// Если и ключ и значение заголовка получены
-			if(!key.empty() && !value.empty())
-				// Добавляем заголовок в список заголовков
-				this->_headers.emplace(std::move(key), std::move(value));
+		// Если количество заголовков больше чем ничего
+		if(count > 0){
+			// Выполняем последовательную загрузку всех заголовков
+			for(size_t i = 0; i < count; i++){
+				// Выполняем получение размера названия HTTP заголовка
+				::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+				// Выполняем смещение в буфере
+				offset += sizeof(length);
+				// Если размер получен
+				if(length > 0){
+					// Выпделяем память для ключа заголовка
+					string key(length, 0);
+					// Выполняем получение ключа заголовка
+					::memcpy(reinterpret_cast <void *> (key.data()), data.data() + offset, length);
+					// Выполняем смещение в буфере
+					offset += length;
+					// Выполняем получение размера значения HTTP заголовка
+					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+					// Выполняем смещение в буфере
+					offset += sizeof(length);
+					// Если размер получен
+					if(length > 0){
+						// Выпделяем память для значения заголовка
+						string value(length, 0);
+						// Выполняем получение значения заголовка
+						::memcpy(reinterpret_cast <void *> (value.data()), data.data() + offset, length);
+						// Выполняем смещение в буфере
+						offset += length;
+						// Если и ключ и значение заголовка получены
+						if(!key.empty() && !value.empty())
+							// Добавляем заголовок в список заголовков
+							this->_headers.emplace(std::move(key), std::move(value));
+					}
+				}
+			}
 		}
 	}
 }

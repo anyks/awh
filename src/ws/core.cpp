@@ -687,22 +687,25 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		offset += sizeof(count);
 		// Выполняем очистку списку поддерживаемых компрессоров
 		this->_compressor.supports.clear();
-		// Выполняем последовательную установку всех компрессоров
-		for(size_t i = 0; i < count; i++){
-			// Вес компрессора
-			float weight = .0f;
-			// Идентификатор компрессора
-			compress_t compressor = compress_t::NONE;
-			// Выполняем получение веса компрессора
-			::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
-			// Выполняем смещение в буфере
-			offset += sizeof(weight);
-			// Выполняем получение идентификатора компрессора
-			::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
-			// Выполняем смещение в буфере
-			offset += sizeof(compressor);
-			// Выполняем установку метода компрессора
-			this->_compressor.supports.emplace(weight, compressor);
+		// Если количество компрессоров полученно
+		if(count > 0){
+			// Выполняем последовательную установку всех компрессоров
+			for(size_t i = 0; i < count; i++){
+				// Вес компрессора
+				float weight = .0f;
+				// Идентификатор компрессора
+				compress_t compressor = compress_t::NONE;
+				// Выполняем получение веса компрессора
+				::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
+				// Выполняем смещение в буфере
+				offset += sizeof(weight);
+				// Выполняем получение идентификатора компрессора
+				::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
+				// Выполняем смещение в буфере
+				offset += sizeof(compressor);
+				// Выполняем установку метода компрессора
+				this->_compressor.supports.emplace(weight, compressor);
+			}
 		}
 		// Выполняем получение количества расширений
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
@@ -726,12 +729,15 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
-					// Выполняем инициализацию расширения
-					this->_extensions.at(i).at(j).resize(length);
-					// Выполняем копирование полученного расширения
-					::memcpy(reinterpret_cast <void *> (this->_extensions.at(i).at(j).data()), this->_extensions.at(i).at(j).data() + offset, length);
-					// Выполняем смещение в буфере
-					offset += length;
+					// Если размер получен
+					if(length > 0){
+						// Выполняем инициализацию расширения
+						this->_extensions.at(i).at(j).resize(length);
+						// Выполняем копирование полученного расширения
+						::memcpy(reinterpret_cast <void *> (this->_extensions.at(i).at(j).data()), this->_extensions.at(i).at(j).data() + offset, length);
+						// Выполняем смещение в буфере
+						offset += length;
+					}
 				}
 			}
 		}
@@ -739,34 +745,43 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выполняем выделение памяти для ключа клиента
-		this->_key.resize(length, 0);
-		// Выполняем получение ключа клиента
-		::memcpy(reinterpret_cast <void *> (this->_key.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если размер получен
+		if(length > 0){
+			// Выполняем выделение памяти для ключа клиента
+			this->_key.resize(length, 0);
+			// Выполняем получение ключа клиента
+			::memcpy(reinterpret_cast <void *> (this->_key.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение количества выбранных сабпротоколов
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс списка выбранных сабпротоколов
 		this->_selectedProtocols.clear();
-		// Выполняем последовательную загрузку всех выбранных сабпротоколов
-		for(size_t i = 0; i < count; i++){
-			// Выполняем получение размера поддерживаемого сабпротокола
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
-			// Выделяем память для поддерживаемого сабпротокола
-			string subprotocol(length, 0);
-			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
-			// Выполняем смещение в буфере
-			offset += length;
-			// Если сабпротокол получен, добавляем его в список
-			if(!subprotocol.empty())
-				// Выполняем установку списка выбранных сабпротоколов
-				this->_selectedProtocols.emplace(std::move(subprotocol));
+		// Если количество сабпротоколов получено
+		if(count > 0){
+			// Выполняем последовательную загрузку всех выбранных сабпротоколов
+			for(size_t i = 0; i < count; i++){
+				// Выполняем получение размера поддерживаемого сабпротокола
+				::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+				// Выполняем смещение в буфере
+				offset += sizeof(length);
+				// Если размер получен
+				if(length > 0){
+					// Выделяем память для поддерживаемого сабпротокола
+					string subprotocol(length, 0);
+					// Выполняем получение поддерживаемого сабпротокола
+					::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
+					// Выполняем смещение в буфере
+					offset += length;
+					// Если сабпротокол получен, добавляем его в список
+					if(!subprotocol.empty())
+						// Выполняем установку списка выбранных сабпротоколов
+						this->_selectedProtocols.emplace(std::move(subprotocol));
+				}
+			}
 		}
 		// Выполняем получение количества поддерживаемых сабпротоколов
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
@@ -774,27 +789,35 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		offset += sizeof(count);
 		// Выполняем сброс списка поддерживаемых сабпротоколов
 		this->_supportedProtocols.clear();
-		// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
-		for(size_t i = 0; i < count; i++){
-			// Выполняем получение размера поддерживаемого сабпротокола
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
-			// Выделяем память для поддерживаемого сабпротокола
-			string subprotocol(length, 0);
-			// Выполняем получение поддерживаемого сабпротокола
-			::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
-			// Выполняем смещение в буфере
-			offset += length;
-			// Если сабпротокол получен, добавляем его в список
-			if(!subprotocol.empty())
-				// Выполняем установку списка поддерживаемых сабпротоколов
-				this->_supportedProtocols.emplace(std::move(subprotocol));
-		}{
-			// Выполняем получение размера дампа бинарных данных модуля
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
+		// Если количество сабпротоколов получено
+		if(count > 0){
+			// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
+			for(size_t i = 0; i < count; i++){
+				// Выполняем получение размера поддерживаемого сабпротокола
+				::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+				// Выполняем смещение в буфере
+				offset += sizeof(length);
+				// Если размер получен
+				if(length > 0){
+					// Выделяем память для поддерживаемого сабпротокола
+					string subprotocol(length, 0);
+					// Выполняем получение поддерживаемого сабпротокола
+					::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
+					// Выполняем смещение в буфере
+					offset += length;
+					// Если сабпротокол получен, добавляем его в список
+					if(!subprotocol.empty())
+						// Выполняем установку списка поддерживаемых сабпротоколов
+						this->_supportedProtocols.emplace(std::move(subprotocol));
+				}
+			}
+		}
+		// Выполняем получение размера дампа бинарных данных модуля
+		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Если размер получен
+		if(length > 0){
 			// Создаём бинарный буфер дампа
 			vector <char> dump(length, 0);
 			// Выполняем получение бинарного буфера дампа

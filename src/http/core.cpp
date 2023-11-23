@@ -1472,100 +1472,124 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		offset += sizeof(count);
 		// Выполняем очистку списку поддерживаемых компрессоров
 		this->_compressor.supports.clear();
-		// Выполняем последовательную установку всех компрессоров
-		for(size_t i = 0; i < count; i++){
-			// Вес компрессора
-			float weight = .0f;
-			// Идентификатор компрессора
-			compress_t compressor = compress_t::NONE;
-			// Выполняем получение веса компрессора
-			::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
-			// Выполняем смещение в буфере
-			offset += sizeof(weight);
-			// Выполняем получение идентификатора компрессора
-			::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
-			// Выполняем смещение в буфере
-			offset += sizeof(compressor);
-			// Выполняем установку метода компрессора
-			this->_compressor.supports.emplace(weight, compressor);
+		// Если количество компрессоров больше нуля
+		if(count > 0){
+			// Выполняем последовательную установку всех компрессоров
+			for(size_t i = 0; i < count; i++){
+				// Вес компрессора
+				float weight = .0f;
+				// Идентификатор компрессора
+				compress_t compressor = compress_t::NONE;
+				// Выполняем получение веса компрессора
+				::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
+				// Выполняем смещение в буфере
+				offset += sizeof(weight);
+				// Выполняем получение идентификатора компрессора
+				::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
+				// Выполняем смещение в буфере
+				offset += sizeof(compressor);
+				// Выполняем установку метода компрессора
+				this->_compressor.supports.emplace(weight, compressor);
+			}
 		}
 		// Выполняем получение размера идентификатора сервиса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных идентификатора сервиса
-		this->_ident.id.resize(length, 0);
-		// Выполняем получение данных идентификатора сервиса
-		::memcpy(reinterpret_cast <void *> (this->_ident.id.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если размер получен
+		if(length > 0){
+			// Выделяем память для данных идентификатора сервиса
+			this->_ident.id.resize(length, 0);
+			// Выполняем получение данных идентификатора сервиса
+			::memcpy(reinterpret_cast <void *> (this->_ident.id.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение размера версии модуля приложения
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных версии модуля приложения
-		this->_ident.version.resize(length, 0);
-		// Выполняем получение данных версии модуля приложения
-		::memcpy(reinterpret_cast <void *> (this->_ident.version.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если размер получен
+		if(length > 0){
+			// Выделяем память для данных версии модуля приложения
+			this->_ident.version.resize(length, 0);
+			// Выполняем получение данных версии модуля приложения
+			::memcpy(reinterpret_cast <void *> (this->_ident.version.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение размера названия сервиса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных названия сервиса
-		this->_ident.name.resize(length, 0);
-		// Выполняем получение данных названия сервиса
-		::memcpy(reinterpret_cast <void *> (this->_ident.name.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если размер получен
+		if(length > 0){
+			// Выделяем память для данных названия сервиса
+			this->_ident.name.resize(length, 0);
+			// Выполняем получение данных названия сервиса
+			::memcpy(reinterpret_cast <void *> (this->_ident.name.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение размера User-Agent для HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для данных User-Agent для HTTP-запроса
-		this->_userAgent.resize(length, 0);
-		// Выполняем получение данных User-Agent для HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (this->_userAgent.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
+		// Если размер получен
+		if(length > 0){
+			// Выделяем память для данных User-Agent для HTTP-запроса
+			this->_userAgent.resize(length, 0);
+			// Выполняем получение данных User-Agent для HTTP-запроса
+			::memcpy(reinterpret_cast <void *> (this->_userAgent.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+		}
 		// Выполняем получение количества записей чёрного списка
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем сброс заголовков чёрного списка
 		this->_black.clear();
-		// Выполняем последовательную загрузку всех заголовков
-		for(size_t i = 0; i < count; i++){
-			// Выполняем получение размера заголовка из чёрного списка
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-			// Выполняем смещение в буфере
-			offset += sizeof(length);
-			// Выделяем память для заголовка чёрного списка
-			string header(length, 0);
-			// Выполняем получение заголовка чёрного списка
-			::memcpy(reinterpret_cast <void *> (header.data()), data.data() + offset, length);
-			// Выполняем смещение в буфере
-			offset += length;
-			// Если заголовок чёрного списка получен
-			if(!header.empty())
-				// Выполняем добавление заголовка чёрного списка
-				this->_black.emplace(std::move(header));
+		// Если количество элементов получено
+		if(count > 0){
+			// Выполняем последовательную загрузку всех заголовков
+			for(size_t i = 0; i < count; i++){
+				// Выполняем получение размера заголовка из чёрного списка
+				::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+				// Выполняем смещение в буфере
+				offset += sizeof(length);
+				// Если размер получен
+				if(length > 0){
+					// Выделяем память для заголовка чёрного списка
+					string header(length, 0);
+					// Выполняем получение заголовка чёрного списка
+					::memcpy(reinterpret_cast <void *> (header.data()), data.data() + offset, length);
+					// Выполняем смещение в буфере
+					offset += length;
+					// Если заголовок чёрного списка получен
+					if(!header.empty())
+						// Выполняем добавление заголовка чёрного списка
+						this->_black.emplace(std::move(header));
+				}
+			}
 		}
 		// Выполняем получение размера дампа WEB данных
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
 		offset += sizeof(length);
-		// Выделяем память для дампа WEB данных
-		vector <char> buffer(length, 0);
-		// Выполняем получение дампа WEB данных
-		::memcpy(reinterpret_cast <void *> (buffer.data()), data.data() + offset, length);
-		// Выполняем смещение в буфере
-		offset += length;
-		// Если дамп Web-данных получен, устанавливаем его
-		if(!buffer.empty())
-			// Выполняем установку буфера модуля Web
-			this->_web.dump(std::move(buffer));
+		// Если размер получен
+		if(length > 0){
+			// Выделяем память для дампа WEB данных
+			vector <char> buffer(length, 0);
+			// Выполняем получение дампа WEB данных
+			::memcpy(reinterpret_cast <void *> (buffer.data()), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Если дамп Web-данных получен, устанавливаем его
+			if(!buffer.empty())
+				// Выполняем установку буфера модуля Web
+				this->_web.dump(std::move(buffer));
+		}
 	}
 }
 /**
@@ -2285,8 +2309,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("%s: %s\r\n", name.c_str(), header.second.c_str()));
 							}
 						}
-						// Устанавливаем Host если не передан
-						if(!available[1] && !this->is(suite_t::BLACK, "Host")){
+						// Устанавливаем Host если не передан и метод подключения не является CONNECT
+						if(!available[1] && !this->is(suite_t::BLACK, "Host") && (req.method != web_t::method_t::CONNECT)){
 							// Если флаг точной установки хоста не установлен
 							if(!this->_precise)
 								// Добавляем заголовок в запрос

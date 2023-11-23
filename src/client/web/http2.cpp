@@ -1335,6 +1335,17 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Выполняем удаление параметра запроса
 								this->_requests.erase(sid);
 							}
+							// Если активирован режим прокси-сервера
+							if(this->_proxy.mode){
+								// Создаём объек запроса
+								awh::web_t::req_t query(request.method, this->_scheme.url);
+								// Выполняем извлечение заголовка авторизации на прокси-сервера
+								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+								// Если заголовок авторизации получен
+								if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
+									// Выполняем установки заголовка авторизации на прокси-сервере
+									const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+							}
 						// Если попытки исчерпаны, выходим из функции
 						} else return result;
 						// Если список доступных компрессоров установлен
@@ -1355,6 +1366,23 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 					// Выполняем обновление полученных данных, с целью выполнения редиректа если требуется
 					sid = this->update(* const_cast <request_t *> (&request));
+					// Если активирован режим прокси-сервера
+					if(this->_proxy.mode){
+						// Объект параметров запроса
+						awh::web_t::req_t query;
+						// Если флаг инициализации сессии HTTP/2 установлен
+						if(this->_http2.is())
+							// Создаём объек запроса
+							query = awh::web_t::req_t(awh::web_t::method_t::CONNECT, request.url);
+						// Если активирован режим работы с HTTP/1.1 протоколом
+						else query = awh::web_t::req_t(awh::web_t::method_t::GET, request.url);
+						// Выполняем извлечение заголовка авторизации на прокси-сервера
+						const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+						// Если заголовок авторизации получен
+						if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
+							// Выполняем установки заголовка авторизации на прокси-сервере
+							const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+					}
 					// Если HTTP-заголовки установлены
 					if(!request.headers.empty())
 						// Выполняем установку HTTP-заголовков
