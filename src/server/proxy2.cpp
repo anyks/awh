@@ -462,7 +462,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Выполняем установку флага проверки домена
 						flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 					// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-					if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT) > 0)
+					if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
 						// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 						flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 					// Если метод запроса не является методом CONNECT
@@ -474,7 +474,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
 						it->second->awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4));
 					// Если метод CONNECT не разрешён для запроса
-					} else if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER) < 1) {
+					} else if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1) {
 						// Формируем сообщение ответа
 						const string message = "CONNECT method is forbidden on the proxy-server";
 						// Формируем тело ответа
@@ -536,7 +536,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Выполняем установку флага проверки домена
 									flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 								// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-								if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT) > 0)
+								if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
 									// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 									flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 								// Если порт сервера не стандартный, устанавливаем схему протокола
@@ -587,7 +587,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
 							// Если метод CONNECT не разрешён для запроса
-							if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER) < 1){
+							if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
 								// Формируем сообщение ответа
 								const string message = "CONNECT method is forbidden on the proxy-server";
 								// Формируем тело ответа
@@ -615,7 +615,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Выполняем установку флага проверки домена
 								flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 							// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-							if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT) > 0)
+							if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
 								// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 								flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 							// Устанавливаем флаги настроек модуля
@@ -991,7 +991,7 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 		// Выполняем установку флага проверки домена
 		server.emplace(server::web_t::flag_t::VERIFY_SSL);
 	// Если флаг разрешающий метод CONNECT установлен
-	if(flags.count(flag_t::CONNECT_METHOD_SERVER) > 0)
+	if(flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) > 0)
 		// разрешаем метод CONNECT на уровне протокола
 		this->_server.settings({{awh::http2_t::settings_t::CONNECT, 1}});
 	// Устанавливаем флаги настроек модуля
