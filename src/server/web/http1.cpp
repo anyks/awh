@@ -1685,9 +1685,6 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
 	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
-
-	cout << " ++++++++++++++++2 " << this->_methodConnect << endl;
-
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr){
 		// Устанавливаем флаг запрещающий вывод информационных сообщений

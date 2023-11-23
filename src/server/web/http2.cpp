@@ -2905,9 +2905,6 @@ void awh::server::Http2::compressors(const vector <http_t::compress_t> & compres
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
-	
-	cout << " ++++++++++++++++1 " << (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0) << endl;
-	
 	// Устанавливаем флаги настроек модуля для WebSocket-сервера
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP-сервера

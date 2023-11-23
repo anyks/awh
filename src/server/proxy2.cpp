@@ -992,8 +992,8 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 		server.emplace(server::web_t::flag_t::VERIFY_SSL);
 	// Если флаг разрешающий метод CONNECT установлен
 	if(flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) > 0)
-		// разрешаем метод CONNECT на уровне протокола
-		this->_server.settings({{awh::http2_t::settings_t::CONNECT, 1}});
+		// Выполняем установку флага сервера
+		server.emplace(server::web_t::flag_t::CONNECT_METHOD_ENABLE);
 	// Устанавливаем флаги настроек модуля
 	this->_server.mode(std::move(server));
 }
