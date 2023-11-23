@@ -706,10 +706,10 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 			this->_uri.combine(this->_scheme.url, request.url);
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, this->_scheme.url);
-			// Если метод CONNECT запрещён для прокси-сервера
-			if(this->_proxy.mode && !this->_proxy.connect){
+			// Если активирован режим прокси-сервера
+			if(this->_proxy.mode){
 				// Активируем точную установку хоста
-				this->_http.precise(true);
+				this->_http.precise(!this->_proxy.connect);
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
 				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
@@ -939,8 +939,10 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 			this->_uri.combine(this->_scheme.url, url);
 			// Создаём объек запроса
 			awh::web_t::req_t query(method, this->_scheme.url);
-			// Если метод CONNECT запрещён для прокси-сервера
-			if(this->_proxy.mode && !this->_proxy.connect){
+			// Если активирован режим прокси-сервера
+			if(this->_proxy.mode){
+				// Активируем точную установку хоста
+				this->_http.precise(!this->_proxy.connect);
 				// Выполняем извлечение заголовка авторизации на прокси-сервера
 				const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 				// Если заголовок авторизации получен
