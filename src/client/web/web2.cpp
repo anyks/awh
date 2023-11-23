@@ -41,14 +41,8 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 		switch(static_cast <uint8_t> (frame)){
 			// Если мы получили входящие данные тела ответа
 			case static_cast <uint8_t> (http2_t::frame_t::DATA): {
-				
-				cout << " ---------------1 " << endl;
-				
 				// Если мы получили флаг завершения потока
 				if(flags.count(http2_t::flag_t::END_STREAM) > 0){
-					
-					cout << " ---------------2 " << endl;
-					
 					// Выполняем коммит полученного результата
 					this->_scheme.proxy.http.commit();
 					/**
@@ -64,23 +58,29 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 							else cout << endl;
 						}
 					#endif
-
-					/*
+					// Выполняем препарирование полученных данных
+					switch(static_cast <uint8_t> (this->prepareProxy(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
+						// Если необходимо выполнить пропуск обработки данных
+						case static_cast <uint8_t> (status_t::SKIP):
+						// Если необходимо выполнить перейти к следующему шагу
+						case static_cast <uint8_t> (status_t::NEXT):
+							// Завершаем работу
+							return 0;
+					}
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
-					// Если функция обратного вызова активности потока установлена
-					if(this->_callback.is("stream"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const mode_t> ("stream", sid, mode_t::CLOSE);
 					// Если функция обратного вызова установлена, выводим сообщение
 					if(this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_callback.call <const int32_t, const u_int, const string, const vector <char>> ("entity", sid, response.code, response.message, this->_scheme.proxy.http.body());
-					// Если сетевое ядро инициализированно
-					if(this->_core != nullptr)
-						// Завершаем работу
-						const_cast <client::core_t *> (this->_core)->close(this->_bid);
-					*/
+					// Выполняем очистку параметров HTTP-запроса
+					this->_scheme.proxy.http.clear();
+					// Выполняем сброс состояния HTTP-парсера
+					this->_scheme.proxy.http.reset();
+					// Если установлена функция отлова завершения запроса
+					if(this->_callback.is("end"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -100,57 +100,8 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 								cout << string(response.begin(), response.end()) << endl << endl;
 						}
 					#endif
-					
-					/*
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
-					// Получаем статус ответа
-					awh::http_t::status_t status = this->_scheme.proxy.http.auth();
-					// Устанавливаем ответ прокси-сервера
-					this->_proxy.answer = response.code;
-					// Если выполнять редиректы запрещено
-					if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
-						// Если ответом сервера не является запросом авторизации
-						if(response.code != 407)
-							// Запрещаем выполнять редирект
-							status = awh::http_t::status_t::GOOD;
-					}
-					// Выполняем проверку авторизации
-					switch(static_cast <uint8_t> (status)){
-						// Если нужно попытаться ещё раз
-						case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
-							// Если попытки повторить переадресацию ещё не закончились
-							if(!(this->_stopped = (this->_attempt >= this->_attempts))){
-								// Если адрес запроса получен
-								if(!this->_scheme.proxy.url.empty()){
-									// Если соединение является постоянным
-									if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
-										// Увеличиваем количество попыток
-										this->_attempt++;
-										// Устанавливаем новый экшен выполнения
-										this->proxyConnectCallback(this->_bid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
-									// Если соединение должно быть закрыто
-									} else const_cast <client::core_t *> (this->_core)->close(this->_bid);
-									// Завершаем работу
-									return 0;
-								}
-							}
-						} break;
-						// Если запрос выполнен удачно
-						case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
-							// Выполняем переключение на работу с сервером
-							this->_scheme.switchConnect();
-							// Выполняем запуск работы основного модуля
-							this->connectCallback(this->_bid, this->_scheme.sid, const_cast <client::core_t *> (this->_core));
-							// Завершаем работу
-							return 0;
-						} break;
-						// Если запрос неудачный
-						case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
-							// Устанавливаем флаг принудительной остановки
-							this->_stopped = true;
-						break;
-					}
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 					if(this->_callback.is("response"))
 						// Выполняем функцию обратного вызова
@@ -159,13 +110,29 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					if(this->_callback.is("headers"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, this->_scheme.proxy.http.headers());
-					// Если сетевое ядро инициализированно
-					if(this->_core != nullptr)
-						// Завершаем работу
-						const_cast <client::core_t *> (this->_core)->close(this->_bid);
-					*/
+					// Если мы получили флаг завершения потока
+					if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0) {
+						// Выполняем коммит полученного результата
+						this->_scheme.proxy.http.commit();
+						// Выполняем препарирование полученных данных
+						switch(static_cast <uint8_t> (this->prepareProxy(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
+							// Если необходимо выполнить пропуск обработки данных
+							case static_cast <uint8_t> (status_t::SKIP):
+							// Если необходимо выполнить перейти к следующему шагу
+							case static_cast <uint8_t> (status_t::NEXT):
+								// Завершаем работу
+								return 0;
+						}
+					}
 				}
-			} break;
+				// Если мы получили флаг завершения потока
+				if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+					// Если установлена функция отлова завершения запроса
+					if(this->_callback.is("end"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+				}
+			}
 		}
 	}
 	// Выводим результат
@@ -431,6 +398,72 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 			this->_http2.init(http2_t::mode_t::CLIENT, this->_settings);
 		}
 	}
+}
+/**
+ * prepareProxy Метод выполнения препарирования полученных данных
+ * @param sid  идентификатор потока
+ * @param bid  идентификатор брокера
+ * @param core объект сетевого ядра
+ * @return     результат препарирования
+ */
+awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept {
+	// Получаем параметры запроса
+	const auto & response = this->_scheme.proxy.http.response();
+	// Получаем статус ответа
+	awh::http_t::status_t status = this->_scheme.proxy.http.auth();
+	// Устанавливаем ответ прокси-сервера
+	this->_proxy.answer = response.code;
+	// Если выполнять редиректы запрещено
+	if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
+		// Если ответом сервера не является запросом авторизации
+		if(response.code != 407)
+			// Запрещаем выполнять редирект
+			status = awh::http_t::status_t::GOOD;
+	}
+	// Выполняем проверку авторизации
+	switch(static_cast <uint8_t> (status)){
+		// Если нужно попытаться ещё раз
+		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if((response.code == 407) && this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
+			// Если попытки повторить переадресацию ещё не закончились
+			if(!(this->_stopped = (this->_attempt >= this->_attempts))){
+				// Если адрес запроса получен
+				if(!this->_scheme.proxy.url.empty()){
+					// Если соединение является постоянным
+					if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
+						// Увеличиваем количество попыток
+						this->_attempt++;
+						// Устанавливаем новый экшен выполнения
+						this->proxyConnectCallback(bid, this->_scheme.sid, core);
+					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+					} else this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+					// Завершаем работу
+					return status_t::SKIP;
+				}
+			}
+		} break;
+		// Если запрос выполнен удачно
+		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
+			// Выполняем переключение на работу с сервером
+			this->_scheme.switchConnect();
+			// Выполняем запуск работы основного модуля
+			this->connectCallback(bid, this->_scheme.sid, core);
+			// Переходим к следующему этапу
+			return status_t::NEXT;
+		} break;
+		// Если запрос неудачный
+		case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
+			// Устанавливаем флаг принудительной остановки
+			this->_stopped = true;
+		break;
+	}
+	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+	this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+	// Выполняем завершение работы
+	return status_t::STOP;
 }
 /**
  * ping Метод выполнения пинга сервера

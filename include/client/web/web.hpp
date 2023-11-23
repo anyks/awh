@@ -703,6 +703,15 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void implementation(const uint64_t bid, client::core_t * core) noexcept;
+			private:
+				/**
+				 * prepareProxy Метод выполнения препарирования полученных данных
+				 * @param sid  идентификатор потока
+				 * @param bid  идентификатор брокера
+				 * @param core объект сетевого ядра
+				 * @return     результат препарирования
+				 */
+				status_t prepareProxy(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга сервера

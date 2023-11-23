@@ -449,6 +449,8 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 											return this->frameSignal(sid, awh::http2_t::direct_t::RECV, awh::http2_t::frame_t::DATA, flags);
 										// Если мы получили флаг завершения потока
 										else if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0) {
+											// Выполняем фиксацию полученного результата
+											it->second->http.commit();
 											// Выполняем препарирование полученных данных
 											switch(static_cast <uint8_t> (this->prepare(sid, this->_bid, const_cast <client::core_t *> (this->_core)))){
 												// Если необходимо выполнить пропуск обработки данных
