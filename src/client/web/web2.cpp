@@ -284,8 +284,8 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 							}
 						// Если протокол подключения не является защищённым подключением
 						} else {
-							
-							core->switchProxy(bid);
+
+							dynamic_cast <client::core_t *> (core)->switchProxy(bid);
 							
 							/*
 							// Выполняем переключение на работу с сервером
