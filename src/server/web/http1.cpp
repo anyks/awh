@@ -170,6 +170,8 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 						size_t bytes = options->http.parse(options->buffer.data(), options->buffer.size());
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
+							// Получаем флаг постоянного подключения
+							const bool alive = options->http.is(http_t::state_t::ALIVE);
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
 								{
@@ -195,13 +197,28 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							 * @param bid  идентификатор брокера
 							 * @param core объект сетевого ядра
 							 */
-							auto rejectFn = [&options, this](const uint64_t bid, server::core_t * core) noexcept -> void {
+							auto rejectFn = [alive, &options, this](const uint64_t bid, server::core_t * core) noexcept -> void {
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
 								// Выполняем очистку буфера полученных данных
 								options->buffer.clear();
+								// Определяем идентичность сервера
+								switch(static_cast <uint8_t> (this->_identity)){
+									// Если сервер соответствует HTTP-серверу
+									case static_cast <uint8_t> (http_t::identity_t::HTTP):
+										// Устанавливаем закрытие подключения
+										options->http.header("Connection", "close");
+									break;
+									// Если сервер соответствует PROXY-серверу
+									case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+										// Устанавливаем закрытие подключения
+										options->http.header("Connection", "close");
+										// Устанавливаем закрытие подключения
+										options->http.header("Proxy-Connection", "close");
+									} break;
+								}
 								// Формируем запрос авторизации
 								const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
 								// Если ответ получен
@@ -324,15 +341,21 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									// Определяем идентичность сервера
 									switch(static_cast <uint8_t> (this->_identity)){
 										// Если сервер соответствует HTTP-серверу
-										case static_cast <uint8_t> (http_t::identity_t::HTTP):
+										case static_cast <uint8_t> (http_t::identity_t::HTTP): {
+											// Устанавливаем закрытие подключения
+											options->http.header("Connection", "close");
 											// Формируем запрос авторизации
 											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
-										break;
+										} break;
 										// Если сервер соответствует PROXY-серверу
-										case static_cast <uint8_t> (http_t::identity_t::PROXY):
+										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+											// Устанавливаем закрытие подключения
+											options->http.header("Connection", "close");
+											// Устанавливаем закрытие подключения
+											options->http.header("Proxy-Connection", "close");
 											// Формируем запрос авторизации
 											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (407)));
-										break;
+										} break;
 									}
 									// Если ответ получен
 									if(!response.empty()){
