@@ -162,10 +162,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				}
 			} break;
 			// Если производится отключение клиента от сервера
-			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT):
+			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
 				// Выполняем закрытие подключения
 				this->close(bid);
-			break;
+				// Снимаем флаг выполненного подключения
+				it->second->connected = false;
+			} break;
 		}
 	}
 }
@@ -316,9 +318,12 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Выполняем поиск клиента в списке
 			auto it = this->_clients.find(bid);
 			// Если клиент в списке найден
-			if(it != this->_clients.end())
+			if(it != this->_clients.end()){
+				// Снимаем флаг выполненного подключения
+				it->second->connected = false;
 				// Выполняем отключение клиента от сетевого ядра
 				this->_core.unbind(&it->second->core);
+			}
 		} break;
 	}
 	// Если функция обратного вызова установлена
