@@ -456,7 +456,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Устанавливаем компрессор рекомпрессии
 				compress = this->_compressor;
 			// Получаем объект HTTP-парсера
-			const awh::http_t * http = this->_server.parser(bid);
+			awh::http_t * http = this->_server.parser(bid);
 			// Если объект HTTP-парсера получен
 			if(http != nullptr)
 				// Устанавливаем параметры компрессии
