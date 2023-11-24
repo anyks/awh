@@ -444,6 +444,35 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 				// Продолжаем перебор дальше
 				++jt;
 			}
+
+
+			/*
+			// Получаем данные запроса
+			const auto & request = options->srv.request();
+			// Получаем данные заголовка Via
+			string via = options->srv.header("via");
+			// Если unix-сокет активирован
+			if(!this->_usock.empty()){
+				// Если заголовок получен
+				if(!via.empty())
+					// Устанавливаем Via заголовок
+					via = this->_fmk->format("%s, %.1f %s", via.c_str(), request.version, this->_usock.c_str());
+				// Иначе просто формируем заголовок Via
+				else via = this->_fmk->format("%.1f %s", request.version, this->_usock.c_str());
+			// Если активирован хост и порт
+			} else {
+				// Если заголовок получен
+				if(!via.empty())
+					// Устанавливаем Via заголовок
+					via = this->_fmk->format("%s, %.1f %s:%u", via.c_str(), request.version, this->_host.c_str(), this->_port);
+				// Иначе просто формируем заголовок Via
+				else via = this->_fmk->format("%.1f %s:%u", request.version, this->_host.c_str(), this->_port);
+			}
+			// Устанавливаем заголовок Via
+			options->srv.header("Via", via);
+			*/
+
+
 		}
 	}
 }

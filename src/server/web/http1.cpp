@@ -1089,7 +1089,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 						cout << string(headers.begin(), headers.end()) << endl << endl;
 					#endif
 					// Устанавливаем флаг закрытия подключения
-					options->stopped = (end && (code >= 200));
+					options->stopped = end;
 					// Выполняем отправку заголовков запроса на сервер
 					const_cast <server::core_t *> (this->_core)->write(headers.data(), headers.size(), bid);
 					// Устанавливаем результат
@@ -1134,6 +1134,8 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 			if(options != nullptr){
 				// Тело полезной нагрузки
 				vector <char> payload;
+				// Получаем флаг постоянного подключения
+				const bool alive = options->http.is(http_t::state_t::ALIVE);
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Выполняем очистку буфера полученных данных
@@ -1146,6 +1148,26 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 				options->http.body(entity);
 				// Устанавливаем заголовки ответа
 				options->http.headers(headers);
+				// Если подключение установленно не постоянное
+				if(!alive){
+					// Определяем идентичность сервера
+					switch(static_cast <uint8_t> (this->_identity)){
+						// Если сервер соответствует HTTP-серверу
+						case static_cast <uint8_t> (http_t::identity_t::HTTP): {
+							// Если заголовок подключения не переопределён
+							if(!options->http.is(http_t::suite_t::HEADER, "Connection"))
+								// Устанавливаем закрытие подключения
+								options->http.header("Connection", "close");
+						} break;
+						// Если сервер соответствует PROXY-серверу
+						case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+							// Если заголовок подключения не переопределён
+							if(!options->http.is(http_t::suite_t::HEADER, "Proxy-Connection"))
+								// Устанавливаем закрытие подключения
+								options->http.header("Proxy-Connection", "close");
+						} break;
+					}
+				}
 				// Если подключение не установлено как постоянное, но подключение долгоживущее
 				if(!this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
 					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
@@ -1164,13 +1186,13 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					cout << string(response.begin(), response.end()) << endl << endl;
 				#endif
 				// Если тело данных не установлено для отправки
-				if((code >= 200) && options->http.body().empty())
+				if(options->http.body().empty())
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-					options->stopped = (!this->_service.alive && !options->alive);
+					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
 				const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
 				// Если код ответа содержит тело ответа
-				if(code >= 200){
+				if((code >= 200) && !options->http.body().empty()){
 					// Получаем данные тела полезной нагрузки
 					while(!(payload = options->http.payload()).empty()){
 						// Если включён режим отладки

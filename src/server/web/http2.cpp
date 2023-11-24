@@ -1883,7 +1883,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 									// Флаг отправляемого фрейма
 									awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 									// Если тело запроса не существует
-									if(end && (code >= 200))
+									if(end)
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем заголовки запроса на сервер
@@ -1993,7 +1993,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										// Флаг отправляемого фрейма
 										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 										// Если тело запроса не существует
-										if((code >= 200) && options->http.body().empty())
+										if(options->http.body().empty())
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем ответ подключившемуся клиенту
@@ -2018,7 +2018,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 												#endif
 												// Если нужно установить флаг закрытия потока
-												if((code >= 200) && options->http.body().empty() && (options->http.trailers() == 0))
+												if(options->http.body().empty() && (options->http.trailers() == 0))
 													// Устанавливаем флаг завершения потока
 													flag = awh::http2_t::flag_t::END_STREAM;
 												// Выполняем отправку тела запроса на сервер
