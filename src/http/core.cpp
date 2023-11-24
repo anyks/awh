@@ -2260,30 +2260,18 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						this->_web.request(req);
 						// Устанавливаем параметры REST-запроса
 						this->_auth.client.uri(this->_uri.url(req.url));
+						// Список системных заголовков
+						unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
-							// Флаг разрешающий вывода заголовка
-							bool allow = !this->is(suite_t::BLACK, header.first);
+							// Если заголовок не находится в чёрном списке и не является системным
+							bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 14; i++){
 								// Если заголовок уже найден пропускаем его
-								if(available[i]){
-									// Если заголовок разрешён для вывода
-									if(allow){
-										// Выполняем првоерку заголовка
-										switch(i){
-											case 0:
-											case 5:
-											case 6:
-											case 7:
-											case 10:
-											case 11:
-											case 12: allow = !allow; break;
-										}
-									}
+								if(available[i])
 									// Продолжаем поиск дальше
 									continue;
-								}
 								// Выполняем првоерку заголовка
 								switch(i){
 									case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;
@@ -2321,6 +2309,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 11:
 										case 12: allow = !available[i]; break;
 									}
+									// Если заголовок запрещён к выводу
+									if(!allow)
+										// Добавляем заголовко в список системных
+										systemHeaders.emplace(header.first);
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в запрос
@@ -2736,10 +2728,12 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						size_t length = 0;
 						// Устанавливаем парарметры ответа
 						this->_web.response(res);
+						// Список системных заголовков
+						unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
-							// Флаг разрешающий вывода заголовка
-							bool allow = !this->is(suite_t::BLACK, header.first);
+							// Если заголовок не находится в чёрном списке и не является системным
+							bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 12; i++){
 								// Если заголовок уже найден пропускаем его
@@ -2789,6 +2783,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 											case 11: allow = false; break;
 										}
 									}
+									// Если заголовок запрещён к выводу
+									if(!allow)
+										// Добавляем заголовко в список системных
+										systemHeaders.emplace(header.first);
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
@@ -3089,33 +3087,20 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						this->_web.request(req);
 						// Устанавливаем параметры REST-запроса
 						this->_auth.client.uri(this->_uri.url(req.url));
+						// Список системных заголовков
+						unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не является системным
 							if(header.first.front() != ':'){
-								// Флаг разрешающий вывода заголовка
-								bool allow = !this->is(suite_t::BLACK, header.first);
+								// Если заголовок не находится в чёрном списке и не является системным
+								bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 								// Выполняем перебор всех обязательных заголовков
 								for(uint8_t i = 0; i < 14; i++){
 									// Если заголовок уже найден пропускаем его
-									if(available[i]){
-										// Если заголовок разрешён для вывода
-										if(allow){
-											// Выполняем првоерку заголовка
-											switch(i){
-												case 0:
-												case 1:
-												case 5:
-												case 6:
-												case 7:
-												case 10:
-												case 11:
-												case 12: allow = !allow; break;
-											}
-										}
+									if(available[i])
 										// Продолжаем поиск дальше
 										continue;
-									}
 									// Выполняем првоерку заголовка
 									switch(i){
 										case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;
@@ -3147,6 +3132,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 											case 11:
 											case 12: allow = !available[i]; break;
 										}
+										// Если заголовок запрещён к выводу
+										if(!allow)
+											// Добавляем заголовко в список системных
+											systemHeaders.emplace(header.first);
 									}
 								}
 								// Если заголовок не является запрещённым, добавляем заголовок в запрос
@@ -3459,10 +3448,12 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						};
 						// Устанавливаем параметры ответа
 						this->_web.response(res);
+						// Список системных заголовков
+						unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
-							// Флаг разрешающий вывода заголовка
-							bool allow = !this->is(suite_t::BLACK, header.first);
+							// Если заголовок не находится в чёрном списке и не является системным
+							bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 12; i++){
 								// Если заголовок уже найден пропускаем его
@@ -3509,6 +3500,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 											case 11: allow = false; break;
 										}
 									}
+									// Если заголовок запрещён к выводу
+									if(!allow)
+										// Добавляем заголовко в список системных
+										systemHeaders.emplace(header.first);
 								}
 							}
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
