@@ -706,7 +706,8 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 				count++;
 			}
 			// Если текущая буква является переносом строк
-			if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
+			// if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
+			if((i > 0) && (letter == '\n')){
 				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 				length = ((old == '\r' ? i - 1 : i) - offset);
 				// Если символ является последним и он не является переносом строки
