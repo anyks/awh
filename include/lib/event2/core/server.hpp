@@ -59,6 +59,20 @@ namespace awh {
 					recursive_mutex close;  // Для закрытия подключения
 					recursive_mutex accept; // Для одобрения подключения
 				} mtx_t;
+			public:
+				/**
+				 * Host Параметры хоста сервера
+				 */
+				typedef struct Host {
+					u_int port;  // Порт сервера
+					string addr; // Адрес хоста сервера
+					string sock; // Адрес unix-сокета
+					/**
+					 * Host Конструктор
+					 */
+					Host() noexcept : port(0), addr{""}, sock{""} {}
+				} host_t;
+			private:
 				/**
 				 * DTLS Класс проверки подключения для протокола UDP TLS
 				 */
@@ -91,6 +105,8 @@ namespace awh {
 			private:
 				// Идентификатор активного дочернего прцоесса
 				pid_t _pid;
+				// Параметры хоста сервера
+				host_t _host;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -121,6 +137,12 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void accept(const int fd, const uint16_t sid) noexcept;
+			public:
+				/**
+				 * host Метод получения хоста сервера
+				 * @return хост сервера
+				 */
+				const host_t & host() const noexcept;
 			public:
 				/**
 				 * close Метод отключения всех брокеров

@@ -601,6 +601,14 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 	}
 }
 /**
+ * host Метод получения хоста сервера
+ * @return хост сервера
+ */
+const awh::server::Core::host_t & awh::server::Core::host() const noexcept {
+	// Выводим параметры хоста сервера
+	return this->_host;
+}
+/**
  * close Метод отключения всех брокеров
  */
 void awh::server::Core::close() noexcept {
@@ -1490,6 +1498,12 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 					break;
 				}
 			}
+			// Выполняем установку порта сервера
+			this->_host.port = shm->_port;
+			// Выполняем установку хоста сервера
+			this->_host.addr = shm->_host;
+			// Выполняем установку unix-сокета сервера
+			this->_host.sock = this->_settings.filename;
 		}
 	}
 }
