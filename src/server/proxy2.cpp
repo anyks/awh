@@ -416,33 +416,33 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			// Устанавливаем метод запроса
 			it->second->request.params.method = method;
 			// Выполняем перебор всех полученных заголовков
-			for(auto it = it->second->request.headers.begin(); it != it->second->request.headers.end();){
+			for(auto jt = it->second->request.headers.begin(); jt != it->second->request.headers.end();){
 				// Если заголовок соответствует прокси-серверу
-				if(this->_fmk->exists("te", it->first) || this->_fmk->exists("proxy-", it->first)){
+				if(this->_fmk->exists("te", jt->first) || this->_fmk->exists("proxy-", jt->first)){
 					// Выполняем удаление заголовка
-					it = it->second->request.headers.erase(it);
+					jt = it->second->request.headers.erase(jt);
 					// Продолжаем перебор дальше
 					continue;
 				// Если найден заголовок подключения
-				} else if(this->_fmk->exists("connection", it->first)) {
+				} else if(this->_fmk->exists("connection", jt->first)) {
 					// Переводим значение в нижний регистр
-					this->_fmk->transform(it->second, fmk_t::transform_t::LOWER);
+					this->_fmk->transform(jt->second, fmk_t::transform_t::LOWER);
 					// Выполняем поиск заголовка Transfer-Encoding
-					const size_t pos = it->second.find("te");
+					const size_t pos = jt->second.find("te");
 					// Если заголовок найден
 					if(pos != string::npos){
 						// Выполняем удаление значение TE из заголовка
-						it->second.erase(pos, 2);
+						jt->second.erase(pos, 2);
 						// Если первый символ является запятой, удаляем
-						if(it->second.front() == ',')
+						if(jt->second.front() == ',')
 							// Удаляем запятую
-							it->second.erase(0, 1);
+							jt->second.erase(0, 1);
 						// Выполняем удаление лишних пробелов
-						this->_fmk->transform(it->second, fmk_t::transform_t::TRIM);
+						this->_fmk->transform(jt->second, fmk_t::transform_t::TRIM);
 					}
 				}
 				// Продолжаем перебор дальше
-				++it;
+				++jt;
 			}
 		}
 	}
