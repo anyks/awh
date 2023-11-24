@@ -284,17 +284,10 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 							}
 						// Если протокол подключения не является защищённым подключением
 						} else {
-
-							dynamic_cast <client::core_t *> (core)->switchProxy(bid);
-							
-							/*
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
 							this->connectCallback(bid, sid, core);
-							*/
-
-
 						}
 					// Выполняем передачу сигнала родительскому модулю
 					} else web_t::proxyConnectCallback(bid, sid, core);

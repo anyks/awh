@@ -151,16 +151,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						if(!it->second->connected){
 							// Запоминаем что подключение установлено
 							it->second->connected = !it->second->connected;
-							
-							/*
 							// Если тип сокета установлен как TCP/IP
 							if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
 								// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 								it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
-							*/
-							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
-
 							// Выполняем отправку ответа клиенту
 							this->_server.send(bid);
 						}
@@ -495,13 +489,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 		auto it = this->_clients.find(bid);
 		// Если активный клиент найден
 		if(it != this->_clients.end()){
-			
-			/*
 			// Определяем тип активного сокета сервера
 			switch(static_cast <uint8_t> (this->_core.sonet())){
 				// Если тип сокета установлен как TCP/IP
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP): {
-			*/
 					// Запоминаем идентификатор потока
 					it->second->sid = sid;
 					// Создаём список флагов клиента
@@ -557,8 +548,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					});
 					// Выполняем подключение клиента к сетевому ядру
 					this->_core.bind(&it->second->core);
-				
-				/*
 				} break;
 				// Если тип сокета установлен как TCP/IP TLS
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS): {
@@ -701,7 +690,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					}
 				} break;
 			}
-			*/
 		}
 	}
 }
@@ -717,7 +705,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 	// Результат работы функции
 	bool result = true;
 	// Если тип сокета установлен как TCP/IP
-	// if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
+	if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
 		// Если бинарные данные получены
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем поиск объекта клиента
@@ -742,7 +730,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 				}
 			}
 		}
-	// }
+	}
 	// Выводим результат
 	return result;
 }
