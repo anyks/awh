@@ -143,7 +143,7 @@ int main(int argc, char * argv[]){
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
-	proxy.init(2222, "localhost", http_t::compress_t::GZIP);
+	proxy.init(2222, "anyks.net", http_t::compress_t::GZIP);
 	// proxy.init(2222, "", http_t::compress_t::GZIP);
 	// proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// proxy.init("anyks", http_t::compress_t::GZIP);
