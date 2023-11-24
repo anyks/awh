@@ -734,47 +734,33 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 			} else result.append(mediators.front());
 			// Добавляем сначала разделитель
 			result.append(", ");
-			// Если unix-сокет активирован
-			if(this->_core.family() == scheme_t::family_t::NIX)
-				// Выполняем формирование заголовка
-				result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.sock.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-			// Если активирован хост и порт
-			else {
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (this->_core.proto(bid))){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+		} 
+		// Если unix-сокет активирован
+		if(this->_core.family() == scheme_t::family_t::NIX)
+			// Выполняем формирование заголовка
+			result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.sock.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+		// Если активирован хост и порт
+		else {
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (this->_core.proto(bid))){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Если порт установлен не стандартный
+					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? 3129 : 3128))
 						// Формируем заголовок Via
 						result.append(this->_fmk->format("HTTP/%.1f %s:%u (%s)", 1.1f, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-					break;
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+					// Будем считать, что порт установлен стандартный
+					else result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.addr.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Если порт установлен не стандартный
+					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? 3129 : 3128))
 						// Формируем заголовок Via
 						result.append(this->_fmk->format("HTTP/%u %s:%u (%s)", 2, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-					break;
-				}
-			}
-		// Если заголовки Via не найдены
-		} else {
-			// Если unix-сокет активирован
-			if(this->_core.family() == scheme_t::family_t::NIX)
-				// Формируем заголовок Via
-				result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1, host.sock.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-			// Если активирован хост и порт
-			else {
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (this->_core.proto(bid))){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-						// Формируем заголовок Via
-						result.append(this->_fmk->format("HTTP/%.1f %s:%u (%s)", 1.1f, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-					break;
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
-						// Формируем заголовок Via
-						result.append(this->_fmk->format("HTTP/%u %s:%u (%s)", 2, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
-					break;
-				}
+					// Будем считать, что порт установлен стандартный
+					else result.append(this->_fmk->format("HTTP/%u %s (%s)", 2, host.addr.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+				} break;
 			}
 		}
 	}
