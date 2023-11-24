@@ -163,10 +163,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			} break;
 			// Если производится отключение клиента от сервера
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
-				// Выполняем закрытие подключения
-				this->close(bid);
 				// Снимаем флаг выполненного подключения
 				it->second->connected = false;
+				// Выполняем закрытие подключения
+				this->close(bid);
 			} break;
 		}
 	}
