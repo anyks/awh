@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/proxy2.hpp>
+#include <server/proxy.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -65,32 +65,25 @@ class Proxy {
 		}
 		/**
 		 * active Метод идентификации активности на WebSocket сервере
-		 * @param bid   идентификатор брокера
-		 * @param mode  режим события подключения
+		 * @param bid    идентификатор брокера
+		 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+		 * @param mode   режим события подключения
 		 */
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			// Выводим информацию в лог
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const uint64_t bid, const server::proxy_t::broker_t, const server::web_t::mode_t mode){
+			// Определяем тип подключения
+			switch(static_cast <uint8_t> (mode)){
+				// Если событие принадлежит клиенту
+				case static_cast <uint8_t> (server::proxy_t::broker_t::CLIENT):
+					// Выводим информацию в лог
+					this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+				break;
+				// Если событие принадлежит серверу
+				case static_cast <uint8_t> (server::proxy_t::broker_t::SERVER):
+					// Выводим информацию в лог
+					this->_log->print("%s server", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+				break;
+			}
 		}
-		/**
-		 * message Метод получения сообщений
-		 * @param bid   идентификатор брокера
-		 * @param event событие прокси-сервера (запрос / ответ)
-		 * @param http  объект http запроса
-		 * @return      результат обработки запроса
-		 */
-		/*
-		bool message(const uint64_t bid, const server::proxy_t::event_t event, awh::http_t * http){
-			// Определяем тип запроса
-			cout << (event == server::proxy_t::event_t::REQUEST ? "REQUEST" : "RESPONSE") << endl;
-			// Выводим список полученных заголовков
-			for(auto & header : http->headers())
-				// Выводим все полученные заголовки
-				cout << "Header: " << header.first << " = " << header.second << endl << endl;
-			// Разрешаем дальнейшую работу
-			return true;
-		}
-		*/
 	public:
 		/**
 		 * Proxy Конструктор
@@ -143,8 +136,7 @@ int main(int argc, char * argv[]){
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
-	proxy.init(2222, "anyks.net", http_t::compress_t::GZIP);
-	// proxy.init(2222, "", http_t::compress_t::GZIP);
+	proxy.init(2222, "", http_t::compress_t::GZIP);
 	// proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
@@ -161,12 +153,10 @@ int main(int argc, char * argv[]){
 	proxy.on((function <string (const uint64_t, const string &)>) std::bind(&Proxy::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	proxy.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Proxy::auth, &executor, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	proxy.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Proxy::accept, &executor, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие получения сообщений
-	// proxy.on((function <bool (const size_t, const server::proxy_t::event_t, awh::http_t *, server::proxy_t *)>) std::bind(&Proxy::message, &executor, _1, _2, _3, _4));
+	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+	proxy.on((function <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2, _3));
 	// Выполняем запуск Proxy-сервер
 	proxy.start();
 	// Выводим результат
