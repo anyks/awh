@@ -418,6 +418,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			it->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			it->second->response.params.message = message;
+			// Компрессор которым необходимо выполнить сжатие контента
+			http_t::compress_t compress = http_t::compress_t::NONE;
 			// Выполняем перебор всех полученных заголовков
 			for(auto jt = it->second->response.headers.begin(); jt != it->second->response.headers.end();){
 				// Если получен заголовок Via
@@ -430,11 +432,35 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					continue;
 				// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
 				} else if(this->_fmk->exists("content-encoding", jt->first)) {
-					cout << " ================ " << jt->second << endl;
+					// Если флаг рекомпрессии данных прокси-сервером не установлен
+					if(this->_flags.count(flag_t::RECOMPRESS) == 0){
+						// Если данные пришли сжатые методом Brotli
+						if(this->_fmk->exists("br", jt->second))
+							// Устанавливаем тип компрессии полезной нагрузки
+							compress = http_t::compress_t::BROTLI;
+						// Если данные пришли сжатые методом GZip
+						else if(this->_fmk->exists("gzip", jt->second))
+							// Устанавливаем тип компрессии полезной нагрузки
+							compress = http_t::compress_t::GZIP;
+						// Если данные пришли сжатые методом Deflate
+						else if(this->_fmk->exists("deflate", jt->second))
+							// Устанавливаем тип компрессии полезной нагрузки
+							compress = http_t::compress_t::DEFLATE;
+					}
 				}
 				// Продолжаем перебор дальше
 				++jt;
 			}
+			// Если флаг рекомпрессии данных прокси-сервером установлен
+			if(this->_flags.count(flag_t::RECOMPRESS) > 0)
+				// Устанавливаем компрессор рекомпрессии
+				compress = this->_compressor;
+			// Получаем объект HTTP-парсера
+			const awh::http_t * http = this->_server.parser(bid);
+			// Если объект HTTP-парсера получен
+			if(http != nullptr)
+				// Устанавливаем параметры компрессии
+				http->compression(compress);
 			// Выполняем получение заголовка Via
 			const string & header = this->via(bid, via);
 			// Если заголовок получен
