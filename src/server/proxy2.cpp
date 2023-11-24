@@ -142,15 +142,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						request.headers = it->second->request.headers;
 						// Устанавливаем метод запроса
 						request.method = it->second->request.params.method;
-						// Выполняем перебор всех полученных заголовков
-						for(auto it = request.headers.begin(); it != request.headers.end();){
-							// Если заголовок соответствует прокси-серверу
-							if(this->_fmk->exists("proxy-", it->first))
-								// Выполняем удаление заголовка
-								it = request.headers.erase(it);
-							// Пропускаем установленный заголовок
-							else ++it;
-						}
 						// Выполняем запрос на сервер
 						it->second->awh.send(std::move(request));
 					} break;
@@ -424,6 +415,35 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			it->second->request.params.url = url;
 			// Устанавливаем метод запроса
 			it->second->request.params.method = method;
+			// Выполняем перебор всех полученных заголовков
+			for(auto it = it->second->request.headers.begin(); it != it->second->request.headers.end();){
+				// Если заголовок соответствует прокси-серверу
+				if(this->_fmk->exists("te", it->first) || this->_fmk->exists("proxy-", it->first)){
+					// Выполняем удаление заголовка
+					it = it->second->request.headers.erase(it);
+					// Продолжаем перебор дальше
+					continue;
+				// Если найден заголовок подключения
+				} else if(this->_fmk->exists("connection", it->first)) {
+					// Переводим значение в нижний регистр
+					this->_fmk->transform(it->second, fmk_t::transform_t::LOWER);
+					// Выполняем поиск заголовка Transfer-Encoding
+					const size_t pos = it->second.find("te");
+					// Если заголовок найден
+					if(pos != string::npos){
+						// Выполняем удаление значение TE из заголовка
+						it->second.erase(pos, 2);
+						// Если первый символ является запятой, удаляем
+						if(it->second.front() == ',')
+							// Удаляем запятую
+							it->second.erase(0, 1);
+						// Выполняем удаление лишних пробелов
+						this->_fmk->transform(it->second, fmk_t::transform_t::TRIM);
+					}
+				}
+				// Продолжаем перебор дальше
+				++it;
+			}
 		}
 	}
 }
@@ -571,15 +591,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								request.headers = it->second->request.headers;
 								// Устанавливаем метод запроса
 								request.method = it->second->request.params.method;
-								// Выполняем перебор всех полученных заголовков
-								for(auto it = request.headers.begin(); it != request.headers.end();){
-									// Если заголовок соответствует прокси-серверу
-									if(this->_fmk->exists("proxy-", it->first))
-										// Выполняем удаление заголовка
-										it = request.headers.erase(it);
-									// Пропускаем установленный заголовок
-									else ++it;
-								}
 								// Выполняем запрос на сервер
 								it->second->awh.send(std::move(request));
 							}

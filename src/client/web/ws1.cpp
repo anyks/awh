@@ -64,6 +64,12 @@ void awh::client::WebSocket1::connectCallback(const uint64_t bid, const uint16_t
 			if(!header.empty())
 				// Выполняем установки заголовка авторизации на прокси-сервере
 				this->_http.header("Proxy-Authorization", header);
+			// Если установлено постоянное подключение к прокси-серверу
+			if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
+				// Устанавливаем постоянное подключение к прокси-серверу
+				this->_http.header("Proxy-Connection", "Keep-Alive");
+			// Устанавливаем закрытие подключения к прокси-серверу
+			else this->_http.header("Proxy-Connection", "Close");
 		}
 		// Получаем бинарные данные REST запроса		
 		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
