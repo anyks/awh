@@ -2267,9 +2267,23 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Выполняем перебор всех обязательных заголовков
 							for(uint8_t i = 0; i < 14; i++){
 								// Если заголовок уже найден пропускаем его
-								if(available[i])
+								if(available[i]){
+									// Если заголовок разрешён для вывода
+									if(allow){
+										// Выполняем првоерку заголовка
+										switch(i){
+											case 0:
+											case 5:
+											case 6:
+											case 7:
+											case 10:
+											case 11:
+											case 12: allow = !allow; break;
+										}
+									}
 									// Продолжаем поиск дальше
 									continue;
+								}
 								// Выполняем првоерку заголовка
 								switch(i){
 									case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;
@@ -2359,13 +2373,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								request.append(this->_fmk->format("Proxy-Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						// Если заголовок Proxy-Connection уже передан и не находится в чёрном списке
 						} else if(!this->is(suite_t::BLACK, "Proxy-Connection")) {
-							// Если сервер соответствует PROXY-серверу
-							if(this->_identity == identity_t::PROXY){
-								// Поулчаем заголовок Proxy-Connection
-								const string & header = this->_web.header("Proxy-Connection");
-								// Добавляем заголовок в запрос
-								request.append(this->_fmk->format("Proxy-Connection: %s\r\n", header.c_str()));
-							}
+							// Поулчаем заголовок Proxy-Connection
+							const string & header = this->_web.header("Proxy-Connection");
+							// Добавляем заголовок в запрос
+							request.append(this->_fmk->format("Proxy-Connection: %s\r\n", header.c_str()));
 						}
 						// Устанавливаем Accept-Language если не передан
 						if(!available[8] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "Accept-Language"))
@@ -3087,9 +3098,24 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Выполняем перебор всех обязательных заголовков
 								for(uint8_t i = 0; i < 14; i++){
 									// Если заголовок уже найден пропускаем его
-									if(available[i])
+									if(available[i]){
+										// Если заголовок разрешён для вывода
+										if(allow){
+											// Выполняем првоерку заголовка
+											switch(i){
+												case 0:
+												case 1:
+												case 5:
+												case 6:
+												case 7:
+												case 10:
+												case 11:
+												case 12: allow = !allow; break;
+											}
+										}
 										// Продолжаем поиск дальше
 										continue;
+									}
 									// Выполняем првоерку заголовка
 									switch(i){
 										case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;

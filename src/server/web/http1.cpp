@@ -204,20 +204,23 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								options->http.reset();
 								// Выполняем очистку буфера полученных данных
 								options->buffer.clear();
-								// Определяем идентичность сервера
-								switch(static_cast <uint8_t> (this->_identity)){
-									// Если сервер соответствует HTTP-серверу
-									case static_cast <uint8_t> (http_t::identity_t::HTTP):
-										// Устанавливаем закрытие подключения
-										options->http.header("Connection", "close");
-									break;
-									// Если сервер соответствует PROXY-серверу
-									case static_cast <uint8_t> (http_t::identity_t::PROXY): {
-										// Устанавливаем закрытие подключения
-										options->http.header("Connection", "close");
-										// Устанавливаем закрытие подключения
-										options->http.header("Proxy-Connection", "close");
-									} break;
+								// Если подключение установленно не постоянное
+								if(!alive){
+									// Определяем идентичность сервера
+									switch(static_cast <uint8_t> (this->_identity)){
+										// Если сервер соответствует HTTP-серверу
+										case static_cast <uint8_t> (http_t::identity_t::HTTP):
+											// Устанавливаем закрытие подключения
+											options->http.header("Connection", "close");
+										break;
+										// Если сервер соответствует PROXY-серверу
+										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+											// Устанавливаем закрытие подключения
+											options->http.header("Connection", "close");
+											// Устанавливаем закрытие подключения
+											options->http.header("Proxy-Connection", "close");
+										} break;
+									}
 								}
 								// Формируем запрос авторизации
 								const auto & response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (505), "Requested protocol is not supported by this server"));
@@ -342,20 +345,22 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									switch(static_cast <uint8_t> (this->_identity)){
 										// Если сервер соответствует HTTP-серверу
 										case static_cast <uint8_t> (http_t::identity_t::HTTP): {
-											// Устанавливаем закрытие подключения
-											options->http.header("Connection", "close");
+											// Если подключение установленно не постоянное
+											if(!alive)
+												// Устанавливаем закрытие подключения
+												options->http.header("Connection", "close");
 											// Формируем запрос авторизации
 											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (401)));
 										} break;
 										// Если сервер соответствует PROXY-серверу
 										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
-
-											cout << " ====================1 " << endl;
-
-											// Устанавливаем закрытие подключения
-											options->http.header("Connection", "close");
-											// Устанавливаем закрытие подключения
-											options->http.header("Proxy-Connection", "close");
+											// Если подключение установленно не постоянное
+											if(!alive){
+												// Устанавливаем закрытие подключения
+												options->http.header("Connection", "close");
+												// Устанавливаем закрытие подключения
+												options->http.header("Proxy-Connection", "close");
+											}
 											// Формируем запрос авторизации
 											response = options->http.reject(awh::web_t::res_t(static_cast <u_int> (407)));
 										} break;
