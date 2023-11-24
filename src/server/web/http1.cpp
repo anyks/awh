@@ -349,6 +349,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										} break;
 										// Если сервер соответствует PROXY-серверу
 										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+
+											cout << " ====================1 " << endl;
+
 											// Устанавливаем закрытие подключения
 											options->http.header("Connection", "close");
 											// Устанавливаем закрытие подключения

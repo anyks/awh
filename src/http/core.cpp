@@ -2012,8 +2012,6 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		const_cast <web_t::res_t &> (res).message = this->message(res.code);
 	// Если сообщение получено
 	if(!res.message.empty()){
-		// Выполняем очистку списка установленных заголовков
-		this->_web.clearHeaders();
 		// Определяем код ответа авторизационных данных
 		switch(res.code){
 			// Если код ответа соответствует авторизации на HTTP-сервере
