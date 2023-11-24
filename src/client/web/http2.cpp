@@ -1345,15 +1345,20 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
 									// Выполняем установки заголовка авторизации на прокси-сервере
 									const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+								
+								const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
+								
+								/*
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.count("Proxy-Connection") < 1){
 									// Если установлено постоянное подключение к прокси-серверу
 									if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 										// Устанавливаем постоянное подключение к прокси-серверу
-										const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "Keep-Alive");
+										const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "keep-alive");
 									// Устанавливаем закрытие подключения к прокси-серверу
-									else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "Close");
+									else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
 								}
+								*/
 							}
 						// Если попытки исчерпаны, выходим из функции
 						} else return result;
@@ -1391,15 +1396,22 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
 							// Выполняем установки заголовка авторизации на прокси-сервере
 							const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+						
+
+						// Устанавливаем закрытие подключения к прокси-серверу
+						const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
+						
+						/*
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.count("Proxy-Connection") < 1){
 							// Если установлено постоянное подключение к прокси-серверу
 							if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 								// Устанавливаем постоянное подключение к прокси-серверу
-								const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "Keep-Alive");
+								const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "keep-alive");
 							// Устанавливаем закрытие подключения к прокси-серверу
-							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "Close");
+							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
 						}
+						*/
 					}
 					// Если HTTP-заголовки установлены
 					if(!request.headers.empty())
