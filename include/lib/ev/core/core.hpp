@@ -565,7 +565,7 @@ namespace awh {
 			 * family Метод установки типа протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+			void family(const scheme_t::family_t family) noexcept;
 		public:
 			/**
 			 * resolver Метод установки объекта DNS-резолвера

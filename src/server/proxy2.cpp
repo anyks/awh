@@ -385,12 +385,34 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 	if(it != this->_clients.end()){
 		// Если заголовки ответа получены
 		if(!headers.empty()){
+			// Список заголовков Via
+			vector <string> via;
 			// Устанавливаем полученные заголовки
 			it->second->response.headers = headers;
 			// Устанавливаем код ответа сервера
 			it->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			it->second->response.params.message = message;
+			// Выполняем перебор всех полученных заголовков
+			for(auto jt = it->second->request.headers.begin(); jt != it->second->request.headers.end();){
+				// Если получен заголовок Via
+				if(this->_fmk->exists("via", jt->first)){
+					// Добавляем заголовок в список
+					via.push_back(jt->second);
+					// Выполняем удаление заголовка
+					jt = it->second->request.headers.erase(jt);
+					// Продолжаем перебор дальше
+					continue;
+				}
+				// Продолжаем перебор дальше
+				++jt;
+			}
+			// Выполняем получение заголовка Via
+			const string & header = this->via(bid, via);
+			// Если заголовок получен
+			if(!header.empty())
+				// Устанавливаем загловок Via
+				it->second->request.headers.emplace("Via", header);
 		}
 	}
 }
@@ -409,6 +431,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 	if(it != this->_clients.end()){
 		// Если заголовки ответа получены
 		if(!headers.empty()){
+			// Список заголовков Via
+			vector <string> via;
 			// Устанавливаем полученные заголовки
 			it->second->request.headers = headers;
 			// Устанавливаем URL-адрес запроса
@@ -417,8 +441,16 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			it->second->request.params.method = method;
 			// Выполняем перебор всех полученных заголовков
 			for(auto jt = it->second->request.headers.begin(); jt != it->second->request.headers.end();){
+				// Если получен заголовок Via
+				if(this->_fmk->exists("via", jt->first)){
+					// Добавляем заголовок в список
+					via.push_back(jt->second);
+					// Выполняем удаление заголовка
+					jt = it->second->request.headers.erase(jt);
+					// Продолжаем перебор дальше
+					continue;
 				// Если заголовок соответствует прокси-серверу
-				if(this->_fmk->exists("te", jt->first) || this->_fmk->exists("proxy-", jt->first)){
+				} else if(this->_fmk->exists("te", jt->first) || this->_fmk->exists("proxy-", jt->first)) {
 					// Выполняем удаление заголовка
 					jt = it->second->request.headers.erase(jt);
 					// Продолжаем перебор дальше
@@ -444,35 +476,12 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 				// Продолжаем перебор дальше
 				++jt;
 			}
-
-
-			/*
-			// Получаем данные запроса
-			const auto & request = options->srv.request();
-			// Получаем данные заголовка Via
-			string via = options->srv.header("via");
-			// Если unix-сокет активирован
-			if(!this->_usock.empty()){
-				// Если заголовок получен
-				if(!via.empty())
-					// Устанавливаем Via заголовок
-					via = this->_fmk->format("%s, %.1f %s", via.c_str(), request.version, this->_usock.c_str());
-				// Иначе просто формируем заголовок Via
-				else via = this->_fmk->format("%.1f %s", request.version, this->_usock.c_str());
-			// Если активирован хост и порт
-			} else {
-				// Если заголовок получен
-				if(!via.empty())
-					// Устанавливаем Via заголовок
-					via = this->_fmk->format("%s, %.1f %s:%u", via.c_str(), request.version, this->_host.c_str(), this->_port);
-				// Иначе просто формируем заголовок Via
-				else via = this->_fmk->format("%.1f %s:%u", request.version, this->_host.c_str(), this->_port);
-			}
-			// Устанавливаем заголовок Via
-			options->srv.header("Via", via);
-			*/
-
-
+			// Выполняем получение заголовка Via
+			const string & header = this->via(bid, via);
+			// Если заголовок получен
+			if(!header.empty())
+				// Устанавливаем загловок Via
+				it->second->request.headers.emplace("Via", header);
 		}
 	}
 }
@@ -511,7 +520,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Выполняем установку флага проверки домена
 						flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 					// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-					if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
+					if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 						// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 						flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 					// Если метод запроса не является методом CONNECT
@@ -589,7 +598,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Выполняем установку флага проверки домена
 									flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 								// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-								if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
+								if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 									// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 									flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 								// Если порт сервера не стандартный, устанавливаем схему протокола
@@ -663,7 +672,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Выполняем установку флага проверки домена
 								flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 							// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-							if(this->_flags.count(flag_t::CONNECT_METHOD_PROXY_ENABLE) > 0)
+							if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 								// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 								flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 							// Устанавливаем флаги настроек модуля
@@ -692,6 +701,78 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 			}
 		}
 	}
+}
+/**
+ * via Метод генерации заголовка Via
+ * @param bid       идентификатор брокера (клиента)
+ * @param mediators список предыдущих посредников
+ * @return          сгенерированный заголовок
+ */
+string awh::server::Proxy::via(const uint64_t bid, const vector <string> & mediators) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если посредники найдены
+	if(!mediators.empty()){
+		// Если список посредников содержит больше 1-го элемента
+		if(mediators.size() > 1){
+			// Выполняем переход по всему списку посредников
+			for(auto & item : mediators){
+				// Если заголовки в списке уже есть
+				if(!result.empty())
+					// Добавляем сначала разделитель
+					result.append(", ");
+				// Выполняем заполнение заголовка
+				result.append(item);
+			}
+		// Если заголовок всего один
+		} else result.append(mediators.front());
+		// Добавляем сначала разделитель
+		result.append(", ");
+		// Если unix-сокет активирован
+		if(this->_core.family() == scheme_t::family_t::NIX)
+			// Выполняем формирование заголовка
+			result.append(this->_fmk->format("%.1f %s (AWH)", 1.1, "/tmp/anyks.sock"));
+		// Если активирован хост и порт
+		else {
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (this->_core.proto(bid))){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+					// Формируем заголовок Via
+					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 1.1, "127.0.0.1", 2222));
+				break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+					// Формируем заголовок Via
+					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 2, "127.0.0.1", 2222));
+				break;
+			}
+		}
+	// Если заголовки Via не найдены
+	} else {
+		// Если unix-сокет активирован
+		if(this->_core.family() == scheme_t::family_t::NIX)
+			// Формируем заголовок Via
+			result.append(this->_fmk->format("%.1f %s (AWH)", 1.1, "/tmp/anyks.sock"));
+		// Если активирован хост и порт
+		else {
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (this->_core.proto(bid))){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+					// Формируем заголовок Via
+					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 1.1, "127.0.0.1", 2222));
+				break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+					// Формируем заголовок Via
+					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 2, "127.0.0.1", 2222));
+				break;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * raw Метод получения сырых данных с сервера и клиента

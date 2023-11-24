@@ -64,7 +64,7 @@ namespace awh {
 					DECRYPT                      = 0x05, // Флаг предписывающий выполнять расшифровку зашифрованного контента при передаче клиенту
 					VERIFY_SSL                   = 0x06, // Флаг выполнения проверки сертификата SSL
 					RECOMPRESS                   = 0x07, // Флаг выполнения рекомпрессинга передаваемых данных
-					CONNECT_METHOD_PROXY_ENABLE  = 0x08, // Флаг разрешающий метод CONNECT на прокси-клиенте
+					CONNECT_METHOD_CLIENT_ENABLE = 0x08, // Флаг разрешающий метод CONNECT на прокси-клиенте
 					CONNECT_METHOD_SERVER_ENABLE = 0x09  // Флаг разрешающий метод CONNECT на сервере
 				};
 			private:
@@ -374,6 +374,14 @@ namespace awh {
 				 * @param agent идентификатор агента клиента
 				 */
 				void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept;
+			private:
+				/**
+				 * via Метод генерации заголовка Via
+				 * @param bid       идентификатор брокера (клиента)
+				 * @param mediators список предыдущих посредников
+				 * @return          сгенерированный заголовок
+				 */
+				string via(const uint64_t bid, const vector <string> & mediators = {}) const noexcept;
 			private:
 				/**
 				 * raw Метод получения сырых данных с сервера и клиента
