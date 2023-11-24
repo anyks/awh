@@ -534,8 +534,8 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										// Если размер буфера больше количества удаляемых байт
 										if((receive = (options->buffer.payload.size() >= head.frame)))
 											// Удаляем количество обработанных байт
-											options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
-											// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+											// options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
+											vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
 									}
 									// Если сообщения получены
 									if(!buffer.empty()){

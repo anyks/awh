@@ -339,8 +339,8 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Если размер буфера больше количества удаляемых байт
 							if(this->_buffer.size() >= bytes)
 								// Удаляем количество обработанных байт
-								this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-								// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+								// this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+								vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
 						}
 						// Если данные мы все получили, выходим
 						if(this->_buffer.empty()) break;

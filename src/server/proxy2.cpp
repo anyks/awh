@@ -151,10 +151,16 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						if(!it->second->connected){
 							// Запоминаем что подключение установлено
 							it->second->connected = !it->second->connected;
+							
+							/*
 							// Если тип сокета установлен как TCP/IP
 							if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
 								// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 								it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
+							*/
+							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+							it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, broker_t::CLIENT, bid, _1, _2));
+
 							// Выполняем отправку ответа клиенту
 							this->_server.send(bid);
 						}
@@ -489,10 +495,13 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 		auto it = this->_clients.find(bid);
 		// Если активный клиент найден
 		if(it != this->_clients.end()){
+			
+			/*
 			// Определяем тип активного сокета сервера
 			switch(static_cast <uint8_t> (this->_core.sonet())){
 				// Если тип сокета установлен как TCP/IP
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP): {
+			*/
 					// Запоминаем идентификатор потока
 					it->second->sid = sid;
 					// Создаём список флагов клиента
@@ -529,7 +538,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Формируем тело ответа
 						const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
 						// Если метод CONNECT запрещено использовать
-						this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {{"Connection", "close"},{"Content-type", "text/html; charset=utf-8"}});
+						this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
+							{"Connection", "close"},
+							{"Proxy-Connection", "close"},
+							{"Content-type", "text/html; charset=utf-8"}
+						});
 						// Выходим из функции
 						return;
 					// Если метод CONNECT разрешён, выполняем запрет инициализации SSL-контекста
@@ -544,6 +557,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					});
 					// Выполняем подключение клиента к сетевому ядру
 					this->_core.bind(&it->second->core);
+				
+				/*
 				} break;
 				// Если тип сокета установлен как TCP/IP TLS
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS): {
@@ -633,7 +648,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Формируем тело ответа
 								const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
 								// Если метод CONNECT запрещено использовать
-								this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {{"Connection", "close"},{"Content-type", "text/html; charset=utf-8"}});
+								this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
+									{"Connection", "close"},
+									{"Proxy-Connection", "close"},
+									{"Content-type", "text/html; charset=utf-8"}
+								});
 								// Выходим из функции
 								return;
 							}
@@ -682,6 +701,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					}
 				} break;
 			}
+			*/
 		}
 	}
 }
@@ -697,7 +717,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 	// Результат работы функции
 	bool result = true;
 	// Если тип сокета установлен как TCP/IP
-	if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
+	// if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
 		// Если бинарные данные получены
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем поиск объекта клиента
@@ -722,7 +742,7 @@ bool awh::server::Proxy::raw(const broker_t broker, const uint64_t bid, const ch
 				}
 			}
 		}
-	}
+	// }
 	// Выводим результат
 	return result;
 }

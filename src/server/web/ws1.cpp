@@ -181,7 +181,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							// Если размер буфера больше количества удаляемых байт
 							if(options->buffer.payload.size() >= bytes)
 								// Удаляем количество обработанных байт
-								options->buffer.payload.assign(options->buffer.payload.begin() + bytes, options->buffer.payload.end());
+								// options->buffer.payload.assign(options->buffer.payload.begin() + bytes, options->buffer.payload.end());
+								vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + bytes, options->buffer.payload.end()).swap(options->buffer.payload);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.payload.clear();
 						}
@@ -545,8 +546,8 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 								// Если размер буфера больше количества удаляемых байт
 								if((receive = (options->buffer.payload.size() >= head.frame)))
 									// Удаляем количество обработанных байт
-									options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
-									// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+									// options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
+									vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
 							}
 							// Если сообщения получены
 							if(!buffer.empty()){

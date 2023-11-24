@@ -1064,8 +1064,8 @@ awh::client::Web::status_t awh::client::WebSocket2::prepare(const int32_t sid, c
 				// Если размер буфера больше количества удаляемых байт
 				if((receive = (this->_buffer.size() >= head.frame)))
 					// Удаляем количество обработанных байт
-					this->_buffer.assign(this->_buffer.begin() + head.frame, this->_buffer.end());
-					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+					// this->_buffer.assign(this->_buffer.begin() + head.frame, this->_buffer.end());
+					vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){

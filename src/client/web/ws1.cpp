@@ -171,8 +171,8 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 					// Есла данных передано больше чем обработано
 					if(this->_buffer.size() > bytes)
 						// Удаляем количество обработанных байт
-						this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+						// this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
+						vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
 					// Если данных в буфере больше нет, очищаем буфер собранных данных
 					else this->_buffer.clear();
 					// Если все данные получены
@@ -781,8 +781,8 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 				// Если размер буфера больше количества удаляемых байт
 				if((receive = (this->_buffer.size() >= head.frame)))
 					// Удаляем количество обработанных байт
-					this->_buffer.assign(this->_buffer.begin() + head.frame, this->_buffer.end());
-					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+					// this->_buffer.assign(this->_buffer.begin() + head.frame, this->_buffer.end());
+					vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){

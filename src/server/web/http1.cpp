@@ -422,7 +422,8 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							// Если размер буфера больше количества удаляемых байт
 							if(options->buffer.size() >= bytes)
 								// Удаляем количество обработанных байт
-								options->buffer.assign(options->buffer.begin() + bytes, options->buffer.end());
+								// options->buffer.assign(options->buffer.begin() + bytes, options->buffer.end());
+								vector <decltype(options->buffer)::value_type> (options->buffer.begin() + bytes, options->buffer.end()).swap(options->buffer);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.clear();
 							// Если данных для обработки не осталось, выходим
