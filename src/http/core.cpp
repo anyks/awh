@@ -693,7 +693,7 @@ void awh::Http::commit() noexcept {
 										// Устанавливаем отредактированное подключение
 										this->_web.header("Connection", connection);
 									// Иначе заменяем значение подключение по умолчанию
-									else this->_web.header("Connection", "Keep-Alive");
+									else this->_web.header("Connection", "keep-alive");
 								}
 							}
 						}
@@ -1959,11 +1959,11 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		// Если заголовок подключения ещё не существует
 		if(!this->_web.isHeader("connection"))
 			// Добавляем поддержку постоянного подключения
-			const_cast <http_t *> (this)->header("Connection", "Keep-Alive");
+			const_cast <http_t *> (this)->header("Connection", "keep-alive");
 		// Если заголовок подключения прокси ещё не существует
 		if(!this->_web.isHeader("proxy-connection"))
 			// Добавляем поддержку постоянного подключения для прокси-сервера
-			const_cast <http_t *> (this)->header("Proxy-Connection", "Keep-Alive");
+			const_cast <http_t *> (this)->header("Proxy-Connection", "keep-alive");
 		// Устанавливаем параметры REST-запроса
 		this->_auth.client.uri(this->_uri.url(req.url));
 		// Устанавливаем парарметр запроса
@@ -2017,16 +2017,22 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		// Определяем код ответа авторизационных данных
 		switch(res.code){
 			// Если код ответа соответствует авторизации на HTTP-сервере
-			case 401:
-				// Добавляем заголовок постоянного подключения
-				this->_web.header("Connection", "Keep-Alive");
-			break;
+			case 401: {
+				// Если заголовок подключения ещё не существует
+				if(!this->_web.isHeader("connection"))
+					// Добавляем заголовок постоянного подключения
+					this->_web.header("Connection", "keep-alive");
+			} break;
 			// Если код ответа соответствует авторизации на PROXY-сервере
 			case 407: {
-				// Добавляем заголовок постоянного подключения на HTTP-сервере
-				this->_web.header("Connection", "Keep-Alive");
-				// Добавляем заголовок постоянного подключения на PROXY-сервере
-				this->_web.header("Proxy-Connection", "Keep-Alive");
+				// Если заголовок подключения ещё не существует
+				if(!this->_web.isHeader("connection"))
+					// Добавляем заголовок постоянного подключения на HTTP-сервере
+					this->_web.header("Connection", "keep-alive");
+				// Если заголовок подключения ещё не существует
+				if(!this->_web.isHeader("proxy-connection"))
+					// Добавляем заголовок постоянного подключения на PROXY-сервере
+					this->_web.header("Proxy-Connection", "keep-alive");
 			} break;
 			// Для всех остальных кодов ответа
 			default: {
@@ -2035,16 +2041,22 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 					// Если сервер соответствует WebSocket-серверу
 					case static_cast <uint8_t> (identity_t::WS):
 					// Если сервер соответствует HTTP-серверу
-					case static_cast <uint8_t> (identity_t::HTTP):
-						// Добавляем заголовок закрытия подключения
-						this->_web.header("Connection", "Close");
-					break;
+					case static_cast <uint8_t> (identity_t::HTTP): {
+						// Если заголовок подключения ещё не существует
+						if(!this->_web.isHeader("connection"))
+							// Добавляем заголовок закрытия подключения
+							this->_web.header("Connection", "close");
+					} break;
 					// Если сервер соответствует PROXY-серверу
 					case static_cast <uint8_t> (identity_t::PROXY): {
-						// Добавляем заголовок закрытия подключения на HTTP-сервере
-						this->_web.header("Connection", "Close");
-						// Добавляем заголовок закрытия подключения на PROXY-сервере
-						this->_web.header("Proxy-Connection", "Close");
+						// Если заголовок подключения ещё не существует
+						if(!this->_web.isHeader("connection"))
+							// Добавляем заголовок закрытия подключения на HTTP-сервере
+							this->_web.header("Connection", "close");
+						// Если заголовок подключения ещё не существует
+						if(!this->_web.isHeader("proxy-connection"))
+							// Добавляем заголовок закрытия подключения на PROXY-сервере
+							this->_web.header("Proxy-Connection", "close");
 					} break;
 				}
 			}
