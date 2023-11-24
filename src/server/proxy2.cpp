@@ -394,13 +394,13 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			// Устанавливаем сообщение ответа сервера
 			it->second->response.params.message = message;
 			// Выполняем перебор всех полученных заголовков
-			for(auto jt = it->second->request.headers.begin(); jt != it->second->request.headers.end();){
+			for(auto jt = it->second->response.headers.begin(); jt != it->second->response.headers.end();){
 				// Если получен заголовок Via
 				if(this->_fmk->exists("via", jt->first)){
 					// Добавляем заголовок в список
 					via.push_back(jt->second);
 					// Выполняем удаление заголовка
-					jt = it->second->request.headers.erase(jt);
+					jt = it->second->response.headers.erase(jt);
 					// Продолжаем перебор дальше
 					continue;
 				}
@@ -412,7 +412,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			// Если заголовок получен
 			if(!header.empty())
 				// Устанавливаем загловок Via
-				it->second->request.headers.emplace("Via", header);
+				it->second->response.headers.emplace("Via", header);
 		}
 	}
 }
