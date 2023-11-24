@@ -650,12 +650,19 @@ namespace awh {
 			 * @param size размер чанка для установки
 			 */
 			void chunk(const size_t size) noexcept;
+		public:
 			/**
 			 * userAgent Метод установки User-Agent для HTTP-запроса
 			 * @param userAgent агент пользователя для HTTP-запроса
 			 */
 			void userAgent(const string & userAgent) noexcept;
 		public:
+			/**
+			 * ident Метод получения идентификации сервера
+			 * @param flag флаг выполняемого процесса
+			 * @return     сформированный агент
+			 */
+			string ident(const process_t flag) const noexcept;
 			/**
 			 * ident Метод установки идентификации сервера
 			 * @param id   идентификатор сервиса

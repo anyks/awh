@@ -3759,6 +3759,48 @@ void awh::Http::userAgent(const string & userAgent) noexcept {
 		this->_userAgent = userAgent;
 }
 /**
+ * ident Метод получения идентификации сервера
+ * @param flag флаг выполняемого процесса
+ * @return     сформированный агент
+ */
+string awh::Http::ident(const process_t flag) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Определяем флаг выполняемого процесса
+	switch(static_cast <uint8_t> (flag)){
+		// Если нужно сформировать данные запроса
+		case static_cast <uint8_t> (process_t::REQUEST): {
+			// Название операционной системы
+			const char * os = nullptr;
+			// Определяем название операционной системы
+			switch(static_cast <uint8_t> (this->_fmk->os())){
+				// Если операционной системой является Unix
+				case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
+				// Если операционной системой является Linux
+				case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
+				// Если операционной системой является неизвестной
+				case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
+				// Если операционной системой является Windows
+				case static_cast <uint8_t> (fmk_t::os_t::WIND32):
+				case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
+				// Если операционной системой является MacOS X
+				case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
+				// Если операционной системой является FreeBSD
+				case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
+			}
+			// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
+			result = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
+		} break;
+		// Если нужно сформировать данные ответа
+		case static_cast <uint8_t> (process_t::RESPONSE):
+			// Выполняем установку агента парсера
+			result = this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str());
+		break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * ident Метод установки идентификации сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса

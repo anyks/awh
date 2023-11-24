@@ -711,63 +711,68 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 string awh::server::Proxy::via(const uint64_t bid, const vector <string> & mediators) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если посредники найдены
-	if(!mediators.empty()){
-		// Если список посредников содержит больше 1-го элемента
-		if(mediators.size() > 1){
-			// Выполняем переход по всему списку посредников
-			for(auto & item : mediators){
-				// Если заголовки в списке уже есть
-				if(!result.empty())
-					// Добавляем сначала разделитель
-					result.append(", ");
-				// Выполняем заполнение заголовка
-				result.append(item);
+	// Получаем объект HTTP-парсера
+	const awh::http_t * http = this->_server.parser(bid);
+	// Если объект HTTP-парсера получен
+	if(http != nullptr){
+		// Если посредники найдены
+		if(!mediators.empty()){
+			// Если список посредников содержит больше 1-го элемента
+			if(mediators.size() > 1){
+				// Выполняем переход по всему списку посредников
+				for(auto & item : mediators){
+					// Если заголовки в списке уже есть
+					if(!result.empty())
+						// Добавляем сначала разделитель
+						result.append(", ");
+					// Выполняем заполнение заголовка
+					result.append(item);
+				}
+			// Если заголовок всего один
+			} else result.append(mediators.front());
+			// Добавляем сначала разделитель
+			result.append(", ");
+			// Если unix-сокет активирован
+			if(this->_core.family() == scheme_t::family_t::NIX)
+				// Выполняем формирование заголовка
+				result.append(this->_fmk->format("%.1f %s (%s)", 1.1, "/tmp/anyks.sock", http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+			// Если активирован хост и порт
+			else {
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (this->_core.proto(bid))){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+						// Формируем заголовок Via
+						result.append(this->_fmk->format("%.1f %s:%u (%s)", 1.1, "127.0.0.1", 2222, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					break;
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+						// Формируем заголовок Via
+						result.append(this->_fmk->format("%.1f %s:%u (%s)", 2, "127.0.0.1", 2222, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					break;
+				}
 			}
-		// Если заголовок всего один
-		} else result.append(mediators.front());
-		// Добавляем сначала разделитель
-		result.append(", ");
-		// Если unix-сокет активирован
-		if(this->_core.family() == scheme_t::family_t::NIX)
-			// Выполняем формирование заголовка
-			result.append(this->_fmk->format("%.1f %s (AWH)", 1.1, "/tmp/anyks.sock"));
-		// Если активирован хост и порт
-		else {
-			// Определяем протокола подключения
-			switch(static_cast <uint8_t> (this->_core.proto(bid))){
-				// Если протокол подключения соответствует HTTP/1.1
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-					// Формируем заголовок Via
-					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 1.1, "127.0.0.1", 2222));
-				break;
-				// Если протокол подключения соответствует HTTP/2
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
-					// Формируем заголовок Via
-					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 2, "127.0.0.1", 2222));
-				break;
-			}
-		}
-	// Если заголовки Via не найдены
-	} else {
-		// Если unix-сокет активирован
-		if(this->_core.family() == scheme_t::family_t::NIX)
-			// Формируем заголовок Via
-			result.append(this->_fmk->format("%.1f %s (AWH)", 1.1, "/tmp/anyks.sock"));
-		// Если активирован хост и порт
-		else {
-			// Определяем протокола подключения
-			switch(static_cast <uint8_t> (this->_core.proto(bid))){
-				// Если протокол подключения соответствует HTTP/1.1
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-					// Формируем заголовок Via
-					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 1.1, "127.0.0.1", 2222));
-				break;
-				// Если протокол подключения соответствует HTTP/2
-				case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
-					// Формируем заголовок Via
-					result.append(this->_fmk->format("%.1f %s:%u (AWH)", 2, "127.0.0.1", 2222));
-				break;
+		// Если заголовки Via не найдены
+		} else {
+			// Если unix-сокет активирован
+			if(this->_core.family() == scheme_t::family_t::NIX)
+				// Формируем заголовок Via
+				result.append(this->_fmk->format("%.1f %s (%s)", 1.1, "/tmp/anyks.sock", http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+			// Если активирован хост и порт
+			else {
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (this->_core.proto(bid))){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+						// Формируем заголовок Via
+						result.append(this->_fmk->format("%.1f %s:%u (%s)", 1.1, "127.0.0.1", 2222, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					break;
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+						// Формируем заголовок Via
+						result.append(this->_fmk->format("%.1f %s:%u (%s)", 2, "127.0.0.1", 2222, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					break;
+				}
 			}
 		}
 	}
