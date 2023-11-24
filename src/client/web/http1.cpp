@@ -716,17 +716,12 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				if(!header.empty())
 					// Выполняем установку заголовка авторизации на прокси-сервере
 					this->_http.header("Proxy-Authorization", header);
-				
-				this->_http.header("Proxy-Connection", "close");
-				
-				/*
 				// Если установлено постоянное подключение к прокси-серверу
 				if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 					// Устанавливаем постоянное подключение к прокси-серверу
-					this->_http.header("Proxy-Connection", "Keep-Alive");
+					this->_http.header("Proxy-Connection", "keep-alive");
 				// Устанавливаем закрытие подключения к прокси-серверу
-				else this->_http.header("Proxy-Connection", "Close");
-				*/
+				else this->_http.header("Proxy-Connection", "close");
 			}
 			// Получаем бинарные данные HTTP-запроса
 			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
@@ -960,17 +955,12 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 				if(!header.empty())
 					// Выполняем установки заголовка авторизации на прокси-сервере
 					this->_http.header("Proxy-Authorization", header);
-				
-				this->_http.header("Proxy-Connection", "close");
-				
-				/*
 				// Если установлено постоянное подключение к прокси-серверу
 				if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 					// Устанавливаем постоянное подключение к прокси-серверу
 					this->_http.header("Proxy-Connection", "keep-alive");
 				// Устанавливаем закрытие подключения к прокси-серверу
 				else this->_http.header("Proxy-Connection", "close");
-				*/
 			}
 			// Получаем бинарные данные HTTP-запроса
 			const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(query));

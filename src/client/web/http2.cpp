@@ -1345,10 +1345,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
 									// Выполняем установки заголовка авторизации на прокси-сервере
 									const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
-								
-								const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
-								
-								/*
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.count("Proxy-Connection") < 1){
 									// Если установлено постоянное подключение к прокси-серверу
@@ -1358,7 +1354,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 									// Устанавливаем закрытие подключения к прокси-серверу
 									else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
 								}
-								*/
 							}
 						// Если попытки исчерпаны, выходим из функции
 						} else return result;
@@ -1396,12 +1391,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
 							// Выполняем установки заголовка авторизации на прокси-сервере
 							const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
-						
-
-						// Устанавливаем закрытие подключения к прокси-серверу
-						const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
-						
-						/*
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.count("Proxy-Connection") < 1){
 							// Если установлено постоянное подключение к прокси-серверу
@@ -1411,7 +1400,6 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Устанавливаем закрытие подключения к прокси-серверу
 							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
 						}
-						*/
 					}
 					// Если HTTP-заголовки установлены
 					if(!request.headers.empty())

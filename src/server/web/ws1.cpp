@@ -191,8 +191,10 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 							vector <char> buffer;
 							// Выполняем создание объекта для генерации HTTP-ответа
 							http_t http(this->_fmk, this->_log);
-							// Устанавливаем правила закрытия подключения
-							http.header("Сonnection", "close");
+							// Если подключение не постоянное
+							if(!options->http.is(http_t::state_t::ALIVE))
+								// Устанавливаем правила закрытия подключения
+								http.header("Сonnection", "close");
 							// Устанавливаем метод компрессии данных ответа
 							http.compression(options->http.compression());
 							/**
