@@ -475,14 +475,14 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 								// Выполняем резолвинг домена
 								const string & ip = this->_dns->resolve(AF_INET, url.domain);
 								// Выполняем подключения к полученному IP-адресу
-								this->resolving(shm->sid, ip, AF_INET);
+								this->activation(shm->sid, ip, AF_INET);
 							} break;
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 								// Выполняем резолвинг домена
 								const string & ip = this->_dns->resolve(AF_INET6, url.domain);
 								// Выполняем подключения к полученному IP-адресу
-								this->resolving(shm->sid, ip, AF_INET);
+								this->activation(shm->sid, ip, AF_INET);
 							} break;
 						}
 					// Выполняем запуск системы
@@ -492,12 +492,12 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Выполняем подключения к полученному IP-адресу
-								this->resolving(shm->sid, url.ip, AF_INET);
+								this->activation(shm->sid, url.ip, AF_INET);
 							break;
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Выполняем подключения к полученному IP-адресу
-								this->resolving(shm->sid, url.ip, AF_INET6);
+								this->activation(shm->sid, url.ip, AF_INET6);
 							break;
 						}
 					}
@@ -790,14 +790,14 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 									// Выполняем резолвинг домена
 									const string & ip = this->_dns->resolve(AF_INET, url.domain);
 									// Выполняем подключения к полученному IP-адресу
-									this->resolving(shm->sid, ip, AF_INET);
+									this->activation(shm->sid, ip, AF_INET);
 								} break;
 								// Если тип протокола подключения IPv6
 								case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 									// Выполняем резолвинг домена
 									const string & ip = this->_dns->resolve(AF_INET6, url.domain);
 									// Выполняем подключения к полученному IP-адресу
-									this->resolving(shm->sid, ip, AF_INET);
+									this->activation(shm->sid, ip, AF_INET);
 								} break;
 							}
 						// Выполняем запуск системы
@@ -807,12 +807,12 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 								// Если тип протокола подключения IPv4
 								case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 									// Выполняем подключения к полученному IP-адресу
-									this->resolving(shm->sid, url.ip, AF_INET);
+									this->activation(shm->sid, url.ip, AF_INET);
 								break;
 								// Если тип протокола подключения IPv6
 								case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 									// Выполняем подключения к полученному IP-адресу
-									this->resolving(shm->sid, url.ip, AF_INET6);
+									this->activation(shm->sid, url.ip, AF_INET6);
 								break;
 							}
 						}
@@ -1467,12 +1467,12 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 	}
 }
 /**
- * resolving Метод получения IP-адреса доменного имени
+ * activation Метод активации параметров запуска сервера
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::client::Core::resolving(const uint16_t sid, const string & ip, const int family) noexcept {
+void awh::client::Core::activation(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети

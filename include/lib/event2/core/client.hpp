@@ -182,12 +182,12 @@ namespace awh {
 				void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
-				 * resolving Метод получения IP-адреса доменного имени
+				 * activation Метод активации параметров запуска сервера
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
-				void resolving(const uint16_t sid, const string & ip, const int family) noexcept;
+				void activation(const uint16_t sid, const string & ip, const int family) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети

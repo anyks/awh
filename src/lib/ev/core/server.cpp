@@ -746,14 +746,14 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 						// Обновляем хост сервера
 						shm->_host = ifnet.ip(AF_INET);
 						// Выполняем подключения к полученному IP-адресу
-						this->resolving(shm->sid, shm->_host, AF_INET);
+						this->activation(shm->sid, shm->_host, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Обновляем хост сервера
 						shm->_host = ifnet.ip(AF_INET6);
 						// Выполняем подключения к полученному IP-адресу
-						this->resolving(shm->sid, shm->_host, AF_INET6);
+						this->activation(shm->sid, shm->_host, AF_INET6);
 					} break;
 				}
 			// Если хост сервера является доменным именем и объект DNS-резолвера установлен
@@ -767,14 +767,14 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 						// Выполняем резолвинг домена
 						const string & ip = this->_dns->resolve(AF_INET, shm->_host);
 						// Выполняем подключения к полученному IP-адресу
-						this->resolving(shm->sid, ip, AF_INET);
+						this->activation(shm->sid, ip, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Выполняем резолвинг домена
 						const string & ip = this->_dns->resolve(AF_INET6, shm->_host);
 						// Выполняем подключения к полученному IP-адресу
-						this->resolving(shm->sid, ip, AF_INET6);
+						this->activation(shm->sid, ip, AF_INET6);
 					} break;
 				}
 			}
@@ -1174,12 +1174,12 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 	}
 }
 /**
- * resolving Метод получения IP-адреса доменного имени
+ * activation Метод активации параметров запуска сервера
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::server::Core::resolving(const uint16_t sid, const string & ip, const int family) noexcept {
+void awh::server::Core::activation(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
