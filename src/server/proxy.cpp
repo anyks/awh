@@ -428,6 +428,9 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					jt = it->second->response.headers.erase(jt);
 					// Продолжаем перебор дальше
 					continue;
+				// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
+				} else if(this->_fmk->exists("content-encoding", jt->first)) {
+					cout << " ================ " << jt->second << endl;
 				}
 				// Продолжаем перебор дальше
 				++jt;
