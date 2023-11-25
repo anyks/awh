@@ -615,7 +615,7 @@ void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
 					// Разрешаем выполнение работы
 					shm->status.work = scheme_t::work_t::ALLOW;
 				
-				cout << " ***************** " << sendTimeout << endl;
+				cout << " ***************** " << "sendTimeout" << endl;
 				
 				// Если нужно выполнить автоматическое переподключение, выполняем новую попытку
 				if(shm->alive) this->reconnect(item.first);
