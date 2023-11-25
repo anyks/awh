@@ -153,8 +153,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -169,7 +169,7 @@ int main(int argc, char * argv[]){
 		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::VERIFY_SSL,
-		client::web_t::flag_t::CONNECT_METHOD_ENABLE
+		// client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);

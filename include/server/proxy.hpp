@@ -191,8 +191,8 @@ namespace awh {
 					int32_t sid;
 					// Флаг отправки результата
 					bool sending;
-					// Флаг установленного подключения
-					bool connected;
+					// Активный метод подключения
+					awh::web_t::method_t method;
 					// Объект параметров запроса
 					request_t request;
 					// Объект параметров ответа
@@ -206,7 +206,8 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Client(const fmk_t * fmk, const log_t * log) noexcept : sid(-1), sending(false), connected(false), core(fmk, log), awh(&core, fmk, log) {}
+					Client(const fmk_t * fmk, const log_t * log) noexcept :
+					 sid(-1), sending(false), method(awh::web_t::method_t::NONE), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента

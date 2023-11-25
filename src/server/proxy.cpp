@@ -150,15 +150,17 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						request.headers = it->second->request.headers;
 						// Устанавливаем метод запроса
 						request.method = it->second->request.params.method;
+						// Выполняем установку метода подключения
+						it->second->method = it->second->request.params.method;
 						// Выполняем запрос на сервер
 						it->second->awh.send(std::move(request));
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
 						// Если подключение ещё не выполнено
-						if(!it->second->connected){
-							// Запоминаем что подключение установлено
-							it->second->connected = !it->second->connected;
+						if(it->second->method == awh::web_t::method_t::NONE){
+							// Выполняем установку метода подключения
+							it->second->method = it->second->request.params.method;
 							// Если тип сокета установлен как TCP/IP
 							if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
 								// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
@@ -171,8 +173,8 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			} break;
 			// Если производится отключение клиента от сервера
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
-				// Снимаем флаг выполненного подключения
-				it->second->connected = false;
+				// Выполняем сброс метода подклюения
+				it->second->method = awh::web_t::method_t::NONE;
 				// Выполняем закрытие подключения
 				this->close(bid);
 			} break;
@@ -333,8 +335,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			auto it = this->_clients.find(bid);
 			// Если клиент в списке найден
 			if(it != this->_clients.end()){
-				// Снимаем флаг выполненного подключения
-				it->second->connected = false;
+				// Выполняем сброс метода подклюения
+				it->second->method = awh::web_t::method_t::NONE;
 				// Выполняем отключение клиента от сетевого ядра
 				this->_core.unbind(&it->second->core);
 			}
@@ -647,7 +649,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если запрашивается клиентом метод OPTIONS
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 							// Если подключение ещё не выполнено
-							if(!it->second->connected){
+							if(it->second->method != awh::web_t::method_t::CONNECT){
 								// Запоминаем идентификатор потока
 								it->second->sid = sid;
 								// Создаём список флагов клиента
@@ -853,7 +855,7 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 			// Выполняем поиск объекта клиента
 			auto it = this->_clients.find(bid);
 			// Если активный клиент найден и подключение установлено
-			if((it != this->_clients.end()) && (it->second->connected)){
+			if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
 				// Если установлен метод CONNECT
 				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
 					// Определяем переданного брокера
