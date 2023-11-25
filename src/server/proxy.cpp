@@ -276,6 +276,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			if(!this->_settings.encryption.pass.empty())
 				// Устанавливаем параметры шифрования
 				ret.first->second->awh.encryption(this->_settings.encryption.pass, this->_settings.encryption.salt, this->_settings.encryption.cipher);
+			// Устанавливаем флаг запрещающий вывод информационных сообщений
+			ret.first->second->core.noInfo(true);
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
 			// Устанавливаем тип протокола интернета HTTP/2
