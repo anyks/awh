@@ -1012,6 +1012,9 @@ void awh::server::Proxy::on(function <void (const uint64_t, const string &, cons
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <void (const uint64_t, const broker_t, const web_t::mode_t)> callback) noexcept {
+
+	cout << " ==================1 " << endl;
+
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", callback);
 }
