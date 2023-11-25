@@ -124,9 +124,13 @@ int main(int argc, char * argv[]){
 	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
 	proxy.ca(server::proxy_t::broker_t::SERVER, "./ca/cert.pem");
 	/**
-	 * 1. Устанавливаем разрешение на использоваения метода CONNECT
+	 * 1. Устанавливаем разрешение на выполнение автоматических редиректов
+	 * 2. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
-	proxy.mode({server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE});
+	proxy.mode({
+		server::proxy_t::flag_t::REDIRECTS,
+		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
+	});
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(server::proxy_t::broker_t::SERVER, 60, 60);
 	// Устанавливаем тип сокета unix-сокет

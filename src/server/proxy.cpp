@@ -578,13 +578,16 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					set <client::web_t::flag_t> flags = {
 						client::web_t::flag_t::ALIVE,
 						client::web_t::flag_t::NOT_STOP,
-						client::web_t::flag_t::NOT_INFO,
-						client::web_t::flag_t::REDIRECTS
+						client::web_t::flag_t::NOT_INFO
 					};
 					// Если флаг ожидания входящих сообщений установлен
 					if(this->_flags.count(flag_t::WAIT_MESS) > 0)
 						// Устанавливаем флаг ожидания входящих сообщений
 						flags.emplace(client::web_t::flag_t::WAIT_MESS);
+					// Если флаг разрешения выполнения редиректов установлен
+					if(this->_flags.count(flag_t::REDIRECTS) > 0)
+						// Устанавливаем флаг разрешения выполнения редиректов
+						flags.emplace(client::web_t::flag_t::REDIRECTS);
 					// Если флаг проверки домена установлен
 					if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
 						// Выполняем установку флага проверки домена
@@ -656,13 +659,16 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::ALIVE,
 									client::web_t::flag_t::NOT_STOP,
-									client::web_t::flag_t::NOT_INFO,
-									client::web_t::flag_t::REDIRECTS
+									client::web_t::flag_t::NOT_INFO
 								};
 								// Если флаг ожидания входящих сообщений установлен
 								if(this->_flags.count(flag_t::WAIT_MESS) > 0)
 									// Устанавливаем флаг ожидания входящих сообщений
 									flags.emplace(client::web_t::flag_t::WAIT_MESS);
+								// Если флаг разрешения выполнения редиректов установлен
+								if(this->_flags.count(flag_t::REDIRECTS) > 0)
+									// Устанавливаем флаг разрешения выполнения редиректов
+									flags.emplace(client::web_t::flag_t::REDIRECTS);
 								// Если флаг проверки домена установлен
 								if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
 									// Выполняем установку флага проверки домена
@@ -730,13 +736,16 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							set <client::web_t::flag_t> flags = {
 								client::web_t::flag_t::ALIVE,
 								client::web_t::flag_t::NOT_STOP,
-								client::web_t::flag_t::NOT_INFO,
-								client::web_t::flag_t::REDIRECTS
+								client::web_t::flag_t::NOT_INFO
 							};
 							// Если флаг ожидания входящих сообщений установлен
 							if(this->_flags.count(flag_t::WAIT_MESS) > 0)
 								// Устанавливаем флаг ожидания входящих сообщений
 								flags.emplace(client::web_t::flag_t::WAIT_MESS);
+							// Если флаг разрешения выполнения редиректов установлен
+							if(this->_flags.count(flag_t::REDIRECTS) > 0)
+								// Устанавливаем флаг разрешения выполнения редиректов
+								flags.emplace(client::web_t::flag_t::REDIRECTS);
 							// Если флаг проверки домена установлен
 							if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
 								// Выполняем установку флага проверки домена
