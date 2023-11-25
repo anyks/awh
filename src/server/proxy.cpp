@@ -176,7 +176,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 				// Выводим полученный результат
 				this->completed(bid);
 				// Выполняем сброс метода подклюения
-				it->second->method = awh::web_t::method_t::NONE;
+				// it->second->method = awh::web_t::method_t::NONE;
 				
 				// ++++++++++++++++++++++++++ Закрывается подключение очень быстро
 				
