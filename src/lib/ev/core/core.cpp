@@ -1434,6 +1434,8 @@ void awh::Core::noInfo(const bool mode) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
 	this->_noinfo = mode;
+
+	cout << " +============ " << this->_noinfo << endl;
 }
 /**
  * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
