@@ -280,6 +280,9 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 	bool result = false;
 	// Если редиректы разрешены
 	if(this->_redirects){
+		
+		cout << " ************** REDIRECT HTTP1 " << endl;
+		
 		// Определяем тип агента
 		switch(static_cast <uint8_t> (this->_agent)){
 			// Если протоколом агента является HTTP-клиент

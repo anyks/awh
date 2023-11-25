@@ -684,6 +684,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 	bool result = false;
 	// Если список ответов получен
 	if(this->_redirects && !this->_stopped && !this->_requests.empty() && !this->_workers.empty()){
+		
+		cout << " ************** REDIRECT HTTP2 " << endl;
+		
 		// Выполняем поиск активного воркера который необходимо перезапустить
 		for(auto it = this->_workers.begin(); it != this->_workers.end(); ++it){
 			// Определяем тип агента

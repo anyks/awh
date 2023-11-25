@@ -617,6 +617,9 @@ bool awh::client::WebSocket2::redirect(const uint64_t bid, const uint16_t sid, a
 	bool result = false;
 	// Если редиректы разрешены
 	if(this->_redirects){
+		
+		cout << " ************** REDIRECT WS2 " << endl;
+		
 		// Если переключение протокола на HTTP/2 не выполнено
 		if(this->_proto != engine_t::proto_t::HTTP2){
 			// Выполняем переброс вызова дисконнекта на клиент WebSocket
