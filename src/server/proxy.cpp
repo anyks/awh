@@ -574,7 +574,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					set <client::web_t::flag_t> flags = {
 						client::web_t::flag_t::ALIVE,
 						client::web_t::flag_t::NOT_STOP,
-						// client::web_t::flag_t::NOT_INFO,
+						client::web_t::flag_t::NOT_INFO,
 						client::web_t::flag_t::REDIRECTS
 					};
 					// Если флаг ожидания входящих сообщений установлен
