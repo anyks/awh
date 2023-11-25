@@ -772,6 +772,9 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
  * @return        идентификатор отправленного запроса
  */
 int32_t awh::client::Http1::send(const request_t & request) noexcept {
+	
+	cout << " ================== SEND HTTP1 " << endl;
+	
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому

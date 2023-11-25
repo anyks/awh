@@ -1177,6 +1177,9 @@ void awh::client::Http2::sendMessage(const vector <char> & message, const bool t
  * @return        идентификатор отправленного запроса
  */
 int32_t awh::client::Http2::send(const request_t & request) noexcept {
+	
+	cout << " ================== SEND HTTP2 " << endl;
+	
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
