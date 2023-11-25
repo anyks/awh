@@ -767,14 +767,6 @@ void awh::Http::clear(const suite_t suite) noexcept {
 	}
 }
 /**
- * sizeBody Метод получения размера тела данных
- * @return размер тела данных
- */
-size_t awh::Http::sizeBody() const noexcept {
-	// Выводим размер тела данных
-	return this->_web.body().size();
-}
-/**
  * parse Метод парсинга сырых данных
  * @param buffer буфер данных для обработки
  * @param size   размер буфера данных
@@ -843,7 +835,8 @@ const vector <char> awh::Http::payload() const noexcept {
 					// Формируем результат
 					result.assign(body->begin(), body->begin() + this->_chunk);
 					// Удаляем полученные данные в теле сообщения
-					body->erase(body->begin(), body->begin() + this->_chunk);
+					// body->erase(body->begin(), body->begin() + this->_chunk);
+					vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
 				// Если тело сообщения полностью убирается в размер чанка
 				} else {
 					// Формируем результат
@@ -868,7 +861,8 @@ const vector <char> awh::Http::payload() const noexcept {
 					// Добавляем конец запроса
 					chunk.append("\r\n");
 					// Удаляем полученные данные в теле сообщения
-					body->erase(body->begin(), body->begin() + this->_chunk);
+					// body->erase(body->begin(), body->begin() + this->_chunk);
+					vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
 				// Если тело сообщения полностью убирается в размер чанка
 				} else {
 					// Получаем размер чанка
@@ -911,7 +905,8 @@ const vector <char> awh::Http::payload() const noexcept {
 				// Получаем нужный нам размер данных
 				result.assign(body->begin(), body->begin() + this->_chunk);
 				// Удаляем полученные данные в теле сообщения
-				body->erase(body->begin(), body->begin() + this->_chunk);
+				// body->erase(body->begin(), body->begin() + this->_chunk);
+				vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
 			// Если тело сообщения полностью убирается в размер чанка
 			} else {
 				// Получаем нужный нам размер данных
@@ -1599,6 +1594,33 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				this->_web.dump(std::move(buffer));
 		}
 	}
+}
+/**
+ * empty Метод проверки существования данных
+ * @param suite тип набора к которому соответствует заголовок
+ */
+bool awh::Http::empty(const suite_t suite) const noexcept {
+	// Определяем запрашиваемый набор к которому принадлежит заголовок
+	switch(static_cast <uint8_t> (suite)){
+		// Если набор соответствует телу сообщения
+		case static_cast <uint8_t> (suite_t::BODY):
+			// Выполняем проверку наличия тела сообщения
+			return this->_web.body().empty();
+		// Если набор соответствует заголовку чёрного списка
+		case static_cast <uint8_t> (suite_t::BLACK):
+			// Выполняем проверку наличия заголовков в чёрном списке
+			return this->_black.empty();
+		// Если набор соответствует заголовку сообщения
+		case static_cast <uint8_t> (suite_t::HEADER):
+			// Выполняем проверку наличия заголовков
+			return this->_web.headers().empty();
+		// Если набор соответствует стандартному заголовку
+		case static_cast <uint8_t> (suite_t::STANDARD):
+			// Выполняем проверку наличия всех данных парсера
+			return (this->_web.body().empty() && this->_black.empty() && this->_web.headers().empty());
+	}
+	// Выводим результат
+	return false;
 }
 /**
  * is Метод проверки активного состояния

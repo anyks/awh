@@ -51,9 +51,9 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					#if defined(DEBUG_MODE)
 						{
 							// Если тело ответа существует
-							if(this->_scheme.proxy.http.sizeBody() > 0)
+							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.sizeBody()) << endl << endl;
+								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl << endl;
 							// Иначе устанавливаем перенос строки
 							else cout << endl;
 						}
@@ -70,7 +70,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Если функция обратного вызова установлена, выводим сообщение
-					if((this->_scheme.proxy.http.sizeBody() > 0) && this->_callback.is("entity"))
+					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_callback.call <const int32_t, const u_int, const string, const vector <char>> ("entity", sid, response.code, response.message, this->_scheme.proxy.http.body());
 					// Если установлена функция отлова завершения запроса

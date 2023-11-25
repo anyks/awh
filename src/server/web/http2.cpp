@@ -597,9 +597,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					// Выводим параметры ответа
 					cout << string(buffer.begin(), buffer.end()) << endl << endl;
 				// Если тело ответа существует
-				if(options->http.sizeBody() > 0)
+				if(!options->http.empty(awh::http_t::suite_t::BODY))
 					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<body %u>", options->http.sizeBody()) << endl << endl;
+					cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
 				// Иначе устанавливаем перенос строки
 				else cout << endl;
 			}
@@ -646,7 +646,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 							// Флаг отправляемого фрейма
 							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 							// Если тело запроса не существует
-							if(options->http.sizeBody() == 0)
+							if(options->http.empty(awh::http_t::suite_t::BODY))
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем заголовки запроса на сервер
@@ -656,7 +656,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								// Выходим из функции
 								return;
 							// Если тело запроса существует
-							if(options->http.sizeBody() > 0){
+							if(!options->http.empty(awh::http_t::suite_t::BODY)){
 								// Тело HTTP-запроса
 								vector <char> entity;
 								// Получаем данные тела запроса
@@ -669,7 +669,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Если нужно установить флаг закрытия потока
-									if((options->http.sizeBody() == 0) && (options->http.trailers() == 0))
+									if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку тела запроса на сервер
@@ -720,7 +720,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					return;
 				}
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if((options->http.sizeBody() > 0) && this->_callback.is("entity")){
+				if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity")){
 					// Выполняем извлечение параметров запроса
 					const auto & request = options->http.request();
 					// Выполняем функцию обратного вызова
@@ -776,7 +776,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 					// Флаг отправляемого фрейма
 					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 					// Если тело запроса не существует
-					if(options->http.sizeBody() == 0)
+					if(options->http.empty(awh::http_t::suite_t::BODY))
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем заголовки запроса на сервер
@@ -786,7 +786,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 						// Выходим из функции
 						return;
 					// Если тело запроса существует
-					if(options->http.sizeBody() > 0){
+					if(!options->http.empty(awh::http_t::suite_t::BODY)){
 						// Тело HTTP-запроса
 						vector <char> entity;
 						// Получаем данные тела запроса
@@ -799,7 +799,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Если нужно установить флаг закрытия потока
-							if((options->http.sizeBody() == 0) && (options->http.trailers() == 0))
+							if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
@@ -1021,7 +1021,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						// Выполняем извлечение параметров запроса
 						const auto & request = options->http.request();
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if((options->http.sizeBody() > 0) && this->_callback.is("entity"))
+						if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
 						// Если функция обратного вызова активности потока установлена
@@ -1068,7 +1068,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					// Флаг отправляемого фрейма
 					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 					// Если тело запроса не существует
-					if(options->http.sizeBody() == 0)
+					if(options->http.empty(awh::http_t::suite_t::BODY))
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем ответ подключившемуся клиенту
@@ -1076,7 +1076,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						// Выходим из функции
 						return;
 					// Если тело запроса существует
-					if(options->http.sizeBody() > 0){
+					if(!options->http.empty(awh::http_t::suite_t::BODY)){
 						// Тело HTTP-запроса
 						vector <char> entity;
 						// Получаем данные тела запроса
@@ -1089,7 +1089,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 							#endif
 							// Если нужно установить флаг закрытия потока
-							if((options->http.sizeBody() == 0) && (options->http.trailers() == 0))
+							if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
@@ -1130,7 +1130,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					// Выполняем извлечение параметров запроса
 					const auto & request = options->http.request();
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if((web->http.sizeBody() > 0) && this->_callback.is("entity"))
+					if(!web->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, web->http.body());
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -1760,7 +1760,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Если нужно установить флаг закрытия потока
-									if(end && (options->http.sizeBody() == 0) && (options->http.trailers() == 0))
+									if(end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку данных на удалённый сервер
@@ -1993,7 +1993,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										// Флаг отправляемого фрейма
 										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 										// Если тело запроса не существует
-										if(options->http.sizeBody() == 0)
+										if(options->http.empty(awh::http_t::suite_t::BODY))
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем ответ подключившемуся клиенту
@@ -2005,7 +2005,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 										// Устанавливаем идентификатор потока
 										options->sid = (options->sid > -1 ? options->sid : sid);
 										// Если тело запроса существует
-										if((code >= 200) && (options->http.sizeBody() > 0)){
+										if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
 											// Тело HTTP-запроса
 											vector <char> entity;
 											// Получаем данные тела запроса
@@ -2018,7 +2018,7 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 												#endif
 												// Если нужно установить флаг закрытия потока
-												if((options->http.sizeBody() == 0) && (options->http.trailers() == 0))
+												if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 													// Устанавливаем флаг завершения потока
 													flag = awh::http2_t::flag_t::END_STREAM;
 												// Выполняем отправку тела запроса на сервер

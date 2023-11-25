@@ -214,9 +214,9 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										// Выводим параметры запроса
 										cout << string(request.begin(), request.end()) << endl;
 										// Если тело запроса существует
-										if(http.sizeBody() > 0)
+										if(!http.empty(awh::http_t::suite_t::BODY))
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", http.sizeBody()) << endl << endl;
+											cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
 										// Иначе устанавливаем перенос строки
 										else cout << endl;
 									}
@@ -300,7 +300,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 											// Выполняем извлечение параметров запроса
 											const auto & request = options->http.request();
 											// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-											if((options->http.sizeBody() > 0) && this->_callback.is("entity"))
+											if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 												// Выполняем функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
 											// Если функция обратного вызова активности потока установлена
@@ -391,7 +391,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 										cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 									#endif
 									// Устанавливаем флаг закрытия подключения
-									options->stopped = (!http.is(http_t::state_t::ALIVE) && (http.sizeBody() == 0));
+									options->stopped = (!http.is(http_t::state_t::ALIVE) && http.empty(awh::http_t::suite_t::BODY));
 									// Выполняем отправку чанков
 									dynamic_cast <server::core_t *> (core)->write(payload.data(), payload.size(), bid);
 								}
@@ -400,7 +400,7 @@ void awh::server::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выполняем запрет на получение входящих данных
 									dynamic_cast <server::core_t *> (core)->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-								if((options->http.sizeBody() > 0) && this->_callback.is("entity"))
+								if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 									// Выполняем функцию обратного вызова
 									this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
 								// Если функция обратного вызова активности потока установлена

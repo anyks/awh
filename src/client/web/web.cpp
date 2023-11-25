@@ -254,9 +254,9 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 										// Выводим параметры ответа
 										cout << string(response.begin(), response.end()) << endl << endl;
 										// Если тело ответа существует
-										if(this->_scheme.proxy.http.sizeBody() > 0)
+										if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.sizeBody()) << endl << endl;
+											cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl << endl;
 									}
 								}
 							#endif
@@ -326,7 +326,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-							if((this->_scheme.proxy.http.sizeBody() > 0) && this->_callback.is("entity"))
+							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
 								this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, response.code, response.message, this->_scheme.proxy.http.body());
 							// Завершаем работу

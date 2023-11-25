@@ -323,12 +323,6 @@ namespace awh {
 			void clear(const suite_t suite) noexcept;
 		public:
 			/**
-			 * sizeBody Метод получения размера тела данных
-			 * @return размер тела данных
-			 */
-			size_t sizeBody() const noexcept;
-		public:
-			/**
 			 * parse Метод парсинга сырых данных
 			 * @param buffer буфер данных для обработки
 			 * @param size   размер буфера данных
@@ -464,6 +458,12 @@ namespace awh {
 			 * @param data бинарный дамп данных
 			 */
 			void dump(const vector <char> & data) noexcept;
+		public:
+			/**
+			 * empty Метод проверки существования данных
+			 * @param suite тип набора к которому соответствует заголовок
+			 */
+			bool empty(const suite_t suite) const noexcept;
 		public:
 			/**
 			 * is Метод проверки активного состояния
