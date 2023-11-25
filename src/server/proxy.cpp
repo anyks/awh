@@ -339,9 +339,13 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 		} break;
 	}
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("active"))
+	if(this->_callback.is("active")){
+
+		cout << " ==================1 " << bid << endl;
+
 		// Выполняем функцию обратного вызова
 		this->_callback.call <const uint64_t, const broker_t, const web_t::mode_t> ("active", bid, broker_t::SERVER, mode);
+	}
 }
 /**
  * entityClient Метод получения тела ответа с сервера клиенту
@@ -1012,9 +1016,6 @@ void awh::server::Proxy::on(function <void (const uint64_t, const string &, cons
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <void (const uint64_t, const broker_t, const web_t::mode_t)> callback) noexcept {
-
-	cout << " ==================1 " << endl;
-
 	// Устанавливаем функцию обратного вызова
 	this->_callback.set <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", callback);
 }
