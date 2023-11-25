@@ -296,7 +296,7 @@ bool awh::client::WebSocket1::redirect() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если список ответов получен
-	if((result = !this->_stopped)){
+	if(this->_redirects && (result = !this->_stopped)){
 		// Получаем параметры запроса
 		const auto & response = this->_http.response();
 		// Если необходимо выполнить ещё одну попытку выполнения авторизации

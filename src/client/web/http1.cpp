@@ -269,133 +269,136 @@ void awh::client::Http1::writeCallback(const char * buffer, const size_t size, c
 bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Определяем тип агента
-	switch(static_cast <uint8_t> (this->_agent)){
-		// Если протоколом агента является HTTP-клиент
-		case static_cast <uint8_t> (agent_t::HTTP): {
-			// Если список ответов получен
-			if((result = !this->_stopped && !this->_requests.empty())){
-				// Получаем параметры запроса
-				const auto & response = this->_http.response();
-				// Если необходимо выполнить ещё одну попытку выполнения авторизации
-				if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
-					// Увеличиваем количество попыток
-					this->_attempt++;
-					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
-					
-					cout << " $$$$$$$$$$$$$$ OPEN HTTP1 1 " << endl;
-					
-					// Выполняем установку следующего экшена на открытие подключения
-					this->open();
-					// Завершаем работу
-					return result;
-				}
-				// Выполняем определение ответа сервера
-				switch(response.code){
-					// Если ответ сервера: Created
-					case 201:
-					// Если ответ сервера: Moved Permanently
-					case 301:
-					// Если ответ сервера: Found
-					case 302:
-					// Если ответ сервера: See Other
-					case 303:
-					// Если ответ сервера: Temporary Redirect
-					case 307:
-					// Если ответ сервера: Permanent Redirect
-					case 308: break;
-					// Если мы получили любой другой ответ, выходим
-					default: return result;
-				}
-				// Если адрес для выполнения переадресации указан
-				if((result = this->_http.is(http_t::suite_t::HEADER, "location"))){
-					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
-					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_http.url();
-					// Если адрес запроса получен
-					if((result = !url.empty())){
+	// Если редиректы разрешены
+	if(this->_redirects){
+		// Определяем тип агента
+		switch(static_cast <uint8_t> (this->_agent)){
+			// Если протоколом агента является HTTP-клиент
+			case static_cast <uint8_t> (agent_t::HTTP): {
+				// Если список ответов получен
+				if((result = !this->_stopped && !this->_requests.empty())){
+					// Получаем параметры запроса
+					const auto & response = this->_http.response();
+					// Если необходимо выполнить ещё одну попытку выполнения авторизации
+					if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
 						// Увеличиваем количество попыток
 						this->_attempt++;
-						// Устанавливаем новый адрес запроса
-						this->_uri.combine(this->_scheme.url, url);
-						// Получаем объект текущего запроса
-						request_t & request = this->_requests.begin()->second;
-						// Устанавливаем новый адрес запроса
-						request.url = this->_scheme.url;
-						// Если необходимо метод изменить на GET и основной метод не является GET
-						if(((response.code == 201) || (response.code == 303)) && (request.method != awh::web_t::method_t::GET)){
-							// Выполняем очистку тела запроса
-							request.entity.clear();
-							// Выполняем установку метода запроса
-							request.method = awh::web_t::method_t::GET;
-						}
+						// Выполняем очистку оставшихся данных
+						this->_buffer.clear();
 						
-						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 2 " << endl;
+						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 1 " << endl;
 						
 						// Выполняем установку следующего экшена на открытие подключения
 						this->open();
 						// Завершаем работу
 						return result;
 					}
+					// Выполняем определение ответа сервера
+					switch(response.code){
+						// Если ответ сервера: Created
+						case 201:
+						// Если ответ сервера: Moved Permanently
+						case 301:
+						// Если ответ сервера: Found
+						case 302:
+						// Если ответ сервера: See Other
+						case 303:
+						// Если ответ сервера: Temporary Redirect
+						case 307:
+						// Если ответ сервера: Permanent Redirect
+						case 308: break;
+						// Если мы получили любой другой ответ, выходим
+						default: return result;
+					}
+					// Если адрес для выполнения переадресации указан
+					if((result = this->_http.is(http_t::suite_t::HEADER, "location"))){
+						// Выполняем очистку оставшихся данных
+						this->_buffer.clear();
+						// Получаем новый адрес запроса
+						const uri_t::url_t & url = this->_http.url();
+						// Если адрес запроса получен
+						if((result = !url.empty())){
+							// Увеличиваем количество попыток
+							this->_attempt++;
+							// Устанавливаем новый адрес запроса
+							this->_uri.combine(this->_scheme.url, url);
+							// Получаем объект текущего запроса
+							request_t & request = this->_requests.begin()->second;
+							// Устанавливаем новый адрес запроса
+							request.url = this->_scheme.url;
+							// Если необходимо метод изменить на GET и основной метод не является GET
+							if(((response.code == 201) || (response.code == 303)) && (request.method != awh::web_t::method_t::GET)){
+								// Выполняем очистку тела запроса
+								request.entity.clear();
+								// Выполняем установку метода запроса
+								request.method = awh::web_t::method_t::GET;
+							}
+							
+							cout << " $$$$$$$$$$$$$$ OPEN HTTP1 2 " << endl;
+							
+							// Выполняем установку следующего экшена на открытие подключения
+							this->open();
+							// Завершаем работу
+							return result;
+						}
+					}
 				}
-			}
-		} break;
-		// Если протоколом агента является WebSocket-клиент
-		case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-			// Выполняем переброс вызова дисконнекта на клиент WebSocket
-			this->_ws1.disconnectCallback(bid, sid, core);
-			// Если список ответов получен
-			if((result = !this->_ws1._stopped)){
-				// Получаем параметры запроса
-				const auto & response = this->_ws1._http.response();
-				// Если необходимо выполнить ещё одну попытку выполнения авторизации
-				if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
-					// Выполняем очистку оставшихся данных
-					this->_ws1._buffer.clear();
-					// Получаем количество попыток
-					this->_attempt = this->_ws1._attempt;
-					
-					cout << " $$$$$$$$$$$$$$ OPEN HTTP1 3 " << endl;
-					
-					// Выполняем установку следующего экшена на открытие подключения
-					this->open();
-					// Завершаем работу
-					return result;
-				}
-				// Выполняем определение ответа сервера
-				switch(response.code){
-					// Если ответ сервера: Moved Permanently
-					case 301:
-					// Если ответ сервера: Permanent Redirect
-					case 308: break;
-					// Если мы получили любой другой ответ, выходим
-					default: return result;
-				}
-				// Если адрес для выполнения переадресации указан
-				if((result = this->_ws1._http.is(http_t::suite_t::HEADER, "location"))){
-					// Выполняем очистку оставшихся данных
-					this->_ws1._buffer.clear();
-					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_ws1._http.url();
-					// Если адрес запроса получен
-					if((result = !url.empty())){
+			} break;
+			// Если протоколом агента является WebSocket-клиент
+			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
+				// Выполняем переброс вызова дисконнекта на клиент WebSocket
+				this->_ws1.disconnectCallback(bid, sid, core);
+				// Если список ответов получен
+				if((result = !this->_ws1._stopped)){
+					// Получаем параметры запроса
+					const auto & response = this->_ws1._http.response();
+					// Если необходимо выполнить ещё одну попытку выполнения авторизации
+					if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+						// Выполняем очистку оставшихся данных
+						this->_ws1._buffer.clear();
 						// Получаем количество попыток
 						this->_attempt = this->_ws1._attempt;
-						// Устанавливаем новый адрес запроса
-						this->_uri.combine(this->_scheme.url, url);
 						
-						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 4 " << endl;
+						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 3 " << endl;
 						
 						// Выполняем установку следующего экшена на открытие подключения
 						this->open();
 						// Завершаем работу
 						return result;
 					}
+					// Выполняем определение ответа сервера
+					switch(response.code){
+						// Если ответ сервера: Moved Permanently
+						case 301:
+						// Если ответ сервера: Permanent Redirect
+						case 308: break;
+						// Если мы получили любой другой ответ, выходим
+						default: return result;
+					}
+					// Если адрес для выполнения переадресации указан
+					if((result = this->_ws1._http.is(http_t::suite_t::HEADER, "location"))){
+						// Выполняем очистку оставшихся данных
+						this->_ws1._buffer.clear();
+						// Получаем новый адрес запроса
+						const uri_t::url_t & url = this->_ws1._http.url();
+						// Если адрес запроса получен
+						if((result = !url.empty())){
+							// Получаем количество попыток
+							this->_attempt = this->_ws1._attempt;
+							// Устанавливаем новый адрес запроса
+							this->_uri.combine(this->_scheme.url, url);
+							
+							cout << " $$$$$$$$$$$$$$ OPEN HTTP1 4 " << endl;
+							
+							// Выполняем установку следующего экшена на открытие подключения
+							this->open();
+							// Завершаем работу
+							return result;
+						}
+					}
 				}
-			}
-		} break;
+			} break;
+		}
 	}
 	// Выводим результат
 	return result;
