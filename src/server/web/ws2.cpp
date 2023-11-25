@@ -745,7 +745,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									// Флаг отправляемого фрейма
 									http2_t::flag_t flag = http2_t::flag_t::NONE;
 									// Если тело запроса не существует
-									if(options->http.body().empty())
+									if(options->http.sizeBody() == 0)
 										// Устанавливаем флаг завершения потока
 										flag = http2_t::flag_t::END_STREAM;
 									// Выполняем заголовки запроса на сервер
@@ -763,7 +763,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										return NGHTTP2_ERR_CALLBACK_FAILURE;
 									}
 									// Если тело запроса существует
-									if(!options->http.body().empty()){
+									if(options->http.sizeBody() > 0){
 										// Тело HTTP-запроса
 										vector <char> entity;
 										// Получаем данные тела запроса
@@ -776,7 +776,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 											#endif
 											// Если нужно установить флаг закрытия потока
-											if(options->http.body().empty())
+											if(options->http.sizeBody() == 0)
 												// Устанавливаем флаг завершения потока
 												flag = http2_t::flag_t::END_STREAM;
 											// Выполняем отправку тела запроса на сервер

@@ -193,9 +193,9 @@ void awh::client::WebSocket1::readCallback(const char * buffer, const size_t siz
 									// Выводим параметры ответа
 									cout << string(response.begin(), response.end()) << endl << endl;
 									// Если тело ответа существует
-									if(!http.body().empty())
+									if(http.sizeBody() > 0)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
+										cout << this->_fmk->format("<body %u>", http.sizeBody()) << endl << endl;
 									// Иначе устанавливаем перенос строки
 									else cout << endl;
 								}
@@ -583,7 +583,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Выводим в лог сообщение об удачной авторизации не WebSocket-сервере
 						this->_log->print("Authorization on the WebSocket-server was successful", log_t::flag_t::INFO);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!this->_http.body().empty() && this->_callback.is("entity"))
+					if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 					// Если функция обратного вызова активности потока установлена
@@ -614,7 +614,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::CLOSE);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!this->_http.body().empty() && this->_callback.is("entity"))
+					if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 				}
@@ -632,7 +632,7 @@ awh::client::Web::status_t awh::client::WebSocket1::prepare(const int32_t sid, c
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const mode_t)> ("stream", this->_callback.get <void (const int32_t, const mode_t)> ("stream"), sid, mode_t::CLOSE);
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(!this->_http.body().empty() && this->_callback.is("entity"))
+				if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 			} break;

@@ -184,9 +184,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										// Выводим параметры запроса
 										cout << string(request.begin(), request.end()) << endl << endl;
 										// Если тело запроса существует
-										if(!options->http.body().empty())
+										if(options->http.sizeBody() > 0)
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
+											cout << this->_fmk->format("<body %u>", options->http.sizeBody()) << endl << endl;
 										// Иначе устанавливаем перенос строки
 										else cout << endl;
 									}
@@ -249,7 +249,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 										#endif
 										// Если тела данных для отправки больше не осталось
-										if(options->http.body().empty())
+										if(options->http.sizeBody() == 0)
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 											options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 										// Выполняем отправку тела ответа клиенту
@@ -317,7 +317,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										// Выполняем функцию обратного вызова
 										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
 									// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-									if(!options->http.body().empty() && this->_callback.is("entity"))
+									if((options->http.sizeBody() > 0) && this->_callback.is("entity"))
 										// Выполняем функцию обратного вызова
 										this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, bid, request.method, request.url, options->http.body());
 									// Если функция обратного вызова на получение удачного запроса установлена
@@ -390,7 +390,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 												cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 											#endif
 											// Если тела данных для отправки больше не осталось
-											if(options->http.body().empty())
+											if(options->http.sizeBody() == 0)
 												// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 												options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 											// Отправляем тело ответа клиенту
@@ -632,7 +632,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Выполняем извлечение параметров запроса
 						const auto & request = options->http.request();
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(!options->http.body().empty() && this->_callback.is("entity"))
+						if((options->http.sizeBody() > 0) && this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
 						// Если функция обратного вызова активности потока установлена
@@ -682,7 +682,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 							cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 						#endif
 						// Если тела данных для отправки больше не осталось
-						if(web->http.body().empty())
+						if(web->http.sizeBody() == 0)
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !web->alive && !web->http.is(http_t::state_t::ALIVE));
 						// Выполняем отправку ответа клиенту
@@ -693,7 +693,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Выполняем запрет на получение входящих данных
 						dynamic_cast <server::core_t *> (core)->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, bid);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!web->http.body().empty() && this->_callback.is("entity"))
+					if((web->http.sizeBody() > 0) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, web->http.body());
 					// Если функция обратного вызова активности потока установлена
@@ -1001,7 +1001,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
 					// Устанавливаем флаг закрытия подключения
-					options->stopped = (end && options->http.body().empty() && (options->http.trailers() == 0));
+					options->stopped = (end && (options->http.sizeBody() == 0) && (options->http.trailers() == 0));
 					// Выполняем отправку ответа клиенту
 					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
 				}
@@ -1187,13 +1187,13 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					cout << string(response.begin(), response.end()) << endl << endl;
 				#endif
 				// Если тело данных не установлено для отправки
-				if(options->http.body().empty())
+				if(options->http.sizeBody() == 0)
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
 				const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
 				// Если код ответа содержит тело ответа
-				if((code >= 200) && !options->http.body().empty()){
+				if((code >= 200) && (options->http.sizeBody() > 0)){
 					// Получаем данные тела полезной нагрузки
 					while(!(payload = options->http.payload()).empty()){
 						// Если включён режим отладки
@@ -1202,7 +1202,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 							cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
 						#endif
 						// Если тела данных для отправки больше не осталось
-						if(options->http.body().empty() && (options->http.trailers() == 0))
+						if((options->http.sizeBody() == 0) && (options->http.trailers() == 0))
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 						// Отправляем тело ответа клиенту

@@ -455,16 +455,12 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			if(this->_flags.count(flag_t::RECOMPRESS) > 0)
 				// Устанавливаем компрессор рекомпрессии
 				compress = this->_compressor;
-			
-			/*
 			// Получаем объект HTTP-парсера
 			const awh::http_t * http = this->_server.parser(bid);
 			// Если объект HTTP-парсера получен
 			if(http != nullptr)
 				// Устанавливаем параметры компрессии
 				const_cast <awh::http_t *> (http)->compression(compress);
-			*/
-
 			// Выполняем получение заголовка Via
 			const string & header = this->via(bid, via);
 			// Если заголовок получен

@@ -150,9 +150,9 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 												// Выводим параметры ответа
 												cout << string(response.begin(), response.end()) << endl << endl;
 												// Если тело ответа существует
-												if(!this->_http.body().empty())
+												if(this->_http.sizeBody() > 0)
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
+													cout << this->_fmk->format("<body %u>", this->_http.sizeBody()) << endl << endl;
 												// Иначе устанавливаем перенос строки
 												else cout << endl;
 											}
@@ -585,7 +585,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			// Выполняем сброс количества попыток
 			this->_attempt = 0;
 			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-			if(!this->_http.body().empty() && this->_callback.is("entity"))
+			if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 				// Устанавливаем полученную функцию обратного вызова
 				this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 			// Если объект ещё не удалён и получен окончательный ответ
@@ -624,7 +624,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			// Если возникла ошибка выполнения запроса
 			if((response.code >= 400) && (response.code < 500)){
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(!this->_http.body().empty() && this->_callback.is("entity"))
+				if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 				// Если объект ещё не удалён
@@ -644,7 +644,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-	if(!this->_http.body().empty() && this->_callback.is("entity"))
+	if((this->_http.sizeBody() > 0) && this->_callback.is("entity"))
 		// Устанавливаем полученную функцию обратного вызова
 		this->_resultCallback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, this->_http.body());
 	// Завершаем работу
@@ -909,7 +909,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 					cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 				#endif
 				// Устанавливаем флаг закрытия подключения
-				this->_stopped = (end && this->_http.body().empty());
+				this->_stopped = (end && (this->_http.sizeBody() == 0));
 				// Выполняем отправку тела запроса на сервер
 				const_cast <client::core_t *> (this->_core)->write(entity.data(), entity.size(), this->_bid);
 			}

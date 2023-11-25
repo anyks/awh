@@ -318,9 +318,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										#if defined(DEBUG_MODE)
 											{
 												// Если тело ответа существует
-												if(!it->second->http.body().empty())
+												if(it->second->http.sizeBody() > 0)
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %u>", it->second->http.body().size()) << endl << endl;
+													cout << this->_fmk->format("<body %u>", it->second->http.sizeBody()) << endl << endl;
 												// Иначе устанавливаем перенос строки
 												else cout << endl;
 											}
@@ -1045,7 +1045,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Выполняем сброс количества попыток
 				this->_attempt = 0;
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(!it->second->http.body().empty() && this->_callback.is("entity"))
+				if((it->second->http.sizeBody() > 0) && this->_callback.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 				// Устанавливаем размер стопбайт
@@ -1073,7 +1073,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Если возникла ошибка выполнения запроса
 				if((response.code >= 400) && (response.code < 500)){
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!it->second->http.body().empty() && this->_callback.is("entity"))
+					if((it->second->http.sizeBody() > 0) && this->_callback.is("entity"))
 						// Устанавливаем полученную функцию обратного вызова
 						it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 					// Выполняем удаление параметров запроса
@@ -1084,7 +1084,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 			} break;
 		}
 		// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-		if(!it->second->http.body().empty() && this->_callback.is("entity"))
+		if((it->second->http.sizeBody() > 0) && this->_callback.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
 			it->second->callback.set <void (const int32_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const u_int, const string, const vector <char>)> ("entity"), sid, response.code, response.message, it->second->http.body());
 		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
@@ -1306,7 +1306,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 									#endif
 									// Если нужно установить флаг закрытия потока
-									if(this->_http.body().empty())
+									if(this->_http.sizeBody() == 0)
 										// Устанавливаем флаг завершения потока
 										flag = awh::http2_t::flag_t::END_STREAM;
 									// Выполняем отправку тела запроса на сервер
@@ -1553,7 +1553,7 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
 					// Если нужно установить флаг закрытия потока
-					if(end && this->_http.body().empty())
+					if(end && (this->_http.sizeBody() == 0))
 						// Устанавливаем флаг завершения потока
 						flag = awh::http2_t::flag_t::END_STREAM;
 					// Выполняем отправку данных на удалённый сервер

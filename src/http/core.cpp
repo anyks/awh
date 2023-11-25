@@ -742,6 +742,39 @@ void awh::Http::reset() noexcept {
 	this->_status = status_t::NONE;
 }
 /**
+ * clear Метод очистки данных HTTP-протокола
+ * @param suite тип набора к которому соответствует заголовок
+ */
+void awh::Http::clear(const suite_t suite) noexcept {
+	// Определяем запрашиваемый набор к которому принадлежит заголовок
+	switch(static_cast <uint8_t> (suite)){
+		// Если набор соответствует телу сообщения
+		case static_cast <uint8_t> (suite_t::BODY): {
+			// Выполняем очистку данных тела
+			this->_web.clearBody();
+			// Снимаем флаг зашифрованной полезной нагрузки
+			const_cast <http_t *> (this)->_crypted = false;
+			// Снимаем флаг сжатой полезной нагрузки
+			const_cast <http_t *> (this)->_compressor.current = compress_t::NONE;	
+		} break;
+		// Если набор соответствует заголовку сообщения
+		case static_cast <uint8_t> (suite_t::HEADER): {
+			// Выполняем сброс флага формирования чанков
+			this->_te.chunking = false;
+			// Выполняем очистку списка заголовков
+			this->_web.clearHeaders();
+		} break;
+	}
+}
+/**
+ * sizeBody Метод получения размера тела данных
+ * @return размер тела данных
+ */
+size_t awh::Http::sizeBody() const noexcept {
+	// Выводим размер тела данных
+	return this->_web.body().size();
+}
+/**
  * parse Метод парсинга сырых данных
  * @param buffer буфер данных для обработки
  * @param size   размер буфера данных
@@ -907,31 +940,6 @@ const vector <char> awh::Http::payload() const noexcept {
 void awh::Http::payload(const vector <char> & payload) noexcept {
 	// Устанавливаем данные телал сообщения
 	this->_web.body(payload);
-}
-/**
- * clear Метод очистки данных HTTP-протокола
- * @param suite тип набора к которому соответствует заголовок
- */
-void awh::Http::clear(const suite_t suite) noexcept {
-	// Определяем запрашиваемый набор к которому принадлежит заголовок
-	switch(static_cast <uint8_t> (suite)){
-		// Если набор соответствует телу сообщения
-		case static_cast <uint8_t> (suite_t::BODY): {
-			// Выполняем очистку данных тела
-			this->_web.clearBody();
-			// Снимаем флаг зашифрованной полезной нагрузки
-			const_cast <http_t *> (this)->_crypted = false;
-			// Снимаем флаг сжатой полезной нагрузки
-			const_cast <http_t *> (this)->_compressor.current = compress_t::NONE;	
-		} break;
-		// Если набор соответствует заголовку сообщения
-		case static_cast <uint8_t> (suite_t::HEADER): {
-			// Выполняем сброс флага формирования чанков
-			this->_te.chunking = false;
-			// Выполняем очистку списка заголовков
-			this->_web.clearHeaders();
-		} break;
-	}
 }
 /**
  * black Метод добавления заголовка в чёрный список
