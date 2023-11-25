@@ -987,6 +987,9 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
+				
+				cout << " ***************** HTTP2 " << this->_redirects << endl;
+				
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if((response.code == 401) && this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
