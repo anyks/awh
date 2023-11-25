@@ -593,7 +593,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					it->second->sid = sid;
 					// Создаём список флагов клиента
 					set <client::web_t::flag_t> flags = {
-						client::web_t::flag_t::ALIVE,
+						// client::web_t::flag_t::ALIVE,
 						client::web_t::flag_t::NOT_STOP,
 						client::web_t::flag_t::NOT_INFO
 					};
@@ -674,7 +674,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								it->second->sid = sid;
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
-									client::web_t::flag_t::ALIVE,
+									// client::web_t::flag_t::ALIVE,
 									client::web_t::flag_t::NOT_STOP,
 									client::web_t::flag_t::NOT_INFO
 								};
@@ -751,7 +751,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							it->second->sid = sid;
 							// Создаём список флагов клиента
 							set <client::web_t::flag_t> flags = {
-								client::web_t::flag_t::ALIVE,
+								// client::web_t::flag_t::ALIVE,
 								client::web_t::flag_t::NOT_STOP,
 								client::web_t::flag_t::NOT_INFO
 							};
