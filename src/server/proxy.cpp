@@ -408,6 +408,9 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
  * @param headers заголовки HTTP-ответа
  */
 void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+	
+	cout << " ----------------- RESPONSE " << endl;
+	
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -487,6 +490,9 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
  * @param headers заголовки HTTP-запроса
  */
 void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	
+	cout << " ----------------- REQUEST " << endl;
+	
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
