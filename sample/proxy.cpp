@@ -69,12 +69,9 @@ class Proxy {
 		 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 		 * @param mode   режим события подключения
 		 */
-		void active(const uint64_t bid, const server::proxy_t::broker_t, const server::web_t::mode_t mode){
-			
-			cout << " ==================2 " << bid << endl;
-
+		void active(const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
 			// Определяем тип подключения
-			switch(static_cast <uint8_t> (mode)){
+			switch(static_cast <uint8_t> (broker)){
 				// Если событие принадлежит клиенту
 				case static_cast <uint8_t> (server::proxy_t::broker_t::CLIENT):
 					// Выводим информацию в лог
