@@ -62,10 +62,16 @@ void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
  * @param core объект сетевого ядра
  */
 void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ############# DISCONNECT HTTP1 1 " << endl;
+	
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
 		return;
+	
+	cout << " ############# DISCONNECT HTTP1 2 " << endl;
+	
 	// Выполняем установку агента воркера HTTP/1.1
 	this->_agent = agent_t::HTTP;
 	// Если подключение является постоянным
@@ -87,6 +93,9 @@ void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 			// Завершаем работу
 			dynamic_cast <client::core_t *> (core)->stop();
 	}
+
+	cout << " ############# DISCONNECT HTTP1 3 " << endl;
+
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
 		// Выполняем функцию обратного вызова

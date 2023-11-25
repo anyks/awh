@@ -156,14 +156,23 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ############# DISCONNECT WS2 1 " << endl;
+	
 	// Выполняем сброс идентификатора потока
 	this->_sid = -1;
 	// Выполняем удаление подключения
 	this->_http2.close();
+
+	cout << " ############# DISCONNECT WS2 2 " << endl;
+
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
 		return;
+	
+	cout << " ############# DISCONNECT WS2 3 " << endl;
+	
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Выполняем очистку оставшихся данных
@@ -185,6 +194,9 @@ void awh::client::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 	}
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
+	
+	cout << " ############# DISCONNECT WS2 4 " << endl;
+	
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
 		// Выполняем функцию обратного вызова

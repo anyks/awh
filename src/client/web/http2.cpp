@@ -75,22 +75,43 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
  * @param core объект сетевого ядра
  */
 void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+	
+	cout << " ############# DISCONNECT HTTP2 1 " << endl;
+	
 	// Выполняем удаление подключения
 	this->_http2.close();
+	
+	cout << " ############# DISCONNECT HTTP2 3 " << endl;
+	
 	// Выполняем установку сессии HTTP/2
 	this->_ws2._http2 = nullptr;
+	
+	cout << " ############# DISCONNECT HTTP2 4 " << endl;
+	
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
 		return;
+	
+	cout << " ############# DISCONNECT HTTP2 5 " << endl;
+	
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
 	// Выполняем очистку списка запросов
 	this->_requests.clear();
+	
+	cout << " ############# DISCONNECT HTTP2 6 " << endl;
+	
 	// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
 	this->_ws2.disconnectCallback(bid, sid, core);
+	
+	cout << " ############# DISCONNECT HTTP2 7 " << endl;
+	
 	// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
 	this->_http1.disconnectCallback(bid, sid, core);
+	
+	cout << " ############# DISCONNECT HTTP2 8 " << endl;
+	
 	// Если подключение не является постоянным
 	if(!this->_scheme.alive){
 		// Выполняем сброс параметров запроса
@@ -104,6 +125,9 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 			// Завершаем работу
 			dynamic_cast <client::core_t *> (core)->stop();
 	}
+
+	cout << " ############# DISCONNECT HTTP2 9 " << endl;
+
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
 		// Выполняем функцию обратного вызова
