@@ -283,6 +283,9 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					this->_attempt++;
 					// Выполняем очистку оставшихся данных
 					this->_buffer.clear();
+					
+					cout << " $$$$$$$$$$$$$$ OPEN HTTP1 1 " << endl;
+					
 					// Выполняем установку следующего экшена на открытие подключения
 					this->open();
 					// Завершаем работу
@@ -328,6 +331,9 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 							// Выполняем установку метода запроса
 							request.method = awh::web_t::method_t::GET;
 						}
+						
+						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 2 " << endl;
+						
 						// Выполняем установку следующего экшена на открытие подключения
 						this->open();
 						// Завершаем работу
@@ -350,6 +356,9 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					this->_ws1._buffer.clear();
 					// Получаем количество попыток
 					this->_attempt = this->_ws1._attempt;
+					
+					cout << " $$$$$$$$$$$$$$ OPEN HTTP1 3 " << endl;
+					
 					// Выполняем установку следующего экшена на открытие подключения
 					this->open();
 					// Завершаем работу
@@ -376,6 +385,9 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 						this->_attempt = this->_ws1._attempt;
 						// Устанавливаем новый адрес запроса
 						this->_uri.combine(this->_scheme.url, url);
+						
+						cout << " $$$$$$$$$$$$$$ OPEN HTTP1 4 " << endl;
+						
 						// Выполняем установку следующего экшена на открытие подключения
 						this->open();
 						// Завершаем работу

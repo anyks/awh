@@ -678,6 +678,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
 									// Увеличиваем количество попыток
 									this->_attempt++;
+
+									cout << " $$$$$$$$$$$$$$ OPEN HTTP2 1 " << endl;
+
 									// Выполняем установку следующего экшена на открытие подключения
 									this->open();
 									// Завершаем работу
@@ -724,6 +727,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 												jt->second->method = awh::web_t::method_t::GET;
 											}
 										}
+										
+										cout << " $$$$$$$$$$$$$$ OPEN HTTP2 2 " << endl;
+										
 										// Выполняем установку следующего экшена на открытие подключения
 										this->open();
 										// Завершаем работу
@@ -746,6 +752,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								this->_http1._buffer.clear();
 								// Получаем количество попыток
 								this->_attempt = this->_http1._attempt;
+								
+								cout << " $$$$$$$$$$$$$$ OPEN HTTP2 3 " << endl;
+								
 								// Выполняем установку следующего экшена на открытие подключения
 								this->open();
 								// Завершаем работу
@@ -794,6 +803,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 											jt->second->method = awh::web_t::method_t::GET;
 										}
 									}
+									
+									cout << " $$$$$$$$$$$$$$ OPEN HTTP2 4 " << endl;
+									
 									// Выполняем установку следующего экшена на открытие подключения
 									this->open();
 									// Завершаем работу
@@ -817,6 +829,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 							this->_ws2._buffer.clear();
 							// Получаем количество попыток
 							this->_attempt = this->_ws2._attempt;
+							
+							cout << " $$$$$$$$$$$$$$ OPEN HTTP2 5 " << endl;
+							
 							// Выполняем установку следующего экшена на открытие подключения
 							this->open();
 							// Завершаем работу
@@ -849,6 +864,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 								if((result = it->second->update = (jt != this->_requests.end())))
 									// Устанавливаем новый адрес запроса
 									jt->second->url = this->_scheme.url;
+								
+								cout << " $$$$$$$$$$$$$$ OPEN HTTP2 6 " << endl;
+								
 								// Выполняем установку следующего экшена на открытие подключения
 								this->open();
 								// Завершаем работу
