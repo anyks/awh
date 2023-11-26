@@ -842,6 +842,10 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 							else this->_ws1._compressors = this->_compressors;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_ws1._scheme.url, request.url);
+							// Если активирован режим прокси-сервера
+							if(this->_proxy.mode)
+								// Выполняем сброс заголовков прокси-сервера
+								this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 							// Выполняем установку подключения с WebSocket-сервером
 							this->_ws1.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 							// Выводим идентификатор подключения

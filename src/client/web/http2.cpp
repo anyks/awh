@@ -1323,21 +1323,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							}
 							// Если активирован режим прокси-сервера
 							if(this->_proxy.mode){
-								// Создаём объек запроса
-								awh::web_t::req_t query(request.method, this->_scheme.url);
-								// Выполняем извлечение заголовка авторизации на прокси-сервера
-								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
-								// Если заголовок авторизации получен
-								if(!header.empty()){
-									// Выполняем поиск заголовка авторизации на прокси-сервере
-									auto it = request.headers.find("Proxy-Authorization");
-									// Если заголовок авторизации на прокси-сервере найден
-									if(it != request.headers.end())
-										// Выполняем обновление заголовка
-										const_cast <string &> (it->second) = header;
-									// Выполняем установки заголовка авторизации на прокси-сервере
-									else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
-								}
+								// Выполняем сброс заголовков прокси-сервера
+								this->_http1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.count("Proxy-Connection") < 1){
 									// Если установлено постоянное подключение к прокси-серверу
@@ -1370,27 +1357,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					sid = this->update(* const_cast <request_t *> (&request));
 					// Если активирован режим прокси-сервера
 					if(this->_proxy.mode){
-						// Объект параметров запроса
-						awh::web_t::req_t query;
-						// Если флаг инициализации сессии HTTP/2 установлен
-						if(this->_http2.is())
-							// Создаём объек запроса
-							query = awh::web_t::req_t(awh::web_t::method_t::CONNECT, request.url);
-						// Если активирован режим работы с HTTP/1.1 протоколом
-						else query = awh::web_t::req_t(awh::web_t::method_t::GET, request.url);
-						// Выполняем извлечение заголовка авторизации на прокси-сервера
-						const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
-						// Если заголовок авторизации получен
-						if(!header.empty()){
-							// Выполняем поиск заголовка авторизации на прокси-сервере
-							auto it = request.headers.find("Proxy-Authorization");
-							// Если заголовок авторизации на прокси-сервере найден
-							if(it != request.headers.end())
-								// Выполняем обновление заголовка
-								const_cast <string &> (it->second) = header;
-							// Выполняем установки заголовка авторизации на прокси-сервере
-							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
-						}
+						// Выполняем сброс заголовков прокси-сервера
+						this->_ws2._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.count("Proxy-Connection") < 1){
 							// Если установлено постоянное подключение к прокси-серверу

@@ -67,6 +67,17 @@ namespace awh {
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
+				 * dataAuth Метод извлечения данных авторизации
+				 * @return данные модуля авторизации
+				 */
+				server::auth_t::data_t dataAuth() const noexcept;
+				/**
+				 * dataAuth Метод установки данных авторизации
+				 * @param data данные авторизации для установки
+				 */
+				void dataAuth(const server::auth_t::data_t & data) noexcept;
+			public:
+				/**
 				 * extractPassCallback Метод добавления функции извлечения пароля
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */

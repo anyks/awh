@@ -16,6 +16,41 @@
 #include <auth/client.hpp>
 
 /**
+ * data Метод извлечения данных авторизации
+ * @return данные модуля авторизации
+ */
+awh::client::Auth::data_t awh::client::Auth::data() const noexcept {
+	// Результат работы функции
+	data_t result;
+	// Выполняем установку типа авторизации
+	result.type = &this->_type;
+	// Выполняем установку параметров Digest авторизации
+	result.digest = &this->_digest;
+	// Выполняем установку логина пользователя
+	result.user = &this->_user;
+	// Выполняем установку пароля пользователя
+	result.pass = &this->_pass;
+	// Выводим результат
+	return result;
+}
+/**
+ * data Метод установки данных авторизации
+ * @param data данные авторизации для установки
+ */
+void awh::client::Auth::data(const data_t & data) noexcept {
+	// Если данные переданы
+	if((data.type != nullptr) && (data.digest != nullptr) && (data.user != nullptr) && (data.pass != nullptr)){
+		// Выполняем установку типа авторизации
+		this->_type = (* data.type);
+		// Выполняем установку параметров Digest авторизации
+		this->_digest = (* data.digest);
+		// Выполняем установку логина пользователя
+		this->_user.assign(data.user->begin(), data.user->end());
+		// Выполняем установку пароля пользователя
+		this->_pass.assign(data.pass->begin(), data.pass->end());
+	}
+}
+/**
  * uri Метод установки параметров HTTP запроса
  * @param uri строка параметров HTTP запроса
  */

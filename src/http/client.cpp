@@ -85,6 +85,22 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 	return result;
 }
 /**
+ * dataAuth Метод извлечения данных авторизации
+ * @return данные модуля авторизации
+ */
+awh::client::auth_t::data_t awh::client::Http::dataAuth() const noexcept {
+	// Выполняем извлечение данных авторизации
+	return this->_auth.client.data();
+}
+/**
+ * dataAuth Метод установки данных авторизации
+ * @param data данные авторизации для установки
+ */
+void awh::client::Http::dataAuth(const client::auth_t::data_t & data) noexcept {
+	// Выполняем установку данных авторизации
+	this->_auth.client.data(data);
+}
+/**
  * user Метод установки параметров авторизации
  * @param user логин пользователя для авторизации на сервере
  * @param pass пароль пользователя для авторизации на сервере

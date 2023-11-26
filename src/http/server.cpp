@@ -106,6 +106,22 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 	return result;
 }
 /**
+ * dataAuth Метод извлечения данных авторизации
+ * @return данные модуля авторизации
+ */
+awh::server::auth_t::data_t awh::server::Http::dataAuth() const noexcept {
+	// Выполняем извлечение данных авторизации
+	return this->_auth.server.data();
+}
+/**
+ * dataAuth Метод установки данных авторизации
+ * @param data данные авторизации для установки
+ */
+void awh::server::Http::dataAuth(const server::auth_t::data_t & data) noexcept {
+	// Выполняем установку данных авторизации
+	this->_auth.server.data(data);
+}
+/**
  * realm Метод установки название сервера
  * @param realm название сервера
  */

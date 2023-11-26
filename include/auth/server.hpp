@@ -36,6 +36,21 @@ namespace awh {
 		 * AuthServer Класс работы с авторизацией на сервере
 		 */
 		typedef class Auth : public auth_t {
+			public:
+				/**
+				 * Data Структура данных авторизации
+				 */
+				typedef struct Data {
+					const type_t * type;     // Тип авторизации
+					const digest_t * digest; // Параметры Digest авторизации
+					const digest_t * locale; // Параметры Digest авторизации пользователя
+					const string * user;     // Логин пользователя
+					const string * pass;     // Пароль пользователя
+					/**
+					 * Data Конструктор
+					 */
+					Data() noexcept : type(nullptr), digest(nullptr), locale(nullptr), user(nullptr), pass(nullptr) {}
+				} data_t;
 			private:
 				// Логин пользователя
 				string _user;
@@ -45,7 +60,18 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Параметры Digest авторизации пользователя
-				digest_t _userDigest;
+				digest_t _locale;
+			public:
+				/**
+				 * data Метод извлечения данных авторизации
+				 * @return данные модуля авторизации
+				 */
+				data_t data() const noexcept;
+				/**
+				 * data Метод установки данных авторизации
+				 * @param data данные авторизации для установки
+				 */
+				void data(const data_t & data) noexcept;
 			public:
 				/**
 				 * check Метод проверки авторизации

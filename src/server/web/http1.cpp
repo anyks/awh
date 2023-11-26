@@ -297,18 +297,21 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 							switch(static_cast <uint8_t> (options->http.auth())){
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (http_t::status_t::GOOD): {
-									// Если заголовок Upgrade установлен
-									if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
-										// Выполняем извлечение заголовка Upgrade
-										const string & header = options->http.header("upgrade");
-										// Если запрашиваемый протокол соответствует WebSocket
-										if(this->_webSocket && this->_fmk->compare(header, "websocket"))
-											// Выполняем инициализацию WebSocket-сервера
-											this->websocket(bid, sid, core);
-										// Если протокол запрещён или не поддерживается, выполняем закрытие подключения
-										else rejectFn(bid, dynamic_cast <server::core_t *> (core));
-										// Завершаем обработку
-										goto Next;
+									// Если сервер соответствует HTTP-серверу
+									if(this->_identity == http_t::identity_t::HTTP){
+										// Если заголовок Upgrade установлен
+										if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
+											// Выполняем извлечение заголовка Upgrade
+											const string & header = options->http.header("upgrade");
+											// Если запрашиваемый протокол соответствует WebSocket
+											if(this->_webSocket && this->_fmk->compare(header, "websocket"))
+												// Выполняем инициализацию WebSocket-сервера
+												this->websocket(bid, sid, core);
+											// Если протокол запрещён или не поддерживается, выполняем закрытие подключения
+											else rejectFn(bid, dynamic_cast <server::core_t *> (core));
+											// Завершаем обработку
+											goto Next;
+										}
 									}
 									// Выполняем извлечение параметров запроса
 									const auto & request = options->http.request();

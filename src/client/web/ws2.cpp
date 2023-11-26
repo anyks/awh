@@ -140,6 +140,10 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 				// Выполняем инициализацию нового тредпула
 				this->_ws1.multiThreads(this->_threads);
 			}
+			// Если активирован режим прокси-сервера
+			if(this->_proxy.mode)
+				// Выполняем сброс заголовков прокси-сервера
+				this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 			// Выполняем переброс вызова коннекта на клиент WebSocket
 			this->_ws1.connectCallback(bid, sid, core);
 		}

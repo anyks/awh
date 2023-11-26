@@ -538,7 +538,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 												// Выполняем функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
 										// Если заголовок WebSocket или прокси-сервер активирован
-										} else if((options->http.identity() == awh::http_t::identity_t::WS) || (options->http.identity() == awh::http_t::identity_t::PROXY))
+										} else if((options->http.identity() == http_t::identity_t::WS) || (options->http.identity() == http_t::identity_t::PROXY))
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
 									}
@@ -609,7 +609,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::status_t::GOOD): {
 				// Если заголовок WebSocket активирован
-				if(options->http.identity() == awh::http_t::identity_t::WS){
+				if(options->http.identity() == http_t::identity_t::WS){
 					// Если запрашиваемый протокол соответствует WebSocket
 					if(this->_webSocket)
 						// Выполняем инициализацию WebSocket-сервера
@@ -741,6 +741,8 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 				awh::web_t::res_t response;
 				// Определяем идентичность сервера
 				switch(static_cast <uint8_t> (this->_identity)){
+					// Если сервер соответствует WebSocket-серверу
+					case static_cast <uint8_t> (http_t::identity_t::WS):
 					// Если сервер соответствует HTTP-серверу
 					case static_cast <uint8_t> (http_t::identity_t::HTTP):
 						// Формируем ответ на запрос об авторизации

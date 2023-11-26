@@ -35,11 +35,36 @@ namespace awh {
 		 * AuthClient Класс работы с авторизацией клиента
 		 */
 		typedef class Auth : public auth_t {
+			public:
+				/**
+				 * Data Структура данных авторизации
+				 */
+				typedef struct Data {
+					const type_t * type;     // Тип авторизации
+					const digest_t * digest; // Параметры Digest авторизации
+					const string * user;     // Логин пользователя
+					const string * pass;     // Пароль пользователя
+					/**
+					 * Data Конструктор
+					 */
+					Data() noexcept : type(nullptr), digest(nullptr), user(nullptr), pass(nullptr) {}
+				} data_t;
 			private:
 				// Логин пользователя
 				string _user;
 				// Пароль пользователя
 				string _pass;
+			public:
+				/**
+				 * data Метод извлечения данных авторизации
+				 * @return данные модуля авторизации
+				 */
+				data_t data() const noexcept;
+				/**
+				 * data Метод установки данных авторизации
+				 * @param data данные авторизации для установки
+				 */
+				void data(const data_t & data) noexcept;
 			public:
 				/**
 				 * uri Метод установки параметров HTTP запроса

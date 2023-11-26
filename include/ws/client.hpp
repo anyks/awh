@@ -56,6 +56,17 @@ namespace awh {
 				bool check(const flag_t flag) noexcept;
 			public:
 				/**
+				 * dataAuth Метод извлечения данных авторизации
+				 * @return данные модуля авторизации
+				 */
+				client::auth_t::data_t dataAuth() const noexcept;
+				/**
+				 * dataAuth Метод установки данных авторизации
+				 * @param data данные авторизации для установки
+				 */
+				void dataAuth(const client::auth_t::data_t & data) noexcept;
+			public:
+				/**
 				 * user Метод установки параметров авторизации
 				 * @param user логин пользователя для авторизации на сервере
 				 * @param pass пароль пользователя для авторизации на сервере

@@ -16,6 +16,45 @@
 #include <auth/server.hpp>
 
 /**
+ * data Метод извлечения данных авторизации
+ * @return данные модуля авторизации
+ */
+awh::server::Auth::data_t awh::server::Auth::data() const noexcept {
+	// Результат работы функции
+	data_t result;
+	// Выполняем установку типа авторизации
+	result.type = &this->_type;
+	// Выполняем установку параметров Digest авторизации
+	result.digest = &this->_digest;
+	// Выполняем установку пользовательских параметров Digest авторизации
+	result.locale = &this->_locale;
+	// Выполняем установку логина пользователя
+	result.user = &this->_user;
+	// Выполняем установку пароля пользователя
+	result.pass = &this->_pass;
+	// Выводим результат
+	return result;
+}
+/**
+ * data Метод установки данных авторизации
+ * @param data данные авторизации для установки
+ */
+void awh::server::Auth::data(const data_t & data) noexcept {
+	// Если данные переданы
+	if((data.type != nullptr) && (data.digest != nullptr) && (data.locale != nullptr) && (data.user != nullptr) && (data.pass != nullptr)){
+		// Выполняем установку типа авторизации
+		this->_type = (* data.type);
+		// Выполняем установку параметров Digest авторизации
+		this->_digest = (* data.digest);
+		// Выполняем установку пользовательских параметров Digest авторизации
+		this->_locale = (* data.locale);
+		// Выполняем установку логина пользователя
+		this->_user.assign(data.user->begin(), data.user->end());
+		// Выполняем установку пароля пользователя
+		this->_pass.assign(data.pass->begin(), data.pass->end());
+	}
+}
+/**
  * check Метод проверки авторизации
  * @param method метод HTTP запроса
  * @return       результат проверки авторизации
@@ -35,9 +74,9 @@ bool awh::server::Auth::check(const string & method) noexcept {
 		// Если тип авторизации - Дайджест
 		case static_cast <uint8_t> (type_t::DIGEST): {
 			// Если данные пользователя переданы
-			if(!method.empty() && !this->_user.empty() && !this->_userDigest.nc.empty() && !this->_userDigest.uri.empty() && !this->_userDigest.cnonce.empty() && !this->_userDigest.resp.empty()){
+			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
 				// Если на сервере счётчик меньше
-				if((this->_fmk->atoi(this->_digest.nc, 16) <= this->_fmk->atoi(this->_userDigest.nc, 16)) && this->_callback.is("extract")){
+				if((this->_fmk->atoi(this->_digest.nc, 16) <= this->_fmk->atoi(this->_locale.nc, 16)) && this->_callback.is("extract")){
 					// Получаем пароль пользователя
 					const string & pass = this->_callback.apply <string, const string &> ("extract", this->_user);
 					// Если пароль пользователя получен
@@ -45,18 +84,18 @@ bool awh::server::Auth::check(const string & method) noexcept {
 						// Параметры проверки дайджест авторизации
 						digest_t digest;
 						// Устанавливаем счётчик клиента
-						this->_digest.nc = this->_userDigest.nc;
+						this->_digest.nc = this->_locale.nc;
 						// Устанавливаем параметры для проверки
 						digest.nc     = this->_digest.nc;
 						digest.hash   = this->_digest.hash;
-						digest.uri    = this->_userDigest.uri;
-						digest.qop    = this->_userDigest.qop;
-						digest.realm  = this->_userDigest.realm;
-						digest.nonce  = this->_userDigest.nonce;
-						digest.opaque = this->_userDigest.opaque;
-						digest.cnonce = this->_userDigest.cnonce;
+						digest.uri    = this->_locale.uri;
+						digest.qop    = this->_locale.qop;
+						digest.realm  = this->_locale.realm;
+						digest.nonce  = this->_locale.nonce;
+						digest.opaque = this->_locale.opaque;
+						digest.cnonce = this->_locale.cnonce;
 						// Выполняем проверку авторизации
-						result = (this->_fmk->compare(this->response(this->_fmk->transform(method, fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_userDigest.resp));
+						result = (this->_fmk->compare(this->response(this->_fmk->transform(method, fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_locale.resp));
 					}
 				}
 			}
@@ -149,45 +188,45 @@ void awh::server::Auth::header(const string & header) noexcept {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем relam
-										this->_userDigest.realm = value;
+										this->_locale.realm = value;
 									// Если параметр является ключём сгенерированным сервером
 									} else if(this->_fmk->compare(key, "nonce")) {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем nonce
-										this->_userDigest.nonce = value;
+										this->_locale.nonce = value;
 									// Если параметр являеются параметры запроса
 									} else if(this->_fmk->compare(key, "uri")) {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем uri
-										this->_userDigest.uri = value;
+										this->_locale.uri = value;
 									// Если параметр является ключём сгенерированным клиентом
 									} else if(this->_fmk->compare(key, "cnonce")) {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем cnonce
-										this->_userDigest.cnonce = value;
+										this->_locale.cnonce = value;
 									// Если параметр является ключём ответа клиента
 									} else if(this->_fmk->compare(key, "response")) {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем response
-										this->_userDigest.resp = value;
+										this->_locale.resp = value;
 									// Если параметр является ключём сервера
 									} else if(this->_fmk->compare(key, "opaque")) {
 										// Удаляем кавычки
 										value.assign(value.begin() + 1, value.end() - 1);
 										// Устанавливаем opaque
-										this->_userDigest.opaque = value;
+										this->_locale.opaque = value;
 									// Если параметр является типом авторизации
 									} else if(this->_fmk->compare(key, "qop"))
 										// Устанавливаем qop
-										this->_userDigest.qop = value;
+										this->_locale.qop = value;
 									// Если параметр является счётчиком запросов
 									else if(this->_fmk->compare(key, "nc"))
 										// Устанавливаем nc
-										this->_userDigest.nc = value;
+										this->_locale.nc = value;
 								}
 							}
 						}

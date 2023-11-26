@@ -245,6 +245,22 @@ void awh::server::WS::opaque(const string & opaque) noexcept {
 		this->_auth.server.opaque(opaque);
 }
 /**
+ * dataAuth Метод извлечения данных авторизации
+ * @return данные модуля авторизации
+ */
+awh::server::auth_t::data_t awh::server::WS::dataAuth() const noexcept {
+	// Выполняем извлечение данных авторизации
+	return this->_auth.server.data();
+}
+/**
+ * dataAuth Метод установки данных авторизации
+ * @param data данные авторизации для установки
+ */
+void awh::server::WS::dataAuth(const server::auth_t::data_t & data) noexcept {
+	// Выполняем установку данных авторизации
+	this->_auth.server.data(data);
+}
+/**
  * extractPassCallback Метод добавления функции извлечения пароля
  * @param callback функция обратного вызова для извлечения пароля
  */
