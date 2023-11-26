@@ -297,9 +297,6 @@ bool awh::client::WebSocket1::redirect() noexcept {
 	bool result = false;
 	// Если список ответов получен
 	if(this->_redirects && (result = !this->_stopped)){
-		
-		cout << " ************** REDIRECT WS1 " << endl;
-		
 		// Получаем параметры запроса
 		const auto & response = this->_http.response();
 		// Если необходимо выполнить ещё одну попытку выполнения авторизации
@@ -1349,12 +1346,12 @@ void awh::client::WebSocket1::mode(const set <flag_t> & flags) noexcept {
 	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	// Устанавливаем флаг разрешающий выполнять редиректы
+	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_noinitssl = (flags.count(flag_t::NO_INIT_SSL) > 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента

@@ -21,44 +21,22 @@
  * @param core объект сетевого ядра
  */
 void awh::client::Web::openCallback(const uint16_t sid, awh::core_t * core) noexcept {
-	
-	cout << " ±±±±±±±±±±±±±±±± openCallback1 " << endl;
-
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN)){
-			
-			cout << " ±±±±±±±±±±±±±±±± openCallback2 " << endl;
-			
 			// Если подключение уже выполнено
 			if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
-				
-				cout << " ±±±±±±±±±±±±±±±± openCallback3 " << endl;
-				
 				// Если подключение производится через, прокси-сервер
-				if(this->_scheme.isProxy()){
-					
-					cout << " ±±±±±±±±±±±±±±±± openCallback4 " << endl;
-					
+				if(this->_scheme.isProxy())
 					// Выполняем запуск функции подключения для прокси-сервера
 					this->proxyConnectCallback(this->_bid, sid, core);
 				// Выполняем запуск функции подключения
-				} else {
-					
-					cout << " ±±±±±±±±±±±±±±±± openCallback5 " << endl;
-					
-					this->connectCallback(this->_bid, sid, core);
-				}
+				else this->connectCallback(this->_bid, sid, core);
 			// Если биндинг уже запущен, выполняем запрос на сервер
-			} else {
-				
-				cout << " ±±±±±±±±±±±±±±±± openCallback6 " << endl;
-				
-				dynamic_cast <client::core_t *> (core)->open(sid);
-			}
+			} else dynamic_cast <client::core_t *> (core)->open(sid);
 		}
 	}
 }
@@ -502,6 +480,14 @@ void awh::client::Web::on(function <bool (const char *, const size_t)> callback)
 	this->_callback.set <bool (const char *, const size_t)> ("raw", callback);
 }
 /**
+ * on Метод установки функция обратного вызова завершения запроса
+ * @param callback функция обратного вызова
+ */
+void awh::client::Web::on(function <void (const int32_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const int32_t)> ("result", callback);
+}
+/**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
@@ -643,12 +629,7 @@ void awh::client::Web::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <client::core_t *> (this->_core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
-		else {
-			
-			cout << " ************** START " << endl;
-			
-			this->open();
-		}
+		else this->open();
 	}
 }
 /**

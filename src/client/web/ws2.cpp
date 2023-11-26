@@ -156,23 +156,16 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
  * @param core объект сетевого ядра
  */
 void awh::client::WebSocket2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
-	
-	cout << " ############# DISCONNECT WS2 1 " << endl;
-	
 	// Выполняем сброс идентификатора потока
 	this->_sid = -1;
 	// Выполняем удаление подключения
 	this->_http2.close();
-
-	cout << " ############# DISCONNECT WS2 2 " << endl;
-
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
 		return;
-	
-	cout << " ############# DISCONNECT WS2 3 " << endl;
-	
+	// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
+	this->_ws1.disconnectCallback(bid, sid, core);
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Выполняем очистку оставшихся данных
@@ -194,9 +187,6 @@ void awh::client::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
 	}
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
-	
-	cout << " ############# DISCONNECT WS2 4 " << endl;
-	
 	// Если функция обратного вызова при подключении/отключении установлена
 	if(this->_callback.is("active"))
 		// Выполняем функцию обратного вызова
@@ -617,19 +607,16 @@ bool awh::client::WebSocket2::redirect(const uint64_t bid, const uint16_t sid, a
 	bool result = false;
 	// Если редиректы разрешены
 	if(this->_redirects){
-		
-		cout << " ************** REDIRECT WS2 " << endl;
-		
 		// Если переключение протокола на HTTP/2 не выполнено
 		if(this->_proto != engine_t::proto_t::HTTP2){
-			// Выполняем переброс вызова дисконнекта на клиент WebSocket
-			this->_ws1.disconnectCallback(bid, sid, core);
 			// Если список ответов получен
 			if((result = !this->_ws1._stopped)){
 				// Получаем параметры запроса
 				const auto & response = this->_ws1._http.response();
 				// Если необходимо выполнить ещё одну попытку выполнения авторизации
 				if((result = (this->_proxy.answer == 407) || (response.code == 401) || (response.code == 407))){
+					// Выполняем переброс вызова дисконнекта на клиент WebSocket
+					this->_ws1.disconnectCallback(bid, sid, core);
 					// Выполняем очистку оставшихся данных
 					this->_ws1._buffer.clear();
 					// Получаем количество попыток
@@ -656,6 +643,8 @@ bool awh::client::WebSocket2::redirect(const uint64_t bid, const uint16_t sid, a
 					const uri_t::url_t & url = this->_ws1._http.url();
 					// Если адрес запроса получен
 					if((result = !url.empty())){
+						// Выполняем переброс вызова дисконнекта на клиент WebSocket
+						this->_ws1.disconnectCallback(bid, sid, core);
 						// Получаем количество попыток
 						this->_attempt = this->_ws1._attempt;
 						// Устанавливаем новый адрес запроса

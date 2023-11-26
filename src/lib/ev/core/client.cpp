@@ -45,9 +45,6 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 			switch(static_cast <uint8_t> (this->mode)){
 				// Если режим работы клиента - это подключение
 				case static_cast <uint8_t> (scheme_t::mode_t::CONNECT):
-					
-					cout << " ***************** " << "Timeout::callback1" << endl;
-					
 					// Выполняем новое подключение
 					this->core->connect(this->sid);
 				break;
@@ -57,9 +54,6 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::DISCONNECT;
-					
-					cout << " ***************** " << "Timeout::callback2" << endl;
-					
 					// Выполняем новую попытку подключиться
 					this->core->reconnect(shm->sid);
 				} break;
@@ -277,9 +271,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
-						
-						cout << " ***************** " << "CONNECT ERROR" << endl;
-						
 						// Выполняем переподключение
 						this->reconnect(sid);
 						// Выходим из функции
@@ -407,9 +398,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					shm->status.real = scheme_t::mode_t::DISCONNECT;
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::DISCONNECT;
-					
-					cout << " ***************** " << "CONNECT ERROR 2" << endl;
-					
 					// Выполняем переподключение
 					this->reconnect(sid);
 					// Выходим из функции
@@ -458,9 +446,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::reconnect(const uint16_t sid) noexcept {
-	
-	cout << " !!!!!!!!!!!!!!!! RECONNECT " << endl;
-	
 	// Выполняем поиск идентификатора схемы сети
 	auto it = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -614,9 +599,6 @@ void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
 				if(shm->status.work == scheme_t::work_t::DISALLOW)
 					// Разрешаем выполнение работы
 					shm->status.work = scheme_t::work_t::ALLOW;
-				
-				cout << " ***************** " << "sendTimeout" << endl;
-				
 				// Если нужно выполнить автоматическое переподключение, выполняем новую попытку
 				if(shm->alive) this->reconnect(item.first);
 			}
@@ -1199,11 +1181,6 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 						this->_log->print("Connect client to server [%s]", log_t::flag_t::INFO, this->_settings.filename.c_str());
 				} break;
 			}
-
-
-			cout << " @@@@@@@@@@@@@@@@ CORE CONNECT " << endl;
-
-
 			// Если подключение производится через, прокси-сервер
 			if(shm->isProxy()){
 				// Если функция обратного вызова для прокси-сервера установлена
@@ -1498,9 +1475,6 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 void awh::client::Core::activation(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
-		
-		cout << " @@@@@@@@@@@@@@@@@@@ ACTIVATION " << endl;
-		
 		// Выполняем поиск идентификатора схемы сети
 		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден

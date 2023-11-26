@@ -575,6 +575,14 @@ void awh::client::AWH::on(function <bool (const char *, const size_t)> callback)
 	this->_http.on(callback);
 }
 /**
+ * on Метод установки функция обратного вызова завершения запроса
+ * @param callback функция обратного вызова
+ */
+void awh::client::AWH::on(function <void (const int32_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_http.on(callback);
+}
+/**
  * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
  * @param callback функция обратного вызова
  */

@@ -346,6 +346,12 @@ namespace awh {
 				virtual void on(function <bool (const char *, const size_t)> callback) noexcept;
 			public:
 				/**
+				 * on Метод установки функция обратного вызова завершения запроса
+				 * @param callback функция обратного вызова
+				 */
+				virtual void on(function <void (const int32_t)> callback) noexcept;
+			public:
+				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */

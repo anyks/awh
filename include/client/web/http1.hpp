@@ -148,6 +148,12 @@ namespace awh {
 				void flush() noexcept;
 			private:
 				/**
+				 * result Метод завершения выполнения запроса
+				 * @param sid идентификатор запроса
+				 */
+				void result(const int32_t sid) noexcept;
+			private:
+				/**
 				 * pinging Метод таймера выполнения пинга удалённого сервера
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
@@ -258,6 +264,12 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const char *, const size_t)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функция обратного вызова завершения запроса
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const int32_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока
