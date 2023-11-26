@@ -175,8 +175,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
 				// Выполняем сброс метода подклюения
 				it->second->method = awh::web_t::method_t::NONE;
-				// Выполняем закрытие подключения
-				// this->close(bid);
+				// Если результат не получен, просто отключаемся
+				if(it->second->response.headers.empty())
+					// Выполняем закрытие подключения
+					this->close(bid);
 			} break;
 		}
 	}

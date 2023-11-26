@@ -870,6 +870,8 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP1_SEND, "Number of redirect attempts has not been reset");
+					// Выполняем отключение в обычном режиме
+					const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
 			// Выводим сообщение об ошибке
 			} else {
@@ -879,6 +881,8 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is already activated");
+				// Выполняем отключение в обычном режиме
+				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 			}
 		}
 	}
