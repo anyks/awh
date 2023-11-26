@@ -1355,7 +1355,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							// Если запись не выполнена, входим
 							} else break;
 
-							cout << " ^^^^^^^^^^^^^^13 " << endl;
+							cout << " ^^^^^^^^^^^^^^13 " << (this->method(bid) == engine_t::method_t::READ) << endl;
 
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(bid) == engine_t::method_t::READ);
