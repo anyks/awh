@@ -153,8 +153,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -208,7 +208,7 @@ int main(int argc, char * argv[]){
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 
 	// awh.proxy("http://user:password@127.0.0.1:2222");
-	awh.proxy("http://user:password@anyks.net:2222");
+	awh.proxy("https://user:password@anyks.net:2222");
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");

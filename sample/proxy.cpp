@@ -128,7 +128,7 @@ int main(int argc, char * argv[]){
 	 * 2. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
 	proxy.mode({
-		server::proxy_t::flag_t::REDIRECTS,
+		// server::proxy_t::flag_t::REDIRECTS,
 		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
 	});
 	// Устанавливаем таймаут ожидания получения сообщений
@@ -145,13 +145,11 @@ int main(int argc, char * argv[]){
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-	/*
 	// Устанавливаем SSL сертификаты сервера
 	proxy.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	*/
 	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
