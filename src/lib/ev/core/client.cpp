@@ -1413,6 +1413,7 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							// Увеличиваем смещение в буфере
 							offset += bytes;
 						}
+						/*
 						// Если дисконнекта от сервера не произошло
 						if(bytes > 0){
 							// Определяем тип сокета
@@ -1428,6 +1429,7 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 								break;
 							}
 						}
+						*/
 						// Останавливаем ожидание записи данных
 						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
