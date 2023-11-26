@@ -807,6 +807,8 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
 										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
+									// Выполняем отключение в обычном режиме
+									const_cast <client::core_t *> (this->_core)->close(this->_bid);
 									// Выходим из функции
 									return -1;
 								}
