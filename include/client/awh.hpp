@@ -550,6 +550,13 @@ namespace awh {
 				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
 			public:
 				/**
+				 * crypted Метод получения флага шифрования
+				 * @param sid идентификатор потока
+				 * @return    результат проверки
+				 */
+				bool crypted(const int32_t sid) const noexcept;
+			public:
+				/**
 				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */

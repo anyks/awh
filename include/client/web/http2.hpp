@@ -530,6 +530,13 @@ namespace awh {
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
+				 * crypted Метод получения флага шифрования
+				 * @param sid идентификатор потока
+				 * @return    результат проверки
+				 */
+				bool crypted(const int32_t sid) const noexcept;
+			public:
+				/**
 				 * encryption Метод активации шифрования
 				 * @param mode флаг активации шифрования
 				 */

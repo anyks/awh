@@ -2145,6 +2145,36 @@ void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_http1.authTypeProxy(type, hash);
 }
 /**
+ * crypted Метод получения флага шифрования
+ * @param sid идентификатор потока
+ * @return    результат проверки
+ */
+bool awh::client::Http2::crypted(const int32_t sid) const noexcept {
+	// Выполняем поиск воркера подключения
+	auto it = this->_workers.find(sid);
+	// Если искомый воркер найден
+	if(it != this->_workers.end()){
+		// Определяем протокол клиента
+		switch(static_cast <uint8_t> (it->second->agent)){
+			// Если агент является клиентом HTTP
+			case static_cast <uint8_t> (agent_t::HTTP): {
+				// Если переключение протокола на HTTP/2 не выполнено
+				if(it->second->proto != engine_t::proto_t::HTTP2)
+					// Выполняем получение флага шифрования для протокола HTTP/1.1
+					return this->_http1.crypted();
+				// Выполняем получение флага шифрования для протокола HTTP/2
+				else return it->second->http.crypted();
+			}
+			// Если агент является клиентом WebSocket
+			case static_cast <uint8_t> (agent_t::WEBSOCKET):
+				// Выполняем получение флага шифрования для протокола WebSocket
+				return this->_ws2.crypted();
+		}
+	}
+	// Выводим результат
+	return false;
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */

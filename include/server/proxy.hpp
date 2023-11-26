@@ -61,12 +61,11 @@ namespace awh {
 					NOT_INFO                     = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP                     = 0x03, // Флаг запрета остановки биндинга
 					WAIT_MESS                    = 0x04, // Флаг ожидания входящих сообщений
-					DECRYPT                      = 0x05, // Флаг предписывающий выполнять расшифровку зашифрованного контента при передаче клиенту
-					REDIRECTS                    = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
-					VERIFY_SSL                   = 0x07, // Флаг выполнения проверки сертификата SSL
-					RECOMPRESS                   = 0x08, // Флаг выполнения рекомпрессинга передаваемых данных
-					CONNECT_METHOD_CLIENT_ENABLE = 0x09, // Флаг разрешающий метод CONNECT на прокси-клиенте
-					CONNECT_METHOD_SERVER_ENABLE = 0x0A  // Флаг разрешающий метод CONNECT на сервере
+					REDIRECTS                    = 0x05, // Флаг разрешающий автоматическое перенаправление запросов
+					VERIFY_SSL                   = 0x06, // Флаг выполнения проверки сертификата SSL
+					RECOMPRESS                   = 0x07, // Флаг выполнения рекомпрессинга передаваемых данных
+					CONNECT_METHOD_CLIENT_ENABLE = 0x08, // Флаг разрешающий метод CONNECT на прокси-клиенте
+					CONNECT_METHOD_SERVER_ENABLE = 0x09  // Флаг разрешающий метод CONNECT на сервере
 				};
 			private:
 				/**
@@ -848,17 +847,12 @@ namespace awh {
 				void authType(const broker_t broker, const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * crypted Метод получения флага шифрования
-				 * @param bid идентификатор брокера
-				 * @return    результат проверки
-				 */
-				bool crypted(const uint64_t bid) const noexcept;
-				/**
 				 * encrypt Метод активации шифрования для клиента
-				 * @param bid  идентификатор брокера
-				 * @param mode флаг активации шифрования
+				 * @param bid    идентификатор брокера
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param mode   флаг активации шифрования
 				 */
-				void encrypt(const uint64_t bid, const bool mode) noexcept;
+				void encrypt(const uint64_t bid, const broker_t broker, const bool mode) noexcept;
 			public:
 				/**
 				 * encryption Метод активации шифрования

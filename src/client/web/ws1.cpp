@@ -1493,6 +1493,14 @@ void awh::client::WebSocket1::authTypeProxy(const auth_t::type_t type, const aut
 	web_t::authTypeProxy(type, hash);
 }
 /**
+ * crypted Метод получения флага шифрования
+ * @return результат проверки
+ */
+bool awh::client::WebSocket1::crypted() const noexcept {
+	// Выполняем получение флага шифрования
+	return this->_http.crypted();
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */

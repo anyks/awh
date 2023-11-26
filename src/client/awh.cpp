@@ -923,6 +923,15 @@ void awh::client::AWH::setToDNSBlackList(const string & domain, const string & i
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
+ * crypted Метод получения флага шифрования
+ * @param sid идентификатор потока
+ * @return    результат проверки
+ */
+bool awh::client::AWH::crypted(const int32_t sid) const noexcept {
+	// Выполняем получение флага шифрования
+	return this->_http.crypted(sid);
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */

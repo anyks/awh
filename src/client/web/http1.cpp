@@ -1376,6 +1376,25 @@ void awh::client::Http1::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_ws1.authTypeProxy(type, hash);
 }
 /**
+ * crypted Метод получения флага шифрования
+ * @return результат проверки
+ */
+bool awh::client::Http1::crypted() const noexcept {
+	// Определяем протокол клиента
+	switch(static_cast <uint8_t> (this->_agent)){
+		// Если агент является клиентом HTTP
+		case static_cast <uint8_t> (agent_t::HTTP):
+			// Выполняем получение флага шифрования
+			return this->_http.crypted();
+		// Если агент является клиентом WebSocket
+		case static_cast <uint8_t> (agent_t::WEBSOCKET):
+			// Выполняем получение флага шифрования для протокола WebSocket
+			return this->_ws1.crypted();
+	}
+	// Выводим результат
+	return false;
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */

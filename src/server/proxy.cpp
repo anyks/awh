@@ -1789,22 +1789,29 @@ void awh::server::Proxy::authType(const broker_t broker, const awh::auth_t::type
 	}
 }
 /**
- * crypted Метод получения флага шифрования
- * @param bid идентификатор брокера
- * @return    результат проверки
- */
-bool awh::server::Proxy::crypted(const uint64_t bid) const noexcept {
-	// Выполняем получение флага шифрования
-	return this->_server.crypted(bid);
-}
-/**
  * encrypt Метод активации шифрования для клиента
- * @param bid  идентификатор брокера
- * @param mode флаг активации шифрования
+ * @param bid    идентификатор брокера
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param mode   флаг активации шифрования
  */
-void awh::server::Proxy::encrypt(const uint64_t bid, const bool mode) noexcept {
-	// Выполняем активацию шифрования для клиента
-	this->_server.encrypt(bid, mode);
+void awh::server::Proxy::encrypt(const uint64_t bid, const broker_t broker, const bool mode) noexcept {
+	// Определяем переданного брокера
+	switch(static_cast <uint8_t> (broker)){
+		// Если брокером является клиент
+		case static_cast <uint8_t> (broker_t::CLIENT): {
+			// Выполняем поиск объекта клиента
+			auto it = this->_clients.find(bid);
+			// Если активный клиент найден
+			if(it != this->_clients.end())
+				// Выполняем активацию шифрования для клиента
+				it->second->awh.encryption(mode);
+		} break;
+		// Если брокером является сервер
+		case static_cast <uint8_t> (broker_t::SERVER):
+			// Выполняем активацию шифрования для сервера
+			this->_server.encrypt(bid, mode);
+		break;
+	}
 }
 /**
  * encryption Метод активации шифрования

@@ -1861,6 +1861,20 @@ void awh::client::WebSocket2::authTypeProxy(const auth_t::type_t type, const aut
 	this->_ws1.authTypeProxy(type, hash);
 }
 /**
+ * crypted Метод получения флага шифрования
+ * @return результат проверки
+ */
+bool awh::client::WebSocket2::crypted() const noexcept {
+	// Если переключение протокола на HTTP/2 не выполнено
+	if(this->_proto != engine_t::proto_t::HTTP2)
+		// Выполняем получение флага шифрования
+		return this->_ws1.crypted();
+	// Если переключение протокола на HTTP/2 выполнено
+	else
+		// Выполняем получение флага шифрования
+		return this->_http.crypted();
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
