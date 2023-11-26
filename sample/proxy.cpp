@@ -128,7 +128,7 @@ int main(int argc, char * argv[]){
 	 * 2. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
 	proxy.mode({
-		server::proxy_t::flag_t::REDIRECTS,
+		// server::proxy_t::flag_t::REDIRECTS,
 		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
 	});
 	// Устанавливаем таймаут ожидания получения сообщений
