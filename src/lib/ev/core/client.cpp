@@ -1232,7 +1232,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						// Выполняем чтение данных с сокета
 						do {
 							
-							cout << " ^^^^^^^^^^^^^^1 " << endl;
+							cout << " ^^^^^^^^^^^^^^1 " << (u_short) adj->_method << endl;
 							
 							// Если подключение выполнено
 							if(!adj->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
@@ -1355,7 +1355,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							// Если запись не выполнена, входим
 							} else break;
 
-							cout << " ^^^^^^^^^^^^^^13 " << (this->method(bid) == engine_t::method_t::READ) << endl;
+							cout << " ^^^^^^^^^^^^^^13 " << this->method(bid) << " == " << (u_short) adj->_method << endl;
 
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(bid) == engine_t::method_t::READ);

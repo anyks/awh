@@ -730,7 +730,7 @@ awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
 			// Устанавливаем результат работы функции
 			result = engine_t::method_t::CONNECT;
 			
-			cout << " ############# METHOD4 " << (adj->_method == engine_t::method_t::READ) << " == " << !adj->_bev.locked.read << " == " << adj->_bev.locked.write << endl;
+			cout << " ############# METHOD4 " << (u_short) adj->_method << " == " << !adj->_bev.locked.read << " == " << adj->_bev.locked.write << endl;
 			
 			// Если производится чтение или запись данных
 			if(((adj->_method == engine_t::method_t::READ) && !adj->_bev.locked.read && adj->_bev.locked.write) || ((adj->_method == engine_t::method_t::WRITE) && !adj->_bev.locked.write)){
