@@ -1323,8 +1323,14 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							}
 							// Если активирован режим прокси-сервера
 							if(this->_proxy.mode){
-								// Выполняем сброс заголовков прокси-сервера
-								this->_http1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+								// Создаём объек запроса
+								awh::web_t::req_t query(request.method, this->_scheme.url);
+								// Выполняем извлечение заголовка авторизации на прокси-сервера
+								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+								// Если заголовок авторизации получен
+								if(!header.empty())
+									// Выполняем сброс заголовков прокси-сервера
+									this->_http1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.count("Proxy-Connection") < 1){
 									// Если установлено постоянное подключение к прокси-серверу
@@ -1357,8 +1363,14 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					sid = this->update(* const_cast <request_t *> (&request));
 					// Если активирован режим прокси-сервера
 					if(this->_proxy.mode){
-						// Выполняем сброс заголовков прокси-сервера
-						this->_ws2._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+						// Создаём объек запроса
+						awh::web_t::req_t query(request.method, this->_scheme.url);
+						// Выполняем извлечение заголовка авторизации на прокси-сервера
+						const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+						// Если заголовок авторизации получен
+						if(!header.empty())
+							// Выполняем сброс заголовков прокси-сервера
+							this->_ws2._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.count("Proxy-Connection") < 1){
 							// Если установлено постоянное подключение к прокси-серверу
