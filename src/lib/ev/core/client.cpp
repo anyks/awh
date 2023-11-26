@@ -1231,8 +1231,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						unique_ptr <char []> buffer(new char [size]);
 						// Выполняем чтение данных с сокета
 						do {
+							
+							cout << " ^^^^^^^^^^^^^^1 " << endl;
+							
 							// Если подключение выполнено
 							if(!adj->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
+								
+								cout << " ^^^^^^^^^^^^^^2 " << endl;
+								
 								// Выполняем обнуление буфера данных
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
