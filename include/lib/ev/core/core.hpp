@@ -376,13 +376,6 @@ namespace awh {
 			uint16_t add(const scheme_t * scheme) noexcept;
 		public:
 			/**
-			 * method Метод получения текущего метода работы
-			 * @param bid идентификатор брокера
-			 * @return    результат работы функции
-			 */
-			engine_t::method_t method(const uint64_t bid) const noexcept;
-		public:
-			/**
 			 * close Метод отключения всех брокеров
 			 */
 			virtual void close() noexcept;

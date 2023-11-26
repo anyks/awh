@@ -1129,8 +1129,6 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 			shm->status.real = scheme_t::mode_t::CONNECT;
 			// Устанавливаем флаг ожидания статуса
 			shm->status.wait = scheme_t::mode_t::DISCONNECT;
-			// Устанавливаем текущий метод режима работы
-			adj->_method = engine_t::method_t::CONNECT;
 			// Выполняем очистку существующих таймаутов
 			this->clearTimeout(shm->sid);
 			// Получаем семейство интернет-протоколов
@@ -1219,8 +1217,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					// Останавливаем чтение данных с клиента
 					adj->_bev.event.read.stop();
-					// Устанавливаем текущий метод режима работы
-					adj->_method = engine_t::method_t::READ;
 					// Получаем максимальный размер буфера
 					const int64_t size = adj->_ectx.buffer(engine_t::method_t::READ);
 					// Если размер буфера получен
@@ -1231,26 +1227,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						unique_ptr <char []> buffer(new char [size]);
 						// Выполняем чтение данных с сокета
 						do {
-							
-							cout << " ^^^^^^^^^^^^^^1 " << (u_short) adj->_method << endl;
-							
 							// Если подключение выполнено
 							if(!adj->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
-								
-								cout << " ^^^^^^^^^^^^^^2 " << endl;
-								
 								// Выполняем обнуление буфера данных
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = adj->_ectx.read(buffer.get(), size);
-
-								cout << " ++++++++++++++++++++ " << bytes << endl;
-
 								// Если данные получены
 								if(bytes > 0){
-									
-									cout << " ^^^^^^^^^^^^^^4 " << endl;
-									
 									// Если флаг ожидания входящих сообщений, активирован
 									if(adj->_timeouts.read > 0){
 										// Определяем тип активного сокета
@@ -1263,14 +1247,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											default: adj->_bev.timer.read.stop();
 										}
 									}
-
-									cout << " ^^^^^^^^^^^^^^5 " << endl;
-
 									// Если данные считанные из буфера, больше размера ожидающего буфера
 									if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
-										
-										cout << " ^^^^^^^^^^^^^^6 " << endl;
-										
 										// Смещение в буфере и отправляемый размер данных
 										size_t offset = 0, actual = 0;
 										// Выполняем пересылку всех полученных данных
@@ -1290,14 +1268,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											// Увеличиваем смещение в буфере
 											offset += actual;
 										}
-
-										cout << " ^^^^^^^^^^^^^^7 " << endl;
-
 									// Если данных достаточно
 									} else {
-										
-										cout << " ^^^^^^^^^^^^^^8 " << endl;
-										
 										// Если подключение производится через, прокси-сервер
 										if(shm->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
@@ -1308,38 +1280,27 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 										} else if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
 											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-
-										cout << " ^^^^^^^^^^^^^^9 " << endl;
 									}
-
-									cout << " ^^^^^^^^^^^^^^10 " << endl;
-
-									// Если мы продолжаем чтение данных
-									if(this->method(bid) == engine_t::method_t::READ){
-										// Если флаг ожидания входящих сообщений, активирован
-										if(adj->_timeouts.read > 0){
-											// Определяем тип активного сокета
-											switch(static_cast <uint8_t> (this->_settings.sonet)){
-												// Если тип сокета установлен как UDP
-												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-												// Если тип сокета установлен как DTLS
-												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-													// Выполняем установку таймаута ожидания
-													adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-												break;
-												// Для всех остальных протоколов
-												default: {
-													// Если время ожидания чтения данных установлено
-													if(shm->wait)
-														// Запускаем работу таймера
-														adj->_bev.timer.read.start(adj->_timeouts.read);
-												}
+									// Если флаг ожидания входящих сообщений, активирован
+									if(adj->_timeouts.read > 0){
+										// Определяем тип активного сокета
+										switch(static_cast <uint8_t> (this->_settings.sonet)){
+											// Если тип сокета установлен как UDP
+											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+											// Если тип сокета установлен как DTLS
+											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+												// Выполняем установку таймаута ожидания
+												adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+											break;
+											// Для всех остальных протоколов
+											default: {
+												// Если время ожидания чтения данных установлено
+												if(shm->wait)
+													// Запускаем работу таймера
+													adj->_bev.timer.read.start(adj->_timeouts.read);
 											}
 										}
 									}
-
-									cout << " ^^^^^^^^^^^^^^11 " << endl;
-
 								// Если данные небыли получены
 								} else if(bytes <= 0) {
 									// Если чтение не выполнена, закрываем подключение
@@ -1349,26 +1310,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									// Выходим из цикла
 									break;
 								}
-
-								cout << " ^^^^^^^^^^^^^^12 " << endl;
-
 							// Если запись не выполнена, входим
 							} else break;
-
-							cout << " ^^^^^^^^^^^^^^13 " << (u_short) this->method(bid) << " == " << (u_short) adj->_method << endl;
-
 						// Выполняем чтение до тех пор, пока всё не прочитаем
-						} while(this->method(bid) == engine_t::method_t::READ);
-						
-						cout << " ^^^^^^^^^^^^^^14 " << endl;
-						
+						} while(this->_brokers.count(bid) > 0);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
 						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
 							// Запускаем чтение данных с клиента
 							adj->_bev.event.read.start();
-						
-						cout << " ^^^^^^^^^^^^^^15 " << endl;
-
 					// Выполняем отключение клиента
 					} else this->close(bid);
 				// Если подключение завершено
@@ -1423,8 +1372,6 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							adj->_ectx.block();
 						break;
 					}
-					// Устанавливаем текущий метод режима работы
-					adj->_method = engine_t::method_t::WRITE;
 					// Если данных достаточно для записи в сокет
 					if(size >= adj->_marker.write.min){
 						// Количество полученных байт

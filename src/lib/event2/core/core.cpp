@@ -692,37 +692,6 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 	return result;
 }
 /**
- * method Метод получения текущего метода работы
- * @param bid идентификатор брокера
- * @return    результат работы функции
- */
-awh::engine_t::method_t awh::Core::method(const uint64_t bid) const noexcept {
-	// Результат работы функции
-	engine_t::method_t result = engine_t::method_t::DISCONNECT;
-	// Выполняем извлечение брокера
-	auto it = this->_brokers.find(bid);
-	// Если брокер получен
-	if(it != this->_brokers.end()){
-		// Получаем объект брокера
-		awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second);
-		// Если подключение только установлено
-		if(adj->_method == engine_t::method_t::CONNECT)
-			// Устанавливаем результат работы функции
-			result = adj->_method;
-		// Если производится запись или чтение
-		else if((adj->_method == engine_t::method_t::READ) || (adj->_method == engine_t::method_t::WRITE)) {
-			// Устанавливаем результат работы функции
-			result = engine_t::method_t::CONNECT;
-			// Если производится чтение или запись данных
-			if(((adj->_method == engine_t::method_t::READ) && !adj->_bev.locked.read && adj->_bev.locked.write) || ((adj->_method == engine_t::method_t::WRITE) && !adj->_bev.locked.write))
-				// Устанавливаем результат работы функции
-				result = adj->_method;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * close Метод отключения всех брокеров
  */
 void awh::Core::close() noexcept {

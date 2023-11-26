@@ -937,8 +937,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
 				// Останавливаем чтение данных с клиента
 				adj->_bev.events.read.stop();
-				// Устанавливаем текущий метод режима работы
-				adj->_method = engine_t::method_t::READ;
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Получаем максимальный размер буфера
@@ -990,26 +988,23 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 								} else if(shm->callback.is("read"))
 									// Выводим функцию обратного вызова
 									shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-								// Если мы продолжаем чтение данных
-								if(this->method(bid) == engine_t::method_t::READ){
-									// Если флаг ожидания входящих сообщений, активирован
-									if(adj->_timeouts.read > 0){
-										// Определяем тип активного сокета
-										switch(static_cast <uint8_t> (this->_settings.sonet)){
-											// Если тип сокета установлен как UDP
-											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Если тип сокета установлен как DTLS
-											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-												// Выполняем установку таймаута ожидания
-												adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-											break;
-											// Для всех остальных протоколов
-											default: {
-												// Если время ожидания чтения данных установлено
-												if(shm->wait)
-													// Запускаем работу таймера
-													adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
-											}
+								// Если флаг ожидания входящих сообщений, активирован
+								if(adj->_timeouts.read > 0){
+									// Определяем тип активного сокета
+									switch(static_cast <uint8_t> (this->_settings.sonet)){
+										// Если тип сокета установлен как UDP
+										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Если тип сокета установлен как DTLS
+										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+											// Выполняем установку таймаута ожидания
+											adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+										break;
+										// Для всех остальных протоколов
+										default: {
+											// Если время ожидания чтения данных установлено
+											if(shm->wait)
+												// Запускаем работу таймера
+												adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
 										}
 									}
 								}
@@ -1025,7 +1020,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						// Выходим из цикла
 						} else break;
 					// Выполняем чтение до тех пор, пока всё не прочитаем
-					} while(this->method(bid) == engine_t::method_t::READ);
+					} while(this->_brokers.count(bid) > 0);
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
 					if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
 						// Запускаем событие на чтение базы событий
@@ -1065,8 +1060,6 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						adj->_ectx.block();
 					break;
 				}
-				// Устанавливаем текущий метод режима работы
-				adj->_method = engine_t::method_t::WRITE;
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Если данных достаточно для записи в сокет

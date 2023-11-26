@@ -224,9 +224,6 @@ namespace awh {
 					engine_t::ctx_t _ectx;
 					// Создаём объект подключения клиента
 					engine_t::addr_t _addr;
-				private:
-					// Метод выполняемой операции
-					engine_t::method_t _method;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk;
@@ -261,8 +258,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Broker(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 _bid(0), _ip{""}, _mac{""}, _port(0), _ectx(fmk, log), _addr(fmk, log),
-					 _method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
+					 _bid(0), _ip{""}, _mac{""}, _port(0), _ectx(fmk, log), _addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Broker Деструктор
 					 */
