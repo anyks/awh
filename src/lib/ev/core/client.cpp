@@ -1248,6 +1248,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 
 								// Если данные получены
 								if(bytes > 0){
+									
+									cout << " ^^^^^^^^^^^^^^4 " << endl;
+									
 									// Если флаг ожидания входящих сообщений, активирован
 									if(adj->_timeouts.read > 0){
 										// Определяем тип активного сокета
@@ -1260,8 +1263,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											default: adj->_bev.timer.read.stop();
 										}
 									}
+
+									cout << " ^^^^^^^^^^^^^^5 " << endl;
+
 									// Если данные считанные из буфера, больше размера ожидающего буфера
 									if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
+										
+										cout << " ^^^^^^^^^^^^^^6 " << endl;
+										
 										// Смещение в буфере и отправляемый размер данных
 										size_t offset = 0, actual = 0;
 										// Выполняем пересылку всех полученных данных
@@ -1281,8 +1290,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											// Увеличиваем смещение в буфере
 											offset += actual;
 										}
+
+										cout << " ^^^^^^^^^^^^^^7 " << endl;
+
 									// Если данных достаточно
 									} else {
+										
+										cout << " ^^^^^^^^^^^^^^8 " << endl;
+										
 										// Если подключение производится через, прокси-сервер
 										if(shm->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
@@ -1293,7 +1308,12 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 										} else if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
 											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+
+										cout << " ^^^^^^^^^^^^^^9 " << endl;
 									}
+
+									cout << " ^^^^^^^^^^^^^^10 " << endl;
+
 									// Если мы продолжаем чтение данных
 									if(this->method(bid) == engine_t::method_t::READ){
 										// Если флаг ожидания входящих сообщений, активирован
@@ -1317,6 +1337,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											}
 										}
 									}
+
+									cout << " ^^^^^^^^^^^^^^11 " << endl;
+
 								// Если данные небыли получены
 								} else if(bytes <= 0) {
 									// Если чтение не выполнена, закрываем подключение
@@ -1326,14 +1349,26 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									// Выходим из цикла
 									break;
 								}
+
+								cout << " ^^^^^^^^^^^^^^12 " << endl;
+
 							// Если запись не выполнена, входим
 							} else break;
+
+							cout << " ^^^^^^^^^^^^^^13 " << endl;
+
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(bid) == engine_t::method_t::READ);
+						
+						cout << " ^^^^^^^^^^^^^^14 " << endl;
+						
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
 						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
 							// Запускаем чтение данных с клиента
 							adj->_bev.event.read.start();
+						
+						cout << " ^^^^^^^^^^^^^^15 " << endl;
+
 					// Выполняем отключение клиента
 					} else this->close(bid);
 				// Если подключение завершено
