@@ -122,9 +122,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
-				
-				cout << " ################### CONNECT CLIENT " << endl;
-				
 				// Определяем активный метод запроса клиента
 				switch(static_cast <uint8_t> (it->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
@@ -178,9 +175,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			case static_cast <uint8_t> (client::web_t::mode_t::DISCONNECT): {
 				// Выполняем сброс метода подклюения
 				it->second->method = awh::web_t::method_t::NONE;
-				
-				// ++++++++++++++++++++++++++ Закрывается подключение очень быстро
-				
 				// Выполняем закрытие подключения
 				// this->close(bid);
 			} break;
@@ -217,9 +211,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 	switch(static_cast <uint8_t> (mode)){
 		// Если производится подключение клиента к серверу
 		case static_cast <uint8_t> (server::web_t::mode_t::CONNECT): {
-			
-			cout << " ################### CONNECT SERVER " << endl;
-			
 			// Устанавливаем постоянное подключение для клиента
 			this->_server.alive(bid, true);
 			// Выполняем создание клиента
@@ -375,9 +366,6 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			it->second->response.entity.assign(entity.begin(), entity.end());
 		// Выполняем очистку тела ответа
 		else it->second->response.entity.clear();
-		
-		cout << " @@@@@@@@@@@@@ entityClient " << it->second->response.entity.size() << endl;
-		
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("entityClient"))
 			// Выполняем функцию обратного вызова
@@ -420,9 +408,6 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
  * @param headers заголовки HTTP-ответа
  */
 void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
-	
-	cout << " ----------------- RESPONSE " << endl;
-	
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -502,9 +487,6 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
  * @param headers заголовки HTTP-запроса
  */
 void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	
-	cout << " ----------------- REQUEST " << endl;
-	
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден

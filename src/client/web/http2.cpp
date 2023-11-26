@@ -878,9 +878,6 @@ void awh::client::Http2::result(const int32_t sid) noexcept {
 	auto it = this->_workers.find(sid);
 	// Если необходимый нам воркер найден
 	if(it != this->_workers.end()){
-
-		cout << " +++++++++++++++++ " << sid << endl;
-
 		// Выполняем удаление выполненного воркера
 		this->_workers.erase(it);
 		// Выполняем поиск идентификатора запроса
