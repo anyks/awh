@@ -1328,9 +1328,16 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Выполняем извлечение заголовка авторизации на прокси-сервера
 								const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 								// Если заголовок авторизации получен
-								if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
+								if(!header.empty()){
+									// Выполняем поиск заголовка авторизации на прокси-сервере
+									auto it = request.headers.find("Proxy-Authorization");
+									// Если заголовок авторизации на прокси-сервере найден
+									if(it != request.headers.end())
+										// Выполняем обновление заголовка
+										const_cast <string &> (it->second) = header;
 									// Выполняем установки заголовка авторизации на прокси-сервере
-									const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+									else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+								}
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.count("Proxy-Connection") < 1){
 									// Если установлено постоянное подключение к прокси-серверу
@@ -1374,9 +1381,16 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Выполняем извлечение заголовка авторизации на прокси-сервера
 						const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
 						// Если заголовок авторизации получен
-						if(!header.empty() && (request.headers.count("Proxy-Authorization") < 1))
+						if(!header.empty()){
+							// Выполняем поиск заголовка авторизации на прокси-сервере
+							auto it = request.headers.find("Proxy-Authorization");
+							// Если заголовок авторизации на прокси-сервере найден
+							if(it != request.headers.end())
+								// Выполняем обновление заголовка
+								const_cast <string &> (it->second) = header;
 							// Выполняем установки заголовка авторизации на прокси-сервере
-							const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Authorization", header);
+						}
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.count("Proxy-Connection") < 1){
 							// Если установлено постоянное подключение к прокси-серверу
