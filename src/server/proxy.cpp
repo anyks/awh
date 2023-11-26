@@ -579,7 +579,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					// Создаём список флагов клиента
 					set <client::web_t::flag_t> flags = {
 						client::web_t::flag_t::NOT_STOP,
-						client::web_t::flag_t::NOT_INFO
+						client::web_t::flag_t::NOT_INFO,
+						client::web_t::flag_t::WEBSOCKET_ENABLE
 					};
 					// Если флаг ожидания входящих сообщений установлен
 					if(this->_flags.count(flag_t::WAIT_MESS) > 0)
@@ -659,7 +660,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::NOT_STOP,
-									client::web_t::flag_t::NOT_INFO
+									client::web_t::flag_t::NOT_INFO,
+									client::web_t::flag_t::WEBSOCKET_ENABLE
 								};
 								// Если флаг ожидания входящих сообщений установлен
 								if(this->_flags.count(flag_t::WAIT_MESS) > 0)
@@ -735,7 +737,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Создаём список флагов клиента
 							set <client::web_t::flag_t> flags = {
 								client::web_t::flag_t::NOT_STOP,
-								client::web_t::flag_t::NOT_INFO
+								client::web_t::flag_t::NOT_INFO,
+								client::web_t::flag_t::WEBSOCKET_ENABLE
 							};
 							// Если флаг ожидания входящих сообщений установлен
 							if(this->_flags.count(flag_t::WAIT_MESS) > 0)
