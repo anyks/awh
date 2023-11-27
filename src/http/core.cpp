@@ -2351,7 +2351,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Получаем название заголовка
 								string name = header.first;
 
-								cout << " ===================== " << name << endl;
+								cout << " =====================1 " << name << endl;
 
 								// Переводим заголовок в нормальный режим
 								this->_fmk->transform(name, fmk_t::transform_t::SMART);
@@ -2361,6 +2361,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 						// Устанавливаем Host если не передан и метод подключения не является CONNECT
 						if(!available[1] && !this->is(suite_t::BLACK, "Host") && (req.method != web_t::method_t::CONNECT)){
+							
+							cout << " =====================2 " << req.url.host << endl;
+							
 							// Если флаг точной установки хоста не установлен
 							if(!this->_precise)
 								// Добавляем заголовок в запрос
