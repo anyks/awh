@@ -490,12 +490,12 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 						// Если переключение на протокол WebSocket произведено
 						if(i->second->response.params.code == 101){
+							// Выводим полученный результат
+							this->completed(bid);
 							// Выполняем установку метода подключения
 							i->second->method = awh::web_t::method_t::CONNECT;
 							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-							// Выводим полученный результат
-							this->completed(bid);
 						}
 					} break;
 					// Если протокол подключения соответствует HTTP/2
