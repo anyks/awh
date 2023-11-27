@@ -490,9 +490,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 						// Если переключение на протокол WebSocket произведено
 						if(i->second->response.params.code == 101){
-							
-							this->k1 = true;
-
+							// Выполняем снятие переключение протокола
+							i->second->upgrade = false;
 							// Выполняем установку метода подключения
 							i->second->method = awh::web_t::method_t::CONNECT;
 							// Меняем метод подключения на CONNECT
@@ -505,7 +504,19 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					} break;
 					// Если протокол подключения соответствует HTTP/2
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
-						
+						// Если переключение на протокол WebSocket произведено
+						if(i->second->response.params.code == 200){
+							// Выполняем снятие переключение протокола
+							i->second->upgrade = false;
+							// Выполняем установку метода подключения
+							i->second->method = awh::web_t::method_t::CONNECT;
+							// Меняем метод подключения на CONNECT
+							i->second->request.params.method = awh::web_t::method_t::CONNECT;
+							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+							// Выводим полученный результат
+							this->completed(bid);
+						}
 					} break;
 				}
 			}
@@ -901,14 +912,14 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = true;
-	// Если тип сокета установлен как TCP/IP
-	if(this->k2 || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
-		// Если бинарные данные получены
-		if((buffer != nullptr) && (size > 0)){
-			// Выполняем поиск объекта клиента
-			auto it = this->_clients.find(bid);
-			// Если активный клиент найден и подключение установлено
-			if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
+	// Если бинарные данные получены
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем поиск объекта клиента
+		auto it = this->_clients.find(bid);
+		// Если активный клиент найден и подключение установлено
+		if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
+			// Если тип сокета установлен как TCP/IP
+			if(it->second->upgrade || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
 				// Если установлен метод CONNECT
 				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
 					// Определяем переданного брокера
@@ -944,9 +955,8 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 		if(!it->second->response.headers.empty()){
 			// Отправляем сообщение клиенту
 			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
-			
-			this->k2 = this->k1;
-			
+			// Выполняем переключение протокола
+			it->second->upgrade = (it->second->agent == client::web_t::agent_t::WEBSOCKET);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("completed"))
 				// Выполняем функцию обратного вызова

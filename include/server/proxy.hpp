@@ -191,6 +191,8 @@ namespace awh {
 					int32_t sid;
 					// Флаг отправки результата
 					bool sending;
+					// Флаг переключения протокола
+					bool upgrade;
 					// Активный метод подключения
 					awh::web_t::method_t method;
 					// Агент активного клиента
@@ -209,7 +211,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Client(const fmk_t * fmk, const log_t * log) noexcept :
-					 sid(-1), sending(false), method(awh::web_t::method_t::NONE),
+					 sid(-1), sending(false), upgrade(false), method(awh::web_t::method_t::NONE),
 					 agent(client::web_t::agent_t::HTTP), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
@@ -257,10 +259,6 @@ namespace awh {
 				fn_t _callback;
 				// Объект параметров клиента
 				settings_t _settings;
-
-				bool k1 = false;
-				bool k2 = false;
-
 			private:
 				// Компрессор для рекомпрессии пересылаемых данных
 				http_t::compress_t _compressor;
