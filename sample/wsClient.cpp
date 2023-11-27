@@ -320,7 +320,7 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
-	ws.proxy("http://user:password@anyks.net:2222");
+	ws.proxy("https://user:password@anyks.net:2222");
 	
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
