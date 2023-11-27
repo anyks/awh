@@ -143,7 +143,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						// Создаём объект запроса
 						client::web_t::request_t request;
 						// Выполняем установку активного агента клиента
-						request.agent = it->second->request.agent;
+						request.agent = it->second->agent;
 						// Устанавливаем тепло запроса
 						request.entity = it->second->request.entity;
 						// Запоминаем переданные заголовки
@@ -712,7 +712,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
-								request.agent = it->second->request.agent;
+								request.agent = it->second->agent;
 								// Устанавливаем тепло запроса
 								request.entity = it->second->request.entity;
 								// Запоминаем переданные заголовки
