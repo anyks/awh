@@ -1098,6 +1098,12 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.version >= 2.0f ? req.method == web_t::method_t::CONNECT : req.method == web_t::method_t::GET)){
+				
+				// Переходим по всему списку заголовков
+				for(auto & header : this->_web.headers()){
+					cout << " +++++++++++++++++ " << header.first << " === " << header.second << endl;
+				}
+				
 				// Генерируем ключ клиента
 				const_cast <ws_core_t *> (this)->_key = this->key();
 				// Удаляем заголовок апгрейд
