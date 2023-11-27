@@ -646,12 +646,9 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							// Получаем размер объекта сокета
 							const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(client.sun_path));
 							// Выполняем бинд на сокет
-							if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), size) < 0){
+							if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), size) < 0)
 								// Выводим в лог сообщение
-								this->_log->print("Bind local network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
-								// Выходим
-								return;
-							}
+								this->_log->print("Bind network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
 						}
 					}
 				} break;
@@ -661,9 +658,12 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Получаем размер объекта сокета
 				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(server.sun_path));
 				// Выполняем бинд на сокет
-				if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), size) < 0)
+				if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), size) < 0){
 					// Выводим в лог сообщение
-					this->_log->print("Bind local network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
+					this->_log->print("Bind network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
+				}
 			}
 		#endif
 	}
@@ -888,16 +888,19 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				case static_cast <uint8_t> (type_t::SERVER): {
 					// Выполняем бинд на сокет
-					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)
+					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0){
 						// Выводим в лог сообщение
-						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("Bind network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						// Выходим из приложения
+						exit(EXIT_FAILURE);
+					}
 				} break;
 				// Если приложение является клиентом
 				case static_cast <uint8_t> (type_t::CLIENT): {
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 						// Выводим в лог сообщение
-						this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("Bind network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
 			}
 		}
