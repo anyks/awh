@@ -773,7 +773,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
 							
-							cout << " ++++++++++++++++++++++++ " << it->second->upgrade << endl;
+							cout << " ++++++++++++++++++++++++ " << (it->second->agent == client::web_t::agent_t::WEBSOCKET) << endl;
 
 							// Если метод CONNECT не разрешён для запроса
 							if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
