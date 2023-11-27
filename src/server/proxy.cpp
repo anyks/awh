@@ -159,28 +159,38 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-						
-						cout << " #################### " << (it->second->agent == client::web_t::agent_t::WEBSOCKET) << endl;
-
 						// Если подключение ещё не выполнено
 						if(it->second->method == awh::web_t::method_t::NONE){
 							// Выполняем установку метода подключения
 							it->second->method = it->second->request.params.method;
-							// Если тип сокета установлен как TCP/IP
-							if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
-								// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-								it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-							// Выполняем отправку ответа клиенту
-							this->_server.send(bid);
-						}
-
-						/*
 							// Если активирован WebSocket клиент
-							if((it->second->method == awh::web_t::method_t::CONNECT) &&
-							  (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
-						
-						*/
-
+							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
+								// Создаём объект запроса
+								client::web_t::request_t request;
+								// Выполняем установку активного агента клиента
+								request.agent = it->second->agent;
+								// Устанавливаем тепло запроса
+								request.entity = it->second->request.entity;
+								// Запоминаем переданные заголовки
+								request.headers = it->second->request.headers;
+								// Устанавливаем адрес запроса
+								request.url = it->second->request.params.url;
+								// Устанавливаем метод запроса
+								request.method = it->second->request.params.method;
+								// Выполняем установку метода подключения
+								it->second->method = it->second->request.params.method;
+								// Выполняем запрос на сервер
+								it->second->awh.send(std::move(request));
+							// Если клиент активирован как HTTP
+							} else {
+								// Если тип сокета установлен как TCP/IP
+								if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
+									// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+									it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+								// Выполняем отправку ответа клиенту
+								this->_server.send(bid);
+							}
+						}
 					} break;
 				}
 			} break;
