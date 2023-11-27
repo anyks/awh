@@ -20,8 +20,6 @@
  * @param flag флаг направления передачи данных
  */
 void awh::WCore::init(const process_t flag) noexcept {
-	// Удаляем заголовок сабпратоколов
-	this->rm(suite_t::HEADER, "Sec-WebSocket-Protocol");
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -43,7 +41,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 			// Удаляем заголовок версии WebSocket
 			this->rm(suite_t::HEADER, "Sec-WebSocket-Version");
 			// Если список поддерживаемых сабпротоколов установлен
-			if(!this->_supportedProtocols.empty()){
+			if(!this->is(suite_t::HEADER, "Sec-WebSocket-Protocol") && !this->_supportedProtocols.empty()){
 				// Если количество поддерживаемых сабпротоколов больше 5-ти
 				if(this->_supportedProtocols.size() > 5){
 					// Список поддерживаемых сабпротоколов
@@ -156,7 +154,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 				this->black("X-AWH-Encryption");
 			}
 			// Если список выбранных сабпротоколов установлен
-			if(!this->_selectedProtocols.empty()){
+			if(!this->is(suite_t::HEADER, "Sec-WebSocket-Protocol") && !this->_selectedProtocols.empty()){
 				// Если количество выбранных сабпротоколов больше 5-ти
 				if(this->_selectedProtocols.size() > 5){
 					// Список выбранных сабпротоколов
@@ -190,107 +188,108 @@ void awh::WCore::init(const process_t flag) noexcept {
  * @param flag флаг направления передачи данных
  */
 void awh::WCore::applyExtensions(const process_t flag) noexcept {
-	// Список поддверживаемых расширений
-	vector <vector <string>> extensions;
-	// Удаляем заголовок расширений
-	this->rm(suite_t::HEADER, "Sec-WebSocket-Extensions");
-	// Определяем тип активной компрессии
-	switch(static_cast <uint8_t> (this->_compressor.selected)){
-		// Если метод компрессии выбран GZip
-		case static_cast <uint8_t> (compress_t::GZIP):
-			// Добавляем метод сжатия GZip
-			extensions.push_back({"permessage-gzip"});
-		break;
-		// Если метод компрессии выбран Brotli
-		case static_cast <uint8_t> (compress_t::BROTLI):
-			// Добавляем метод сжатия Brotli
-			extensions.push_back({"permessage-br"});
-		break;
-		// Если метод компрессии выбран Deflate
-		case static_cast <uint8_t> (compress_t::DEFLATE): {
-			// Добавляем метод сжатия Deflate
-			extensions.push_back({"permessage-deflate"});
-			// Если запрещено переиспользовать контекст компрессии для сервера
-			if(!this->_server.takeover)
-				// Добавляем флаг запрещения использования контекста компрессии для сервера
-				extensions.push_back({"server_no_context_takeover"});
-			// Если запрещено переиспользовать контекст компрессии для клиента
-			if(!this->_client.takeover)
-				// Добавляем флаг запрещения использования контекста компрессии для клиента
-				extensions.push_back({"client_no_context_takeover"});
-			// Определяем флаг выполняемого процесса
-			switch(static_cast <uint8_t> (flag)){
-				// Если нужно сформировать данные запроса
-				case static_cast <uint8_t> (process_t::REQUEST): {
-					// Если размер скользящего окна клиента установлен как максимальный
-					if(this->_client.wbit == static_cast <short> (GZIP_MAX_WBITS))
-						// Добавляем максимальный размер скользящего окна
-						extensions.push_back({"client_max_window_bits"});
-					// Выполняем установку указанного размера скользящего окна
-					else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
-					// Если размер скользящего окна сервера установлен как максимальный
-					if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
-						// Добавляем максимальный размер скользящего окна
-						extensions.push_back({"server_max_window_bits"});
-					// Выполняем установку указанного размера скользящего окна сервера
-					else extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
-				} break;
-				// Если нужно сформировать данные ответа
-				case static_cast <uint8_t> (process_t::RESPONSE): {
-					// Выполняем установку указанного размера скользящего окна
-					extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
-					// Выполняем установку указанного размера скользящего окна сервера
-					extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
-				} break;
-			}
-		} break;
-	}
-	// Если данные должны быть зашифрованны
-	if(this->_encryption)
-		// Выполняем установку указанного метода шифрования
-		extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
-	// Если список расширений не пустой
-	if(!this->_extensions.empty())
-		// Добавляем к списку расширений пользовательские расширения
-		extensions.insert(extensions.end(), this->_extensions.begin(), this->_extensions.end());
-	// Если список расширений не пустой
-	if(!extensions.empty()){
-		// Список записей расширений
-		string records = "";
-		// Выполняем перебор установленных расширений
-		for(auto & extension : extensions){
-			// Если в списке расширений уже есть записи
-			if(!records.empty())
-				// Добавляем разделитель
-				records.append("; ");
-			// Если количество элементов в списке больше 3-х
-			if(extension.size() > 3){
-				// Выполняем установку первой записи
-				records.append(extension.front());
-				// Выполняем перебор оставшихся расширений
-				for(size_t i = 1; i < extension.size(); i++){
-					// Добавляем заголовок сабпротокола
-					this->header("Sec-WebSocket-Extensions", records);
-					// Выполняем очистку списка расширений
-					records.clear();
-					// Выполняем установку записи
-					records.append(extension.at(i));
+	// Если заголовки расширений не установлены
+	if(!this->is(suite_t::HEADER, "Sec-WebSocket-Extensions")){
+		// Список поддверживаемых расширений
+		vector <vector <string>> extensions;
+		// Определяем тип активной компрессии
+		switch(static_cast <uint8_t> (this->_compressor.selected)){
+			// Если метод компрессии выбран GZip
+			case static_cast <uint8_t> (compress_t::GZIP):
+				// Добавляем метод сжатия GZip
+				extensions.push_back({"permessage-gzip"});
+			break;
+			// Если метод компрессии выбран Brotli
+			case static_cast <uint8_t> (compress_t::BROTLI):
+				// Добавляем метод сжатия Brotli
+				extensions.push_back({"permessage-br"});
+			break;
+			// Если метод компрессии выбран Deflate
+			case static_cast <uint8_t> (compress_t::DEFLATE): {
+				// Добавляем метод сжатия Deflate
+				extensions.push_back({"permessage-deflate"});
+				// Если запрещено переиспользовать контекст компрессии для сервера
+				if(!this->_server.takeover)
+					// Добавляем флаг запрещения использования контекста компрессии для сервера
+					extensions.push_back({"server_no_context_takeover"});
+				// Если запрещено переиспользовать контекст компрессии для клиента
+				if(!this->_client.takeover)
+					// Добавляем флаг запрещения использования контекста компрессии для клиента
+					extensions.push_back({"client_no_context_takeover"});
+				// Определяем флаг выполняемого процесса
+				switch(static_cast <uint8_t> (flag)){
+					// Если нужно сформировать данные запроса
+					case static_cast <uint8_t> (process_t::REQUEST): {
+						// Если размер скользящего окна клиента установлен как максимальный
+						if(this->_client.wbit == static_cast <short> (GZIP_MAX_WBITS))
+							// Добавляем максимальный размер скользящего окна
+							extensions.push_back({"client_max_window_bits"});
+						// Выполняем установку указанного размера скользящего окна
+						else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
+						// Если размер скользящего окна сервера установлен как максимальный
+						if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
+							// Добавляем максимальный размер скользящего окна
+							extensions.push_back({"server_max_window_bits"});
+						// Выполняем установку указанного размера скользящего окна сервера
+						else extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+					} break;
+					// Если нужно сформировать данные ответа
+					case static_cast <uint8_t> (process_t::RESPONSE): {
+						// Выполняем установку указанного размера скользящего окна
+						extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
+						// Выполняем установку указанного размера скользящего окна сервера
+						extensions.push_back({this->_fmk->format("server_max_window_bits=%u", this->_server.wbit)});
+					} break;
 				}
-			// Если количество элементов минимально
-			} else {
-				// Выполняем перебор всех доступных расширений
-				for(size_t i = 0; i < extension.size(); i++){
-					// Если запись уже не первая, добавляем разделитель
-					if(i > 0)
-						// Добавляем разделитель
-						records.append(", ");
-					// Выполняем установку записи
-					records.append(extension.at(i));
-				}
-			}
+			} break;
 		}
-		// Добавляем заголовок сабпротокола
-		this->header("Sec-WebSocket-Extensions", records);
+		// Если данные должны быть зашифрованны
+		if(this->_encryption)
+			// Выполняем установку указанного метода шифрования
+			extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
+		// Если список расширений не пустой
+		if(!this->_extensions.empty())
+			// Добавляем к списку расширений пользовательские расширения
+			extensions.insert(extensions.end(), this->_extensions.begin(), this->_extensions.end());
+		// Если список расширений не пустой
+		if(!extensions.empty()){
+			// Список записей расширений
+			string records = "";
+			// Выполняем перебор установленных расширений
+			for(auto & extension : extensions){
+				// Если в списке расширений уже есть записи
+				if(!records.empty())
+					// Добавляем разделитель
+					records.append("; ");
+				// Если количество элементов в списке больше 3-х
+				if(extension.size() > 3){
+					// Выполняем установку первой записи
+					records.append(extension.front());
+					// Выполняем перебор оставшихся расширений
+					for(size_t i = 1; i < extension.size(); i++){
+						// Добавляем заголовок сабпротокола
+						this->header("Sec-WebSocket-Extensions", records);
+						// Выполняем очистку списка расширений
+						records.clear();
+						// Выполняем установку записи
+						records.append(extension.at(i));
+					}
+				// Если количество элементов минимально
+				} else {
+					// Выполняем перебор всех доступных расширений
+					for(size_t i = 0; i < extension.size(); i++){
+						// Если запись уже не первая, добавляем разделитель
+						if(i > 0)
+							// Добавляем разделитель
+							records.append(", ");
+						// Выполняем установку записи
+						records.append(extension.at(i));
+					}
+				}
+			}
+			// Добавляем заголовок сабпротокола
+			this->header("Sec-WebSocket-Extensions", records);
+		}
 	}
 }
 /**
@@ -1098,12 +1097,6 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (provider);
 			// Если параметры запроса получены
 			if(!req.url.empty() && (req.version >= 2.0f ? req.method == web_t::method_t::CONNECT : req.method == web_t::method_t::GET)){
-				
-				// Переходим по всему списку заголовков
-				for(auto & header : this->_web.headers()){
-					cout << " +++++++++++++++++ " << header.first << " === " << header.second << endl;
-				}
-				
 				// Генерируем ключ клиента
 				const_cast <ws_core_t *> (this)->_key = this->key();
 				// Удаляем заголовок апгрейд
