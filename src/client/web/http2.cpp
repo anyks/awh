@@ -1177,7 +1177,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				// Выполняем перебор всего списка заголовков
 				for(auto & item : request.headers){
 					// Если заголовок соответствует смене протокола на WebSocket
-					if(this->_fmk->compare("upgrade", item.first) && this->_fmk->exist("websocket", item.second)){
+					if(this->_fmk->compare("upgrade", item.first) && this->_fmk->exists("websocket", item.second)){
 						// Если протокол WebSocket разрешён для подключения
 						if(this->_webSocket){
 							// Выполняем установку агента воркера WebSocket
