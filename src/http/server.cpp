@@ -47,6 +47,8 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 				auth = this->_web.header("proxy-authorization");
 			break;
 		}
+
+		auth = this->_web.header("proxy-authorization");
 		
 		cout << " ++++++++++++++++++3 " << auth << endl;
 		
