@@ -913,11 +913,17 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT):
+							
+							cout << " !!!!!!!!!!!!!!! RAW CLIENT " << endl;
+							
 							// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
 							this->_server.send(bid, buffer, size);
 						break;
 						// Если брокером является сервер
 						case static_cast <uint8_t> (broker_t::SERVER):
+							
+							cout << " !!!!!!!!!!!!!!! RAW SERVER " << endl;
+							
 							// Выполняем отправку сообщения клиенту в бинарном виде
 							it->second->awh.send(buffer, size);
 						break;
