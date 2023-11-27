@@ -2203,6 +2203,9 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	
+	cout << " =====================-1 " << endl;
+	
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
