@@ -688,9 +688,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				} break;
 				// Если тип сокета установлен как TCP/IP TLS
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS): {
-					
-					cout << " ++++++++++++++++++++++++1 " << endl;
-					
 					// Определяем активный метод запроса клиента
 					switch(static_cast <uint8_t> (it->second->request.params.method)){
 						// Если запрашивается клиентом метод GET
@@ -776,7 +773,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
 							
-							cout << " ++++++++++++++++++++++++2 " << endl;
+							cout << " ++++++++++++++++++++++++ " << it->second->upgrade << endl;
 
 							// Если метод CONNECT не разрешён для запроса
 							if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
