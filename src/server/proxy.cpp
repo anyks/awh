@@ -492,6 +492,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 						if(i->second->response.params.code == 101){
 							
 							this->k1 = true;
+
+							i->second->request.params.method = awh::web_t::method_t::GET;
 							
 							// Выполняем установку метода подключения
 							i->second->method = awh::web_t::method_t::CONNECT;
