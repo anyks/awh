@@ -286,8 +286,11 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			ret.first->second->core.noInfo(true);
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
+
+			// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ПРОБЛЕМА с WebSocket
 			// Устанавливаем тип протокола интернета HTTP/2
 			// ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
+
 			// Устанавливаем флаг верификации доменного имени
 			ret.first->second->core.verifySSL(this->_settings.encryption.verify);
 			// Выполняем установку CA-файлов сертификата
@@ -479,6 +482,28 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			if(this->_callback.is("headersClient"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
+			// Если производится активация WebSocket
+			if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
+				// Определяем протокола подключения
+				switch(static_cast <uint8_t> (this->_core.proto(bid))){
+					// Если протокол подключения соответствует HTTP/1.1
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+						// Если переключение на протокол WebSocket произведено
+						if(i->second->response.params.code == 101){
+							// Выполняем установку метода подключения
+							i->second->method = awh::web_t::method_t::CONNECT;
+							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+							// Выводим полученный результат
+							this->completed(bid);
+						}
+					} break;
+					// Если протокол подключения соответствует HTTP/2
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+						
+					} break;
+				}
+			}
 		}
 	}
 }
@@ -542,6 +567,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second)) {
 					// Устанавливаем агента WebSocket
 					i->second->agent = client::web_t::agent_t::WEBSOCKET;
+
+					// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ПРОБЛЕМА с WebSocket
 					// Устанавливаем тип протокола интернета HTTP/1.1
 					i->second->core.proto(awh::engine_t::proto_t::HTTP1_1);
 				}
