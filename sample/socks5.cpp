@@ -119,8 +119,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
 	// Выполняем инициализацию WebSocket сервера
-	proxy.init(2222, "anyks.net");
-	// proxy.init(2222, "127.0.0.1");
+	// proxy.init(2222, "anyks.net");
+	proxy.init(2222, "127.0.0.1");
 	// proxy.init("anyks");
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);

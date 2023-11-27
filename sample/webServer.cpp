@@ -297,7 +297,7 @@ int main(int argc, char * argv[]){
 		awh::http_t::compress_t::DEFLATE,
 	});
 	*/
-	awh.init(2222, "", {
+	awh.init(2222, "anyks.net", {
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
