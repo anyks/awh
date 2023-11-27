@@ -124,10 +124,12 @@ int main(int argc, char * argv[]){
 	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
 	proxy.ca(server::proxy_t::broker_t::SERVER, "./ca/cert.pem");
 	/**
-	 * 1. Устанавливаем разрешение на выполнение автоматических редиректов
-	 * 2. Устанавливаем разрешение на использоваения метода CONNECT
+	 * 1. Устанавливаем синхронизацию протоколов клиента и сервера
+	 * 2. Устанавливаем разрешение на выполнение автоматических редиректов
+	 * 3. Устанавливаем разрешение на использоваения метода CONNECT
 	 */
 	proxy.mode({
+		server::proxy_t::flag_t::SYNCPROTO,
 		server::proxy_t::flag_t::REDIRECTS,
 		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
 	});

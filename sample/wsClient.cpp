@@ -276,7 +276,7 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,
-		client::web_t::flag_t::CONNECT_METHOD_ENABLE
+		// client::web_t::flag_t::CONNECT_METHOD_ENABLE // Годится только для HTTP/1.1 и не годится для HTTP/2 так-как там и так используется метод CONNECT
 	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
@@ -285,8 +285,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

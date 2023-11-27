@@ -60,12 +60,13 @@ namespace awh {
 					ALIVE                        = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO                     = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP                     = 0x03, // Флаг запрета остановки биндинга
-					WAIT_MESS                    = 0x04, // Флаг ожидания входящих сообщений
-					REDIRECTS                    = 0x05, // Флаг разрешающий автоматическое перенаправление запросов
-					VERIFY_SSL                   = 0x06, // Флаг выполнения проверки сертификата SSL
-					RECOMPRESS                   = 0x07, // Флаг выполнения рекомпрессинга передаваемых данных
-					CONNECT_METHOD_CLIENT_ENABLE = 0x08, // Флаг разрешающий метод CONNECT на прокси-клиенте
-					CONNECT_METHOD_SERVER_ENABLE = 0x09  // Флаг разрешающий метод CONNECT на сервере
+					SYNCPROTO                    = 0x04, // Флаг синхронизации протоколов клиента и сервера
+					WAIT_MESS                    = 0x05, // Флаг ожидания входящих сообщений
+					REDIRECTS                    = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
+					VERIFY_SSL                   = 0x07, // Флаг выполнения проверки сертификата SSL
+					RECOMPRESS                   = 0x08, // Флаг выполнения рекомпрессинга передаваемых данных
+					CONNECT_METHOD_CLIENT_ENABLE = 0x09, // Флаг разрешающий метод CONNECT на прокси-клиенте
+					CONNECT_METHOD_SERVER_ENABLE = 0x0A  // Флаг разрешающий метод CONNECT на сервере
 				};
 			private:
 				/**
@@ -431,7 +432,7 @@ namespace awh {
 				 * @param host       хост сервера
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
 				 */
-				void init(const u_int port, const string & host = "", const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
+				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова при удаление клиента из стека сервера

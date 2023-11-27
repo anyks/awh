@@ -633,31 +633,26 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
 										break;
 									}
-									// Добавляем заголовок в список
-									this->_headers.emplace(
-										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
-										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
-									);
-									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
-									if(this->_callback.is("header"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+								// Если название заголовка соответствует переключению протокола
+								} else if(this->_fmk->compare(key, "upgrade"))
+									// Выполняем установку название протокола для переключению
+									this->_upgrade = val;
 								// Если название заголовка соответствует трейлеру
-								} else if(this->_fmk->compare(key, "trailer")) 
+								else if(this->_fmk->compare(key, "trailer")) {
 									// Выполняем сбор трейлеров
 									this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(val, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
-								// Все остальные заголовки добавляем как есть
-								else {
-									// Добавляем заголовок в список
-									this->_headers.emplace(
-										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
-										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
-									);
-									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
-									if(this->_callback.is("header"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+									// Выводим результат
+									return;
 								}
+								// Добавляем заголовок в список
+								this->_headers.emplace(
+									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+									this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+								);
+								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+								if(this->_callback.is("header"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
 							}
 						} break;
 					}
@@ -1125,6 +1120,22 @@ void awh::Web::body(const vector <char> & body) noexcept {
 		this->_body.insert(this->_body.end(), body.begin(), body.end());
 }
 /**
+ * upgrade Метод получение названия протокола для переключения
+ * @return название протокола для переключения
+ */
+const string & awh::Web::upgrade() const noexcept {
+	// Выполняем вывод название протокола для переключения
+	return this->_upgrade;
+}
+/**
+ * upgrade Метод установки название протокола для переключения
+ * @param upgrade название протокола для переключения
+ */
+void awh::Web::upgrade(const string & upgrade) noexcept {
+	// Выполняем установку названия протокола для переключения
+	this->_upgrade = upgrade;
+}
+/**
  * proto Метод извлечения список протоколов к которому принадлежит заголовок
  * @param key ключ заголовка
  * @return    список протоколов
@@ -1325,7 +1336,7 @@ void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::u
  */
 awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _separator('\0'), _pos{-1, -1}, _bodySize(-1), _uri(fmk), _callback(log),
- _hid(hid_t::NONE), _state(state_t::QUERY), _fmk(fmk), _log(log) {
+ _hid(hid_t::NONE), _state(state_t::QUERY), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standardHeaders.insert({
 		{"via", {proto_t::PROXY}},

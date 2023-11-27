@@ -366,6 +366,17 @@ namespace awh {
 			void body(const vector <char> & body) noexcept;
 		public:
 			/**
+			 * upgrade Метод получение названия протокола для переключения
+			 * @return название протокола для переключения
+			 */
+			const string & upgrade() const noexcept;
+			/**
+			 * upgrade Метод установки название протокола для переключения
+			 * @param upgrade название протокола для переключения
+			 */
+			void upgrade(const string & upgrade) noexcept;
+		public:
+			/**
 			 * trailers Метод получения списка установленных трейлеров
 			 * @return количество установленных трейлеров
 			 */

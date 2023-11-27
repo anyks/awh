@@ -1464,9 +1464,60 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если порт передан, устанавливаем
-			if(port > 0)
+			if(port > 0){
 				// Устанавливаем порт
 				shm->_port = port;
+				// Определяем тип сокета
+				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как UDP
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+					// Если тип сокета установлен как TCP/IP
+					case static_cast <uint8_t> (scheme_t::sonet_t::TCP): {
+						// Определяем тип установленного порта
+						switch(shm->_port){
+							// Если порт HTTP установлен незащищённый то исправляем его
+							case SERVER_SEC_PORT: shm->_port = SERVER_PORT; break;
+							// Если порт PROXY установлен незащищённый то исправляем его
+							case SERVER_PROXY_SEC_PORT: shm->_port = SERVER_PROXY_PORT; break;
+						}
+					} break;
+					// Если тип сокета установлен как TCP/IP TLS
+					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+					// Если подключение зашифрованно
+					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+					// Если тип сокета установлен как SCTP
+					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+						// Определяем тип установленного порта
+						switch(shm->_port){
+							// Если порт HTTP установлен незащищённый то исправляем его
+							case SERVER_PORT: shm->_port = SERVER_SEC_PORT; break;
+							// Если порт PROXY установлен незащищённый то исправляем его
+							case SERVER_PROXY_PORT: shm->_port = SERVER_PROXY_SEC_PORT; break;
+						}
+					} break;
+				}
+			// Если порт сервера не установлен
+			} else {
+				// Определяем тип сокета
+				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как UDP
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+					// Если тип сокета установлен как TCP/IP
+					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+						// Устанавливаем порт по умолчанию
+						shm->_port = SERVER_PORT;
+					break;
+					// Если тип сокета установлен как TCP/IP TLS
+					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+					// Если подключение зашифрованно
+					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+					// Если тип сокета установлен как SCTP
+					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+						// Устанавливаем порт по умолчанию
+						shm->_port = SERVER_SEC_PORT;
+					break;
+				}
+			}
 			// Если хост передан, устанавливаем
 			if(!host.empty())
 				// Устанавливаем хост

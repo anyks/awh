@@ -92,7 +92,7 @@ void awh::client::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::CONNECT)){
 		// Запоминаем идентификатор брокера
 		this->_bid = bid;
 		// Разрешаем перехватывать контекст компрессии

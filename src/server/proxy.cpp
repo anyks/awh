@@ -286,11 +286,12 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			ret.first->second->core.noInfo(true);
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
-
-			// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ПРОБЛЕМА с WebSocket
+			// Если флаг синхронизации протоколов клиента и сервера установлен
+			if(this->_flags.count(flag_t::SYNCPROTO) > 0)
+				// Устанавливаем тип протокола с которого подключён клиент
+				ret.first->second->core.proto(this->_core.proto(bid));
 			// Устанавливаем тип протокола интернета HTTP/2
-			// ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
-
+			else ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
 			// Устанавливаем флаг верификации доменного имени
 			ret.first->second->core.verifySSL(this->_settings.encryption.verify);
 			// Выполняем установку CA-файлов сертификата
@@ -580,14 +581,9 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
 				// Если производится запрос на WebSocket сервер
-				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second)) {
+				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second))
 					// Устанавливаем агента WebSocket
 					i->second->agent = client::web_t::agent_t::WEBSOCKET;
-
-					// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ПРОБЛЕМА с WebSocket
-					// Устанавливаем тип протокола интернета HTTP/1.1
-					i->second->core.proto(awh::engine_t::proto_t::HTTP1_1);
-				}
 				// Продолжаем перебор дальше
 				++j;
 			}
@@ -880,7 +876,7 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Если порт установлен не стандартный
-					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? 3129 : 3128))
+					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
 						// Формируем заголовок Via
 						result.append(this->_fmk->format("HTTP/%.1f %s:%u (%s)", 1.1f, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 					// Будем считать, что порт установлен стандартный
@@ -889,7 +885,7 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Если порт установлен не стандартный
-					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? 3129 : 3128))
+					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
 						// Формируем заголовок Via
 						result.append(this->_fmk->format("HTTP/%u %s:%u (%s)", 2, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 					// Будем считать, что порт установлен стандартный

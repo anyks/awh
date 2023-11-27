@@ -971,6 +971,22 @@ void awh::Http::body(const vector <char> & body) noexcept {
 	this->_web.body(body);
 }
 /**
+ * upgrade Метод получение названия протокола для переключения
+ * @return название протокола для переключения
+ */
+const string & awh::Http::upgrade() const noexcept {
+	// Выводим название протокола для переключения
+	return this->_web.upgrade();
+}
+/**
+ * upgrade Метод установки название протокола для переключения
+ * @param upgrade название протокола для переключения
+ */
+void awh::Http::upgrade(const string & upgrade) noexcept {
+	// Выполняем установку название протокола для переключения
+	this->_web.upgrade(upgrade);
+}
+/**
  * trailers Метод получения списка установленных трейлеров
  * @return количество установленных трейлеров
  */
@@ -1129,14 +1145,43 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		this->_web.request(std::move(request));
 	// Если ключ заголовка соответствует протоколу подключения
 	} else if(this->_fmk->compare(key, ":protocol")) {
-		// Если сервер не является PROXY-сервером и протокол соответствует WebSocket-у
-		if((this->_identity != identity_t::PROXY) && this->_fmk->compare(val, "websocket"))
-			// Выполняем установку идентичность протоколу WebSocket
-			this->_identity = identity_t::WS;
-		/* Просто пропускаем, потому, что протокол мы не используем */
+		// Определяем тип HTTP-модуля
+		switch(static_cast <uint8_t> (this->_web.hid())){
+			// Если мы работаем с клиентом
+			case static_cast <uint8_t> (web_t::hid_t::CLIENT):
+				// Выводим сообщение о невозможности установки трейлера
+				this->_log->print("Client cannot support header [%s=%s]", log_t::flag_t::WARNING, key.c_str(), val.c_str());
+			break;
+			// Если мы работаем с сервером
+			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
+				// Выполняем установку название протокола для переключения
+				this->_web.upgrade(val);
+				// Если сервер является Web-сервером и протокол соответствует WebSocket-у
+				if((this->_identity == identity_t::HTTP) && this->_fmk->compare(val, "websocket"))
+					// Выполняем установку идентичность протоколу WebSocket
+					this->_identity = identity_t::WS;
+			} break;
+		}
 	// Если ключ заголовка соответствует схеме протокола
 	} else if(this->_fmk->compare(key, ":scheme")) {
-		/* Просто пропускаем, потому, что схему мы не используем */
+		// Получаем объект параметров запроса
+		web_t::req_t request = this->_web.request();
+		// Выполняем установку схемы запроса
+		request.url.schema = val;
+		// Если протокол подключения защищённый а порт установлен неправильный
+		if(this->_fmk->compare(val, "https")){
+			// Определяем тип установленного порта
+			switch(request.url.port){
+				// Если порт не установлен
+				case 0:
+				// Если порт HTTP установлен незащищённый то исправляем его
+				case SERVER_PORT: request.url.port = SERVER_SEC_PORT; break;
+				// Если порт PROXY установлен незащищённый то исправляем его
+				case SERVER_PROXY_PORT: request.url.port = SERVER_PROXY_SEC_PORT; break;
+			}
+		}
+		// Выполняем сохранение параметров запроса
+		this->_web.request(std::move(request));
 	// Если ключ соответствует доменному имени
 	} else if(this->_fmk->compare(key, ":authority")) {
 		// Создаём объект работы с IP-адресами
@@ -1147,10 +1192,13 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		web_t::req_t request = this->_web.request();
 		// Получаем хост запрашиваемого сервера
 		request.url.host = val;
-		// Выполняем установку порта по умолчанию
-		request.url.port = 80;
-		// Выполняем установку схемы запроса
-		request.url.schema = "http";
+		// Если данные хоста ещё не установлены
+		if(request.url.schema.empty() || (request.url.port == 0)){
+			// Выполняем установку схемы запроса
+			request.url.schema = "http";
+			// Выполняем установку порта по умолчанию
+			request.url.port = SERVER_PORT;
+		}
 		// Выполняем поиск разделителя
 		const size_t pos = request.url.host.rfind(':');
 		// Если разделитель найден

@@ -280,6 +280,9 @@ namespace awh {
 			// Стейт текущего запроса
 			state_t _state;
 		private:
+			// Протокол на который запрошено переключение
+			string _upgrade;
+		private:
 			// Полученное тело HTTP-запроса
 			vector <char> _body;
 		private:
@@ -405,6 +408,17 @@ namespace awh {
 			 * @param body буфер тела для установки
 			 */
 			void body(const vector <char> & body) noexcept;
+		public:
+			/**
+			 * upgrade Метод получение названия протокола для переключения
+			 * @return название протокола для переключения
+			 */
+			const string & upgrade() const noexcept;
+			/**
+			 * upgrade Метод установки название протокола для переключения
+			 * @param upgrade название протокола для переключения
+			 */
+			void upgrade(const string & upgrade) noexcept;
 		public:
 			/**
 			 * proto Метод извлечения список протоколов к которому принадлежит заголовок
