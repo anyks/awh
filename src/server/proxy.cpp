@@ -584,6 +584,9 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second))
 					// Устанавливаем агента WebSocket
 					i->second->agent = client::web_t::agent_t::WEBSOCKET;
+				else if(this->_fmk->compare("sec-websocket-extensions", j->first))
+					cout << " +++++++++++++++++++++++ " << j->second << endl;
+				
 				// Продолжаем перебор дальше
 				++j;
 			}
