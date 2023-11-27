@@ -2350,6 +2350,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							if(allow){
 								// Получаем название заголовка
 								string name = header.first;
+
+								cout << " ===================== " << name << endl;
+
 								// Переводим заголовок в нормальный режим
 								this->_fmk->transform(name, fmk_t::transform_t::SMART);
 								// Формируем строку запроса
