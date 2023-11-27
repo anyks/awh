@@ -159,6 +159,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
+						
+						cout << " #################### " << (it->second->agent == client::web_t::agent_t::WEBSOCKET) << endl;
+
 						// Если подключение ещё не выполнено
 						if(it->second->method == awh::web_t::method_t::NONE){
 							// Выполняем установку метода подключения
@@ -170,6 +173,14 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 							// Выполняем отправку ответа клиенту
 							this->_server.send(bid);
 						}
+
+						/*
+							// Если активирован WebSocket клиент
+							if((it->second->method == awh::web_t::method_t::CONNECT) &&
+							  (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
+						
+						*/
+
 					} break;
 				}
 			} break;
@@ -765,14 +776,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						} break;
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-							
-							cout << " -------------------1 " << endl;
-							
 							// Если активирован WebSocket клиент
-							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
-								
-								cout << " -------------------2 " << endl;
-								
+							if((it->second->method == awh::web_t::method_t::CONNECT) &&
+							  (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
