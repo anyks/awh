@@ -411,51 +411,51 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
  */
 void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем поиск объекта клиента
-	auto it = this->_clients.find(bid);
+	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
+	if(i != this->_clients.end()){
 		// Если заголовки ответа получены
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
 			// Устанавливаем полученные заголовки
-			it->second->response.headers = headers;
+			i->second->response.headers = headers;
 			// Устанавливаем код ответа сервера
-			it->second->response.params.code = code;
+			i->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
-			it->second->response.params.message = message;
+			i->second->response.params.message = message;
 			// Компрессор которым необходимо выполнить сжатие контента
 			http_t::compress_t compress = http_t::compress_t::NONE;
 			// Выполняем перебор всех полученных заголовков
-			for(auto jt = it->second->response.headers.begin(); jt != it->second->response.headers.end();){
+			for(auto j = i->second->response.headers.begin(); j != i->second->response.headers.end();){
 				// Если получен заголовок Via
-				if(this->_fmk->exists("via", jt->first)){
+				if(this->_fmk->exists("via", j->first)){
 					// Добавляем заголовок в список
-					via.push_back(jt->second);
+					via.push_back(j->second);
 					// Выполняем удаление заголовка
-					jt = it->second->response.headers.erase(jt);
+					j = i->second->response.headers.erase(j);
 					// Продолжаем перебор дальше
 					continue;
 				// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
-				} else if(this->_fmk->exists("content-encoding", jt->first)) {
+				} else if(this->_fmk->exists("content-encoding", j->first)) {
 					// Если флаг рекомпрессии данных прокси-сервером не установлен
 					if(this->_flags.count(flag_t::RECOMPRESS) == 0){
 						// Если данные пришли сжатые методом Brotli
-						if(this->_fmk->exists("br", jt->second))
+						if(this->_fmk->exists("br", j->second))
 							// Устанавливаем тип компрессии полезной нагрузки
 							compress = http_t::compress_t::BROTLI;
 						// Если данные пришли сжатые методом GZip
-						else if(this->_fmk->exists("gzip", jt->second))
+						else if(this->_fmk->exists("gzip", j->second))
 							// Устанавливаем тип компрессии полезной нагрузки
 							compress = http_t::compress_t::GZIP;
 						// Если данные пришли сжатые методом Deflate
-						else if(this->_fmk->exists("deflate", jt->second))
+						else if(this->_fmk->exists("deflate", j->second))
 							// Устанавливаем тип компрессии полезной нагрузки
 							compress = http_t::compress_t::DEFLATE;
 					}
 				}
 				// Продолжаем перебор дальше
-				++jt;
+				++j;
 			}
 			// Если флаг рекомпрессии данных прокси-сервером установлен
 			if(this->_flags.count(flag_t::RECOMPRESS) > 0)
@@ -472,11 +472,11 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			// Если заголовок получен
 			if(!header.empty())
 				// Устанавливаем загловок Via
-				it->second->response.headers.emplace("Via", header);
+				i->second->response.headers.emplace("Via", header);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("headersClient"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &it->second->response.headers);
+				this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
 		}
 	}
 }
@@ -490,66 +490,69 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
  */
 void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем поиск объекта клиента
-	auto it = this->_clients.find(bid);
+	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
+	if(i != this->_clients.end()){
 		// Если заголовки ответа получены
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
 			// Устанавливаем полученные заголовки
-			it->second->request.headers = headers;
+			i->second->request.headers = headers;
 			// Устанавливаем URL-адрес запроса
-			it->second->request.params.url = url;
+			i->second->request.params.url = url;
 			// Устанавливаем метод запроса
-			it->second->request.params.method = method;
+			i->second->request.params.method = method;
 			// Выполняем перебор всех полученных заголовков
-			for(auto jt = it->second->request.headers.begin(); jt != it->second->request.headers.end();){
+			for(auto j = i->second->request.headers.begin(); j != i->second->request.headers.end();){
 				// Если получен заголовок Via
-				if(this->_fmk->exists("via", jt->first)){
+				if(this->_fmk->compare("via", j->first)){
 					// Добавляем заголовок в список
-					via.push_back(jt->second);
+					via.push_back(j->second);
 					// Выполняем удаление заголовка
-					jt = it->second->request.headers.erase(jt);
+					j = i->second->request.headers.erase(j);
 					// Продолжаем перебор дальше
 					continue;
 				// Если заголовок соответствует прокси-серверу
-				} else if(this->_fmk->exists("te", jt->first) || this->_fmk->exists("proxy-", jt->first)) {
+				} else if(this->_fmk->compare("te", j->first) || this->_fmk->exists("proxy-", j->first)) {
 					// Выполняем удаление заголовка
-					jt = it->second->request.headers.erase(jt);
+					j = i->second->request.headers.erase(j);
 					// Продолжаем перебор дальше
 					continue;
 				// Если найден заголовок подключения
-				} else if(this->_fmk->exists("connection", jt->first)) {
+				} else if(this->_fmk->compare("connection", j->first)) {
 					// Переводим значение в нижний регистр
-					this->_fmk->transform(jt->second, fmk_t::transform_t::LOWER);
+					this->_fmk->transform(j->second, fmk_t::transform_t::LOWER);
 					// Выполняем поиск заголовка Transfer-Encoding
-					const size_t pos = jt->second.find("te");
+					const size_t pos = j->second.find("te");
 					// Если заголовок найден
 					if(pos != string::npos){
 						// Выполняем удаление значение TE из заголовка
-						jt->second.erase(pos, 2);
+						j->second.erase(pos, 2);
 						// Если первый символ является запятой, удаляем
-						if(jt->second.front() == ',')
+						if(j->second.front() == ',')
 							// Удаляем запятую
-							jt->second.erase(0, 1);
+							j->second.erase(0, 1);
 						// Выполняем удаление лишних пробелов
-						this->_fmk->transform(jt->second, fmk_t::transform_t::TRIM);
+						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
-				}
+				// Если производится запрос на WebSocket сервер
+				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second))
+					// Устанавливаем тип протокола интернета HTTP/1.1
+					i->second->core.proto(awh::engine_t::proto_t::HTTP1_1);
 				// Продолжаем перебор дальше
-				++jt;
+				++j;
 			}
 			// Выполняем получение заголовка Via
 			const string & header = this->via(bid, via);
 			// Если заголовок получен
 			if(!header.empty())
 				// Устанавливаем загловок Via
-				it->second->request.headers.emplace("Via", header);
+				i->second->request.headers.emplace("Via", header);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("headersServer"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *> ("headersServer", bid, method, url, &it->second->request.headers);
+				this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *> ("headersServer", bid, method, url, &i->second->request.headers);
 		}
 	}
 }

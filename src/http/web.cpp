@@ -595,9 +595,6 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
 									// Выполняем поиск разделителя
 									const size_t pos = this->_req.url.host.rfind(':');
-									
-									cout << " ------------------ " << val << endl;
-									
 									// Если разделитель найден
 									if(pos != string::npos){
 										// Получаем порт сервера
