@@ -227,8 +227,10 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
-	// Устанавливаем шифрование
-	// ws.encryption("PASS");
+	// Активируем шифрование
+	// ws.encryption(true);
+	// Устанавливаем пароль шифрования
+	// ws.encryption(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
