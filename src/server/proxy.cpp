@@ -485,40 +485,33 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
 			// Если производится активация WebSocket
 			if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
+				// Флаг удачно-выполненного подключения
+				bool connected = false;
 				// Определяем протокола подключения
 				switch(static_cast <uint8_t> (this->_core.proto(bid))){
 					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
 						// Если переключение на протокол WebSocket произведено
-						if(i->second->response.params.code == 101){
-							// Выполняем снятие переключение протокола
-							i->second->upgrade = false;
-							// Выполняем установку метода подключения
-							i->second->method = awh::web_t::method_t::CONNECT;
-							// Меняем метод подключения на CONNECT
-							i->second->request.params.method = awh::web_t::method_t::CONNECT;
-							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-							// Выводим полученный результат
-							this->completed(bid);
-						}
-					} break;
+						connected = (i->second->response.params.code == 101);
+					break;
 					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
 						// Если переключение на протокол WebSocket произведено
-						if(i->second->response.params.code == 200){
-							// Выполняем снятие переключение протокола
-							i->second->upgrade = false;
-							// Выполняем установку метода подключения
-							i->second->method = awh::web_t::method_t::CONNECT;
-							// Меняем метод подключения на CONNECT
-							i->second->request.params.method = awh::web_t::method_t::CONNECT;
-							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-							// Выводим полученный результат
-							this->completed(bid);
-						}
-					} break;
+						connected = (i->second->response.params.code == 200);
+					break;
+				}
+				// Если подключение установлено
+				if(connected){
+					// Выполняем снятие переключение протокола
+					i->second->upgrade = false;
+					// Выполняем установку метода подключения
+					i->second->method = awh::web_t::method_t::CONNECT;
+					// Меняем метод подключения на CONNECT
+					i->second->request.params.method = awh::web_t::method_t::CONNECT;
+					// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+					i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+					// Выводим полученный результат
+					this->completed(bid);
 				}
 			}
 		}
@@ -772,8 +765,14 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						} break;
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
+							
+							cout << " -------------------1 " << endl;
+							
 							// Если активирован WebSocket клиент
 							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
+								
+								cout << " -------------------2 " << endl;
+								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
