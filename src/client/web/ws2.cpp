@@ -71,6 +71,10 @@ void awh::client::WebSocket2::send(const uint64_t bid, client::core_t * core) no
 	const int32_t sid = this->_sid;
 	// Выполняем запрос на получение заголовков
 	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+	
+	for(auto & header : headers)
+		cout << " @@@@@@@@@@@@@@@@@@@@@@@@@@@ " << header.first << " === " << header.second << endl;
+	
 	// Выполняем запрос на удалённый сервер	
 	this->_sid = web2_t::send(-1, headers, http2_t::flag_t::NONE);
 	// Если запрос не получилось отправить
