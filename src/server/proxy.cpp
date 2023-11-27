@@ -772,68 +772,84 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						} break;
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-							
-							cout << " ++++++++++++++++++++++++ " << (it->second->agent == client::web_t::agent_t::WEBSOCKET) << endl;
-
-							// Если метод CONNECT не разрешён для запроса
-							if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
-								// Формируем сообщение ответа
-								const string message = "CONNECT method is forbidden on the proxy-server";
-								// Формируем тело ответа
-								const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
-								// Если метод CONNECT запрещено использовать
-								this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
-									{"Connection", "close"},
-									{"Proxy-Connection", "close"},
-									{"Content-type", "text/html; charset=utf-8"}
+							// Если активирован WebSocket клиент
+							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
+								// Создаём объект запроса
+								client::web_t::request_t request;
+								// Выполняем установку активного агента клиента
+								request.agent = it->second->agent;
+								// Устанавливаем тепло запроса
+								request.entity = it->second->request.entity;
+								// Запоминаем переданные заголовки
+								request.headers = it->second->request.headers;
+								// Устанавливаем адрес запроса
+								request.url = it->second->request.params.url;
+								// Устанавливаем метод запроса
+								request.method = it->second->request.params.method;
+								// Выполняем запрос на сервер
+								it->second->awh.send(std::move(request));
+							// Если активирован режим работы HTTP-клиента
+							} else {
+								// Если метод CONNECT не разрешён для запроса
+								if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
+									// Формируем сообщение ответа
+									const string message = "CONNECT method is forbidden on the proxy-server";
+									// Формируем тело ответа
+									const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
+									// Если метод CONNECT запрещено использовать
+									this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
+										{"Connection", "close"},
+										{"Proxy-Connection", "close"},
+										{"Content-type", "text/html; charset=utf-8"}
+									});
+									// Выходим из функции
+									return;
+								}
+								// Запоминаем идентификатор потока
+								it->second->sid = sid;
+								// Создаём список флагов клиента
+								set <client::web_t::flag_t> flags = {
+									client::web_t::flag_t::NOT_STOP,
+									client::web_t::flag_t::NOT_INFO,
+									client::web_t::flag_t::WEBSOCKET_ENABLE
+								};
+								// Если флаг ожидания входящих сообщений установлен
+								if(this->_flags.count(flag_t::WAIT_MESS) > 0)
+									// Устанавливаем флаг ожидания входящих сообщений
+									flags.emplace(client::web_t::flag_t::WAIT_MESS);
+								// Если флаг разрешения выполнения редиректов установлен
+								if(this->_flags.count(flag_t::REDIRECTS) > 0)
+									// Устанавливаем флаг разрешения выполнения редиректов
+									flags.emplace(client::web_t::flag_t::REDIRECTS);
+								// Если флаг проверки домена установлен
+								if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
+									// Выполняем установку флага проверки домена
+									flags.emplace(client::web_t::flag_t::VERIFY_SSL);
+								// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
+								if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
+									// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
+									flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
+								// Устанавливаем флаги настроек модуля
+								it->second->awh.mode(std::move(flags));
+								// Если порт сервера не стандартный, устанавливаем схему протокола
+								if((it->second->request.params.url.port != 80) && (it->second->request.params.url.port != 443))
+									// Выполняем установку защищённого протокола
+									it->second->request.params.url.schema = "https";
+								// Выполняем инициализацию подключения
+								it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
+									awh::http_t::compress_t::BROTLI,
+									awh::http_t::compress_t::GZIP,
+									awh::http_t::compress_t::DEFLATE
 								});
-								// Выходим из функции
-								return;
+								// Подписываемся на получение сообщения сервера
+								it->second->awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3));
+								// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
+								it->second->awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4));
+								// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
+								it->second->awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4));
+								// Выполняем подключение клиента к сетевому ядру
+								this->_core.bind(&it->second->core);
 							}
-							// Запоминаем идентификатор потока
-							it->second->sid = sid;
-							// Создаём список флагов клиента
-							set <client::web_t::flag_t> flags = {
-								client::web_t::flag_t::NOT_STOP,
-								client::web_t::flag_t::NOT_INFO,
-								client::web_t::flag_t::WEBSOCKET_ENABLE
-							};
-							// Если флаг ожидания входящих сообщений установлен
-							if(this->_flags.count(flag_t::WAIT_MESS) > 0)
-								// Устанавливаем флаг ожидания входящих сообщений
-								flags.emplace(client::web_t::flag_t::WAIT_MESS);
-							// Если флаг разрешения выполнения редиректов установлен
-							if(this->_flags.count(flag_t::REDIRECTS) > 0)
-								// Устанавливаем флаг разрешения выполнения редиректов
-								flags.emplace(client::web_t::flag_t::REDIRECTS);
-							// Если флаг проверки домена установлен
-							if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
-								// Выполняем установку флага проверки домена
-								flags.emplace(client::web_t::flag_t::VERIFY_SSL);
-							// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-							if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
-								// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
-								flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
-							// Устанавливаем флаги настроек модуля
-							it->second->awh.mode(std::move(flags));
-							// Если порт сервера не стандартный, устанавливаем схему протокола
-							if((it->second->request.params.url.port != 80) && (it->second->request.params.url.port != 443))
-								// Выполняем установку защищённого протокола
-								it->second->request.params.url.schema = "https";
-							// Выполняем инициализацию подключения
-							it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
-								awh::http_t::compress_t::BROTLI,
-								awh::http_t::compress_t::GZIP,
-								awh::http_t::compress_t::DEFLATE
-							});
-							// Подписываемся на получение сообщения сервера
-							it->second->awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3));
-							// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-							it->second->awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4));
-							// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-							it->second->awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4));
-							// Выполняем подключение клиента к сетевому ядру
-							this->_core.bind(&it->second->core);
 						} break;
 					}
 				} break;
