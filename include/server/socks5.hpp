@@ -197,7 +197,7 @@ namespace awh {
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const u_int port, const string & host = "") noexcept;
+				void init(const u_int port = 1080, const string & host = "") noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
