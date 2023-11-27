@@ -730,11 +730,11 @@ void awh::server::Core::remove() noexcept {
  */
 void awh::server::Core::run(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
-	if(sid > 0){		
+	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети
 		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){			
+		if(it != this->_schemes.end()){
 			// Устанавливаем базу событий кластера
 			this->_cluster.base(this->_dispatch.base);
 			// Выполняем инициализацию кластера
@@ -767,7 +767,7 @@ void awh::server::Core::run(const uint16_t sid) noexcept {
 					} break;
 				}
 			// Если хост сервера является доменным именем и объект DNS-резолвера установлен
-			} else if(this->_dns != nullptr) {			
+			} else if(this->_dns != nullptr) {
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет

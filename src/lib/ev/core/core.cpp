@@ -687,7 +687,7 @@ uint16_t awh::Core::add(const scheme_t * scheme) noexcept {
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Получаем идентификатор схемы сети
-		result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+		result = (this->_schemes.size() + 1);
 		// Устанавливаем родительский объект
 		shm->_core = this;
 		// Устанавливаем идентификатор схемы сети
