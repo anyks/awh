@@ -257,6 +257,10 @@ namespace awh {
 				fn_t _callback;
 				// Объект параметров клиента
 				settings_t _settings;
+
+				bool k1 = false;
+				bool k2 = false;
+
 			private:
 				// Компрессор для рекомпрессии пересылаемых данных
 				http_t::compress_t _compressor;
