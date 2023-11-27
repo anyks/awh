@@ -276,7 +276,7 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,
-		// client::web_t::flag_t::CONNECT_METHOD_ENABLE
+		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
@@ -285,8 +285,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -320,7 +320,7 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
-	ws.proxy("https://user:password@anyks.net:2222");
+	ws.proxy("http://user:password@anyks.net:2222");
 	
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
