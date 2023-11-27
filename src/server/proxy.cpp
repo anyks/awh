@@ -786,9 +786,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						} break;
 						// Если запрашивается клиентом метод CONNECT
 						case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-							// Если активирован WebSocket клиент
+							// Если активирован WebSocket клиент и подключение уже выполненно
 							if((it->second->method == awh::web_t::method_t::CONNECT) &&
-							  (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
+							   (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
