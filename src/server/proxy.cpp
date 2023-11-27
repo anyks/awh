@@ -580,15 +580,20 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 						// Выполняем удаление лишних пробелов
 						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
-				// Если производится запрос на WebSocket сервер
-				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second))
-					// Устанавливаем агента WebSocket
-					i->second->agent = client::web_t::agent_t::WEBSOCKET;
-				else if(this->_fmk->compare("sec-websocket-extensions", j->first))
+				} else if(this->_fmk->compare("sec-websocket-extensions", j->first))
 					cout << " +++++++++++++++++++++++ " << j->second << endl;
 				
 				// Продолжаем перебор дальше
 				++j;
+			}
+			// Получаем объект HTTP-парсера
+			const awh::http_t * http = this->_server.parser(bid);
+			// Если объект HTTP-парсера получен
+			if(http != nullptr){
+				// Если нужно переключиться на протокол WebSocket
+				if(this->_fmk->exists("websocket", http->upgrade()))
+					// Устанавливаем агента WebSocket
+					i->second->agent = client::web_t::agent_t::WEBSOCKET;
 			}
 			// Выполняем получение заголовка Via
 			const string & header = this->via(bid, via);

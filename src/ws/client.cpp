@@ -129,7 +129,7 @@ void awh::client::WS::commit() noexcept {
 					// Выполняем очистку слова записи
 					extension.clear();
 				// Если заголовок сабпротокола найден
-				} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")){
+				} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
 					// Проверяем, соответствует ли желаемый подпротокол нашему установленному
 					if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
 						// Устанавливаем выбранный подпротокол
