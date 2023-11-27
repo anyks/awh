@@ -119,18 +119,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
 	// Выполняем инициализацию WebSocket сервера
-	proxy.init(2222, "127.0.0.1");
+	proxy.init(2222, "anyks.net");
+	// proxy.init(2222, "127.0.0.1");
 	// proxy.init("anyks");
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-	/*
-	// Устанавливаем SSL сертификаты сервера
-	proxy.certificate(
-		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
-	);
-	*/
-	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	proxy.on((function <void (const size_t, const proxy_socks5_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
