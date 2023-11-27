@@ -899,16 +899,31 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = true;
+
+	cout << " ###########1 " << endl;
+
 	// Если тип сокета установлен как TCP/IP
 	if(this->k2 || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
+		
+		cout << " ###########2 " << endl;
+		
 		// Если бинарные данные получены
 		if((buffer != nullptr) && (size > 0)){
+			
+			cout << " ###########3 " << endl;
+			
 			// Выполняем поиск объекта клиента
 			auto it = this->_clients.find(bid);
 			// Если активный клиент найден и подключение установлено
 			if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
+				
+				cout << " ###########4 " << endl;
+				
 				// Если установлен метод CONNECT
 				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
+					
+					cout << " ###########5 " << endl;
+					
 					// Определяем переданного брокера
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
