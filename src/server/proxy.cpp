@@ -897,7 +897,7 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 	// Результат работы функции
 	bool result = true;
 	// Если тип сокета установлен как TCP/IP
-	if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
+	// if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
 		// Если бинарные данные получены
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем поиск объекта клиента
@@ -922,7 +922,7 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 				}
 			}
 		}
-	}
+	// }
 	// Выводим результат
 	return result;
 }
