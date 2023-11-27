@@ -1129,8 +1129,8 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		this->_web.request(std::move(request));
 	// Если ключ заголовка соответствует протоколу подключения
 	} else if(this->_fmk->compare(key, ":protocol")) {
-		// Если протокол соответствует WebSocket-у
-		if(this->_fmk->compare(val, "websocket"))
+		// Если сервер не является PROXY-сервером и протокол соответствует WebSocket-у
+		if((this->_identity != identity_t::PROXY) && this->_fmk->compare(val, "websocket"))
 			// Выполняем установку идентичность протоколу WebSocket
 			this->_identity = identity_t::WS;
 		/* Просто пропускаем, потому, что протокол мы не используем */
