@@ -537,9 +537,13 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
 				// Если производится запрос на WebSocket сервер
-				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second))
+				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second)){
+					
+					cout << " !!!!!!!!!!!!! " << endl;
+					
 					// Устанавливаем тип протокола интернета HTTP/1.1
 					i->second->core.proto(awh::engine_t::proto_t::HTTP1_1);
+				}
 				// Продолжаем перебор дальше
 				++j;
 			}
