@@ -73,14 +73,26 @@ bool awh::server::Auth::check(const string & method) noexcept {
 		} break;
 		// Если тип авторизации - Дайджест
 		case static_cast <uint8_t> (type_t::DIGEST): {
+			
+			cout << " ---------------1 " << method << endl;
+			
 			// Если данные пользователя переданы
 			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
+				
+				cout << " ---------------2 " << endl;
+				
 				// Если на сервере счётчик меньше
 				if((this->_fmk->atoi(this->_digest.nc, 16) <= this->_fmk->atoi(this->_locale.nc, 16)) && this->_callback.is("extract")){
 					// Получаем пароль пользователя
 					const string & pass = this->_callback.apply <string, const string &> ("extract", this->_user);
+					
+					cout << " ---------------3 " << endl;
+					
 					// Если пароль пользователя получен
 					if(!pass.empty()){
+						
+						cout << " ---------------4 " << endl;
+						
 						// Параметры проверки дайджест авторизации
 						digest_t digest;
 						// Устанавливаем счётчик клиента
@@ -94,6 +106,9 @@ bool awh::server::Auth::check(const string & method) noexcept {
 						digest.nonce  = this->_locale.nonce;
 						digest.opaque = this->_locale.opaque;
 						digest.cnonce = this->_locale.cnonce;
+
+						cout << " ---------------5 " << method << endl;
+
 						// Выполняем проверку авторизации
 						result = (this->_fmk->compare(this->response(this->_fmk->transform(method, fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_locale.resp));
 					}
