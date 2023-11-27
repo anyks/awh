@@ -2292,6 +2292,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						this->_auth.client.uri(this->_uri.url(req.url));
 						// Список системных заголовков
 						unordered_set <string> systemHeaders;
+						
+						cout << " =====================0 " << endl;
+						
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не находится в чёрном списке и не является системным
