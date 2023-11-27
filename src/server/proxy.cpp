@@ -493,10 +493,10 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 							
 							this->k1 = true;
 
-							i->second->request.params.method = awh::web_t::method_t::CONNECT;
-							
 							// Выполняем установку метода подключения
 							i->second->method = awh::web_t::method_t::CONNECT;
+							// Меняем метод подключения на CONNECT
+							i->second->request.params.method = awh::web_t::method_t::CONNECT;
 							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 							i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
 							// Выводим полученный результат
@@ -901,46 +901,25 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = true;
-
-	cout << " ###########1 " << endl;
-
 	// Если тип сокета установлен как TCP/IP
 	if(this->k2 || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
-		
-		cout << " ###########2 " << endl;
-		
 		// Если бинарные данные получены
 		if((buffer != nullptr) && (size > 0)){
-			
-			cout << " ###########3 " << endl;
-			
 			// Выполняем поиск объекта клиента
 			auto it = this->_clients.find(bid);
 			// Если активный клиент найден и подключение установлено
 			if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
-				
-				cout << " ###########4 " << endl;
-				
 				// Если установлен метод CONNECT
 				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
-					
-					cout << " ###########5 " << endl;
-					
 					// Определяем переданного брокера
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT):
-							
-							cout << " !!!!!!!!!!!!!!! RAW CLIENT " << endl;
-							
 							// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
 							this->_server.send(bid, buffer, size);
 						break;
 						// Если брокером является сервер
 						case static_cast <uint8_t> (broker_t::SERVER):
-							
-							cout << " !!!!!!!!!!!!!!! RAW SERVER " << endl;
-							
 							// Выполняем отправку сообщения клиенту в бинарном виде
 							it->second->awh.send(buffer, size);
 						break;
