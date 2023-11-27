@@ -580,9 +580,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 						// Выполняем удаление лишних пробелов
 						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
-				} else if(this->_fmk->compare("sec-websocket-extensions", j->first))
-					cout << " +++++++++++++++++++++++ " << j->second << endl;
-				
+				}
 				// Продолжаем перебор дальше
 				++j;
 			}
