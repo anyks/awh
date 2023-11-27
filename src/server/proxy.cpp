@@ -493,7 +493,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 							
 							this->k1 = true;
 
-							i->second->request.params.method = awh::web_t::method_t::GET;
+							i->second->request.params.method = awh::web_t::method_t::CONNECT;
 							
 							// Выполняем установку метода подключения
 							i->second->method = awh::web_t::method_t::CONNECT;
