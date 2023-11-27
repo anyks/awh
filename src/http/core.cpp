@@ -2210,10 +2210,16 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
+			
+			cout << " =====================-2 " << endl;
+			
 			// Получаем объект ответа клиенту
 			const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 			// Если параметры REST-запроса переданы
 			if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
+				
+				cout << " =====================-3 " << endl;
+				
 				// Данные REST-запроса
 				string request = "";
 				// Определяем метод запроса
@@ -2264,6 +2270,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						request = this->_fmk->format("CONNECT %s HTTP/%.1f\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), req.version);
 					break;
 				}
+
+				cout << " =====================-4 " << endl;
+
 				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
@@ -2703,6 +2712,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 						// Название заголовка
 						string name = "";
+
+						cout << " =====================!!!! " << endl;
+
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Устанавливаем название заголовка
