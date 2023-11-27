@@ -2338,6 +2338,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case 10:
 										case 11:
 										case 12: allow = !available[i]; break;
+										case 1: allow = (req.method != web_t::method_t::CONNECT); break;
 									}
 									// Если заголовок запрещён к выводу
 									if(!allow)
