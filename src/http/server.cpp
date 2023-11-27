@@ -22,10 +22,16 @@
 awh::Http::status_t awh::server::Http::status() noexcept {
 	// Результат работы функции
 	status_t result = status_t::FAULT;
+	
+	cout << " ++++++++++++++++++1 " << endl;
+	
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Параметры авторизации
 		string auth = "";
+		
+		cout << " ++++++++++++++++++2 " << endl;
+		
 		// Определяем идентичность сервера
 		switch(static_cast <uint8_t> (this->_identity)){
 			// Если сервер соответствует WebSocket-серверу
@@ -41,12 +47,18 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 				auth = this->_web.header("proxy-authorization");
 			break;
 		}
+		
+		cout << " ++++++++++++++++++3 " << auth << endl;
+		
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Метод HTTP запроса
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->_auth.server.header(auth);
+			
+			cout << " ++++++++++++++++++4 " << auth << endl;
+			
 			// Определяем метод запроса
 			switch(static_cast <uint8_t> (this->_web.request().method)){
 				// Если метод запроса указан как GET
@@ -95,6 +107,9 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 					method = "connect";
 				break;
 			}
+			
+			cout << " ++++++++++++++++++5 " << method << endl;
+			
 			// Выполняем проверку авторизации
 			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
