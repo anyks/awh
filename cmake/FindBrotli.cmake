@@ -8,9 +8,9 @@ endif()
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 # Поиск библиотеки Brotli
-find_library(BROTLI_ENCODE_LIBRARY NAMES brotlienc-static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-find_library(BROTLI_DECODE_LIBRARY NAMES brotlidec-static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-find_library(BROTLI_COMMON_LIBRARY NAMES brotlicommon-static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+find_library(BROTLI_ENCODE_LIBRARY NAMES brotlienc PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+find_library(BROTLI_DECODE_LIBRARY NAMES brotlidec PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+find_library(BROTLI_COMMON_LIBRARY NAMES brotlicommon PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)

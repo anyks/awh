@@ -276,7 +276,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Zlib
-	VER="1.2.11"
+	VER="1.3"
 
 	# Переключаемся на master
 	git checkout master
@@ -330,7 +330,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Brotli
-	VER="1.0.9"
+	VER="1.1.0"
 
 	# Переключаемся на master
 	git checkout master
@@ -381,14 +381,14 @@ if [ ! -f "$src/.stamp_done" ]; then
 	$BUILD -j"$numproc" || exit 1
 
 	# Производим установку библиотеки по нужному пути
-	echo "Install \"$src/${build}/libbrotlicommon-static.a\" to \"$PREFIX/lib/libbrotlicommon-static.a\""
-	${INSTALL_CMD} "$src/${build}/libbrotlicommon-static.a" "$PREFIX/lib/libbrotlicommon-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlicommon.a\" to \"$PREFIX/lib/libbrotlicommon.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlicommon.a" "$PREFIX/lib/libbrotlicommon.a" || exit 1
 
-	echo "Install \"$src/${build}/libbrotlidec-static.a\" to \"$PREFIX/lib/libbrotlidec-static.a\""
-	${INSTALL_CMD} "$src/${build}/libbrotlidec-static.a" "$PREFIX/lib/libbrotlidec-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlidec.a\" to \"$PREFIX/lib/libbrotlidec.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlidec.a" "$PREFIX/lib/libbrotlidec.a" || exit 1
 
-	echo "Install \"$src/${build}/libbrotlienc-static.a\" to \"$PREFIX/lib/libbrotlienc-static.a\""
-	${INSTALL_CMD} "$src/${build}/libbrotlienc-static.a" "$PREFIX/lib/libbrotlienc-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlienc.a\" to \"$PREFIX/lib/libbrotlienc.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlienc.a" "$PREFIX/lib/libbrotlienc.a" || exit 1
 
 	# Производим установку заголовочных файлов по нужному пути
 	for i in $(ls "$src/c/include/brotli" | grep \\.h$);
@@ -733,7 +733,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия LibXML2
-	VER="2.11.4"
+	VER="2.12.1"
 
 	# Закачиваем все изменения
 	git fetch --all
@@ -854,159 +854,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-## Сборка C-Ares
-#src="$ROOT/submodules/c-ares"
-#if [ ! -f "$src/.stamp_done" ]; then
-#	printf "\n****** AWH C-Ares ******\n"
-#	cd "$src" || exit 1
-#
-#	# Версия C-Ares
-#	VER="1_19_1"
-#
-#	# Закачиваем все изменения
-#	git fetch --all
-#	# Закачиваем все теги
-#	git fetch --all --tags
-#	# Выполняем жесткое переключение на main
-#	git reset --hard origin/main
-#	# Переключаемся на main
-#	git checkout main
-#	# Выполняем обновление данных
-#	git pull origin main
-#	# Удаляем старую ветку
-#	git branch -D v${VER}-branch
-#	# Выполняем переключение на указанную версию
-#	git checkout -b v${VER}-branch cares-${VER}
-#
-#	# Создаём каталог сборки
-#	mkdir -p "build" || exit 1
-#	# Переходим в каталог
-#	cd "build" || exit 1
-#
-#	# Удаляем старый файл кэша
-#	rm -rf "$src/build/CMakeCache.txt"
-#
-#	# Выполняем конфигурацию проекта
-#	if [[ $OS = "Windows" ]]; then
-#		cmake \
-#		 -DCARES_STATIC="ON" \
-#		 -DCARES_SHARED="OFF" \
-#		 -DCARES_STATIC_PIC="ON" \
-#		 -DCARES_BUILD_TESTS="OFF" \
-#		 -DCARES_BUILD_TOOLS="OFF" \
-#		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
-#		 -DCMAKE_BUILD_TYPE=Release \
-#		 -DCMAKE_SYSTEM_NAME=Windows \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 -G "MSYS Makefiles" \
-#		 .. || exit 1
-#	else
-#		cmake \
-#		 -DCARES_STATIC="ON" \
-#		 -DCARES_SHARED="OFF" \
-#		 -DCARES_STATIC_PIC="ON" \
-#		 -DCARES_BUILD_TESTS="OFF" \
-#		 -DCARES_BUILD_TOOLS="OFF" \
-#		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
-#		 -DCMAKE_BUILD_TYPE=Release \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 .. || exit 1
-#	fi
-#
-#	# Выполняем сборку на всех логических ядрах
-#	$BUILD -j"$numproc" || exit 1
-#	# Выполняем установку проекта
-#	$BUILD install || exit 1
-#
-#	# Создаём каталог C-Ares
-#	mkdir "$PREFIX/include/c-ares"
-#
-#	# Производим установку заголовочных файлов по нужному пути
-#	for i in $(ls "$PREFIX/include" | grep "ares.*\.h$");
-#	do
-#		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/c-ares/$i\""
-#		mv "$PREFIX/include/$i" "$PREFIX/include/c-ares/$i" || exit 1
-#	done
-#
-#	# Помечаем флагом, что сборка и установка произведена
-#	touch "$src/.stamp_done"
-#	cd "$ROOT" || exit 1
-#fi
-
-## Сборка Jansson
-#src="$ROOT/submodules/jansson"
-#if [ ! -f "$src/.stamp_done" ]; then
-#	printf "\n****** AWH Jansson ******\n"
-#	cd "$src" || exit 1
-#
-#	# Версия Jansson
-#	VER="2.14"
-#
-#	# Закачиваем все изменения
-#	git fetch --all
-#	# Закачиваем все теги
-#	git fetch --all --tags
-#	# Выполняем жесткое переключение на master
-#	git reset --hard origin/master
-#	# Переключаемся на master
-#	git checkout master
-#	# Выполняем обновление данных
-#	git pull origin master
-#	# Удаляем старую ветку
-#	git branch -D v${VER}-branch
-#	# Выполняем переключение на указанную версию
-#	git checkout -b v${VER}-branch v${VER}
-#
-#	# Создаём каталог сборки
-#	mkdir -p "build" || exit 1
-#	# Переходим в каталог
-#	cd "build" || exit 1
-#
-#	# Удаляем старый файл кэша
-#	rm -rf "$src/build/CMakeCache.txt"
-#
-#	# Выполняем конфигурацию проекта
-#	if [[ $OS = "Windows" ]]; then
-#		cmake \
-#		 -DJANSSON_EXAMPLES="OFF" \
-#		 -DJANSSON_STATIC_CRT="ON" \
-#		 -DJANSSON_BUILD_DOCS="OFF" \
-#		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
-#		 -DCMAKE_BUILD_TYPE=Release \
-#		 -DCMAKE_SYSTEM_NAME=Windows \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 -G "MSYS Makefiles" \
-#		 .. || exit 1
-#	else
-#		cmake \
-#		 -DJANSSON_EXAMPLES="OFF" \
-#		 -DJANSSON_BUILD_DOCS="OFF" \
-#		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
-#		 -DCMAKE_BUILD_TYPE=Release \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 .. || exit 1
-#	fi
-#
-#	# Выполняем сборку на всех логических ядрах
-#	$BUILD -j"$numproc" || exit 1
-#	# Выполняем установку проекта
-#	$BUILD install || exit 1
-#
-#	# Создаём каталог Jansson
-#	mkdir "$PREFIX/include/jansson"
-#
-#	# Производим установку заголовочных файлов по нужному пути
-#	for i in $(ls "$PREFIX/include" | grep "jansson.*\.h$");
-#	do
-#		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/jansson/$i\""
-#		mv "$PREFIX/include/$i" "$PREFIX/include/jansson/$i" || exit 1
-#	done
-#
-#	# Помечаем флагом, что сборка и установка произведена
-#	touch "$src/.stamp_done"
-#	cd "$ROOT" || exit 1
-#fi
-
 # Сборка NgHttp3
 src="$ROOT/submodules/nghttp3"
 if [ ! -f "$src/.stamp_done" ]; then
@@ -1014,7 +861,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp3
-	VER="0.14.0"
+	VER="1.1.0"
 
 	# Переключаемся на main
 	git checkout main
@@ -1092,7 +939,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgTCP2
-	VER="0.18.0"
+	VER="1.1.0"
 
 	# Переключаемся на main
 	git checkout main
@@ -1215,7 +1062,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.55.1"
+	VER="1.58.0"
 
 	# Переключаемся на master
 	git checkout master

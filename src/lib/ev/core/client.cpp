@@ -1020,7 +1020,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::WRAP, "Wrap engine context is failed");
+						this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
 					// Выходим из функции
 					return;
 				}

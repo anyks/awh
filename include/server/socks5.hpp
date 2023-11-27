@@ -66,16 +66,16 @@ namespace awh {
 				 */
 				typedef struct Core {
 					dns_t          dns;    // Объект DNS-резолвера
-					core_t         timer;  // Объект биндинга TCP/IP для таймера
-					client::core_t client; // Объект биндинга TCP/IP для клиента
 					server::core_t server; // Объект биндинга TCP/IP для сервера
+					client::core_t client; // Объект биндинга TCP/IP для клиента
+					core_t         timer;  // Объект биндинга TCP/IP для таймера
 					/**
 					 * Core Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Core(const fmk_t * fmk, const log_t * log) noexcept :
-					 dns(fmk, log), timer(fmk, log), client(&dns, fmk, log), server(&dns, fmk, log) {}
+					 dns(fmk, log), server(&dns, fmk, log), client(&dns, fmk, log), timer(fmk, log) {}
 				} core_t;
 			private:
 				// Порт сервера
