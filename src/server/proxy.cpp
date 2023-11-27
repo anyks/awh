@@ -142,12 +142,14 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 						// Создаём объект запроса
 						client::web_t::request_t request;
-						// Устанавливаем адрес запроса
-						request.url = it->second->request.params.url;
+						// Выполняем установку активного агента клиента
+						request.agent = it->second->request.agent;
 						// Устанавливаем тепло запроса
-						request.entity = it->second->response.entity;
+						request.entity = it->second->request.entity;
 						// Запоминаем переданные заголовки
 						request.headers = it->second->request.headers;
+						// Устанавливаем адрес запроса
+						request.url = it->second->request.params.url;
 						// Устанавливаем метод запроса
 						request.method = it->second->request.params.method;
 						// Выполняем установку метода подключения
@@ -537,10 +539,9 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 						this->_fmk->transform(j->second, fmk_t::transform_t::TRIM);
 					}
 				// Если производится запрос на WebSocket сервер
-				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second)){
-					
-					cout << " !!!!!!!!!!!!! " << endl;
-					
+				} else if(this->_fmk->compare("upgrade", j->first) && this->_fmk->exists("websocket", j->second)) {
+					// Устанавливаем агента WebSocket
+					i->second->agent = client::web_t::agent_t::WEBSOCKET;
 					// Устанавливаем тип протокола интернета HTTP/1.1
 					i->second->core.proto(awh::engine_t::proto_t::HTTP1_1);
 				}
@@ -710,12 +711,14 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							} else {
 								// Создаём объект запроса
 								client::web_t::request_t request;
-								// Устанавливаем адрес запроса
-								request.url = it->second->request.params.url;
+								// Выполняем установку активного агента клиента
+								request.agent = it->second->request.agent;
 								// Устанавливаем тепло запроса
-								request.entity = it->second->response.entity;
+								request.entity = it->second->request.entity;
 								// Запоминаем переданные заголовки
 								request.headers = it->second->request.headers;
+								// Устанавливаем адрес запроса
+								request.url = it->second->request.params.url;
 								// Устанавливаем метод запроса
 								request.method = it->second->request.params.method;
 								// Выполняем запрос на сервер

@@ -789,32 +789,22 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 			if(this->_agent != agent_t::WEBSOCKET){
 				// Если это первый запрос
 				if(this->_attempt == 0){
-					// Если список заголовков установлен
-					if(!request.headers.empty()){
-						// Выполняем перебор всего списка заголовков
-						for(auto & item : request.headers){
-							// Если заголовок соответствует смене протокола на WebSocket
-							if(this->_fmk->compare("upgrade", item.first) && this->_fmk->exists("websocket", item.second)){
-								// Если протокол WebSocket разрешён для подключения
-								if(this->_webSocket)
-									// Выполняем установку агента воркера WebSocket
-									this->_agent = agent_t::WEBSOCKET;
-								// Если протокол WebSocket запрещён
-								else {
-									// Выводим сообщение об ошибке
-									this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
-									// Если функция обратного вызова на на вывод ошибок установлена
-									if(this->_callback.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
-									// Выполняем отключение в обычном режиме
-									const_cast <client::core_t *> (this->_core)->close(this->_bid);
-									// Выходим из функции
-									return -1;
-								}
-								// Выходим из цикла
-								break;
-							}
+					// Выполняем установку агента воркера WebSocket
+					this->_agent = request.agent;
+					// Если требуется выполнить подключение к WebSocket-клиенту
+					if(this->_agent == agent_t::WEBSOCKET){
+						// Если протокол WebSocket запрещён
+						if(!this->_webSocket){
+							// Выводим сообщение об ошибке
+							this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
+							// Выполняем отключение в обычном режиме
+							const_cast <client::core_t *> (this->_core)->close(this->_bid);
+							// Выходим из функции
+							return -1;
 						}
 					}
 					// Результат работы функции

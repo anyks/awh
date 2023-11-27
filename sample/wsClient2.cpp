@@ -244,8 +244,8 @@ class WebClient {
 				req.compress = http_t::compress_t::DEFLATE;
 				// Устанавливаем параметры запроса
 				req.url = uri.parse("/stream");
-				// Устанавливаем заголовок WebSocket
-				req.headers = {{"Upgrade", "websocket"}};
+				// Устанавливаем агента WebSocket
+				req.agent = client::web_t::agent_t::WEBSOCKET;
 				// Выполняем первый запрос на сервер
 				this->_awh->send(std::move(req));
 			}

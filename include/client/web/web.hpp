@@ -98,6 +98,7 @@ namespace awh {
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
+					agent_t agent;                               // Агент воркера выполнения запроса
 					uri_t::url_t url;                            // URL-запроса запроса
 					web_t::method_t method;                      // Метод запроса
 					vector <char> entity;                        // Тело запроса
@@ -106,7 +107,7 @@ namespace awh {
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : method(web_t::method_t::NONE) {}
+					Request() noexcept : agent(agent_t::HTTP), method(web_t::method_t::NONE) {}
 				} request_t;
 			protected:
 				/**

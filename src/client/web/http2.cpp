@@ -1170,51 +1170,28 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Идентификатор предыдущего потока
 			int32_t sid = -1;
-			// Агент воркера выполнения запроса
-			agent_t agent = agent_t::HTTP;
-			// Если список заголовков установлен
-			if(!request.headers.empty()){
-				// Выполняем перебор всего списка заголовков
-				for(auto & item : request.headers){
-					// Если заголовок соответствует смене протокола на WebSocket
-					if(this->_fmk->compare("upgrade", item.first) && this->_fmk->exists("websocket", item.second)){
-						// Если протокол WebSocket разрешён для подключения
-						if(this->_webSocket){
-							// Выполняем установку агента воркера WebSocket
-							agent = agent_t::WEBSOCKET;
-							// Если флаг инициализации сессии HTTP/2 установлен
-							if(this->_http2.is()){
-								// Если протокол ещё не установлен
-								if(request.headers.count(":protocol") < 1)
-									// Выполняем установку протокола WebSocket
-									const_cast <request_t &> (request).headers.emplace(":protocol", item.second);
-								// Выполняем удаление заголовка Upgrade
-								const_cast <request_t &> (request).headers.erase(item.first);
-							}
-						// Если протокол WebSocket запрещён
-						} else {
-							// Выводим сообщение об ошибке
-							this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
-							// Если функция обратного вызова на на вывод ошибок установлена
-							if(this->_callback.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
-							// Если флаг инициализации сессии HTTP/2 установлен
-							if(this->_http2.is())
-								// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-								this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
-							// Выполняем отключение в обычном режиме
-							else const_cast <client::core_t *> (this->_core)->close(this->_bid);
-							// Выходим из функции
-							return sid;
-						}
-						// Выходим из цикла
-						break;
-					}
+			// Если требуется выполнить подключение к WebSocket-клиенту
+			if(request.agent == agent_t::WEBSOCKET){
+				// Если протокол WebSocket запрещён
+				if(!this->_webSocket){
+					// Выводим сообщение об ошибке
+					this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
+					// Если флаг инициализации сессии HTTP/2 установлен
+					if(this->_http2.is())
+						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+						this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+					// Выполняем отключение в обычном режиме
+					else const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					// Выходим из функции
+					return sid;
 				}
 			}
 			// Определяем тип агента
-			switch(static_cast <uint8_t> (agent)){
+			switch(static_cast <uint8_t> (request.agent)){
 				// Если протоколом агента является HTTP-клиент
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если флаг инициализации сессии HTTP/2 установлен
@@ -1387,6 +1364,13 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							else const_cast <unordered_multimap <string, string> &> (request.headers).emplace("Proxy-Connection", "close");
 						}
 					}
+					// Если флаг инициализации сессии HTTP/2 установлен
+					if(this->_http2.is()){
+						// Если протокол ещё не установлен
+						if(request.headers.count(":protocol") < 1)
+							// Выполняем установку протокола WebSocket
+							const_cast <request_t &> (request).headers.emplace(":protocol", "websocket");
+					}
 					// Если HTTP-заголовки установлены
 					if(!request.headers.empty())
 						// Выполняем установку HTTP-заголовков
@@ -1426,7 +1410,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Выполняем установку объекта воркера
 					auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
 					// Выполняем установку типа агента
-					ret.first->second->agent = agent;
+					ret.first->second->agent = request.agent;
 					// Выполняем очистку параметров HTTP-запроса
 					ret.first->second->http.clear();
 					// Выполняем сброс состояния HTTP-парсера

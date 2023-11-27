@@ -193,6 +193,8 @@ namespace awh {
 					bool sending;
 					// Активный метод подключения
 					awh::web_t::method_t method;
+					// Агент активного клиента
+					client::web_t::agent_t agent;
 					// Объект параметров запроса
 					request_t request;
 					// Объект параметров ответа
@@ -207,7 +209,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Client(const fmk_t * fmk, const log_t * log) noexcept :
-					 sid(-1), sending(false), method(awh::web_t::method_t::NONE), core(fmk, log), awh(&core, fmk, log) {}
+					 sid(-1), sending(false), method(awh::web_t::method_t::NONE),
+					 agent(client::web_t::agent_t::HTTP), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента
