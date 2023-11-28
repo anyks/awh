@@ -399,6 +399,8 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 		if(this->_callback.is("entityClient"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &it->second->response.entity);
+		// Снимаем флаг отправки результата
+		it->second->sending = false;
 		// Выводим полученный результат
 		this->completed(bid);
 	}
