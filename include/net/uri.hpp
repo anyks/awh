@@ -221,6 +221,14 @@ namespace awh {
 			void append(url_t & url, const string & params) const noexcept;
 		public:
 			/**
+			 * concat Объединение двух адресов путём создания третьего
+			 * @param dest адрес назначения
+			 * @param src  исходный адрес для объединения
+			 * @return     результирующий адрес
+			 */
+			url_t concat(const url_t & dest, const url_t & src) const noexcept;
+		public:
+			/**
 			 * split Метод сплита URI на составные части
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI

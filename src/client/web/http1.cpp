@@ -34,8 +34,6 @@ void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 		this->_mode = false;
 		// Выполняем установку идентификатора объекта
 		this->_ws1._http.id(bid);
-		// Выполняем установку данных URL-адреса
-		this->_ws1._scheme.url = this->_scheme.url;
 		// Выполняем установку сетевого ядра
 		this->_ws1._core = dynamic_cast <client::core_t *> (core);
 		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
@@ -382,7 +380,7 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 							// Получаем количество попыток
 							this->_attempt = this->_ws1._attempt;
 							// Устанавливаем новый адрес запроса
-							this->_uri.combine(this->_scheme.url, url);
+							this->_uri.combine(this->_ws1._scheme.url, url);
 							// Выполняем установку следующего экшена на открытие подключения
 							this->open();
 							// Завершаем работу

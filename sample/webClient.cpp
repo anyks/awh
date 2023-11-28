@@ -37,10 +37,12 @@ class WebClient {
 		void end(const int32_t id, const client::web_t::direct_t direct){
 			// Блокируем пустую переменную
 			(void) id;
+			/*
 			// Если мы получили данные
 			if(direct == client::web_t::direct_t::RECV)
 				// Выполняем остановку
 				this->_awh->stop();
+			*/
 		}
 		/**
 		 * message Метод получения статуса результата запроса
@@ -108,7 +110,7 @@ class WebClient {
 			}
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
-			this->_awh->stop();
+			// this->_awh->stop();
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
@@ -153,8 +155,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -240,14 +242,14 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://anyks.net:2222");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://support.apple.com/ru-ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
-	/*
+	
 
 	// Устанавливаем метод активации подключения
 	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
@@ -263,12 +265,12 @@ int main(int argc, char * argv[]){
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы
 	awh.start();
-	*/
+	
 
 	// 1. Реализация Web-сервера
 	// 2. Протестировать работу своего прокси-сервера и прокси-клиента
 	// 3. Протестировать авторизацию
-
+	/*
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
@@ -289,6 +291,7 @@ int main(int argc, char * argv[]){
 		// cout << " =========== " << data.dump(4) << endl;
 		cout << " =========== " << string(body.begin(), body.end()) << endl;
 	}
+	*/
 	// Выводим результат
 	return 0;
 }

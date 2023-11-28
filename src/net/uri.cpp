@@ -565,21 +565,33 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 	if(!src.anchor.empty())
 		// Выполняем установку якоря
 		dest.anchor = src.anchor;
+	// Выполняем очистку якоря запроса
+	else dest.anchor.clear();
 	// Если логин пользователя указан
 	if(!src.user.empty()){
 		// Выполняем установку логина пользователя
 		dest.user = src.user;
 		// Выполняем установку пароля пользователя
 		dest.pass = src.pass;
+	// Если логин пользователя не указан
+	} else {
+		// Выполняем очистку логина пользователя
+		dest.user.clear();
+		// Выполняем очистку пароля пользователя
+		dest.pass.clear();
 	}
 	// Если путь запроса указан
 	if(!src.path.empty())
 		// Выполняем установку пути запроса
 		dest.path.assign(src.path.begin(), src.path.end());
+	// Выполняем очистку пути запроса
+	else dest.path.clear();
 	// Если параметры запроса указаны
 	if(!src.params.empty())
 		// Выполняем установку параметров запроса
 		dest.params.assign(src.params.begin(), src.params.end());
+	// Выполняем очистку параметров запроса
+	else dest.params.clear();
 }
 /**
  * append Метод добавления к URL адресу параметров запроса
@@ -618,6 +630,20 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 				url.anchor = std::forward <const string> (it->second);
 		}
 	}
+}
+/**
+ * concat Объединение двух адресов путём создания третьего
+ * @param dest адрес назначения
+ * @param src  исходный адрес для объединения
+ * @return     результирующий адрес
+ */
+awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noexcept {
+	// Результат работы функции
+	url_t result = dest;
+	// Выполняем объединение двух адресов
+	this->combine(result, src);
+	// Выводим результат
+	return result;
 }
 /**
  * split Метод сплита URI на составные части

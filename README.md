@@ -6,7 +6,7 @@
 
 - **HTTP/HTTPS**: WEB - CLIENT/SERVER.
 - **WS/WSS**: WebSocket - CLIENT/SERVER.
-- **Proxy**: HTTP/SOCKS5 PROXY - CLIENT/SERVER.
+- **Proxy**: HTTP(S)/SOCKS5 PROXY - CLIENT/SERVER.
 - **Compress**: GZIP/DEFLATE/BROTLI - compression support.
 - **Authentication**: BASIC/DIGEST - authentication support.
 
