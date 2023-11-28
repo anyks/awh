@@ -556,7 +556,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			// Список заголовков Via
 			vector <string> via;
 			// Снимаем флаг отправки результата
-			t->second->sending = false;
+			i->second->sending = false;
 			// Устанавливаем полученные заголовки
 			i->second->request.headers = headers;
 			// Устанавливаем URL-адрес запроса
