@@ -878,12 +878,12 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 							// Создаём буфер для MAC адреса
 							u_char mac[6];
 							// Извлекаем данные MAC адреса
-							mac[0] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[8] ^ 0x02;
-							mac[1] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[9];
-							mac[2] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[10];
-							mac[3] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[13];
-							mac[4] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[14];
-							mac[5] = reinterpret_cast <struct sockaddr_in6 *> (ifa)->ifa_addr->sin6_addr.s6_addr[15];
+							mac[0] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[8] ^ 0x02;
+							mac[1] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[9];
+							mac[2] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[10];
+							mac[3] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[13];
+							mac[4] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[14];
+							mac[5] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[15];
 							// Выполняем получение MAC адреса
 							sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 							// Получаем результат MAC адреса
