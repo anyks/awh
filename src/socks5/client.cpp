@@ -34,7 +34,7 @@ void awh::client::Socks5::cmd() const noexcept {
 		// Устанавливаем комманду запроса
 		offset = this->octet(static_cast <uint8_t> (cmd_t::CONNECT), offset);
 		// Устанавливаем RSV октет
-		offset = this->octet(0x00, offset);
+		offset = this->octet(0x0, offset);
 		// Если IP адрес получен
 		if(!this->_url.ip.empty()){
 			// Получаем бинарные буфер IP адреса
@@ -59,7 +59,7 @@ void awh::client::Socks5::cmd() const noexcept {
 			this->text(this->_url.domain);
 		}
 		// Получаем бинарные данные порта
-		data = (const char *) &port;
+		data = reinterpret_cast <const char *> (&port);
 		// Устанавливаем порт запроса
 		this->_buffer.insert(this->_buffer.end(), data, data + sizeof(port));
 	}
@@ -316,7 +316,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
  */
 void awh::client::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
-	this->_code = 0x00;
+	this->_code = 0x0;
 	// Выполняем очистку буфера данных
 	this->_buffer.clear();
 	// Выполняем сброс стейта

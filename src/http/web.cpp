@@ -298,7 +298,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если размер получен 0-й значит мы завершили сбор данных
 								if(this->_chunk.size == 0)
 									// Выполняем переход к ошибке
-									goto Stop;								
+									goto Stop;
 								// Если функция обратного вызова на перехват входящих чанков установлена
 								else if(this->_callback.is("chunking"))
 									// Выполняем функцию обратного вызова

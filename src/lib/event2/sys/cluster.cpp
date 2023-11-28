@@ -91,7 +91,7 @@
 						exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);					
+					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
 					// Если функция обратного вызова установлена
 					if(this->cluster->_callback.is("process"))
 						// Выполняем функцию обратного вызова

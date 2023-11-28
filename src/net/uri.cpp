@@ -729,7 +729,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 								// Устанавливаем данные порта
 								result.emplace(flag_t::PORT, data);
 							// Иначе если хост не установлен
-							else if(result.count(flag_t::HOST) < 1) {								
+							else if(result.count(flag_t::HOST) < 1) {
 								// Определяем тип домена
 								switch(static_cast <uint8_t> (this->_net.host(data))){
 									// Если - это IP-адрес сети IPv4

@@ -397,7 +397,7 @@ void awh::server::Web::stop() noexcept {
 /**
  * start Метод запуска сервера
  */
-void awh::server::Web::start() noexcept {	
+void awh::server::Web::start() noexcept {
 	// Если биндинг не запущен
 	if((this->_core != nullptr) && !this->_core->working())
 		// Выполняем запуск биндинга

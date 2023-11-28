@@ -539,7 +539,7 @@ void awh::Engine::Address::sonet(const int type, const int protocol) noexcept {
  */
 void awh::Engine::Address::init(const string & unixsocket, const type_t type) noexcept {
 	// Если unix-сокет передан
-	if(!unixsocket.empty()){		
+	if(!unixsocket.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */

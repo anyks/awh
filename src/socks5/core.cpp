@@ -141,7 +141,9 @@ const string awh::Socks5::text(const char * buffer, const size_t size) const noe
 		// Извлекаем размер текста
 		::memcpy(&length, buffer, sizeof(length));
 		// Если размер текста получен, извлекаем текстовые данные
-		if(length > 0) result.assign(buffer + sizeof(length), length);
+		if(length > 0)
+			// Устанавливаем текстовые данные буфера
+			result.assign(buffer + sizeof(length), length);
 	}
 	// Выводим результат
 	return result;
@@ -204,7 +206,9 @@ const string & awh::Socks5::message(const uint8_t code) const noexcept {
 	// Выполняем поиск кода сообщения
 	auto it = this->messages.find(code);
 	// Если сообщение получено, выводим его
-	if(it != this->messages.end()) return it->second;
+	if(it != this->messages.end())
+		// Выполняем получение текстовое значение кода
+		return it->second;
 	// Выводим результат
 	return result;
 }

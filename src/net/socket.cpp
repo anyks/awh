@@ -29,7 +29,7 @@ bool awh::Socket::noSigILL() const noexcept {
 		// Создаем структуру активации сигнала
 		struct sigaction act;
 		// Зануляем структуру
-		memset(&act, 0, sizeof(act));
+		::memset(&act, 0, sizeof(act));
 		// Устанавливаем макрос игнорирования сигнала
 		act.sa_handler = SIG_IGN;
 		// Устанавливаем флаги перезагрузки
@@ -187,7 +187,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 		// Создаем структуру активации сигнала
 		struct sigaction act;
 		// Зануляем структуру
-		memset(&act, 0, sizeof(act));
+		::memset(&act, 0, sizeof(act));
 		// Устанавливаем макрос игнорирования сигнала
 		act.sa_handler = SIG_IGN;
 		// Устанавливаем флаг перезагрузки
@@ -288,7 +288,7 @@ bool awh::Socket::eventsSCTP(const SOCKET fd) const noexcept {
 		// Создаём объект подписки на события
 		struct sctp_event_subscribe event;
 		// Зануляем объект события
-		memset(&event, 0, sizeof(event));
+		::memset(&event, 0, sizeof(event));
 		// Активируем получение входящих событий
 		event.sctp_data_io_event = 1;
 		// Выполняем активацию получения событий SCTP для сокета

@@ -1079,7 +1079,7 @@ void awh::client::Core::timeout(const uint64_t bid) noexcept {
 							this->_dns->setToBlackList(AF_INET6, url.domain, url.ip);
 						break;
 					}
-				}			
+				}
 				// Выводим сообщение в лог, о таймауте подключения
 				this->_log->print("Timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 				// Если функция обратного вызова установлена

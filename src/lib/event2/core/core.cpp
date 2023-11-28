@@ -1122,7 +1122,7 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если данные переданы
-	if((this->_dispatch.base != nullptr) && (delay > 0) && (callback != nullptr)){		
+	if((this->_dispatch.base != nullptr) && (delay > 0) && (callback != nullptr)){
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера

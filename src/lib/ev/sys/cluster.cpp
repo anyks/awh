@@ -587,7 +587,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					}
 				}
 			// Если все процессы удачно созданы
-			} else if((it->second->working = !stop)) {				
+			} else if((it->second->working = !stop)) {
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("process"))
 					// Выполняем функцию обратного вызова

@@ -66,12 +66,12 @@ T & split(const string & str, const string & delim, T & container) noexcept {
 	 */
 	auto trimFn = [](string & text) noexcept -> string & {
 		// Выполняем удаление пробелов в начале текста
-		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) -> bool {
+		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
 			return (isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 		}));
 		// Выполняем удаление пробелов в конце текста
-		text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) -> bool {
+		text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
 			return (isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 		}).base(), text.end());
@@ -131,12 +131,12 @@ T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 	 */
 	auto trimFn = [](wstring & text) noexcept -> wstring & {
 		// Выполняем удаление пробелов в начале текста
-		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) -> bool {
+		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
 			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 		}));
 		// Выполняем удаление пробелов в конце текста
-		text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) -> bool {
+		text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
 			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 		}).base(), text.end());
@@ -2186,7 +2186,9 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  */
 void awh::Framework::domainZone(const string & zone) noexcept {
 	// Если зона передана, устанавливаем её
-	if(!zone.empty()) this->_nwt.zone(zone);
+	if(!zone.empty())
+		// Устанавливаем пользовательскую зону
+		this->_nwt.zone(zone);
 }
 /**
  * domainZones Метод установки списка пользовательских зон
@@ -2194,7 +2196,9 @@ void awh::Framework::domainZone(const string & zone) noexcept {
  */
 void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
-	if(!zones.empty()) this->_nwt.zones(zones);
+	if(!zones.empty())
+		// Устанавливаем список пользовательских зон
+		this->_nwt.zones(zones);
 }
 /**
  * domainZones Метод извлечения списка пользовательских зон интернета
@@ -2542,25 +2546,37 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность скорости
-		float dimension = 1.0f;
+		float dimension = 1.f;
 		// Получаем значение размерности
 		float value = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-		bool isbite = !::fmod(value / 8.0f, 2.0f);
+		bool isbite = !::fmod(value / 8.f, 2.f);
 		// Если это байты
-		if(match[2].compare("B") == 0) dimension = 1.0f;
+		if(match[2].compare("B") == 0)
+			// Выполняем установку множителя
+			dimension = 1.f;
 		// Если это размерность в киллобитах
-		else if(match[2].compare("KB") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(match[2].compare("KB") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 1000.f : 1024.f);
 		// Если это размерность в мегабитах
-		else if(match[2].compare("MB") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(match[2].compare("MB") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 1000000.f : 1048576.f);
 		// Если это размерность в гигабитах
-		else if(match[2].compare("GB") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(match[2].compare("GB") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 1000000000.f : 1073741824.f);
 		// Если это размерность в терабайтах
-		else if(match[2].compare("TB") == 0) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
+		else if(match[2].compare("TB") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 1000000000000.f : 1099511627776.f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (value);
 		// Если размерность установлена тогда расчитываем количество байт
-		if(value > -1.0f) size = (value * dimension);
+		if(value > -1.f)
+			// Устанавливаем размер полученных данных
+			size = (value * dimension);
 	}
 	// Выводим результат
 	return size;
@@ -2578,25 +2594,37 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность времени
-		float dimension = 1.0f;
+		float dimension = 1.f;
 		// Получаем значение размерности
 		float value = ::stof(match[1]);
 		// Если это секунды
-		if(match[2].front() == 's') dimension = 1.0f;
+		if(match[2].front() == 's') dimension = 1.f;
 		// Если это размерность в минутах
-		else if(match[2].front() == 'm') dimension = 60.0f;
+		else if(match[2].front() == 'm')
+			// Выполняем установку множителя
+			dimension = 60.f;
 		// Если это размерность в часах
-		else if(match[2].front() == 'h') dimension = 3600.0f;
+		else if(match[2].front() == 'h')
+			// Выполняем установку множителя
+			dimension = 3600.f;
 		// Если это размерность в днях
-		else if(match[2].front() == 'd') dimension = 86400.0f;
+		else if(match[2].front() == 'd')
+			// Выполняем установку множителя
+			dimension = 86400.f;
 		// Если это размерность в месяцах
-		else if(match[2].front() == 'M') dimension = 2592000.0f;
+		else if(match[2].front() == 'M')
+			// Выполняем установку множителя
+			dimension = 2592000.f;
 		// Если это размерность в годах
-		else if(match[2].front() == 'y') dimension = 31536000.0f;
+		else if(match[2].front() == 'y')
+			// Выполняем установку множителя
+			dimension = 31536000.f;
 		// Размер буфера по умолчанию
 		seconds = static_cast <time_t> (value);
 		// Если время установлено тогда расчитываем количество секунд
-		if(value > -1.0f) seconds = (value * dimension);
+		if(value > -1.f)
+			// Выполняем получение количества секунд
+			seconds = (value * dimension);
 	}
 	// Выводим результат
 	return seconds;
@@ -2623,23 +2651,33 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность скорости
-		float dimension = 1.0f;
+		float dimension = 1.f;
 		// Получаем значение скорости
 		float speed = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-		bool isbite = !::fmod(speed / 8.0f, 2.0f);
+		bool isbite = !::fmod(speed / 8.f, 2.f);
 		// Если это биты
-		if(match[2].compare("bps") == 0) dimension = 0.125f;
+		if(match[2].compare("bps") == 0)
+			// Выполняем установку множителя
+			dimension = .125f;
 		// Если это размерность в киллобитах
-		else if(match[2].compare("kbps") == 0) dimension = (isbite ? 100.0f : 125.0f);
+		else if(match[2].compare("kbps") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 100.f : 125.f);
 		// Если это размерность в мегабитах
-		else if(match[2].compare("Mbps") == 0) dimension = (isbite ? 100000.0f : 125000.0f);
+		else if(match[2].compare("Mbps") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 100000.f : 125000.f);
 		// Если это размерность в гигабитах
-		else if(match[2].compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 2500000000.0f);
+		else if(match[2].compare("Gbps") == 0)
+			// Выполняем установку множителя
+			dimension = (isbite ? 1000000000.f : 2500000000.f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера
-		if(speed > -1.0f) size = ((2.0f * .04f) * (speed * dimension));
+		if(speed > -1.f)
+			// Выполняем получение размера в байтах
+			size = ((2.f * .04f) * (speed * dimension));
 	}
 	// Выводим результат
 	return size;

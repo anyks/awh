@@ -110,9 +110,9 @@ time_t awh::NTP::Worker::request() noexcept {
 				// Переходим по всему списку NTP-серверов
 				for(auto & addr : this->_self->_serversIPv4){
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin_family = this->_family;
 					// Устанавливаем протокол интернета
@@ -122,15 +122,15 @@ time_t awh::NTP::Worker::request() noexcept {
 					// Устанавливаем порт для локального подключения
 					server.sin_port = htons(addr.port);
 					// Устанавливаем адрес для подключения
-					memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
+					::memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					{
 						// Временный буфер данных для преобразования IP-адреса
 						char buffer[INET_ADDRSTRLEN];
@@ -157,9 +157,9 @@ time_t awh::NTP::Worker::request() noexcept {
 				// Переходим по всему списку NTP-серверов
 				for(auto & addr : this->_self->_serversIPv6){
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin6_family = this->_family;
 					// Устанавливаем протокол интернета
@@ -169,13 +169,13 @@ time_t awh::NTP::Worker::request() noexcept {
 					// Устанавливаем порт для локального подключения
 					server.sin6_port = htons(addr.port);
 					// Устанавливаем адрес для подключения
-					memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
+					::memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(this->_family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					{
 						// Временный буфер данных для преобразования IP-адреса
 						char buffer[INET6_ADDRSTRLEN];

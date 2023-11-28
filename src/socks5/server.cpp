@@ -288,9 +288,9 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 				}
 			} break;
 			// Если установлен стейт, ожидания запроса
-			case static_cast <uint8_t> (state_t::REQUEST): {				
+			case static_cast <uint8_t> (state_t::REQUEST): {
 				// Если данных достаточно для получения запроса
-				if(size > sizeof(req_t)){					
+				if(size > sizeof(req_t)){
 					// Создаём объект данных запроса
 					req_t req;
 					// Выполняем чтение данных
@@ -395,7 +395,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
  */
 void awh::server::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
-	this->_code = 0x00;
+	this->_code = 0x0;
 	// Выполняем очистку буфера данных
 	this->_buffer.clear();
 	// Выполняем сброс стейта

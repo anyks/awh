@@ -47,7 +47,7 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 			// Размер полезной нагрузки
 			uint16_t size = 0;
 			// Получаем размер данных
-			memcpy(&size, buffer + 2, sizeof(size));
+			::memcpy(&size, buffer + 2, sizeof(size));
 			// Преобразуем сетевой порядок расположения байтов
 			head.payload = ntohs(size);
 		// Если размер пересылаемых данных, имеет очень большой размер
@@ -55,7 +55,7 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 			// Получаем размер блока заголовков
 			head.size = 10;
 			// Получаем размер данных
-			memcpy(&head.payload, buffer + 2, sizeof(head.payload));
+			::memcpy(&head.payload, buffer + 2, sizeof(head.payload));
 			// Преобразуем сетевой порядок расположения байтов
 			head.payload = ntohl(head.payload);
 		}
@@ -90,7 +90,7 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Выполняем перерасчёт размера передаваемых данных
 			const uint16_t length = htons(static_cast <uint16_t> (size));
 			// Устанавливаем размер строки в следующие 2 байта
-			memcpy(payload.data() + 2, &length, sizeof(length));
+			::memcpy(payload.data() + 2, &length, sizeof(length));
 		// Если сообщение очень большого размера
 		} else {
 			// Устанавливаем смещение в буфере
@@ -102,7 +102,7 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Выполняем перерасчёт размера передаваемых данных
 			const uint64_t length = htonl(size);
 			// Устанавливаем размер строки в следующие 8 байт
-			memcpy(payload.data() + 2, &length, sizeof(length));
+			::memcpy(payload.data() + 2, &length, sizeof(length));
 		}
 		// Если нужно выполнить маскировку сообщения
 		if(mask){
@@ -124,14 +124,13 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Выполняем заполнение маски случайными числами
 			generate(mask.begin(), mask.end(), generatorFn);
 			// Выполняем перебор всех байт передаваемых данных
-			for(size_t i = 0; i < size; i++){
+			for(size_t i = 0; i < size; i++)
 				// Выполняем шифрование данных
 				const_cast <char *> (buffer)[i] ^= mask[i % 4];
-			}
 			// Увеличиваем память ещё на четыре байта
 			payload.resize(offset + 4, 0x0);
 			// Устанавливаем сгенерированную маску
-			memcpy(payload.data() + offset, mask.data(), mask.size());
+			::memcpy(payload.data() + offset, mask.data(), mask.size());
 		}
 		// Выполняем копирования оставшихся данных в буфер
 		payload.insert(payload.end(), buffer, buffer + size);
@@ -172,12 +171,12 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			// Выполняем перерасчёт размера передаваемых данных
 			const uint16_t length = htons(static_cast <uint16_t> (size + 2));
 			// Устанавливаем размер строки в следующие 2 байта
-			memcpy(result.data() + 2, &length, sizeof(length));
+			::memcpy(result.data() + 2, &length, sizeof(length));
 		}
 		// Получаем код сообщения
 		const uint16_t code = htons(mess.code);
 		// Устанавливаем код сообщения
-		memcpy(result.data() + offset, &code, sizeof(code));
+		::memcpy(result.data() + offset, &code, sizeof(code));
 		// Выполняем копирования оставшихся данных в буфер
 		if(!mess.text.empty()) result.insert(result.end(), mess.text.begin(), mess.text.end());
 	}
@@ -198,7 +197,7 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 		 * Подробнее: https://github.com/Luka967/websocket-close-codes
 		 */
 		// Считываем код ошибки
-		memcpy(&result.code, buffer.data(), sizeof(result.code));
+		::memcpy(&result.code, buffer.data(), sizeof(result.code));
 		// Преобразуем сетевой порядок расположения байтов
 		result = ntohs(result.code);
 		// Если коды ошибок соответствуют
@@ -280,25 +279,25 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 		// Получаем размер смещения
 		head.frame = head.size;
 		// Проверяем являются ли данные Пингом
-		const bool isPing = (head.optcode == opcode_t::PING);
+		const bool modPing = (head.optcode == opcode_t::PING);
 		// Проверяем являются ли данные Понгом
-		const bool isPong = (head.optcode == opcode_t::PONG);
+		const bool modPong = (head.optcode == opcode_t::PONG);
 		// Проверяем являются ли данные текстовыми
-		const bool isText = (head.optcode == opcode_t::TEXT);
+		const bool modText = (head.optcode == opcode_t::TEXT);
 		// Проверяем являются ли данные бинарными
-		const bool isBin = (head.optcode == opcode_t::BINARY);
+		const bool modBin = (head.optcode == opcode_t::BINARY);
 		// Проверяем является ли сообщение закрытием
-		const bool isMess = (head.optcode == opcode_t::CLOSE);
+		const bool modMess = (head.optcode == opcode_t::CLOSE);
 		// Проверяем является ли сообщение продолжением фрагментированного текста
-		const bool isContinue = (head.optcode == opcode_t::CONTINUATION);
+		const bool modCont = (head.optcode == opcode_t::CONTINUATION);
 		// Если входящие данные не являются мусоромы
-		if(isText || isBin || isPing || isPong || isMess || isContinue){
+		if(modText || modBin || modPing || modPong || modMess || modCont){
 			// Бинарные данные маски
 			vector <u_char> mask(4);
 			// Если маска требуется, маскируем данные
 			if(head.mask){
 				// Считываем ключ маски
-				memcpy(mask.data(), buffer + head.frame, 4);
+				::memcpy(mask.data(), buffer + head.frame, 4);
 				// Увеличиваем размер смещения
 				head.frame += 4;
 			}
@@ -307,10 +306,9 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 			// Если маска требуется, размаскируем данные
 			if(head.mask){
 				// Выполняем перебор всех байт передаваемых данных
-				for(size_t i = 0; i < result.size(); i++){
+				for(size_t i = 0; i < result.size(); i++)
 					// Выполняем шифрование данных
 					result.at(i) ^= mask[i % 4];
-				}
 			}
 			// Увеличиваем размер смещения
 			head.frame += head.payload;

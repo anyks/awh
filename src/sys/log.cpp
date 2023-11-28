@@ -36,7 +36,7 @@ void awh::Log::rotate() const noexcept {
 			// Создаем буфер для хранения даты
 			char date[80];
 			// Заполняем буфер нулями
-			memset(date, 0, sizeof(date));
+			::memset(date, 0, sizeof(date));
 			// Определяем количество секунд
 			const time_t seconds = time(nullptr);
 			// Получаем структуру локального времени
@@ -82,7 +82,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
 	// Заполняем буфер нулями
-	memset(date, 0, sizeof(date));
+	::memset(date, 0, sizeof(date));
 	// Определяем количество секунд
 	const time_t seconds = time(nullptr);
 	// Получаем структуру локального времени

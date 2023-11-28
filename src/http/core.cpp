@@ -755,7 +755,7 @@ void awh::Http::clear(const suite_t suite) noexcept {
 			// Снимаем флаг зашифрованной полезной нагрузки
 			const_cast <http_t *> (this)->_crypted = false;
 			// Снимаем флаг сжатой полезной нагрузки
-			const_cast <http_t *> (this)->_compressor.current = compress_t::NONE;	
+			const_cast <http_t *> (this)->_compressor.current = compress_t::NONE;
 		} break;
 		// Если набор соответствует заголовку сообщения
 		case static_cast <uint8_t> (suite_t::HEADER): {
@@ -1471,7 +1471,7 @@ vector <char> awh::Http::dump() const noexcept {
 		// Устанавливаем размер буфера WEB данных
 		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		// Устанавливаем данные буфера WEB данных
-		result.insert(result.end(), web.begin(), web.end());			
+		result.insert(result.end(), web.begin(), web.end());
 	}
 	// Выводим результат
 	return result;

@@ -72,7 +72,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
 		if(it != this->_schemes.end()){
-			// Получаем объект схемы сети			
+			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если подключение ещё не выполнено и выполнение работ разрешено
 			if((shm->status.real == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){

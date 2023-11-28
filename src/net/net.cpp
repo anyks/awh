@@ -557,7 +557,7 @@ uint64_t awh::Net::mac() const noexcept {
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 6)
 		// Выполняем перевод бинарного буфера MAC-адреса в число
-		memcpy(&result, this->_buffer.data(), this->_buffer.size());
+		::memcpy(&result, this->_buffer.data(), this->_buffer.size());
 	// Выводим результат
 	return result;
 }
@@ -573,7 +573,7 @@ void awh::Net::mac(const uint64_t addr) noexcept {
 		// Устанавливаем тип MAC адреса
 		this->_type = type_t::MAC;
 		// Выполняем копирование данных адреса MAC
-		memcpy(this->_buffer.data(), &addr, this->_buffer.size());
+		::memcpy(this->_buffer.data(), &addr, this->_buffer.size());
 	}
 }
 /**
@@ -586,7 +586,7 @@ uint32_t awh::Net::v4() const noexcept {
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 4)
 		// Выполняем копирование данных адреса IPv4
-		memcpy(&result, this->_buffer.data(), this->_buffer.size());
+		::memcpy(&result, this->_buffer.data(), this->_buffer.size());
 	// Выводим результат
 	return result;
 }
@@ -602,7 +602,7 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 		// Устанавливаем тип IP адреса
 		this->_type = type_t::IPV4;
 		// Выполняем копирование данных адреса IPv4
-		memcpy(this->_buffer.data(), &addr, sizeof(addr));
+		::memcpy(this->_buffer.data(), &addr, sizeof(addr));
 	}
 }
 /**
@@ -615,7 +615,7 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 16)
 		// Выполняем копирование данных адреса IPv4
-		memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
+		::memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
 	// Выводим результат
 	return result;
 }
@@ -631,7 +631,7 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 		// Устанавливаем тип IP адреса
 		this->_type = type_t::IPV6;
 		// Выполняем копирование данных адреса IPv6
-		memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
+		::memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
 	}
 }
 /**
@@ -645,7 +645,9 @@ void awh::Net::impose(const string & mask, const addr_t addr) noexcept {
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask);
 		// Если префикс сети получен, выполняем применение префикса
-		if(prefix > 0) this->impose(prefix, addr);
+		if(prefix > 0)
+			// Выполняем наложение маски сети
+			this->impose(prefix, addr);
 	}
 }
 /**
@@ -669,13 +671,13 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 						// Если мы хотим получить адрес хоста
 						case static_cast <uint8_t> (addr_t::HOST): {
 							// Зануляем все остальные биты
-							memset(this->_buffer.data(), 0, num);
+							::memset(this->_buffer.data(), 0, num);
 							// Если префикс не кратен 8
 							if((prefix % 8) != 0){
 								// Данные октета
 								uint8_t oct = 0;
 								// Получаем нужное нам значение октета
-								memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+								::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 								// Переводим октет в бинарный вид
 								bitset <8> bits(oct);
 								// Зануляем все лишние элементы
@@ -685,7 +687,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Устанавливаем новое значение октета
 								oct = static_cast <uint16_t> (bits.to_ulong());
 								// Устанавливаем новое значение октета
-								memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
+								::memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
@@ -693,13 +695,13 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							// Если префикс кратен 8
 							if((prefix % 8) == 0)
 								// Зануляем все остальные биты
-								memset(this->_buffer.data() + num, 0, this->_buffer.size() - num);
+								::memset(this->_buffer.data() + num, 0, this->_buffer.size() - num);
 							// Если префикс не кратен 8
 							else {
 								// Данные хексета
 								uint8_t oct = 0;
 								// Получаем нужное нам значение октета
-								memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+								::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 								// Переводим октет в бинарный вид
 								bitset <8> bits(oct);
 								// Зануляем все лишние элементы
@@ -709,9 +711,9 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Устанавливаем новое значение октета
 								oct = static_cast <uint16_t> (bits.to_ulong());
 								// Устанавливаем новое значение октета
-								memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
+								::memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
 								// Зануляем все остальные биты
-								memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
+								::memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
 							}
 						} break;
 					}
@@ -728,13 +730,13 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 						// Если мы хотим получить адрес хоста
 						case static_cast <uint8_t> (addr_t::HOST): {
 							// Зануляем все остальные биты
-							memset(this->_buffer.data(), 0, (num * 2));
+							::memset(this->_buffer.data(), 0, (num * 2));
 							// Если префикс не кратен 16
 							if((prefix % 16) != 0){
 								// Данные хексета
 								uint16_t hex = 0;
 								// Получаем нужное нам значение хексета
-								memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+								::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 								// Переводим хексет в бинарный вид
 								bitset <16> bits(hex);
 								// Зануляем все лишние элементы
@@ -744,7 +746,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Устанавливаем новое значение хексета
 								hex = static_cast <uint16_t> (bits.to_ulong());
 								// Устанавливаем новое значение хексета
-								memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+								::memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
@@ -752,13 +754,13 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							// Если префикс кратен 16
 							if((prefix % 16) == 0)
 								// Зануляем все остальные биты
-								memset(this->_buffer.data() + (num * 2), 0, this->_buffer.size() - (num * 2));
+								::memset(this->_buffer.data() + (num * 2), 0, this->_buffer.size() - (num * 2));
 							// Если префикс не кратен 16
 							else {
 								// Данные хексета
 								uint16_t hex = 0;
 								// Получаем нужное нам значение хексета
-								memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+								::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 								// Переводим хексет в бинарный вид
 								bitset <16> bits(hex);
 								// Зануляем все лишние элементы
@@ -768,9 +770,9 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Устанавливаем новое значение хексета
 								hex = static_cast <uint16_t> (bits.to_ulong());
 								// Устанавливаем новое значение хексета
-								memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+								::memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
 								// Зануляем все остальные биты
-								memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
+								::memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
 							}
 						} break;
 					}
@@ -899,9 +901,9 @@ bool awh::Net::mapping(const string & network) const noexcept {
 						// Получаем значение текущего адреса
 						const uint32_t ip2 = this->v4();
 						// Выполняем копирование данных текущего адреса в буфер
-						memcpy(nwk.data(), &ip1, sizeof(ip1));
+						::memcpy(nwk.data(), &ip1, sizeof(ip1));
 						// Выполняем копирование данных текущего адреса в буфер
-						memcpy(addr.data(), &ip2, sizeof(ip2));
+						::memcpy(addr.data(), &ip2, sizeof(ip2));
 						// Выполняем сравнение двух массивов
 						for(uint8_t i = 0; i < 4; i++){
 							// Если октет адреса соответствует октету сети
@@ -919,9 +921,9 @@ bool awh::Net::mapping(const string & network) const noexcept {
 						// Получаем значение текущего адреса
 						const array <uint64_t, 2> & ip2 = this->v6();
 						// Выполняем копирование данных текущего адреса в буфер
-						memcpy(nwk.data(), ip1.data(), sizeof(ip1));
+						::memcpy(nwk.data(), ip1.data(), sizeof(ip1));
 						// Выполняем копирование данных текущего адреса в буфер
-						memcpy(addr.data(), ip2.data(), sizeof(ip2));
+						::memcpy(addr.data(), ip2.data(), sizeof(ip2));
 						// Выполняем сравнение двух массивов
 						for(uint8_t i = 0; i < 8; i++){
 							// Если хексет адреса соответствует хексет сети
@@ -951,7 +953,7 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 		// Устанавливаем хексет маски
 		buffer[5] = 65535;
 		// Если буфер данных принадлежит к вещанию IPv6 => IPv4
-		result = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
+		result = (::memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
 	}
 	// Выводим результат
 	return result;
@@ -971,7 +973,9 @@ bool awh::Net::range(const Net & begin, const Net & end, const string & mask) co
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
-		if(prefix > 0) result = this->range(begin, end, prefix);
+		if(prefix > 0)
+			// Выполняем получение результата
+			result = this->range(begin, end, prefix);
 	}
 	// Выводим результат
 	return result;
@@ -1038,7 +1042,9 @@ bool awh::Net::range(const string & begin, const string & end, const string & ma
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
-		if(prefix > 0) result = this->range(begin, end, prefix);
+		if(prefix > 0)
+			// Выполняем получение результата
+			result = this->range(begin, end, prefix);
 	}
 	// Выводим результат
 	return result;
@@ -1102,7 +1108,9 @@ bool awh::Net::mapping(const string & network, const string & mask, const addr_t
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask);
 		// Если префикс сети получен, выполняем проверку адреса соответствию сети
-		if(prefix > 0) result = this->mapping(network, prefix, addr);
+		if(prefix > 0)
+			// Выполняем получение результата
+			result = this->mapping(network, prefix, addr);
 	}
 	// Выводим результат
 	return result;
@@ -1149,7 +1157,7 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 						// Выполняем получение данных IPv6 сетевого адреса
 						const array <uint64_t, 2> nwk = net.v6();
 						// Выводим результат проверки
-						return (memcmp(addr.data(), nwk.data(), sizeof(addr)) == 0);
+						return (::memcmp(addr.data(), nwk.data(), sizeof(addr)) == 0);
 					} break;
 				}
 			}
@@ -1227,7 +1235,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 						// Устанавливаем префикс сети
 						net.impose(it->second.prefix, net_t::addr_t::NETW);
 						// Если проверяемые сети совпадают
-						if(memcmp(net.v6().data(), it->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
+						if(::memcmp(net.v6().data(), it->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
 							// Если адрес зарезервирован
 							if(it->second.reserved)
 								// Устанавливаем результат
@@ -1291,7 +1299,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 				// Если MAC адрес удано распарсен
 				if((result = ((rc == 6) && (static_cast <int> (addr.size()) == last))))
 					// Выполняем копирование бинарных данных MAC-адреса в буфер
-					memcpy(this->_buffer.data(), buffer, sizeof(buffer));
+					::memcpy(this->_buffer.data(), buffer, sizeof(buffer));
 			} break;
 			// Если IP адрес является адресом IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
@@ -1405,7 +1413,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 						}
 					}
 					// Выполняем копирование бинарных данных в буфер
-					memcpy(this->_buffer.data(), buffer.data(), (buffer.size() * 2));
+					::memcpy(this->_buffer.data(), buffer.data(), (buffer.size() * 2));
 				}
 			} break;
 			// Все остальные варианты мы пропускаем
@@ -1456,8 +1464,7 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Добавляем октет в версию
 						result.append(
 							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-							this->zerro(to_string(this->_buffer[i])) :
-							to_string(this->_buffer[i])
+							this->zerro(to_string(this->_buffer[i])) : to_string(this->_buffer[i])
 						);
 					}
 				// Если формат адреса принадлежит к IPv6
@@ -1471,7 +1478,7 @@ string awh::Net::get(const format_t format) const noexcept {
 					// Переходим по всему массиву
 					for(uint8_t i = 0; i < count; i += 2){
 						// Выполняем получение значение числа
-						memcpy(&num, this->_buffer.data() + i, sizeof(num));
+						::memcpy(&num, this->_buffer.data() + i, sizeof(num));
 						// Если нужно выводить в кратком виде
 						if(format == format_t::SHORT_IPV6){
 							// Если Число установлено
@@ -1513,7 +1520,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Флаг зеркального вещания IPv6 => IPv4
 				bool broadcast = false;
 				// Если буфер данных принадлежит к вещанию IPv6 => IPv4
-				if((broadcast = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0)))
+				if((broadcast = (::memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0)))
 					// Уменьшаем количество итераций в буфере
 					count -= 4;
 				// Если режим зеркала IPv6 => IPv4 не активен, но установлен формат IPv4, активируем зеркало
@@ -1523,7 +1530,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Переходим по всему массиву
 				for(uint8_t i = 0; i < count; i += 2){
 					// Выполняем получение значение числа
-					memcpy(&num, this->_buffer.data() + i, sizeof(num));
+					::memcpy(&num, this->_buffer.data() + i, sizeof(num));
 					// Если нужно выводить в кратком виде
 					if((format == format_t::SHORT) || (format == format_t::SHORT_IPV4)){
 						// Если Число установлено
@@ -1565,8 +1572,7 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Добавляем октет в версию
 						result.append(
 							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-							this->zerro(to_string(this->_buffer[count + i])) :
-							to_string(this->_buffer[count + i])
+							this->zerro(to_string(this->_buffer[count + i])) : to_string(this->_buffer[count + i])
 						);
 					}
 				}

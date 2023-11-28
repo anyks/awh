@@ -438,9 +438,9 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin_family = family;
 					// Устанавливаем протокол интернета
@@ -454,11 +454,11 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -486,9 +486,9 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin6_family = family;
 					// Устанавливаем протокол интернета
@@ -502,9 +502,9 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -749,9 +749,9 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin_family = family;
 					// Устанавливаем протокол интернета
@@ -765,11 +765,11 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -797,9 +797,9 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Очищаем всю структуру для клиента
-					memset(&client, 0, sizeof(client));
+					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
-					memset(&server, 0, sizeof(server));
+					::memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
 					client.sin6_family = family;
 					// Устанавливаем протокол интернета
@@ -813,9 +813,9 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Устанавливаем адрес для локальго подключения
 					inet_pton(family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
-					memcpy(&this->_peer.client, &client, this->_peer.size);
+					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
-					memcpy(&this->_peer.server, &server, this->_peer.size);
+					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
 					 * Методы только для OS Windows
 					 */

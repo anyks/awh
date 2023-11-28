@@ -181,7 +181,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 					// Выполняем чтение содержимого каталога
 					while((ptr = ::readdir(dir))){
 						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-						if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
+						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
 						// Получаем адрес в виде строки
 						const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 						// Если статистика извлечена
@@ -235,7 +235,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 			// Выполняем чтение содержимого каталога
 			while((ptr = ::readdir(dir))){
 				// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-				if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
+				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
 				// Получаем адрес в виде строки
 				const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
@@ -291,7 +291,7 @@ int awh::FS::delPath(const string & path) const noexcept {
 				// Создаем структуру буфера статистики
 				struct stat buffer;
 				// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-				if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
+				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
 				// Получаем адрес каталога
 				const string & dirname = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
@@ -310,7 +310,9 @@ int awh::FS::delPath(const string & path) const noexcept {
 			::closedir(dir);
 		}
 		// Удаляем последний каталог
-		if(!result) result = ::rmdir(path.c_str());
+		if(!result)
+			// Получаем количество дочерних элементов
+			result = ::rmdir(path.c_str());
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
 	// Выводим результат
@@ -333,13 +335,13 @@ string awh::FS::realPath(const string & path) const noexcept {
 			// Создаём буфер для полного адреса
 			char buffer[_MAX_PATH];
 			// Заполняем буфер нулями
-			memset(buffer, 0, sizeof(buffer));
+			::memset(buffer, 0, sizeof(buffer));
 			// Выполняем извлечение адресов из переменных окружений
 			ExpandEnvironmentStrings(path.c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
 			result = buffer;
 			// Заполняем буфер нулями
-			memset(buffer, 0, sizeof(buffer));
+			::memset(buffer, 0, sizeof(buffer));
 			// Если адрес существует
 			if(_fullpath(buffer, result.c_str(), _MAX_PATH) != nullptr)
 				// Получаем полный адрес пути
@@ -389,11 +391,11 @@ void awh::FS::makePath(const string & path) const noexcept {
 				// Если найден сепаратор
 				if(* p == sep){
 					// Сбрасываем указатель
-					* p = 0;
+					(* p) = 0;
 					// Создаем каталог
 					::mkdir(buffer, S_IRWXU);
 					// Запоминаем сепаратор
-					* p = sep;
+					(* p) = sep;
 				}
 			}
 			// Создаем последний каталог
@@ -404,11 +406,11 @@ void awh::FS::makePath(const string & path) const noexcept {
 				// Если найден сепаратор
 				if(* p == sep){
 					// Сбрасываем указатель
-					* p = 0;
+					(* p) = 0;
 					// Создаем каталог
 					_mkdir(buffer);
 					// Запоминаем сепаратор
-					* p = sep;
+					(* p) = sep;
 				}
 			}
 			// Создаем последний каталог
@@ -749,7 +751,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 				// Выполняем чтение содержимого каталога
 				while((ptr = ::readdir(dir))){
 					// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-					if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
+					if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
 					// Получаем адрес в виде строки
 					const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 					// Если статистика извлечена
