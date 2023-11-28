@@ -961,9 +961,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 						// Выполняем пропуск
 						continue;
 					// Получаем адреса сетевого интерфейса в цифровом виде
-					ifaddr  = reinterpret_cast <struct sockaddr_in *> (ifa)->ifa_addr->sin_addr.s_addr;
-					netmask = reinterpret_cast <struct sockaddr_in *> (ifa)->ifa_netmask->sin_addr.s_addr;
-					dstaddr = reinterpret_cast <struct sockaddr_in *> (ifa)->ifa_dstaddr->sin_addr.s_addr;
+					ifaddr  = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
+					netmask = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_netmask)->sin_addr.s_addr;
+					dstaddr = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_dstaddr)->sin_addr.s_addr;
 					// Если искомый IP адрес найден
 					if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
 						// Искомый IP адрес соответствует данному серверу
