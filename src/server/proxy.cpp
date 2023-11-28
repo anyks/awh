@@ -555,6 +555,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
+			// Снимаем флаг отправки результата
+			t->second->sending = false;
 			// Устанавливаем полученные заголовки
 			i->second->request.headers = headers;
 			// Устанавливаем URL-адрес запроса
@@ -720,15 +722,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						case static_cast <uint8_t> (awh::web_t::method_t::TRACE):
 						// Если запрашивается клиентом метод OPTIONS
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
-							
-							cout << " *************************1 " << it->second->request.params.url << endl;
-							
-							
 							// Если подключение ещё не выполнено
 							if(it->second->method != awh::web_t::method_t::CONNECT){
-								
-								cout << " *************************2 " << it->second->request.params.url << endl;
-								
 								// Запоминаем идентификатор потока
 								it->second->sid = sid;
 								// Создаём список флагов клиента
@@ -775,9 +770,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								this->_core.bind(&it->second->core);
 							// Если подключение уже выполнено
 							} else {
-								
-								cout << " *************************3 " << it->second->request.params.url << endl;
-								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
