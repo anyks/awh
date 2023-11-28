@@ -208,7 +208,7 @@ int main(int argc, char * argv[]){
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 
 	// awh.proxy("http://user:password@127.0.0.1:2222");
-	// awh.proxy("https://user:password@anyks.net:2222");
+	awh.proxy("https://user:password@anyks.net:2222");
 	// awh.proxy("socks5://user:password@anyks.net:2222");
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
@@ -223,10 +223,10 @@ int main(int argc, char * argv[]){
 	*/
 	// Устанавливаем тип авторизации прокси-сервера
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
-	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::BASIC);
-	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
@@ -237,10 +237,10 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
-	uri_t::url_t url = uri.parse("https://anyks.net:2222");
+	// uri_t::url_t url = uri.parse("https://anyks.net:2222");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://support.apple.com/ru-ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
