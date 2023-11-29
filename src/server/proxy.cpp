@@ -776,12 +776,12 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если запрашивается клиентом метод OPTIONS
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 							
-							cout << " +++++++++++++++++++++++++++++1 " << endl;
+							cout << " +++++++++++++++++++++++++++++1 " << bid << " === " << sid << endl;
 							
 							// Если подключение ещё не выполнено
 							if(it->second->method != awh::web_t::method_t::CONNECT){
 								
-								cout << " +++++++++++++++++++++++++++++2 " << endl;
+								cout << " +++++++++++++++++++++++++++++2 " << bid << " === " << sid << endl;
 								
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
