@@ -405,18 +405,18 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 	// Выполняем поиск объекта клиента
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
+	if((it != this->_clients.end()) && !it->second->busy){
 		// Если тело запроса с сервера получено
-		if(!entity.empty())
+		if(!entity.empty()){
 			// Устанавливаем полученные данные тела запроса
 			it->second->request.entity.assign(entity.begin(), entity.end());
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("entityServer"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *> ("entityServer", bid, method, url, &it->second->request.entity);
 		// Выполняем очистку тела запроса
-		else it->second->request.entity.clear();
+		} else it->second->request.entity.clear();
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("entityServer"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *> ("entityServer", bid, method, url, &it->second->request.entity);
 }
 /**
  * entityClient Метод получения тела ответа с сервера клиенту
@@ -433,15 +433,15 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 	// Если активный клиент найден
 	if(i != this->_clients.end()){
 		// Если тело ответа с сервера получено
-		if(!entity.empty())
+		if(!entity.empty()){
 			// Устанавливаем полученные данные тела ответа
 			i->second->response.entity.assign(entity.begin(), entity.end());
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("entityClient"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &i->second->response.entity);
 		// Выполняем очистку тела ответа
-		else i->second->response.entity.clear();
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("entityClient"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &i->second->response.entity);
+		} else i->second->response.entity.clear();
 		// Снимаем флаг отправки результата
 		i->second->sending = false;
 		// Выполняем поиск идентификатора потока
@@ -468,8 +468,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
 	if(i != this->_clients.end()){
-		// Если заголовки ответа получены
-		if(!headers.empty()){
+		// Если заголовки ответа получены и сервер ещё не занят
+		if(!headers.empty() && !it->second->busy){
 			// Список заголовков Via
 			vector <string> via;
 			// Запоминаем идентификатор потока
@@ -960,7 +960,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					} break;
 				}
 			// Если сервер уже занят, выполняем отправку ответа клиенту, что сервер занят
-			} else this->_server.send(it->second->sid, bid, 409, "Another request is currently being processed", {}, {
+			} else this->_server.send(sid, bid, 409, "Another request is currently being processed", {}, {
 				{"Connection", "keep-alive"},
 				{"Proxy-Connection", "keep-alive"}
 			});
