@@ -326,9 +326,9 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://user:password@anyks.net:2222");
 	
 	// Устанавливаем тип авторизации прокси-сервера
-	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
+	ws.authTypeProxy(awh::auth_t::type_t::BASIC);
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);

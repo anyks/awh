@@ -158,8 +158,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log, &awh);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -181,9 +181,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Активируем шифрование
-	awh.encryption(true);
+	// awh.encryption(true);
 	// Устанавливаем пароль шифрования
-	awh.encryption(string{"PASS"});
+	// awh.encryption(string{"PASS"});
 	// Устанавливаем логин и пароль пользователя
 	awh.user("user", "password");
 	// Активируем получение PUSH уведомлений
@@ -212,8 +212,8 @@ int main(int argc, char * argv[]){
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
-	awh.proxy("http://user:password@anyks.net:2222");
-	// awh.proxy("https://user:password@anyks.net:2222");
+	// awh.proxy("http://user:password@anyks.net:2222");
+	awh.proxy("https://user:password@anyks.net:2222");
 	// awh.proxy("socks5://user:password@anyks.net:2222");
 
 	/*
