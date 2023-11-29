@@ -184,7 +184,7 @@ int main(int argc, char * argv[]){
 		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::VERIFY_SSL,
-		client::web_t::flag_t::CONNECT_METHOD_ENABLE
+		// client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
@@ -237,10 +237,10 @@ int main(int argc, char * argv[]){
 	});
 	*/
 	// Устанавливаем тип авторизации прокси-сервера
-	// awh.authTypeProxy(auth_t::type_t::BASIC);
-	awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	awh.authTypeProxy(auth_t::type_t::BASIC);
+	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	// awh.authType(auth_t::type_t::BASIC);
+	awh.authType(auth_t::type_t::BASIC);
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parse("https://2ip.ru");

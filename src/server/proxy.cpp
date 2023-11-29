@@ -775,8 +775,14 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						case static_cast <uint8_t> (awh::web_t::method_t::TRACE):
 						// Если запрашивается клиентом метод OPTIONS
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
+							
+							cout << " +++++++++++++++++++++++++++++1 " << endl;
+							
 							// Если подключение ещё не выполнено
 							if(it->second->method != awh::web_t::method_t::CONNECT){
+								
+								cout << " +++++++++++++++++++++++++++++2 " << endl;
+								
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::NOT_STOP,
@@ -821,6 +827,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								this->_core.bind(&it->second->core);
 							// Если подключение уже выполнено
 							} else {
+								
+								cout << " +++++++++++++++++++++++++++++3 " << endl;
+								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
@@ -866,6 +875,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								it->second->awh.send(std::move(request));
 							// Если активирован режим работы HTTP-клиента
 							} else {
+								
+								cout << " +++++++++++++++++++++++++++++4 " << endl;
+								
 								// Если метод CONNECT не разрешён для запроса
 								if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
 									// Формируем сообщение ответа
