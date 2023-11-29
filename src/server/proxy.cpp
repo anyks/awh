@@ -557,6 +557,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
+			// Запоминаем идентификатор потока
+			i->second->sid = sid;
 			// Снимаем флаг отправки результата
 			i->second->sending = false;
 			// Устанавливаем полученные заголовки
@@ -645,8 +647,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 			switch(static_cast <uint8_t> (this->_core.sonet())){
 				// Если тип сокета установлен как TCP/IP
 				case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP): {
-					// Запоминаем идентификатор потока
-					it->second->sid = sid;
 					// Создаём список флагов клиента
 					set <client::web_t::flag_t> flags = {
 						client::web_t::flag_t::NOT_STOP,
@@ -726,8 +726,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 							// Если подключение ещё не выполнено
 							if(it->second->method != awh::web_t::method_t::CONNECT){
-								// Запоминаем идентификатор потока
-								it->second->sid = sid;
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::NOT_STOP,
@@ -824,8 +822,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Выходим из функции
 									return;
 								}
-								// Запоминаем идентификатор потока
-								it->second->sid = sid;
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::NOT_STOP,
