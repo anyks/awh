@@ -322,12 +322,21 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
+						
+						cout << " ====================1 " << bid << endl;
+						
 						// Если подключение ещё не выполнено
 						if(it->second->method == awh::web_t::method_t::NONE){
+							
+							cout << " ====================2 " << bid << endl;
+							
 							// Выполняем установку метода подключения
 							it->second->method = it->second->request.params.method;
 							// Если активирован WebSocket клиент
 							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
+								
+								cout << " ====================3 " << bid << endl;
+								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
@@ -350,6 +359,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								it->second->awh.send(std::move(request));
 							// Если клиент активирован как HTTP
 							} else {
+								
+								cout << " ====================4 " << bid << endl;
+								
 								// Если тип сокета установлен как TCP/IP
 								if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
 									// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
