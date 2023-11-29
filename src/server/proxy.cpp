@@ -322,21 +322,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-						
-						cout << " ====================1 " << bid << endl;
-						
 						// Если подключение ещё не выполнено
 						if(it->second->method == awh::web_t::method_t::NONE){
-							
-							cout << " ====================2 " << bid << endl;
-							
 							// Выполняем установку метода подключения
 							it->second->method = it->second->request.params.method;
 							// Если активирован WebSocket клиент
 							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
-								
-								cout << " ====================3 " << bid << endl;
-								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
@@ -357,9 +348,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								it->second->awh.send(std::move(request));
 							// Если клиент активирован как HTTP
 							} else {
-								
-								cout << " ====================4 " << bid << endl;
-								
 								// Если тип сокета установлен как TCP/IP
 								if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
 									// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
@@ -785,14 +773,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						case static_cast <uint8_t> (awh::web_t::method_t::TRACE):
 						// Если запрашивается клиентом метод OPTIONS
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
-							
-							cout << " +++++++++++++++++++++++++++++1 " << bid << " === " << sid << endl;
-
 							// Если подключение ещё не выполнено
 							if(it->second->method == awh::web_t::method_t::NONE){
-								
-								cout << " +++++++++++++++++++++++++++++2 " << bid << " === " << sid << endl;
-								
 								// Создаём список флагов клиента
 								set <client::web_t::flag_t> flags = {
 									client::web_t::flag_t::NOT_STOP,
@@ -837,9 +819,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								this->_core.bind(&it->second->core);
 							// Если подключение уже выполнено
 							} else {
-								
-								cout << " +++++++++++++++++++++++++++++3 " << endl;
-								
 								// Создаём объект запроса
 								client::web_t::request_t request;
 								// Выполняем установку активного агента клиента
@@ -885,9 +864,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								it->second->awh.send(std::move(request));
 							// Если активирован режим работы HTTP-клиента и подключение не выполненно
 							} else if(it->second->method == awh::web_t::method_t::NONE) {
-								
-								cout << " +++++++++++++++++++++++++++++4 " << endl;
-								
 								// Если метод CONNECT не разрешён для запроса
 								if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
 									// Формируем сообщение ответа
