@@ -456,9 +456,6 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			i->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			i->second->response.params.message = message;
-			
-			cout << " ************** HEADRES " << code << endl;
-			
 			// Компрессор которым необходимо выполнить сжатие контента
 			http_t::compress_t compress = http_t::compress_t::NONE;
 			// Выполняем перебор всех полученных заголовков
@@ -563,6 +560,9 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
+			
+			cout << " ================ " << sid << endl;
+			
 			// Запоминаем идентификатор потока
 			i->second->sid = sid;
 			// Снимаем флаг отправки результата
@@ -996,9 +996,6 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 	if(!it->second->sending && (it->second->sending = (it != this->_clients.end()))){
 		// Если заголовки ответа получены
 		if(!it->second->response.headers.empty()){
-			
-			cout << " ------------- " << it->second->sid << endl;
-			
 			// Отправляем сообщение клиенту
 			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
 			// Выполняем переключение протокола
