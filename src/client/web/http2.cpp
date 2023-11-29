@@ -312,6 +312,8 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 										// Выполняем фиксацию полученного результата
 										it->second->http.commit();
+										// Получаем идентификатор запроса
+										const uint64_t rid = it->second->id;
 										/**
 										 * Если включён режим отладки
 										 */
@@ -347,13 +349,13 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										// Если функция обратного вызова на получение удачного ответа установлена
 										if(this->_callback.is("handshake"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, it->second->id, it->second->agent);
+											this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, rid, it->second->agent);
 										// Выполняем завершение запроса
-										this->result(sid, it->second->id);
+										this->result(sid, rid);
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, it->second->id, direct_t::RECV);
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, rid, direct_t::RECV);
 										// Завершаем работу
 										return 0;
 									}
@@ -376,6 +378,8 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										bool trailers = false;
 										// Если трейлеры получены в ответе сервера
 										if((trailers = it->second->http.is(http_t::suite_t::HEADER, "trailer"))){
+											// Получаем идентификатор запроса
+											const uint64_t rid = it->second->id;
 											// Выполняем извлечение списка заголовков трейлеров
 											const auto & range = it->second->http.headers().equal_range("trailer");
 											// Выполняем перебор всех полученных заголовков трейлеров
@@ -391,11 +395,11 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 															// Выполняем функцию обратного вызова
 															this->_callback.call <const log_t::flag_t, const http::error_t, const string &> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, this->_fmk->format("Trailer \"%s\" does not exist", jt->second.c_str()));
 														// Выполняем завершение запроса
-														this->result(sid, it->second->id);
+														this->result(sid, rid);
 														// Если установлена функция отлова завершения запроса
 														if(this->_callback.is("end"))
 															// Выполняем функцию обратного вызова
-															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, it->second->id, direct_t::RECV);
+															this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, rid, direct_t::RECV);
 													}
 													// Завершаем работу
 													return 0;
@@ -462,16 +466,18 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 									}
 									// Если мы получили флаг завершения потока
 									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+										// Получаем идентификатор запроса
+										const uint64_t rid = it->second->id;
 										// Если функция обратного вызова на получение удачного ответа установлена
 										if(this->_callback.is("handshake"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, it->second->id, it->second->agent);
+											this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, rid, it->second->agent);
 										// Выполняем завершение запроса
-										this->result(sid, it->second->id);
+										this->result(sid, rid);
 										// Если установлена функция отлова завершения запроса
 										if(this->_callback.is("end"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, it->second->id, direct_t::RECV);
+											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, rid, direct_t::RECV);
 									}
 									// Завершаем работу
 									return 0;
