@@ -389,6 +389,9 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 	auto it = this->_clients.find(bid);
 	// Если активный клиент найден
 	if(it != this->_clients.end()){
+		
+		cout << " ************** BODY " << code << endl;
+		
 		// Если тело ответа с сервера получено
 		if(!entity.empty())
 			// Устанавливаем полученные данные тела ответа
@@ -453,6 +456,9 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			i->second->response.params.code = code;
 			// Устанавливаем сообщение ответа сервера
 			i->second->response.params.message = message;
+			
+			cout << " ************** HEADRES " << code << endl;
+			
 			// Компрессор которым необходимо выполнить сжатие контента
 			http_t::compress_t compress = http_t::compress_t::NONE;
 			// Выполняем перебор всех полученных заголовков
