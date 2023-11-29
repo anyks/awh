@@ -961,8 +961,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				}
 			// Если сервер уже занят, выполняем отправку ответа клиенту, что сервер занят
 			} else this->_server.send(it->second->sid, bid, 409, "Another request is currently being processed", {}, {
-				{"Connection": "keep-alive"},
-				{"Proxy-Connection": "keep-alive"}
+				{"Connection", "keep-alive"},
+				{"Proxy-Connection", "keep-alive"}
 			});
 		}
 	}
