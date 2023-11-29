@@ -351,8 +351,6 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								request.method = it->second->request.params.method;
 								// Выполняем генерацию идентификатора запроса
 								request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-								// Выполняем установку метода подключения
-								it->second->method = it->second->request.params.method;
 								// Выполняем установку потока в список потоков
 								it->second->streams.emplace(request.id, it->second->sid);
 								// Выполняем запрос на сервер
@@ -789,9 +787,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 							
 							cout << " +++++++++++++++++++++++++++++1 " << bid << " === " << sid << endl;
-							
+
 							// Если подключение ещё не выполнено
-							if(it->second->method != awh::web_t::method_t::CONNECT){
+							if(it->second->method == awh::web_t::method_t::NONE){
 								
 								cout << " +++++++++++++++++++++++++++++2 " << bid << " === " << sid << endl;
 								
@@ -885,8 +883,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								it->second->streams.emplace(request.id, it->second->sid);
 								// Выполняем запрос на сервер
 								it->second->awh.send(std::move(request));
-							// Если активирован режим работы HTTP-клиента
-							} else {
+							// Если активирован режим работы HTTP-клиента и подключение не выполненно
+							} else if(it->second->method == awh::web_t::method_t::NONE) {
 								
 								cout << " +++++++++++++++++++++++++++++4 " << endl;
 								
