@@ -90,6 +90,9 @@ namespace awh {
 				// Идентификатор подключения
 				int32_t _sid;
 			private:
+				// Идентификатор запроса
+				uint64_t _rid;
+			private:
 				// Флаг завершения работы клиента
 				bool _close;
 				// Флаг выполненного рукопожатия
@@ -343,7 +346,7 @@ namespace awh {
 				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const char *, const size_t)> callback) noexcept;
@@ -357,17 +360,17 @@ namespace awh {
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const mode_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функция обратного вызова при выполнении рукопожатия
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const agent_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const direct_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при получении источника подключения
@@ -389,22 +392,22 @@ namespace awh {
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного заголовка с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного тела данных с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

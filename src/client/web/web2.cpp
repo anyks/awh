@@ -72,11 +72,11 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Если функция обратного вызова установлена, выводим сообщение
 					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
-						this->_callback.call <const int32_t, const u_int, const string, const vector <char>> ("entity", sid, response.code, response.message, this->_scheme.proxy.http.body());
+						this->_callback.call <const int32_t, const uint64_t, const u_int, const string, const vector <char>> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, 0, direct_t::RECV);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -101,11 +101,11 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 					if(this->_callback.is("response"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &> ("response", sid, response.code, response.message);
+						this->_callback.call <const int32_t, const uint64_t, const u_int, const string &> ("response", sid, 0, response.code, response.message);
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(this->_callback.is("headers"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, response.code, response.message, this->_scheme.proxy.http.headers());
+						this->_callback.call <const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
 					if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 						// Выполняем коммит полученного результата
@@ -126,7 +126,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const direct_t> ("end", sid, direct_t::RECV);
+						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, 0, direct_t::RECV);
 				}
 			}
 		}

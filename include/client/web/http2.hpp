@@ -58,6 +58,7 @@ namespace awh {
 				 * Worker Структура активного воркера
 				 */
 				typedef struct Worker {
+					uint64_t id;             // Идентификатор запроса
 					bool update;             // Флаг обновления параметров запроса
 					http_t http;             // Объект для работы с HTTP
 					fn_t callback;           // Объект функций обратного вызова
@@ -69,7 +70,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Worker(const fmk_t * fmk, const log_t * log) noexcept :
-					 update(false), http(fmk, log), callback(log),
+					 id(0), update(false), http(fmk, log), callback(log),
 					 agent(agent_t::HTTP), proto(engine_t::proto_t::HTTP1_1) {}
 					/**
 					 * ~Worker Деструктор
@@ -175,9 +176,10 @@ namespace awh {
 				/**
 				 * end Метод завершения работы потока
 				 * @param sid    идентификатор потока
+				 * @param rid    идентификатор запроса
 				 * @param direct направление передачи данных
 				 */
-				void end(const int32_t sid, const direct_t direct) noexcept;
+				void end(const int32_t sid, const uint64_t rid, const direct_t direct) noexcept;
 			private:
 				/**
 				 * redirect Метод выполнения смены потоков
@@ -208,9 +210,10 @@ namespace awh {
 			private:
 				/**
 				 * result Метод завершения выполнения запроса
-				 * @param sid идентификатор запроса
+				 * @param sid идентификатор потока
+				 * @param rid идентификатор запроса
 				 */
-				void result(const int32_t sid) noexcept;
+				void result(const int32_t sid, const uint64_t rid) noexcept;
 			private:
 				/**
 				 * pinging Метод таймера выполнения пинга удалённого сервера
@@ -355,7 +358,7 @@ namespace awh {
 				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const char *, const size_t)> callback) noexcept;
@@ -364,7 +367,7 @@ namespace awh {
 				 * on Метод установки функция обратного вызова завершения запроса
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
@@ -375,17 +378,17 @@ namespace awh {
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const mode_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функция обратного вызова при полном получении запроса клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const agent_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const direct_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при получении источника подключения
@@ -407,33 +410,33 @@ namespace awh {
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного заголовка с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного тела данных с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции вывода запроса клиента к серверу
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на вывода push-уведомления
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

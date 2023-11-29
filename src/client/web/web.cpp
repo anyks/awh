@@ -219,7 +219,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 								if(this->_callback.is("response"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, code, message);
+									this->_callback.call <const int32_t, const uint64_t, const u_int, const string &> ("response", 1, 0, code, message);
 								// Завершаем работу
 								dynamic_cast <client::core_t *> (core)->close(bid);
 								// Завершаем работу
@@ -316,19 +316,19 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const mode_t> ("stream", 1, mode_t::CLOSE);
+								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, 0, mode_t::CLOSE);
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callback.is("response"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &> ("response", 1, response.code, response.message);
+								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &> ("response", 1, 0, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, response.code, response.message, this->_scheme.proxy.http.headers());
+								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const u_int, const string &, const vector <char> &> ("entity", 1, response.code, response.message, this->_scheme.proxy.http.body());
+								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &, const vector <char> &> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
 							// Завершаем работу
 							dynamic_cast <client::core_t *> (core)->close(bid);
 							// Завершаем работу
@@ -472,7 +472,7 @@ void awh::client::Web::on(function <void (const log_t::flag_t, const http::error
 	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
 }
 /**
- * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
  * @param callback функция обратного вызова
  */
 void awh::client::Web::on(function <bool (const char *, const size_t)> callback) noexcept {
@@ -483,33 +483,33 @@ void awh::client::Web::on(function <bool (const char *, const size_t)> callback)
  * on Метод установки функция обратного вызова завершения запроса
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t)> ("result", callback);
+	this->_callback.set <void (const int32_t, const uint64_t)> ("result", callback);
 }
 /**
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const mode_t)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const mode_t)> ("stream", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const mode_t)> ("stream", callback);
 }
 /**
  * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const agent_t)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const agent_t)> ("handshake", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const agent_t)> ("handshake", callback);
 }
 /**
  * on Метод установки функции обратного вызова при завершении запроса
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const direct_t)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const direct_t)> ("end", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const direct_t)> ("end", callback);
 }
 /**
  * on Метод установки функции обратного вызова при получении источника подключения
@@ -539,33 +539,33 @@ void awh::client::Web::on(function <void (const int32_t, const vector <char> &)>
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const u_int, const string &)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const int32_t, const u_int, const string &)> ("response", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", callback);
 }
 /**
  * on Метод установки функции вывода полученного заголовка с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const string &, const string &)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const int32_t, const string &, const string &)> ("header", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const string &, const string &)> ("header", callback);
 }
 /**
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
 }
 /**
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::Web::on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::client::Web::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
+	this->_callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута

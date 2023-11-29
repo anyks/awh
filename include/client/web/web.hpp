@@ -98,6 +98,7 @@ namespace awh {
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
+					uint64_t id;                                 // Идентификатор запроса
 					agent_t agent;                               // Агент воркера выполнения запроса
 					uri_t::url_t url;                            // URL-запроса запроса
 					web_t::method_t method;                      // Метод запроса
@@ -107,7 +108,7 @@ namespace awh {
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : agent(agent_t::HTTP), method(web_t::method_t::NONE) {}
+					Request() noexcept : id(0), agent(agent_t::HTTP), method(web_t::method_t::NONE) {}
 				} request_t;
 			protected:
 				/**
@@ -341,7 +342,7 @@ namespace awh {
 				virtual void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
 				 * @param callback функция обратного вызова
 				 */
 				virtual void on(function <bool (const char *, const size_t)> callback) noexcept;
@@ -350,23 +351,23 @@ namespace awh {
 				 * on Метод установки функция обратного вызова завершения запроса
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const mode_t)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept;
 				/**
-				 * on on Метод установки функция обратного вызова при выполнении рукопожатия
+				 * on Метод установки функция обратного вызова при выполнении рукопожатия
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const agent_t)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const direct_t)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при получении источника подключения
@@ -388,22 +389,22 @@ namespace awh {
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного заголовка с сервера
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного тела данных с сервера
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
 				 */
-				virtual void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+				virtual void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута

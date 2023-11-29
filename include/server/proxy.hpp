@@ -310,41 +310,34 @@ namespace awh {
 				 * endClient Метод завершения запроса клиента
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
+				 * @param rid    идентификатор запроса
 				 * @param direct направление передачи данных
 				 */
-				void endClient(const int32_t sid, const uint64_t bid, const client::web_t::direct_t direct) noexcept;
+				void endClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const client::web_t::direct_t direct) noexcept;
 			private:
 				/**
 				 * responseClient Метод получения сообщения с удалённого сервера
 				 * @param id      идентификатор потока
 				 * @param bid     идентификатор брокера (клиента)
+				 * @param rid     идентификатор запроса
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
 				 */
-				void responseClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message) noexcept;
+				void responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message) noexcept;
 			private:
-				/**
-				 * activeClient Метод идентификации активности на Web сервере (для клиента)
-				 * @param bid  идентификатор брокера (клиента)
-				 * @param mode режим события подключения
-				 */
-				void activeClient(const uint64_t bid, const client::web_t::mode_t mode) noexcept;
 				/**
 				 * activeServer Метод идентификации активности на Web сервере (для сервера)
 				 * @param bid  идентификатор брокера (клиента)
 				 * @param mode режим события подключения
 				 */
 				void activeServer(const uint64_t bid, const server::web_t::mode_t mode) noexcept;
-			private:
 				/**
-				 * entityClient Метод получения тела ответа с сервера клиенту
-				 * @param sid     идентификатор потока
-				 * @param bid     идентификатор брокера (клиента)
-				 * @param code    код ответа сервера
-				 * @param message сообщение ответа сервера
-				 * @param entity  тело ответа клиенту с сервера
+				 * activeClient Метод идентификации активности на Web сервере (для клиента)
+				 * @param bid  идентификатор брокера (клиента)
+				 * @param mode режим события подключения
 				 */
-				void entityClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const vector <char> & entity) noexcept;
+				void activeClient(const uint64_t bid, const client::web_t::mode_t mode) noexcept;
+			private:
 				/**
 				 * entityServer Метод получения тела запроса с клиента на сервере
 				 * @param sid    идентификатор потока
@@ -354,16 +347,17 @@ namespace awh {
 				 * @param entity тело запроса с клиента на сервере
 				 */
 				void entityServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity) noexcept;
-			private:
 				/**
-				 * headersClient Метод получения заголовков ответа с сервера клиенту
+				 * entityClient Метод получения тела ответа с сервера клиенту
 				 * @param sid     идентификатор потока
 				 * @param bid     идентификатор брокера (клиента)
+				 * @param rid     идентификатор запроса
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
-				 * @param headers заголовки HTTP-ответа
+				 * @param entity  тело ответа клиенту с сервера
 				 */
-				void headersClient(const int32_t sid, const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity) noexcept;
+			private:
 				/**
 				 * headersServer Метод получения заголовков запроса с клиента на сервере
 				 * @param sid     идентификатор потока
@@ -373,6 +367,27 @@ namespace awh {
 				 * @param headers заголовки HTTP-запроса
 				 */
 				void headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
+				/**
+				 * headersClient Метод получения заголовков ответа с сервера клиенту
+				 * @param sid     идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param rid     идентификатор запроса
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 * @param headers заголовки HTTP-ответа
+				 */
+				void headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+			private:
+				/**
+				 * pushClient Метод получения заголовков выполненного запроса (PUSH HTTP/2)
+				 * @param sid     идентификатор потока
+				 * @param bid     идентификатор брокера (клиента)
+				 * @param rid     идентификатор запроса
+				 * @param method  метод запроса на уделённый сервер
+				 * @param url     URL-адрес параметров запроса
+				 * @param headers заголовки HTTP-запроса
+				 */
+				void pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * handshake Метод получения удачного запроса (для сервера)
@@ -495,17 +510,6 @@ namespace awh {
 				void on(function <void (const uint64_t, const broker_t, const web_t::mode_t)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const broker_t, const vector <char> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного заголовка с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const broker_t, const string &, const string &)> callback) noexcept;
-			public:
-				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибки
 				 * @param callback функция обратного вызова
 				 */
@@ -534,16 +538,16 @@ namespace awh {
 				void on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept;
-			public:
-				/**
 				 * on Метод установки функции вывода полученных заголовков с клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+			public:
+				/**
+				 * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const uint64_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

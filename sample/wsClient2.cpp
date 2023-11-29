@@ -54,11 +54,13 @@ class WebClient {
 		/**
 		 * handshake Метод события рукопожатия
 		 * @param sid   идентификатор потока
+		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
 		 */
-		void handshake(const int32_t sid, const client::web_t::agent_t agent){
-			// Блокируем неиспользуемую переменную
+		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent){
+			// Блокируем неиспользуемые переменные
 			(void) sid;
+			(void) rid;
 			// Если агент соответствует WebSocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
@@ -215,15 +217,18 @@ class WebClient {
 		}
 		/**
 		 * message Метод получения статуса результата запроса
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void message(const int32_t id, const u_int code, const string & message){
+		void message(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+			// Блокируем неиспользуемые переменные
+			(void) rid;
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
+				this->_log->print("request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
 		/**
 		 * active Метод идентификации активности на Web-клиенте
@@ -252,12 +257,16 @@ class WebClient {
 		}
 		/**
 		 * entity Метод получения тела ответа сервера
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param entity  тело ответа сервера
 		 */
-		void entity(const int32_t id, const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
 			/**
 			 * Выполняем обработку ошибки
 			 */
@@ -281,12 +290,16 @@ class WebClient {
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -395,13 +408,13 @@ int main(int argc, char * argv[]){
 	// Подписываемся на событие получения сообщения с сервера
 	awh.on((function <void (const vector <char> &, const bool)>) std::bind(&WebClient::messageWebSocket, &executor, _1, _2));
 	// Подписываемся на событие рукопожатия
-	awh.on((function <void (const int32_t, const client::web_t::agent_t)>) std::bind(&WebClient::handshake, &executor, _1, _2));
+	awh.on((function <void (const int32_t, const uint64_t, const client::web_t::agent_t)>) std::bind(&WebClient::handshake, &executor, _1, _2, _3));
 	// Устанавливаем метод получения сообщения сервера
-	awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения заголовков
-	awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем инициализацию подключения	
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");

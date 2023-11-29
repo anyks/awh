@@ -123,17 +123,17 @@ namespace awh {
 				 * on Метод установки функция обратного вызова активности потока
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const web_t::mode_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
 				/**
 				 * on Метод установки функция обратного вызова при полном получении запроса клиента
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const web_t::agent_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при завершении запроса
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const web_t::direct_t)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при получении источника подключения
@@ -150,22 +150,22 @@ namespace awh {
 				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного заголовка с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const string &, const string &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученного тела данных с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
 				/**
 				 * on Метод установки функции вывода полученных заголовков с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения

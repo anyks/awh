@@ -59,11 +59,13 @@ class Executor {
 		/**
 		 * handshake Метод рукопожатия
 		 * @param sid   идентификатор потока
+		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
 		 */
-		void handshake(const int32_t sid, const client::web_t::agent_t agent){
-			// Блокируем неиспользуемую переменную
+		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent){
+			// Блокируем неиспользуемые переменные
 			(void) sid;
+			(void) rid;
 			// Если агент соответствует WebSocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
@@ -357,7 +359,7 @@ int main(int argc, char * argv[]){
 	// Подписываемся на событие запуска/остановки сервера
 	ws.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&Executor::status, &executor, _1, _2));
 	// Подписываемся на событие рукопожатия
-	ws.on((function <void (const int32_t, const client::web_t::agent_t)>) std::bind(&Executor::handshake, &executor, _1, _2));
+	ws.on((function <void (const int32_t, const uint64_t, const client::web_t::agent_t)>) std::bind(&Executor::handshake, &executor, _1, _2, _3));
 	// Выполняем запуск WebSocket клиента
 	ws.start();
 	// Выводим результат

@@ -31,12 +31,14 @@ class WebClient {
 	public:
 		/**
 		 * end Метод завершения выполнения запроса
-		 * @param id     идентификатор потока
+		 * @param sid    идентификатор потока
+		 * @param rid    идентификатор запроса
 		 * @param direct направление передачи данных
 		 */
-		void end(const int32_t id, const client::web_t::direct_t direct){
-			// Блокируем пустую переменную
-			(void) id;
+		void end(const int32_t sid, const uint64_t rid, const client::web_t::direct_t direct){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
 			/*
 			// Если мы получили данные
 			if(direct == client::web_t::direct_t::RECV)
@@ -46,15 +48,18 @@ class WebClient {
 		}
 		/**
 		 * message Метод получения статуса результата запроса
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void message(const int32_t id, const u_int code, const string & message){
+		void message(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+			// Блокируем неиспользуемые переменные
+			(void) rid;
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
+				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
 		/**
 		 * active Метод идентификации активности на Web-клиенте
@@ -74,9 +79,9 @@ class WebClient {
 				// Устанавливаем метод запроса
 				req2.method = web_t::method_t::GET;
 				// Устанавливаем параметры запроса
-				req1.url = uri.parse("/api/v3/exchangeInfo?symbol=BTCUSDT");
+				req1.url = uri.parse("/api/v3/exchangeInfo");
 				// Устанавливаем параметры запроса
-				req2.url = uri.parse("/api/v3/exchangeInfo");
+				req2.url = uri.parse("/api/v3/exchangeInfo?symbol=BTCUSDT");
 				// Выполняем первый запрос на сервер
 				this->_awh->send(std::move(req1));
 				// Выполняем второй запрос на сервер
@@ -85,12 +90,16 @@ class WebClient {
 		}
 		/**
 		 * entity Метод получения тела ответа сервера
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param entity  тело ответа сервера
 		 */
-		void entity(const int32_t id, const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
 			/**
 			 * Выполняем обработку ошибки
 			 */
@@ -114,12 +123,16 @@ class WebClient {
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
-		 * @param id      идентификатор потока
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -254,13 +267,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
 	// Устанавливаем метод отлова завершения запроса
-	awh.on((function <void (const int32_t, const client::web_t::direct_t)>) std::bind(&WebClient::end, &executor, _1, _2));
+	awh.on((function <void (const int32_t, const uint64_t, const client::web_t::direct_t)>) std::bind(&WebClient::end, &executor, _1, _2, _3));
 	// Устанавливаем метод получения сообщения сервера
-	awh.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	awh.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения заголовков
-	awh.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы

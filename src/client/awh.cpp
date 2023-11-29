@@ -420,12 +420,14 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		/**
 		 * Подписываемся на получение сообщения сервера
 		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		this->on([this](const int32_t sid, const u_int code, const string & message) noexcept -> void {
-			// Блокируем пустую переменную
+		this->on([this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
+			// Блокируем пустые переменные
 			(void) sid;
+			(void) rid;
 			// Если возникла ошибка, выводим сообщение
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -434,11 +436,13 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		/**
 		 * Подписываемся на завершение выполнения запроса
 		 * @param sid    идентификатор потока
+		 * @param rid    идентификатор запроса
 		 * @param direct направление передачи данных
 		 */
-		this->on([this](const int32_t sid, const web_t::direct_t direct) noexcept -> void {
+		this->on([this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
+			(void) rid;
 			// Если мы получили данные
 			if(direct == web_t::direct_t::RECV)
 				// Выполняем остановку
@@ -469,13 +473,15 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		/**
 		 * Подписываемся на событие получения тела ответа
 		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученного тела сообщения
 		 */
-		this->on([&entity, this](const int32_t sid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
+		this->on([&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
+			(void) rid;
 			// Если тело ответа получено
 			if(!data.empty())
 				// Формируем результат ответа
@@ -488,13 +494,15 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		/**
 		 * Подписываем на событие получения заголовков ответа
 		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		this->on([&headers, this](const int32_t sid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+		this->on([&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
+			(void) rid;
 			// Если заголовки ответа получены
 			if(!data.empty())
 				// Извлекаем полученный список заголовков
@@ -567,7 +575,7 @@ void awh::client::AWH::on(function <void (const int32_t, const vector <char> &)>
 	this->_http.on(callback);
 }
 /**
- * on Метод установки функции вывода бинарных данных в сыром виде полученных с клиента
+ * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
  * @param callback функция обратного вызова
  */
 void awh::client::AWH::on(function <bool (const char *, const size_t)> callback) noexcept {
@@ -578,7 +586,7 @@ void awh::client::AWH::on(function <bool (const char *, const size_t)> callback)
  * on Метод установки функция обратного вызова завершения запроса
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -594,7 +602,7 @@ void awh::client::AWH::on(function <void (const int32_t, const int32_t)> callbac
  * on Метод установки функция обратного вызова активности потока
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const web_t::mode_t)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -602,7 +610,7 @@ void awh::client::AWH::on(function <void (const int32_t, const web_t::mode_t)> c
  * on Метод установки функция обратного вызова при выполнении рукопожатия
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const web_t::agent_t)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -610,7 +618,7 @@ void awh::client::AWH::on(function <void (const int32_t, const web_t::agent_t)> 
  * on Метод установки функции обратного вызова при завершении запроса
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const web_t::direct_t)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -634,7 +642,7 @@ void awh::client::AWH::on(function <void (const string &, const string &)> callb
  * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const u_int, const string &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -642,7 +650,7 @@ void awh::client::AWH::on(function <void (const int32_t, const u_int, const stri
  * on Метод установки функции вывода полученного заголовка с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const string &, const string &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -650,7 +658,7 @@ void awh::client::AWH::on(function <void (const int32_t, const string &, const s
  * on Метод установки функции вывода полученного тела данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -658,7 +666,7 @@ void awh::client::AWH::on(function <void (const int32_t, const u_int, const stri
  * on Метод установки функции вывода полученных заголовков с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -666,7 +674,7 @@ void awh::client::AWH::on(function <void (const int32_t, const u_int, const stri
  * on Метод установки функции вывода запроса клиента к серверу
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
@@ -674,7 +682,7 @@ void awh::client::AWH::on(function <void (const int32_t, const awh::web_t::metho
  * on Метод установки функции обратного вызова на вывода push-уведомления
  * @param callback функция обратного вызова
  */
-void awh::client::AWH::on(function <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_http.on(callback);
 }
