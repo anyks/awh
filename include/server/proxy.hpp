@@ -190,6 +190,8 @@ namespace awh {
 				typedef struct Client {
 					// Идентификатор потока
 					int32_t sid;
+					// Флаг постановки занятости
+					bool busy;
 					// Флаг отправки результата
 					bool sending;
 					// Флаг переключения протокола
@@ -214,8 +216,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Client(const fmk_t * fmk, const log_t * log) noexcept :
-					 sid(-1), sending(false), upgrade(false), method(awh::web_t::method_t::NONE),
-					 agent(client::web_t::agent_t::HTTP), core(fmk, log), awh(&core, fmk, log) {}
+					 sid(-1), busy(false), sending(false), upgrade(false),
+					 method(awh::web_t::method_t::NONE), agent(client::web_t::agent_t::HTTP),
+					 core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * Settings Структура параметров клиента
