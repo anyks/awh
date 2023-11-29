@@ -469,7 +469,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 	// Если активный клиент найден
 	if(i != this->_clients.end()){
 		// Если заголовки ответа получены и сервер ещё не занят
-		if(!headers.empty() && !it->second->busy){
+		if(!headers.empty() && !i->second->busy){
 			// Список заголовков Via
 			vector <string> via;
 			// Запоминаем идентификатор потока
