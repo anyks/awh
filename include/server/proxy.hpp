@@ -206,6 +206,8 @@ namespace awh {
 					client::core_t core;
 					// Объект активного клиента
 					client::awh_t awh;
+					// Список доступных потоков
+					map <uint64_t, int32_t> streams;
 					/**
 					 * Client Конструктор
 					 * @param fmk объект фреймворка
@@ -418,9 +420,10 @@ namespace awh {
 			private:
 				/**
 				 * completed Метод завершения получения данных
+				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера (клиента)
 				 */
-				void completed(const uint64_t bid) noexcept;
+				void completed(const int32_t sid, const uint64_t bid) noexcept;
 			public:
 				/**
 				 * proto Метод извлечения поддерживаемого протокола подключения
@@ -547,7 +550,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const uint64_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void on(function <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

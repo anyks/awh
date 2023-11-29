@@ -87,9 +87,22 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
 	(void) sid;
 	(void) rid;
 	// Если мы получили данные
-	if(direct == client::web_t::direct_t::RECV)
-		// Выводим полученный результат
-		this->completed(bid);
+	if(direct == client::web_t::direct_t::RECV){
+		// Выполняем поиск объекта клиента
+		auto i = this->_clients.find(bid);
+		// Если активный клиент найден
+		if(i != this->_clients.end()){
+			// Выполняем поиск идентификатора потока
+			auto j = i->second->streams.find(rid);
+			// Если идентификатор потока найден, удаляем его
+			if(j != i->second->streams.end()){
+				// Выводим полученный результат
+				this->completed(j->second, bid);
+				// Выполняем удаление потока из списка
+				i->second->streams.erase(j);
+			}
+		}
+	}
 }
 /**
  * responseClient Метод получения сообщения с удалённого сервера
@@ -298,8 +311,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						request.url = it->second->request.params.url;
 						// Устанавливаем метод запроса
 						request.method = it->second->request.params.method;
+						// Выполняем генерацию идентификатора запроса
+						request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем установку метода подключения
 						it->second->method = it->second->request.params.method;
+						// Выполняем установку потока в список потоков
+						it->second->streams.emplace(request.id, it->second->sid);
 						// Выполняем запрос на сервер
 						it->second->awh.send(std::move(request));
 					} break;
@@ -323,8 +340,12 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								request.url = it->second->request.params.url;
 								// Устанавливаем метод запроса
 								request.method = it->second->request.params.method;
+								// Выполняем генерацию идентификатора запроса
+								request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 								// Выполняем установку метода подключения
 								it->second->method = it->second->request.params.method;
+								// Выполняем установку потока в список потоков
+								it->second->streams.emplace(request.id, it->second->sid);
 								// Выполняем запрос на сервер
 								it->second->awh.send(std::move(request));
 							// Если клиент активирован как HTTP
@@ -408,26 +429,30 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
  */
 void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity) noexcept {
 	// Выполняем поиск объекта клиента
-	auto it = this->_clients.find(bid);
+	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
-		
-		cout << " ************** BODY " << code << " === " << rid << endl;
-		
+	if(i != this->_clients.end()){
 		// Если тело ответа с сервера получено
 		if(!entity.empty())
 			// Устанавливаем полученные данные тела ответа
-			it->second->response.entity.assign(entity.begin(), entity.end());
+			i->second->response.entity.assign(entity.begin(), entity.end());
 		// Выполняем очистку тела ответа
-		else it->second->response.entity.clear();
+		else i->second->response.entity.clear();
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("entityClient"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &it->second->response.entity);
+			this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &i->second->response.entity);
 		// Снимаем флаг отправки результата
-		it->second->sending = false;
-		// Выводим полученный результат
-		this->completed(bid);
+		i->second->sending = false;
+		// Выполняем поиск идентификатора потока
+		auto j = i->second->streams.find(rid);
+		// Если идентификатор потока найден, удаляем его
+		if(j != i->second->streams.end()){
+			// Выводим полученный результат
+			this->completed(j->second, bid);
+			// Выполняем удаление потока из списка
+			i->second->streams.erase(j);
+		}
 	}
 }
 /**
@@ -447,9 +472,6 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 		if(!headers.empty()){
 			// Список заголовков Via
 			vector <string> via;
-			
-			cout << " ================ " << sid << endl;
-			
 			// Запоминаем идентификатор потока
 			i->second->sid = sid;
 			// Снимаем флаг отправки результата
@@ -623,8 +645,15 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					i->second->request.params.method = awh::web_t::method_t::CONNECT;
 					// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 					i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-					// Выводим полученный результат
-					this->completed(bid);
+					// Выполняем поиск идентификатора потока
+					auto j = i->second->streams.find(rid);
+					// Если идентификатор потока найден, удаляем его
+					if(j != i->second->streams.end()){
+						// Выводим полученный результат
+						this->completed(j->second, bid);
+						// Выполняем удаление потока из списка
+						i->second->streams.erase(j);
+					}
 				}
 			}
 		}
@@ -804,6 +833,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								request.url = it->second->request.params.url;
 								// Устанавливаем метод запроса
 								request.method = it->second->request.params.method;
+								// Выполняем генерацию идентификатора запроса
+								request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								// Выполняем установку потока в список потоков
+								it->second->streams.emplace(request.id, it->second->sid);
 								// Выполняем запрос на сервер
 								it->second->awh.send(std::move(request));
 							}
@@ -825,6 +858,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								request.url = it->second->request.params.url;
 								// Устанавливаем метод запроса
 								request.method = it->second->request.params.method;
+								// Выполняем генерацию идентификатора запроса
+								request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								// Выполняем установку потока в список потоков
+								it->second->streams.emplace(request.id, it->second->sid);
 								// Выполняем запрос на сервер
 								it->second->awh.send(std::move(request));
 							// Если активирован режим работы HTTP-клиента
@@ -1003,23 +1040,24 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 }
 /**
  * completed Метод завершения получения данных
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера (клиента)
  */
-void awh::server::Proxy::completed(const uint64_t bid) noexcept {
+void awh::server::Proxy::completed(const int32_t sid, const uint64_t bid) noexcept {
 	// Выполняем поиск объекта клиента
-	auto it = this->_clients.find(bid);
+	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(!it->second->sending && (it->second->sending = (it != this->_clients.end()))){
+	if(!i->second->sending && (i->second->sending = (i != this->_clients.end()))){
 		// Если заголовки ответа получены
-		if(!it->second->response.headers.empty()){
+		if(!i->second->response.headers.empty()){
 			// Отправляем сообщение клиенту
-			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+			this->_server.send(sid, bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
 			// Выполняем переключение протокола
-			it->second->upgrade = (it->second->agent == client::web_t::agent_t::WEBSOCKET);
+			i->second->upgrade = (i->second->agent == client::web_t::agent_t::WEBSOCKET);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("completed"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &> ("completed", bid, 1, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+				this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &> ("completed", bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
 		}
 	}
 }
@@ -1199,9 +1237,9 @@ void awh::server::Proxy::on(function <void (const uint64_t, const awh::web_t::me
  * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(function <void (const uint64_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept {
+void awh::server::Proxy::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", callback);
+	this->_callback.set <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", callback);
 }
 /**
  * port Метод получения порта подключения брокера
