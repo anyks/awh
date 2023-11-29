@@ -831,6 +831,9 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 								if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
 									// Устанавливаем флаг завершения потока
 									flag = awh::http2_t::flag_t::END_STREAM;
+								
+								cout << " ------------------1 " << endl;
+
 								// Выполняем отправку тела запроса на сервер
 								if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
 									// Выходим из функции
@@ -865,6 +868,8 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 									// Выходим из функции
 									return;
 							}
+
+							cout << " ------------------2 " << endl;
 						}
 					// Если сообщение о закрытии подключения не отправлено
 					} else if(!web2_t::reject(sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
