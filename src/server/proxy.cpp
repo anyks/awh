@@ -598,6 +598,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Продолжаем перебор дальше
 				++j;
 			}
+			
+			/*
 			// Если флаг рекомпрессии данных прокси-сервером установлен
 			if(this->_flags.count(flag_t::RECOMPRESS) > 0)
 				// Устанавливаем компрессор рекомпрессии
@@ -608,6 +610,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 			if(http != nullptr)
 				// Устанавливаем параметры компрессии
 				const_cast <awh::http_t *> (http)->compression(compress);
+			*/
+
 			// Выполняем получение заголовка Via
 			const string & header = this->via(i->second->sid, bid, via);
 			// Если заголовок получен
