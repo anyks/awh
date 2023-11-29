@@ -557,104 +557,98 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 	if(i != this->_clients.end()){
 		// Если заголовки ответа получены
 		if(!headers.empty()){
-			// Список заголовков Via
-			vector <string> via;
-			// Устанавливаем полученные заголовки
-			i->second->response.headers = headers;
-			// Устанавливаем код ответа сервера
-			i->second->response.params.code = code;
-			// Устанавливаем сообщение ответа сервера
-			i->second->response.params.message = message;
-			// Компрессор которым необходимо выполнить сжатие контента
-			http_t::compress_t compress = http_t::compress_t::NONE;
-			// Выполняем перебор всех полученных заголовков
-			for(auto j = i->second->response.headers.begin(); j != i->second->response.headers.end();){
-				// Если получен заголовок Via
-				if(this->_fmk->exists("via", j->first)){
-					// Добавляем заголовок в список
-					via.push_back(j->second);
-					// Выполняем удаление заголовка
-					j = i->second->response.headers.erase(j);
-					// Продолжаем перебор дальше
-					continue;
-				// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
-				} else if(this->_fmk->exists("content-encoding", j->first)) {
-					// Если флаг рекомпрессии данных прокси-сервером не установлен
-					if(this->_flags.count(flag_t::RECOMPRESS) == 0){
-						// Если данные пришли сжатые методом Brotli
-						if(this->_fmk->exists("br", j->second))
-							// Устанавливаем тип компрессии полезной нагрузки
-							compress = http_t::compress_t::BROTLI;
-						// Если данные пришли сжатые методом GZip
-						else if(this->_fmk->exists("gzip", j->second))
-							// Устанавливаем тип компрессии полезной нагрузки
-							compress = http_t::compress_t::GZIP;
-						// Если данные пришли сжатые методом Deflate
-						else if(this->_fmk->exists("deflate", j->second))
-							// Устанавливаем тип компрессии полезной нагрузки
-							compress = http_t::compress_t::DEFLATE;
+			// Выполняем поиск идентификатора потока
+			auto j = i->second->streams.find(rid);
+			// Если идентификатор потока найден, удаляем его
+			if(j != i->second->streams.end()){
+				// Список заголовков Via
+				vector <string> via;
+				// Устанавливаем полученные заголовки
+				i->second->response.headers = headers;
+				// Устанавливаем код ответа сервера
+				i->second->response.params.code = code;
+				// Устанавливаем сообщение ответа сервера
+				i->second->response.params.message = message;
+				// Компрессор которым необходимо выполнить сжатие контента
+				http_t::compress_t compress = http_t::compress_t::NONE;
+				// Выполняем перебор всех полученных заголовков
+				for(auto j = i->second->response.headers.begin(); j != i->second->response.headers.end();){
+					// Если получен заголовок Via
+					if(this->_fmk->exists("via", j->first)){
+						// Добавляем заголовок в список
+						via.push_back(j->second);
+						// Выполняем удаление заголовка
+						j = i->second->response.headers.erase(j);
+						// Продолжаем перебор дальше
+						continue;
+					// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
+					} else if(this->_fmk->exists("content-encoding", j->first)) {
+						// Если флаг рекомпрессии данных прокси-сервером не установлен
+						if(this->_flags.count(flag_t::RECOMPRESS) == 0){
+							// Если данные пришли сжатые методом Brotli
+							if(this->_fmk->exists("br", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::BROTLI;
+							// Если данные пришли сжатые методом GZip
+							else if(this->_fmk->exists("gzip", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::GZIP;
+							// Если данные пришли сжатые методом Deflate
+							else if(this->_fmk->exists("deflate", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::DEFLATE;
+						}
 					}
+					// Продолжаем перебор дальше
+					++j;
 				}
-				// Продолжаем перебор дальше
-				++j;
-			}
-
-			compress = http_t::compress_t::GZIP;
-			
-			/*
-			// Если флаг рекомпрессии данных прокси-сервером установлен
-			if(this->_flags.count(flag_t::RECOMPRESS) > 0)
-				// Устанавливаем компрессор рекомпрессии
-				compress = this->_compressor;
-			*/
-			
-			// Получаем объект HTTP-парсера
-			const awh::http_t * http = this->_server.parser(i->second->sid, bid);
-			// Если объект HTTP-парсера получен
-			if(http != nullptr)
-				// Устанавливаем параметры компрессии
-				const_cast <awh::http_t *> (http)->compression(compress);
-			// Выполняем получение заголовка Via
-			const string & header = this->via(i->second->sid, bid, via);
-			// Если заголовок получен
-			if(!header.empty())
-				// Устанавливаем загловок Via
-				i->second->response.headers.emplace("Via", header);
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("headersClient"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
-			// Если производится активация WebSocket
-			if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
-				// Флаг удачно-выполненного подключения
-				bool connected = false;
-				// Определяем протокола подключения
-				switch(static_cast <uint8_t> (this->_core.proto(bid))){
-					// Если протокол подключения соответствует HTTP/1.1
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-						// Если переключение на протокол WebSocket произведено
-						connected = (i->second->response.params.code == 101);
-					break;
-					// Если протокол подключения соответствует HTTP/2
-					case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
-						// Если переключение на протокол WebSocket произведено
-						connected = (i->second->response.params.code == 200);
-					break;
-				}
-				// Если подключение установлено
-				if(connected){
-					// Выполняем снятие переключение протокола
-					i->second->upgrade = false;
-					// Выполняем установку метода подключения
-					i->second->method = awh::web_t::method_t::CONNECT;
-					// Меняем метод подключения на CONNECT
-					i->second->request.params.method = awh::web_t::method_t::CONNECT;
-					// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-					i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
-					// Выполняем поиск идентификатора потока
-					auto j = i->second->streams.find(rid);
-					// Если идентификатор потока найден, удаляем его
-					if(j != i->second->streams.end()){
+				// Если флаг рекомпрессии данных прокси-сервером установлен
+				if(this->_flags.count(flag_t::RECOMPRESS) > 0)
+					// Устанавливаем компрессор рекомпрессии
+					compress = this->_compressor;
+				// Получаем объект HTTP-парсера
+				const awh::http_t * http = this->_server.parser(j->second, bid);
+				// Если объект HTTP-парсера получен
+				if(http != nullptr)
+					// Устанавливаем параметры компрессии
+					const_cast <awh::http_t *> (http)->compression(compress);
+				// Выполняем получение заголовка Via
+				const string & header = this->via(j->second, bid, via);
+				// Если заголовок получен
+				if(!header.empty())
+					// Устанавливаем загловок Via
+					i->second->response.headers.emplace("Via", header);
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("headersClient"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
+				// Если производится активация WebSocket
+				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
+					// Флаг удачно-выполненного подключения
+					bool connected = false;
+					// Определяем протокола подключения
+					switch(static_cast <uint8_t> (this->_core.proto(bid))){
+						// Если протокол подключения соответствует HTTP/1.1
+						case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
+							// Если переключение на протокол WebSocket произведено
+							connected = (i->second->response.params.code == 101);
+						break;
+						// Если протокол подключения соответствует HTTP/2
+						case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
+							// Если переключение на протокол WebSocket произведено
+							connected = (i->second->response.params.code == 200);
+						break;
+					}
+					// Если подключение установлено
+					if(connected){
+						// Выполняем снятие переключение протокола
+						i->second->upgrade = false;
+						// Выполняем установку метода подключения
+						i->second->method = awh::web_t::method_t::CONNECT;
+						// Меняем метод подключения на CONNECT
+						i->second->request.params.method = awh::web_t::method_t::CONNECT;
+						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+						i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
 						// Выводим полученный результат
 						this->completed(j->second, bid);
 						// Выполняем удаление потока из списка
