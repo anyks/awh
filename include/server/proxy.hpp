@@ -383,14 +383,6 @@ namespace awh {
 				void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent) noexcept;
 			private:
 				/**
-				 * via Метод генерации заголовка Via
-				 * @param bid       идентификатор брокера (клиента)
-				 * @param mediators список предыдущих посредников
-				 * @return          сгенерированный заголовок
-				 */
-				string via(const uint64_t bid, const vector <string> & mediators = {}) const noexcept;
-			private:
-				/**
 				 * raw Метод получения сырых данных с сервера и клиента
 				 * @param bid    идентификатор брокера (клиента)
 				 * @param broker брокер получивший данные
@@ -399,6 +391,15 @@ namespace awh {
 				 * @return       флаг обязательной следующей обработки данных
 				 */
 				bool raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * via Метод генерации заголовка Via
+				 * @param sid       идентификатор потока
+				 * @param bid       идентификатор брокера (клиента)
+				 * @param mediators список предыдущих посредников
+				 * @return          сгенерированный заголовок
+				 */
+				string via(const int32_t sid, const uint64_t bid, const vector <string> & mediators = {}) const noexcept;
 			private:
 				/**
 				 * completed Метод завершения получения данных
@@ -415,10 +416,11 @@ namespace awh {
 			public:
 				/**
 				 * parser Метод извлечения объекта HTTP-парсера
+				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @return    объект HTTP-парсера
 				 */
-				const awh::http_t * parser(const uint64_t bid) const noexcept;
+				const awh::http_t * parser(const int32_t sid, const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * init Метод инициализации PROXY-сервера
@@ -854,11 +856,12 @@ namespace awh {
 			public:
 				/**
 				 * encrypt Метод активации шифрования для клиента
+				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param mode   флаг активации шифрования
 				 */
-				void encrypt(const uint64_t bid, const broker_t broker, const bool mode) noexcept;
+				void encrypt(const int32_t sid, const uint64_t bid, const broker_t broker, const bool mode) noexcept;
 			public:
 				/**
 				 * encryption Метод активации шифрования

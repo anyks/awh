@@ -371,6 +371,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"

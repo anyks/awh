@@ -55,24 +55,27 @@ namespace awh {
 			public:
 				/**
 				 * parser Метод извлечения объекта HTTP-парсера
+				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @return    объект HTTP-парсера
 				 */
-				const awh::http_t * parser(const uint64_t bid) const noexcept;
+				const awh::http_t * parser(const int32_t sid, const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * trailers Метод получения запроса на передачу трейлеров
 				 * @param bid идентификатор брокера
+				 * @param sid идентификатор потока
 				 * @return    флаг запроса клиентом передачи трейлеров
 				 */
-				bool trailers(const uint64_t bid) const noexcept;
+				bool trailers(const int32_t sid, const uint64_t bid) const noexcept;
 				/**
 				 * trailer Метод установки трейлера
+				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @param key ключ заголовка
 				 * @param val значение заголовка
 				 */
-				void trailer(const uint64_t bid, const string & key, const string & val) noexcept;
+				void trailer(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WEB-сервера
@@ -103,6 +106,14 @@ namespace awh {
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
+				 * send Метод отправки данных в бинарном виде клиенту
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер бинарных данных передаваемых клиенту
+				 * @param size   размер сообщения в байтах
+				 */
+				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
 				 * send Метод отправки тела сообщения клиенту
 				 * @param sid    идентификатор потока HTTP
 				 * @param bid    идентификатор брокера
@@ -123,23 +134,16 @@ namespace awh {
 				 * @return        идентификатор нового запроса
 				 */
 				int32_t send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
-			public:
-				/**
-				 * send Метод отправки данных в бинарном виде клиенту
-				 * @param bid    идентификатор брокера
-				 * @param buffer буфер бинарных данных передаваемых клиенту
-				 * @param size   размер сообщения в байтах
-				 */
-				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
+				 * @param sid     идентификатор потока HTTP
 				 * @param bid     идентификатор брокера
 				 * @param code    код сообщения для брокера
 				 * @param mess    отправляемое сообщение об ошибке
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
@@ -525,16 +529,18 @@ namespace awh {
 			public:
 				/**
 				 * crypted Метод получения флага шифрования
+				 * @param sid идентификатор потока HTTP
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
-				bool crypted(const uint64_t bid) const noexcept;
+				bool crypted(const int32_t sid, const uint64_t bid) const noexcept;
 				/**
 				 * encrypt Метод активации шифрования для клиента
+				 * @param sid  идентификатор потока HTTP
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
-				void encrypt(const uint64_t bid, const bool mode) noexcept;
+				void encrypt(const int32_t sid, const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * encryption Метод активации шифрования

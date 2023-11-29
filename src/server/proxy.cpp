@@ -188,7 +188,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 									// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
 									it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
 								// Выполняем отправку ответа клиенту
-								this->_server.send(bid);
+								this->_server.send(it->second->sid, bid);
 							}
 						}
 					} break;
@@ -491,13 +491,13 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Устанавливаем компрессор рекомпрессии
 				compress = this->_compressor;
 			// Получаем объект HTTP-парсера
-			const awh::http_t * http = this->_server.parser(bid);
+			const awh::http_t * http = this->_server.parser(i->second->sid, bid);
 			// Если объект HTTP-парсера получен
 			if(http != nullptr)
 				// Устанавливаем параметры компрессии
 				const_cast <awh::http_t *> (http)->compression(compress);
 			// Выполняем получение заголовка Via
-			const string & header = this->via(bid, via);
+			const string & header = this->via(i->second->sid, bid, via);
 			// Если заголовок получен
 			if(!header.empty())
 				// Устанавливаем загловок Via
@@ -603,7 +603,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 				++j;
 			}
 			// Получаем объект HTTP-парсера
-			const awh::http_t * http = this->_server.parser(bid);
+			const awh::http_t * http = this->_server.parser(sid, bid);
 			// Если объект HTTP-парсера получен
 			if(http != nullptr){
 				// Если нужно переключиться на протокол WebSocket
@@ -612,7 +612,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 					i->second->agent = client::web_t::agent_t::WEBSOCKET;
 			}
 			// Выполняем получение заголовка Via
-			const string & header = this->via(bid, via);
+			const string & header = this->via(sid, bid, via);
 			// Если заголовок получен
 			if(!header.empty())
 				// Устанавливаем загловок Via
@@ -684,7 +684,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Формируем тело ответа
 						const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
 						// Если метод CONNECT запрещено использовать
-						this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
+						this->_server.send(sid, bid, 403, message, vector <char> (body.begin(), body.end()), {
 							{"Connection", "close"},
 							{"Proxy-Connection", "close"},
 							{"Content-type", "text/html; charset=utf-8"}
@@ -816,7 +816,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Формируем тело ответа
 									const string & body = this->_fmk->format("<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n", 403, message.c_str(), 403, message.c_str());
 									// Если метод CONNECT запрещено использовать
-									this->_server.send(bid, 403, message, vector <char> (body.begin(), body.end()), {
+									this->_server.send(sid, bid, 403, message, vector <char> (body.begin(), body.end()), {
 										{"Connection", "close"},
 										{"Proxy-Connection", "close"},
 										{"Content-type", "text/html; charset=utf-8"}
@@ -877,16 +877,58 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 	}
 }
 /**
+ * raw Метод получения сырых данных с сервера и клиента
+ * @param bid    идентификатор брокера (клиента)
+ * @param broker брокер получивший данные
+ * @param buffer буфер бинарных данных
+ * @param size   разбмер буфера бинарных данных
+ * @return       флаг обязательной следующей обработки данных
+ */
+bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept {
+	// Результат работы функции
+	bool result = true;
+	// Если бинарные данные получены
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем поиск объекта клиента
+		auto it = this->_clients.find(bid);
+		// Если активный клиент найден и подключение установлено
+		if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
+			// Если тип сокета установлен как TCP/IP
+			if(it->second->upgrade || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
+				// Если установлен метод CONNECT
+				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
+					// Определяем переданного брокера
+					switch(static_cast <uint8_t> (broker)){
+						// Если брокером является клиент
+						case static_cast <uint8_t> (broker_t::CLIENT):
+							// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
+							this->_server.send(bid, buffer, size);
+						break;
+						// Если брокером является сервер
+						case static_cast <uint8_t> (broker_t::SERVER):
+							// Выполняем отправку сообщения клиенту в бинарном виде
+							it->second->awh.send(buffer, size);
+						break;
+					}
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * via Метод генерации заголовка Via
+ * @param sid       идентификатор потока
  * @param bid       идентификатор брокера (клиента)
  * @param mediators список предыдущих посредников
  * @return          сгенерированный заголовок
  */
-string awh::server::Proxy::via(const uint64_t bid, const vector <string> & mediators) const noexcept {
+string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vector <string> & mediators) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Получаем объект HTTP-парсера
-	const awh::http_t * http = this->_server.parser(bid);
+	const awh::http_t * http = this->_server.parser(sid, bid);
 	// Если объект HTTP-парсера получен
 	if(http != nullptr){
 		// Получаем параметры хоста сервера
@@ -942,47 +984,6 @@ string awh::server::Proxy::via(const uint64_t bid, const vector <string> & media
 	return result;
 }
 /**
- * raw Метод получения сырых данных с сервера и клиента
- * @param bid    идентификатор брокера (клиента)
- * @param broker брокер получивший данные
- * @param buffer буфер бинарных данных
- * @param size   разбмер буфера бинарных данных
- * @return       флаг обязательной следующей обработки данных
- */
-bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const char * buffer, const size_t size) noexcept {
-	// Результат работы функции
-	bool result = true;
-	// Если бинарные данные получены
-	if((buffer != nullptr) && (size > 0)){
-		// Выполняем поиск объекта клиента
-		auto it = this->_clients.find(bid);
-		// Если активный клиент найден и подключение установлено
-		if((it != this->_clients.end()) && (it->second->method == awh::web_t::method_t::CONNECT)){
-			// Если тип сокета установлен как TCP/IP
-			if(it->second->upgrade || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
-				// Если установлен метод CONNECT
-				if(!(result = (it->second->request.params.method != awh::web_t::method_t::CONNECT))){
-					// Определяем переданного брокера
-					switch(static_cast <uint8_t> (broker)){
-						// Если брокером является клиент
-						case static_cast <uint8_t> (broker_t::CLIENT):
-							// Выполняем отправку клиенту полученных сырых данных с удалённого сервера
-							this->_server.send(bid, buffer, size);
-						break;
-						// Если брокером является сервер
-						case static_cast <uint8_t> (broker_t::SERVER):
-							// Выполняем отправку сообщения клиенту в бинарном виде
-							it->second->awh.send(buffer, size);
-						break;
-					}
-				}
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * completed Метод завершения получения данных
  * @param bid идентификатор брокера (клиента)
  */
@@ -994,7 +995,7 @@ void awh::server::Proxy::completed(const uint64_t bid) noexcept {
 		// Если заголовки ответа получены
 		if(!it->second->response.headers.empty()){
 			// Отправляем сообщение клиенту
-			this->_server.send(bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
+			this->_server.send(it->second->sid, bid, it->second->response.params.code, it->second->response.params.message, it->second->response.entity, it->second->response.headers);
 			// Выполняем переключение протокола
 			it->second->upgrade = (it->second->agent == client::web_t::agent_t::WEBSOCKET);
 			// Если функция обратного вызова установлена
@@ -1015,12 +1016,13 @@ awh::engine_t::proto_t awh::server::Proxy::proto(const uint64_t bid) const noexc
 }
 /**
  * parser Метод извлечения объекта HTTP-парсера
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
  */
-const awh::http_t * awh::server::Proxy::parser(const uint64_t bid) const noexcept {
+const awh::http_t * awh::server::Proxy::parser(const int32_t sid, const uint64_t bid) const noexcept {
 	// Выполняем извлечение объекта HTTP-парсера
-	return this->_server.parser(bid);
+	return this->_server.parser(sid, bid);
 }
 /**
  * init Метод инициализации PROXY-сервера
@@ -1890,11 +1892,12 @@ void awh::server::Proxy::authType(const broker_t broker, const awh::auth_t::type
 }
 /**
  * encrypt Метод активации шифрования для клиента
+ * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param mode   флаг активации шифрования
  */
-void awh::server::Proxy::encrypt(const uint64_t bid, const broker_t broker, const bool mode) noexcept {
+void awh::server::Proxy::encrypt(const int32_t sid, const uint64_t bid, const broker_t broker, const bool mode) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
@@ -1909,7 +1912,7 @@ void awh::server::Proxy::encrypt(const uint64_t bid, const broker_t broker, cons
 		// Если брокером является сервер
 		case static_cast <uint8_t> (broker_t::SERVER):
 			// Выполняем активацию шифрования для сервера
-			this->_server.encrypt(bid, mode);
+			this->_server.encrypt(sid, bid, mode);
 		break;
 	}
 }

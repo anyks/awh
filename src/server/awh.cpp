@@ -26,31 +26,34 @@ awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcep
 }
 /**
  * parser Метод извлечения объекта HTTP-парсера
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
  */
-const awh::http_t * awh::server::AWH::parser(const uint64_t bid) const noexcept {
+const awh::http_t * awh::server::AWH::parser(const int32_t sid, const uint64_t bid) const noexcept {
 	// Выполняем извлечение объекта HTTP-парсера
-	return this->_http.parser(bid);
+	return this->_http.parser(sid, bid);
 }
 /**
  * trailers Метод получения запроса на передачу трейлеров
  * @param bid идентификатор брокера
+ * @param sid идентификатор потока
  * @return    флаг запроса клиентом передачи трейлеров
  */
-bool awh::server::AWH::trailers(const uint64_t bid) const noexcept {
+bool awh::server::AWH::trailers(const int32_t sid, const uint64_t bid) const noexcept {
 	// Выводим флаг запроса клиентом на передачу трейлеров
-	return this->_http.trailers(bid);
+	return this->_http.trailers(sid, bid);
 }
 /**
  * trailer Метод установки трейлера
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @param key ключ заголовка
  * @param val значение заголовка
  */
-void awh::server::AWH::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+void awh::server::AWH::trailer(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
 	// Выполняем установку трейлера
-	this->_http.trailer(bid, key, val);
+	this->_http.trailer(sid, bid, key, val);
 }
 /**
  * init Метод инициализации WEB-сервера
@@ -91,6 +94,16 @@ void awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & mes
 	this->_http.sendMessage(bid, message, text);
 }
 /**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ */
+void awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Выполняем отправку данных в бинарном виде клиенту
+	this->_http.send(bid, buffer, size);
+}
+/**
  * send Метод отправки тела сообщения на клиенту
  * @param sid    идентификатор потока HTTP
  * @param bid    идентификатор брокера
@@ -118,26 +131,17 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_in
 	return this->_http.send(sid, bid, code, mess, headers, end);
 }
 /**
- * send Метод отправки данных в бинарном виде клиенту
- * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных передаваемых клиенту
- * @param size   размер сообщения в байтах
- */
-void awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
-	// Выполняем отправку данных в бинарном виде клиенту
-	this->_http.send(bid, buffer, size);
-}
-/**
  * send Метод отправки сообщения брокеру
+ * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_http.send(bid, code, mess, entity, headers);
+	this->_http.send(sid, bid, code, mess, entity, headers);
 }
 /**
  * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
@@ -677,21 +681,23 @@ void awh::server::AWH::authType(const auth_t::type_t type, const auth_t::hash_t 
 }
 /**
  * crypted Метод получения флага шифрования
+ * @param sid идентификатор потока HTTP
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::AWH::crypted(const uint64_t bid) const noexcept {
+bool awh::server::AWH::crypted(const int32_t sid, const uint64_t bid) const noexcept {
 	// Выводим установленный флаг шифрования
-	return this->_http.crypted(bid);
+	return this->_http.crypted(sid, bid);
 }
 /**
  * encrypt Метод активации шифрования для клиента
+ * @param sid  идентификатор потока HTTP
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::AWH::encrypt(const uint64_t bid, const bool mode) noexcept {
+void awh::server::AWH::encrypt(const int32_t sid, const uint64_t bid, const bool mode) noexcept {
 	// Выполняем установку флага шифрования для клиента
-	this->_http.encrypt(bid, mode);
+	this->_http.encrypt(sid, bid, mode);
 }
 /**
  * encryption Метод активации шифрования

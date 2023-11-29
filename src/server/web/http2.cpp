@@ -30,61 +30,8 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		web2_t::connectCallback(bid, sid, core);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(bid);
-		// Если проктокол интернета HTTP/2 инициализирован для клиента
-		if(it != this->_sessions.end()){
-			// Получаем параметры активного клиента
-			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(options != nullptr){
-				// Выполняем установку идентификатора объекта
-				options->http.id(bid);
-				// Устанавливаем размер чанка
-				options->http.chunk(this->_chunkSize);
-				// Устанавливаем флаг идентичности протокола
-				options->http.identity(this->_identity);
-				// Устанавливаем список компрессоров поддерживаемый сервером
-				options->http.compressors(this->_scheme.compressors);
-				// Устанавливаем данные сервиса
-				options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Устанавливаем функцию обратного вызова для вывода ошибок
-					options->http.on((function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)>) this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
-				// Если требуется установить параметры шифрования
-				if(this->_encryption.mode){
-					// Устанавливаем флаг шифрования
-					options->http.encryption(this->_encryption.mode);
-					// Устанавливаем параметры шифрования
-					options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
-				}
-				// Определяем тип авторизации
-				switch(static_cast <uint8_t> (this->_service.type)){
-					// Если тип авторизации Basic
-					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
-						// Устанавливаем параметры авторизации
-						options->http.authType(this->_service.type);
-						// Если функция обратного вызова для обработки чанков установлена
-						if(this->_callback.is("checkPassword"))
-							// Устанавливаем функцию проверки авторизации
-							options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
-					} break;
-					// Если тип авторизации Digest
-					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
-						// Устанавливаем название сервера
-						options->http.realm(this->_service.realm);
-						// Устанавливаем временный ключ сессии сервера
-						options->http.opaque(this->_service.opaque);
-						// Устанавливаем параметры авторизации
-						options->http.authType(this->_service.type, this->_service.hash);
-						// Если функция обратного вызова для обработки чанков установлена
-						if(this->_callback.is("extractPassword"))
-							// Устанавливаем функцию извлечения пароля
-							options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
-					} break;
-				}
-			}
 		// Если протокол HTTP/2 для клиента не инициализирован
-		} else {
+		if(it == this->_sessions.end()){
 			// Выполняем установку сетевого ядра
 			this->_http1._core = dynamic_cast <server::core_t *> (core);
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -150,7 +97,7 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Получаем параметры активного клиента
-			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+			scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Если подключение закрыто
@@ -230,7 +177,7 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -290,16 +237,70 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
  * @return    статус полученных данных
  */
 int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
-	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
-		// Устанавливаем новый идентификатор потока
-		options->sid = sid;
+	// Выполняем открытие потока
+	this->_scheme.openStream(sid, bid);
+	// Извлекаем данные потока
+	scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+	// Если поток получен удачно
+	if(stream != nullptr){
 		// Выполняем очистку HTTP-парсера
-		options->http.clear();
+		stream->http.clear();
 		// Выполняем сброс состояния HTTP-парсера
-		options->http.reset();
+		stream->http.reset();
+		// Выполняем установку идентификатора объекта
+		stream->http.id(bid);
+		// Устанавливаем размер чанка
+		stream->http.chunk(this->_chunkSize);
+		// Устанавливаем флаг идентичности протокола
+		stream->http.identity(this->_identity);
+		// Устанавливаем список компрессоров поддерживаемый сервером
+		stream->http.compressors(this->_scheme.compressors);
+		// Устанавливаем данные сервиса
+		stream->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+		// Если функция обратного вызова на на вывод ошибок установлена
+		if(this->_callback.is("error"))
+			// Устанавливаем функцию обратного вызова для вывода ошибок
+			stream->http.on((function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)>) this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
+		// Если требуется установить параметры шифрования
+		if(this->_encryption.mode){
+			// Устанавливаем флаг шифрования
+			stream->http.encryption(this->_encryption.mode);
+			// Устанавливаем параметры шифрования
+			stream->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
+		}
+		// Определяем тип авторизации
+		switch(static_cast <uint8_t> (this->_service.type)){
+			// Если тип авторизации Basic
+			case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+				// Устанавливаем параметры авторизации
+				stream->http.authType(this->_service.type);
+				// Если функция обратного вызова для обработки чанков установлена
+				if(this->_callback.is("checkPassword"))
+					// Устанавливаем функцию проверки авторизации
+					stream->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+			} break;
+			// Если тип авторизации Digest
+			case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+				// Устанавливаем название сервера
+				stream->http.realm(this->_service.realm);
+				// Устанавливаем временный ключ сессии сервера
+				stream->http.opaque(this->_service.opaque);
+				// Устанавливаем параметры авторизации
+				stream->http.authType(this->_service.type, this->_service.hash);
+				// Если функция обратного вызова для обработки чанков установлена
+				if(this->_callback.is("extractPassword"))
+					// Устанавливаем функцию извлечения пароля
+					stream->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+			} break;
+		}
+	// Если поток не создан
+	} else {
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end())
+			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+			it->second->on((function <void (void)>) std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
 	}
 	// Выводим результат
 	return 0;
@@ -312,6 +313,8 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
  * @return      статус полученных данных
  */
 int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+	// Выполняем закрытие потока
+	this->_scheme.closeStream(sid, bid);
 	// Если разрешено выполнить остановку
 	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE)){
 		// Выполняем поиск брокера в списке активных сессий
@@ -337,17 +340,16 @@ int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, cons
  * @return    статус полученных данных
  */
 int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
-	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
+	// Извлекаем данные потока
+	scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+	// Если поток получен удачно
+	if(stream != nullptr)
 		// Устанавливаем полученные заголовки
-		options->http.header2(key, val);
-		// Если функция обратного вызова на полученного заголовка с сервера установлена
-		if(this->_callback.is("header"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
-	}
+		stream->http.header2(key, val);
+	// Если функция обратного вызова на полученного заголовка с сервера установлена
+	if(this->_callback.is("header"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <const int32_t, const uint64_t, const string &, const string &> ("header", sid, bid, key, val);
 	// Выводим результат
 	return 0;
 }
@@ -361,13 +363,18 @@ int awh::server::Http2::headerSignal(const int32_t sid, const uint64_t bid, cons
  */
 int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Если функция обратного вызова на перехват входящих чанков установлена
-		if(this->_callback.is("chunking"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", bid, vector <char> (buffer, buffer + size), &options->http);
+		if(this->_callback.is("chunking")){
+			// Извлекаем данные потока
+			scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+			// Если поток получен удачно
+			if(stream != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.call <const uint64_t, const vector <char> &, const awh::http_t *> ("chunking", bid, vector <char> (buffer, buffer + size), &stream->http);
+		}
 		// Если функция перехвата полученных чанков не установлена
 		else if(this->_core != nullptr) {
 			// Если подключение закрыто
@@ -377,26 +384,31 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
 				// Выходим из функции
 				return 0;
 			}
-			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(bid);
-			// Если активный агент клиента установлен
-			if(it != this->_agents.end()){
-				// Определяем тип активного протокола
-				switch(static_cast <uint8_t> (it->second)){
-					// Если протокол соответствует HTTP-протоколу
-					case static_cast <uint8_t> (agent_t::HTTP):
-						// Добавляем полученный чанк в тело данных
-						options->http.payload(vector <char> (buffer, buffer + size));
-					break;
-					// Если протокол соответствует протоколу WebSocket
-					case static_cast <uint8_t> (agent_t::WEBSOCKET):
-						// Выполняем передачу сигнала полученных чанков в модуль WebSocket
-						this->_ws2.chunkSignal(sid, bid, buffer, size);
-					// Выводим результат
-					return 0;
-				}
-			// Добавляем полученный чанк в тело данных
-			} else options->http.body(vector <char> (buffer, buffer + size));
+			// Извлекаем данные потока
+			scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+			// Если поток получен удачно
+			if(stream != nullptr){
+				// Выполняем поиск агента которому соответствует клиент
+				auto it = this->_agents.find(bid);
+				// Если активный агент клиента установлен
+				if(it != this->_agents.end()){
+					// Определяем тип активного протокола
+					switch(static_cast <uint8_t> (it->second)){
+						// Если протокол соответствует HTTP-протоколу
+						case static_cast <uint8_t> (agent_t::HTTP):
+							// Добавляем полученный чанк в тело данных
+							stream->http.payload(vector <char> (buffer, buffer + size));
+						break;
+						// Если протокол соответствует протоколу WebSocket
+						case static_cast <uint8_t> (agent_t::WEBSOCKET):
+							// Выполняем передачу сигнала полученных чанков в модуль WebSocket
+							this->_ws2.chunkSignal(sid, bid, buffer, size);
+						// Выводим результат
+						return 0;
+					}
+				// Добавляем полученный чанк в тело данных
+				} else stream->http.body(vector <char> (buffer, buffer + size));
+			}
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callback.is("chunks"))
 				// Выполняем функцию обратного вызова
@@ -423,7 +435,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 			// Если мы получили флаг завершения потока
 			if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 				// Получаем параметры активного клиента
-				scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+				scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
 				if((this->_core != nullptr) && (options != nullptr)){
 					// Выполняем поиск агента которому соответствует клиент
@@ -478,7 +490,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		// Если производится получения фрейма с сервера
 		case static_cast <uint8_t> (awh::http2_t::direct_t::RECV): {
 			// Получаем параметры активного клиента
-			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+			scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if((this->_core != nullptr) && (options != nullptr)){
 				// Выполняем поиск агента которому соответствует клиент
@@ -495,38 +507,12 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 									// Если мы получили неустановленный флаг или флаг завершения потока
 									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
-										// Выполняем коммит полученного результата
-										options->http.commit();
-										// Выполняем обработку полученных данных
-										this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
-										// Если функция обратного вызова активности потока установлена
-										if(this->_callback.is("stream"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
-										// Если установлена функция отлова завершения запроса
-										if(this->_callback.is("end"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
-									}
-								} break;
-								// Если мы получили входящие данные заголовков ответа
-								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
-									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
-										// Выполняем коммит полученного результата
-										options->http.commit();
-										// Выполняем извлечение параметров запроса
-										const auto & request = options->http.request();
-										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-										if(this->_callback.is("request"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", sid, bid, request.method, request.url);
-										// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-										if(this->_callback.is("headers"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
-										// Если мы получили неустановленный флаг или флаг завершения потока
-										if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+										// Извлекаем данные потока
+										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+										// Если поток получен удачно
+										if(stream != nullptr){
+											// Выполняем коммит полученного результата
+											stream->http.commit();
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
 											// Если функция обратного вызова активности потока установлена
@@ -537,10 +523,47 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 											if(this->_callback.is("end"))
 												// Выполняем функцию обратного вызова
 												this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
-										// Если заголовок WebSocket или прокси-сервер активирован
-										} else if((options->http.identity() == http_t::identity_t::WS) || (options->http.identity() == http_t::identity_t::PROXY))
-											// Выполняем обработку полученных данных
-											this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
+										}
+									}
+								} break;
+								// Если мы получили входящие данные заголовков ответа
+								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
+									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
+									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
+										// Извлекаем данные потока
+										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+										// Если поток получен удачно
+										if(stream != nullptr){
+											// Выполняем коммит полученного результата
+											stream->http.commit();
+											// Выполняем извлечение параметров запроса
+											const auto & request = stream->http.request();
+											// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+											if(this->_callback.is("request"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &> ("request", sid, bid, request.method, request.url);
+											// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+											if(this->_callback.is("headers"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", sid, bid, request.method, request.url, const_cast <scheme::web2_t::stream_t *> (stream)->http.headers());
+											// Если мы получили неустановленный флаг или флаг завершения потока
+											if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+												// Выполняем обработку полученных данных
+												this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
+												// Если функция обратного вызова активности потока установлена
+												if(this->_callback.is("stream"))
+													// Выполняем функцию обратного вызова
+													this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::CLOSE);
+												// Если установлена функция отлова завершения запроса
+												if(this->_callback.is("end"))
+													// Выполняем функцию обратного вызова
+													this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", sid, bid, direct_t::RECV);
+											// Если заголовок WebSocket или прокси-сервер активирован
+											} else if((stream->http.identity() == http_t::identity_t::WS) ||
+											          (stream->http.identity() == http_t::identity_t::PROXY))
+												// Выполняем обработку полученных данных
+												this->prepare(sid, bid, const_cast <server::core_t *> (this->_core));
+										}
 									}
 								} break;
 							}
@@ -566,7 +589,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
  */
 void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Если подключение не установлено как постоянное
@@ -579,274 +602,279 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid, server::
 				options->close = true;
 		// Выполняем сброс количества выполненных запросов
 		} else options->requests = 0;
-		// Получаем флаг шифрованных данных
-		options->crypted = options->http.crypted();
-		// Получаем поддерживаемый метод компрессии
-		options->compress = options->http.compression();
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			{
-				// Получаем объект работы с HTTP-запросами
-				const http_t & http = reinterpret_cast <http_t &> (options->http);
-				// Получаем бинарные данные REST-ответа
-				const auto & buffer = http.process(http_t::process_t::REQUEST, options->http.request());
-				// Если параметры ответа получены
-				if(!buffer.empty())
-					// Выводим параметры ответа
-					cout << string(buffer.begin(), buffer.end()) << endl << endl;
-				// Если тело ответа существует
-				if(!options->http.empty(awh::http_t::suite_t::BODY))
-					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
-				// Иначе устанавливаем перенос строки
-				else cout << endl;
-			}
-		#endif
-		// Выполняем проверку авторизации
-		switch(static_cast <uint8_t> (options->http.auth())){
-			// Если запрос выполнен удачно
-			case static_cast <uint8_t> (http_t::status_t::GOOD): {
-				// Если заголовок WebSocket активирован
-				if(options->http.identity() == http_t::identity_t::WS){
-					// Если запрашиваемый протокол соответствует WebSocket
-					if(this->_webSocket)
-						// Выполняем инициализацию WebSocket-сервера
-						this->websocket(sid, bid, core);
-					// Если протокол запрещён или не поддерживается
-					else {
-						// Выполняем очистку HTTP-парсера
-						options->http.clear();
-						// Выполняем сброс состояния HTTP-парсера
-						options->http.reset();
-						// Формируем ответ на запрос об авторизации
-						const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Requested protocol is not supported by this server");
-						// Получаем заголовки ответа удалённому клиенту
-						const auto & headers = options->http.reject2(response);
-						// Если бинарные данные ответа получены
-						if(!headers.empty()){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								{
-									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (options->http);
-									// Получаем бинарные данные REST-ответа
-									const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
-									// Если бинарные данные ответа получены
-									if(!buffer.empty())
-										// Выводим параметры ответа
-										cout << string(buffer.begin(), buffer.end()) << endl << endl;
-								}
-							#endif
-							// Флаг отправляемого фрейма
-							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-							// Если тело запроса не существует
-							if(options->http.empty(awh::http_t::suite_t::BODY))
-								// Устанавливаем флаг завершения потока
-								flag = awh::http2_t::flag_t::END_STREAM;
-							// Выполняем заголовки запроса на сервер
-							const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
-							// Если запрос не получилось отправить
-							if(sid < 0)
-								// Выходим из функции
-								return;
-							// Если тело запроса существует
-							if(!options->http.empty(awh::http_t::suite_t::BODY)){
-								// Тело HTTP-запроса
-								vector <char> entity;
-								// Получаем данные тела запроса
-								while(!(entity = options->http.payload()).empty()){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
-									#endif
-									// Если нужно установить флаг закрытия потока
-									if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
-										// Устанавливаем флаг завершения потока
-										flag = awh::http2_t::flag_t::END_STREAM;
-									// Выполняем отправку тела запроса на сервер
-									if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
-										// Выходим из функции
-										return;
-								}
-								// Если список трейлеров установлен
-								if(options->http.trailers() > 0){
-									// Выполняем извлечение трейлеров
-									const auto & trailers = options->http.trailers2();
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Название выводимого заголовка
-										string name = "";
-										// Выводим заголовок трейлеров
-										cout << "<Trailers>" << endl << endl;
-										// Выполняем перебор всего списка отправляемых трейлеров
-										for(auto & trailer : trailers){
-											// Получаем название заголовка
-											name = trailer.first;
-											// Переводим заголовок в нормальный режим
-											this->_fmk->transform(name, fmk_t::transform_t::SMART);
-											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
-										}
-										// Выводим завершение вывода информации
-										cout << endl << endl;
-									#endif
-									// Выполняем отправку трейлеров
-									if(!web2_t::send(options->sid, bid, trailers))
-										// Выходим из функции
-										return;
-								}
-							}
-						// Если сообщение о закрытии подключения не отправлено
-						} else if(!web2_t::reject(options->sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
-							// Выполняем отключение брокера
-							dynamic_cast <server::core_t *> (core)->close(bid);
-						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
-					}
-					// Завершаем обработку
-					return;
+		// Извлекаем данные потока
+		scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+		// Если поток получен удачно
+		if(stream != nullptr){
+			// Получаем флаг шифрованных данных
+			stream->crypted = stream->http.crypted();
+			// Получаем поддерживаемый метод компрессии
+			stream->compress = stream->http.compression();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				{
+					// Получаем объект работы с HTTP-запросами
+					const http_t & http = reinterpret_cast <http_t &> (stream->http);
+					// Получаем бинарные данные REST-ответа
+					const auto & buffer = http.process(http_t::process_t::REQUEST, stream->http.request());
+					// Если параметры ответа получены
+					if(!buffer.empty())
+						// Выводим параметры ответа
+						cout << string(buffer.begin(), buffer.end()) << endl << endl;
+					// Если тело ответа существует
+					if(!stream->http.empty(awh::http_t::suite_t::BODY))
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<body %u>", stream->http.body().size()) << endl << endl;
+					// Иначе устанавливаем перенос строки
+					else cout << endl;
 				}
-				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-				if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity")){
-					// Выполняем извлечение параметров запроса
-					const auto & request = options->http.request();
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, options->http.body());
-				}
-				// Если функция обратного вызова на получение удачного запроса установлена
-				if(this->_callback.is("handshake"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
-			} break;
-			// Если запрос неудачный
-			case static_cast <uint8_t> (http_t::status_t::FAULT): {
-				// Выполняем очистку HTTP-парсера
-				options->http.clear();
-				// Выполняем сброс состояния HTTP-парсера
-				options->http.reset();
-				// Ответ на запрос об авторизации
-				awh::web_t::res_t response;
-				// Определяем идентичность сервера
-				switch(static_cast <uint8_t> (this->_identity)){
-					// Если сервер соответствует WebSocket-серверу
-					case static_cast <uint8_t> (http_t::identity_t::WS):
-					// Если сервер соответствует HTTP-серверу
-					case static_cast <uint8_t> (http_t::identity_t::HTTP):
-						// Формируем ответ на запрос об авторизации
-						response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
-					break;
-					// Если сервер соответствует PROXY-серверу
-					case static_cast <uint8_t> (http_t::identity_t::PROXY):
-						// Формируем ответ на запрос об авторизации
-						response = awh::web_t::res_t(2.0f, static_cast <u_int> (407));
-					break;
-				}
-				// Получаем заголовки ответа удалённому клиенту
-				const auto & headers = options->http.reject2(response);
-				// Если бинарные данные ответа получены
-				if(!headers.empty()){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						{
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-							// Получаем объект работы с HTTP-запросами
-							const http_t & http = reinterpret_cast <http_t &> (options->http);
-							// Получаем бинарные данные REST-ответа
-							const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+			#endif
+			// Выполняем проверку авторизации
+			switch(static_cast <uint8_t> (stream->http.auth())){
+				// Если запрос выполнен удачно
+				case static_cast <uint8_t> (http_t::status_t::GOOD): {
+					// Если заголовок WebSocket активирован
+					if(stream->http.identity() == http_t::identity_t::WS){
+						// Если запрашиваемый протокол соответствует WebSocket
+						if(this->_webSocket)
+							// Выполняем инициализацию WebSocket-сервера
+							this->websocket(sid, bid, core);
+						// Если протокол запрещён или не поддерживается
+						else {
+							// Выполняем очистку HTTP-парсера
+							stream->http.clear();
+							// Выполняем сброс состояния HTTP-парсера
+							stream->http.reset();
+							// Формируем ответ на запрос об авторизации
+							const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Requested protocol is not supported by this server");
+							// Получаем заголовки ответа удалённому клиенту
+							const auto & headers = stream->http.reject2(response);
 							// Если бинарные данные ответа получены
-							if(!buffer.empty())
-								// Выводим параметры ответа
-								cout << string(buffer.begin(), buffer.end()) << endl << endl;
-						}
-					#endif
-					// Флаг отправляемого фрейма
-					awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-					// Если тело запроса не существует
-					if(options->http.empty(awh::http_t::suite_t::BODY))
-						// Устанавливаем флаг завершения потока
-						flag = awh::http2_t::flag_t::END_STREAM;
-					// Выполняем заголовки запроса на сервер
-					const int32_t sid = web2_t::send(options->sid, bid, headers, flag);
-					// Если запрос не получилось отправить
-					if(sid < 0)
-						// Выходим из функции
-						return;
-					// Если тело запроса существует
-					if(!options->http.empty(awh::http_t::suite_t::BODY)){
-						// Тело HTTP-запроса
-						vector <char> entity;
-						// Получаем данные тела запроса
-						while(!(entity = options->http.payload()).empty()){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
-							#endif
-							// Если нужно установить флаг закрытия потока
-							if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
-								// Устанавливаем флаг завершения потока
-								flag = awh::http2_t::flag_t::END_STREAM;
-							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
-								// Выходим из функции
-								return;
-						}
-						// Если список трейлеров установлен
-						if(options->http.trailers() > 0){
-							// Выполняем извлечение трейлеров
-							const auto & trailers = options->http.trailers2();
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Название выводимого заголовка
-								string name = "";
-								// Выводим заголовок трейлеров
-								cout << "<Trailers>" << endl << endl;
-								// Выполняем перебор всего списка отправляемых трейлеров
-								for(auto & trailer : trailers){
-									// Получаем название заголовка
-									name = trailer.first;
-									// Переводим заголовок в нормальный режим
-									this->_fmk->transform(name, fmk_t::transform_t::SMART);
-									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+							if(!headers.empty()){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									{
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										// Получаем объект работы с HTTP-запросами
+										const http_t & http = reinterpret_cast <http_t &> (stream->http);
+										// Получаем бинарные данные REST-ответа
+										const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+										// Если бинарные данные ответа получены
+										if(!buffer.empty())
+											// Выводим параметры ответа
+											cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									}
+								#endif
+								// Флаг отправляемого фрейма
+								awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+								// Если тело запроса не существует
+								if(stream->http.empty(awh::http_t::suite_t::BODY))
+									// Устанавливаем флаг завершения потока
+									flag = awh::http2_t::flag_t::END_STREAM;
+								// Выполняем заголовки запроса на сервер
+								const int32_t sid = web2_t::send(sid, bid, headers, flag);
+								// Если запрос не получилось отправить
+								if(sid < 0)
+									// Выходим из функции
+									return;
+								// Если тело запроса существует
+								if(!stream->http.empty(awh::http_t::suite_t::BODY)){
+									// Тело HTTP-запроса
+									vector <char> entity;
+									// Получаем данные тела запроса
+									while(!(entity = stream->http.payload()).empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение о выводе чанка тела
+											cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+										#endif
+										// Если нужно установить флаг закрытия потока
+										if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
+											// Устанавливаем флаг завершения потока
+											flag = awh::http2_t::flag_t::END_STREAM;
+										// Выполняем отправку тела запроса на сервер
+										if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+											// Выходим из функции
+											return;
+									}
+									// Если список трейлеров установлен
+									if(stream->http.trailers() > 0){
+										// Выполняем извлечение трейлеров
+										const auto & trailers = stream->http.trailers2();
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Название выводимого заголовка
+											string name = "";
+											// Выводим заголовок трейлеров
+											cout << "<Trailers>" << endl << endl;
+											// Выполняем перебор всего списка отправляемых трейлеров
+											for(auto & trailer : trailers){
+												// Получаем название заголовка
+												name = trailer.first;
+												// Переводим заголовок в нормальный режим
+												this->_fmk->transform(name, fmk_t::transform_t::SMART);
+												// Выводим сообщение о выводе чанка тела
+												cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+											}
+											// Выводим завершение вывода информации
+											cout << endl << endl;
+										#endif
+										// Выполняем отправку трейлеров
+										if(!web2_t::send(sid, bid, trailers))
+											// Выходим из функции
+											return;
+									}
 								}
-								// Выводим завершение вывода информации
-								cout << endl << endl;
-							#endif
-							// Выполняем отправку трейлеров
-							if(!web2_t::send(options->sid, bid, trailers))
-								// Выходим из функции
-								return;
+							// Если сообщение о закрытии подключения не отправлено
+							} else if(!web2_t::reject(sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
+								// Выполняем отключение брокера
+								dynamic_cast <server::core_t *> (core)->close(bid);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
 						}
+						// Завершаем обработку
+						return;
 					}
-				// Если сообщение о закрытии подключения не отправлено
-				} else if(!web2_t::reject(options->sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
-					// Выполняем отключение брокера
-					dynamic_cast <server::core_t *> (core)->close(bid);
-				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity")){
+						// Выполняем извлечение параметров запроса
+						const auto & request = stream->http.request();
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, stream->http.body());
+					}
+					// Если функция обратного вызова на получение удачного запроса установлена
+					if(this->_callback.is("handshake"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::HTTP);
+				} break;
+				// Если запрос неудачный
+				case static_cast <uint8_t> (http_t::status_t::FAULT): {
+					// Выполняем очистку HTTP-парсера
+					stream->http.clear();
+					// Выполняем сброс состояния HTTP-парсера
+					stream->http.reset();
+					// Ответ на запрос об авторизации
+					awh::web_t::res_t response;
+					// Определяем идентичность сервера
+					switch(static_cast <uint8_t> (this->_identity)){
+						// Если сервер соответствует WebSocket-серверу
+						case static_cast <uint8_t> (http_t::identity_t::WS):
+						// Если сервер соответствует HTTP-серверу
+						case static_cast <uint8_t> (http_t::identity_t::HTTP):
+							// Формируем ответ на запрос об авторизации
+							response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
+						break;
+						// Если сервер соответствует PROXY-серверу
+						case static_cast <uint8_t> (http_t::identity_t::PROXY):
+							// Формируем ответ на запрос об авторизации
+							response = awh::web_t::res_t(2.0f, static_cast <u_int> (407));
+						break;
+					}
+					// Получаем заголовки ответа удалённому клиенту
+					const auto & headers = stream->http.reject2(response);
+					// Если бинарные данные ответа получены
+					if(!headers.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							{
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								// Получаем объект работы с HTTP-запросами
+								const http_t & http = reinterpret_cast <http_t &> (stream->http);
+								// Получаем бинарные данные REST-ответа
+								const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
+								// Если бинарные данные ответа получены
+								if(!buffer.empty())
+									// Выводим параметры ответа
+									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							}
+						#endif
+						// Флаг отправляемого фрейма
+						awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+						// Если тело запроса не существует
+						if(stream->http.empty(awh::http_t::suite_t::BODY))
+							// Устанавливаем флаг завершения потока
+							flag = awh::http2_t::flag_t::END_STREAM;
+						// Выполняем заголовки запроса на сервер
+						const int32_t sid = web2_t::send(sid, bid, headers, flag);
+						// Если запрос не получилось отправить
+						if(sid < 0)
+							// Выходим из функции
+							return;
+						// Если тело запроса существует
+						if(!stream->http.empty(awh::http_t::suite_t::BODY)){
+							// Тело HTTP-запроса
+							vector <char> entity;
+							// Получаем данные тела запроса
+							while(!(entity = stream->http.payload()).empty()){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение о выводе чанка тела
+									cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+								#endif
+								// Если нужно установить флаг закрытия потока
+								if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
+									// Устанавливаем флаг завершения потока
+									flag = awh::http2_t::flag_t::END_STREAM;
+								// Выполняем отправку тела запроса на сервер
+								if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+									// Выходим из функции
+									return;
+							}
+							// Если список трейлеров установлен
+							if(stream->http.trailers() > 0){
+								// Выполняем извлечение трейлеров
+								const auto & trailers = stream->http.trailers2();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Название выводимого заголовка
+									string name = "";
+									// Выводим заголовок трейлеров
+									cout << "<Trailers>" << endl << endl;
+									// Выполняем перебор всего списка отправляемых трейлеров
+									for(auto & trailer : trailers){
+										// Получаем название заголовка
+										name = trailer.first;
+										// Переводим заголовок в нормальный режим
+										this->_fmk->transform(name, fmk_t::transform_t::SMART);
+										// Выводим сообщение о выводе чанка тела
+										cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+									}
+									// Выводим завершение вывода информации
+									cout << endl << endl;
+								#endif
+								// Выполняем отправку трейлеров
+								if(!web2_t::send(sid, bid, trailers))
+									// Выходим из функции
+									return;
+							}
+						}
+					// Если сообщение о закрытии подключения не отправлено
+					} else if(!web2_t::reject(sid, bid, awh::http2_t::error_t::PROTOCOL_ERROR))
+						// Выполняем отключение брокера
+						dynamic_cast <server::core_t *> (core)->close(bid);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+				}
 			}
 		}
 	}
@@ -932,14 +960,14 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 					} break;
 				}
 			}
-			// Получаем параметры активного клиента
-			scheme::web_t::options_t * web = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-			// Если параметры активного клиента получены
-			if(web != nullptr){
+			// Извлекаем данные потока
+			const scheme::web2_t::stream_t * stream = this->_scheme.getStream(sid, bid);
+			// Если поток получен удачно
+			if(stream != nullptr){
 				// Выполняем установку параметров запроса
-				options->http.request(web->http.request());
+				options->http.request(stream->http.request());
 				// Выполняем установку полученных заголовков
-				options->http.headers(web->http.headers());
+				options->http.headers(stream->http.headers());
 				// Выполняем коммит полученного результата
 				options->http.commit();
 				// Ответ клиенту по умолчанию успешный
@@ -1021,19 +1049,19 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 							// Выходим из функции
 							return;
 						// Выполняем извлечение параметров запроса
-						const auto & request = options->http.request();
+						const auto & request = stream->http.request();
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+						if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, stream->http.body());
 						// Если функция обратного вызова активности потока установлена
 						if(this->_callback.is("stream"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::OPEN);
+							this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", sid, bid, mode_t::OPEN);
 						// Если функция обратного вызова на получение удачного запроса установлена
 						if(this->_callback.is("handshake"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
+							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", sid, bid, agent_t::WEBSOCKET);
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
@@ -1130,11 +1158,11 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid, server
 						}
 					}
 					// Выполняем извлечение параметров запроса
-					const auto & request = options->http.request();
+					const auto & request = stream->http.request();
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!web->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+					if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, web->http.body());
+						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", sid, bid, request.method, request.url, stream->http.body());
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -1171,7 +1199,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 		 */
 		auto eraseFn = [this](const uint64_t bid) noexcept -> void {
 			// Получаем параметры активного клиента
-			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+			scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Устанавливаем флаг отключения
@@ -1275,7 +1303,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
  */
 void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Определяем протокола подключения
@@ -1392,14 +1420,15 @@ awh::engine_t::proto_t awh::server::Http2::proto(const uint64_t bid) const noexc
 }
 /**
  * parser Метод извлечения объекта HTTP-парсера
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
  */
-const awh::http_t * awh::server::Http2::parser(const uint64_t bid) const noexcept {
+const awh::http_t * awh::server::Http2::parser(const int32_t sid, const uint64_t bid) const noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1428,9 +1457,14 @@ const awh::http_t * awh::server::Http2::parser(const uint64_t bid) const noexcep
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
-							case static_cast <uint8_t> (agent_t::HTTP):
-								// Выполняем получение объекта HTTP-парсера
-								return &options->http;
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Извлекаем данные потока
+								const scheme::web2_t::stream_t * stream = this->_scheme.getStream(sid, bid);
+								// Если поток получен удачно
+								if(stream != nullptr)
+									// Выполняем получение объекта HTTP-парсера
+									return &stream->http;
+							}
 						}
 					}
 				} break;
@@ -1442,14 +1476,15 @@ const awh::http_t * awh::server::Http2::parser(const uint64_t bid) const noexcep
 }
 /**
  * trailers Метод получения запроса на передачу трейлеров
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    флаг запроса клиентом передачи трейлеров
  */
-bool awh::server::Http2::trailers(const uint64_t bid) const noexcept {
+bool awh::server::Http2::trailers(const int32_t sid, const uint64_t bid) const noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1478,9 +1513,14 @@ bool awh::server::Http2::trailers(const uint64_t bid) const noexcept {
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
-							case static_cast <uint8_t> (agent_t::HTTP):
-								// Выполняем получение флага запроса клиента на передачу трейлеров
-								return options->http.is(http_t::state_t::TRAILERS);
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Извлекаем данные потока
+								const scheme::web2_t::stream_t * stream = this->_scheme.getStream(sid, bid);
+								// Если поток получен удачно
+								if(stream != nullptr)
+									// Выполняем получение флага запроса клиента на передачу трейлеров
+									return stream->http.is(http_t::state_t::TRAILERS);
+							}
 						}
 					}
 				} break;
@@ -1492,15 +1532,16 @@ bool awh::server::Http2::trailers(const uint64_t bid) const noexcept {
 }
 /**
  * trailer Метод установки трейлера
+ * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @param key ключ заголовка
  * @param val значение заголовка
  */
-void awh::server::Http2::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+void awh::server::Http2::trailer(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1530,10 +1571,14 @@ void awh::server::Http2::trailer(const uint64_t bid, const string & key, const s
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
-							case static_cast <uint8_t> (agent_t::HTTP):
-								// Выполняем установку трейлера
-								options->http.trailer(key, val);
-							break;
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Извлекаем данные потока
+								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+								// Если поток получен удачно
+								if(stream != nullptr)
+									// Выполняем установку трейлера
+									stream->http.trailer(key, val);
+							} break;
 						}
 					}
 				} break;
@@ -1573,7 +1618,7 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1624,7 +1669,7 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1666,6 +1711,18 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 	}
 }
 /**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ */
+void awh::server::Http2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков ответа клиенту
+		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
+}
+/**
  * send Метод отправки трейлеров
  * @param sid     идентификатор потока HTTP/2
  * @param bid     идентификатор брокера
@@ -1676,7 +1733,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const vecto
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -1714,7 +1771,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1746,56 +1803,61 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
 								vector <char> entity;
-								// Выполняем очистку данных тела
-								options->http.clear(http_t::suite_t::BODY);
-								// Устанавливаем тело запроса
-								options->http.body(vector <char> (buffer, buffer + size));
-								// Флаг отправляемого фрейма
-								awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-								// Получаем данные тела запроса
-								while(!(entity = options->http.payload()).empty()){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
-									#endif
-									// Если нужно установить флаг закрытия потока
-									if(end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
-										// Устанавливаем флаг завершения потока
-										flag = awh::http2_t::flag_t::END_STREAM;
-									// Выполняем отправку данных на удалённый сервер
-									result = web2_t::send(sid, bid, entity.data(), entity.size(), flag);
-								}
-								// Если список трейлеров установлен
-								if(result && (options->http.trailers() > 0)){
-									// Выполняем извлечение трейлеров
-									const auto & trailers = options->http.trailers2();
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Название выводимого заголовка
-										string name = "";
-										// Выводим заголовок трейлеров
-										cout << "<Trailers>" << endl << endl;
-										// Выполняем перебор всего списка отправляемых трейлеров
-										for(auto & trailer : trailers){
-											// Получаем название заголовка
-											name = trailer.first;
-											// Переводим заголовок в нормальный режим
-											this->_fmk->transform(name, fmk_t::transform_t::SMART);
+								// Извлекаем данные потока
+								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+								// Если поток получен удачно
+								if(stream != nullptr){
+									// Выполняем очистку данных тела
+									stream->http.clear(http_t::suite_t::BODY);
+									// Устанавливаем тело запроса
+									stream->http.body(vector <char> (buffer, buffer + size));
+									// Флаг отправляемого фрейма
+									awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+									// Получаем данные тела запроса
+									while(!(entity = stream->http.payload()).empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
-										}
-										// Выводим завершение вывода информации
-										cout << endl << endl;
-									#endif
-									// Выполняем отправку трейлеров
-									if((result = !web2_t::send(sid, bid, trailers)))
-										// Выходим из функции
-										return result;
+											cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+										#endif
+										// Если нужно установить флаг закрытия потока
+										if(end && stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
+											// Устанавливаем флаг завершения потока
+											flag = awh::http2_t::flag_t::END_STREAM;
+										// Выполняем отправку данных на удалённый сервер
+										result = web2_t::send(sid, bid, entity.data(), entity.size(), flag);
+									}
+									// Если список трейлеров установлен
+									if(result && (stream->http.trailers() > 0)){
+										// Выполняем извлечение трейлеров
+										const auto & trailers = stream->http.trailers2();
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Название выводимого заголовка
+											string name = "";
+											// Выводим заголовок трейлеров
+											cout << "<Trailers>" << endl << endl;
+											// Выполняем перебор всего списка отправляемых трейлеров
+											for(auto & trailer : trailers){
+												// Получаем название заголовка
+												name = trailer.first;
+												// Переводим заголовок в нормальный режим
+												this->_fmk->transform(name, fmk_t::transform_t::SMART);
+												// Выводим сообщение о выводе чанка тела
+												cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+											}
+											// Выводим завершение вывода информации
+											cout << endl << endl;
+										#endif
+										// Выполняем отправку трейлеров
+										if((result = !web2_t::send(sid, bid, trailers)))
+											// Выходим из функции
+											return result;
+									}
 								}
 							} break;
 						}
@@ -1821,7 +1883,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 	// Если заголовки запроса переданы
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1851,45 +1913,50 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Выполняем сброс состояния HTTP-парсера
-								options->http.reset();
-								// Выполняем очистку заголовков
-								options->http.clear(http_t::suite_t::HEADER);
-								// Устанавливаем заголовоки запроса
-								options->http.headers(headers);
-								// Если сообщение ответа не установлено
-								if(mess.empty())
-									// Выполняем установку сообщения по умолчанию
-									const_cast <string &> (mess) = options->http.message(code);
-								// Формируем ответ на запрос клиента
-								awh::web_t::res_t response(2.0f, code, mess);
-								// Получаем заголовки ответа удалённому клиенту
-								const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
-								// Если заголовки запроса получены
-								if(!headers.empty()){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										{
-											// Выводим заголовок ответа
-											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-											// Получаем бинарные данные REST-ответа
-											const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
-											// Если бинарные данные ответа получены
-											if(!buffer.empty())
-												// Выводим параметры ответа
-												cout << string(buffer.begin(), buffer.end()) << endl << endl;
-										}
-									#endif
-									// Флаг отправляемого фрейма
-									awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-									// Если тело запроса не существует
-									if(end)
-										// Устанавливаем флаг завершения потока
-										flag = awh::http2_t::flag_t::END_STREAM;
-									// Выполняем заголовки запроса на сервер
-									return web2_t::send(sid, bid, headers, flag);
+								// Извлекаем данные потока
+								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+								// Если поток получен удачно
+								if(stream != nullptr){
+									// Выполняем сброс состояния HTTP-парсера
+									stream->http.reset();
+									// Выполняем очистку заголовков
+									stream->http.clear(http_t::suite_t::HEADER);
+									// Устанавливаем заголовоки запроса
+									stream->http.headers(headers);
+									// Если сообщение ответа не установлено
+									if(mess.empty())
+										// Выполняем установку сообщения по умолчанию
+										const_cast <string &> (mess) = stream->http.message(code);
+									// Формируем ответ на запрос клиента
+									awh::web_t::res_t response(2.0f, code, mess);
+									// Получаем заголовки ответа удалённому клиенту
+									const auto & headers = stream->http.process2(http_t::process_t::RESPONSE, response);
+									// Если заголовки запроса получены
+									if(!headers.empty()){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											{
+												// Выводим заголовок ответа
+												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												// Получаем бинарные данные REST-ответа
+												const auto & buffer = stream->http.process(http_t::process_t::RESPONSE, response);
+												// Если бинарные данные ответа получены
+												if(!buffer.empty())
+													// Выводим параметры ответа
+													cout << string(buffer.begin(), buffer.end()) << endl << endl;
+											}
+										#endif
+										// Флаг отправляемого фрейма
+										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+										// Если тело запроса не существует
+										if(end)
+											// Устанавливаем флаг завершения потока
+											flag = awh::http2_t::flag_t::END_STREAM;
+										// Выполняем заголовки запроса на сервер
+										return web2_t::send(sid, bid, headers, flag);
+									}
 								}
 							} break;
 						}
@@ -1902,30 +1969,19 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 	return -1;
 }
 /**
- * send Метод отправки данных в бинарном виде клиенту
- * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных передаваемых клиенту
- * @param size   размер сообщения в байтах
- */
-void awh::server::Http2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
-	// Если данные переданы верные
-	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
-		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
-}
-/**
  * send Метод отправки сообщения брокеру
+ * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http2::send(const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -1956,106 +2012,107 @@ void awh::server::Http2::send(const uint64_t bid, const u_int code, const string
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Выполняем сброс состояния HTTP парсера
-								options->http.reset();
-								// Выполняем очистку данных тела
-								options->http.clear(http_t::suite_t::BODY);
-								// Выполняем очистку заголовков
-								options->http.clear(http_t::suite_t::HEADER);
-								// Устанавливаем полезную нагрузку
-								options->http.body(entity);
-								// Устанавливаем заголовки ответа
-								options->http.headers(headers);
-								// Если сообщение ответа не установлено
-								if(mess.empty())
-									// Выполняем установку сообщения по умолчанию
-									const_cast <string &> (mess) = options->http.message(code);
-								{
-									// Формируем ответ на запрос клиента
-									awh::web_t::res_t response(2.0f, code, mess);
-									// Получаем заголовки ответа удалённому клиенту
-									const auto & headers = options->http.process2(http_t::process_t::RESPONSE, response);
-									// Если бинарные данные ответа получены
-									if(!headers.empty()){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											{
-												// Выводим заголовок ответа
-												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-												// Получаем бинарные данные REST-ответа
-												const auto & buffer = options->http.process(http_t::process_t::RESPONSE, response);
-												// Если бинарные данные ответа получены
-												if(!buffer.empty())
-													// Выводим параметры ответа
-													cout << string(buffer.begin(), buffer.end()) << endl << endl;
-											}
-										#endif
-										// Флаг отправляемого фрейма
-										awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-										// Если тело запроса не существует
-										if(options->http.empty(awh::http_t::suite_t::BODY))
-											// Устанавливаем флаг завершения потока
-											flag = awh::http2_t::flag_t::END_STREAM;
-										// Выполняем ответ подключившемуся клиенту
-										int32_t sid = web2_t::send(options->sid, bid, headers, flag);
-										// Если запрос не получилось отправить, выходим из функции
-										if(sid < 0)
-											// Выходим из функции
-											return;
-										// Устанавливаем идентификатор потока
-										options->sid = (options->sid > -1 ? options->sid : sid);
-										// Если тело запроса существует
-										if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
-											// Тело HTTP-запроса
-											vector <char> entity;
-											// Получаем данные тела запроса
-											while(!(entity = options->http.payload()).empty()){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
-												#endif
-												// Если нужно установить флаг закрытия потока
-												if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
-													// Устанавливаем флаг завершения потока
-													flag = awh::http2_t::flag_t::END_STREAM;
-												// Выполняем отправку тела запроса на сервер
-												if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
-													// Выходим из функции
-													return;
-											}
-											// Если список трейлеров установлен
-											if(options->http.trailers() > 0){
-												// Выполняем извлечение трейлеров
-												const auto & trailers = options->http.trailers2();
-												/**
-												 * Если включён режим отладки
-												 */
-												#if defined(DEBUG_MODE)
-													// Название выводимого заголовка
-													string name = "";
-													// Выводим заголовок трейлеров
-													cout << "<Trailers>" << endl << endl;
-													// Выполняем перебор всего списка отправляемых трейлеров
-													for(auto & trailer : trailers){
-														// Получаем название заголовка
-														name = trailer.first;
-														// Переводим заголовок в нормальный режим
-														this->_fmk->transform(name, fmk_t::transform_t::SMART);
+								// Извлекаем данные потока
+								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+								// Если поток получен удачно
+								if(stream != nullptr){
+									// Выполняем сброс состояния HTTP парсера
+									stream->http.reset();
+									// Выполняем очистку данных тела
+									stream->http.clear(http_t::suite_t::BODY);
+									// Выполняем очистку заголовков
+									stream->http.clear(http_t::suite_t::HEADER);
+									// Устанавливаем полезную нагрузку
+									stream->http.body(entity);
+									// Устанавливаем заголовки ответа
+									stream->http.headers(headers);
+									// Если сообщение ответа не установлено
+									if(mess.empty())
+										// Выполняем установку сообщения по умолчанию
+										const_cast <string &> (mess) = stream->http.message(code);
+									{
+										// Формируем ответ на запрос клиента
+										awh::web_t::res_t response(2.0f, code, mess);
+										// Получаем заголовки ответа удалённому клиенту
+										const auto & headers = stream->http.process2(http_t::process_t::RESPONSE, response);
+										// Если бинарные данные ответа получены
+										if(!headers.empty()){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												{
+													// Выводим заголовок ответа
+													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+													// Получаем бинарные данные REST-ответа
+													const auto & buffer = stream->http.process(http_t::process_t::RESPONSE, response);
+													// Если бинарные данные ответа получены
+													if(!buffer.empty())
+														// Выводим параметры ответа
+														cout << string(buffer.begin(), buffer.end()) << endl << endl;
+												}
+											#endif
+											// Флаг отправляемого фрейма
+											awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+											// Если тело запроса не существует
+											if(stream->http.empty(awh::http_t::suite_t::BODY))
+												// Устанавливаем флаг завершения потока
+												flag = awh::http2_t::flag_t::END_STREAM;
+											// Если запрос не получилось отправить, выходим из функции
+											if(web2_t::send(sid, bid, headers, flag) < 0)
+												// Выходим из функции
+												return;
+											// Если тело запроса существует
+											if((code >= 200) && !stream->http.empty(awh::http_t::suite_t::BODY)){
+												// Тело HTTP-запроса
+												vector <char> entity;
+												// Получаем данные тела запроса
+												while(!(entity = stream->http.payload()).empty()){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
 														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
-													}
-													// Выводим завершение вывода информации
-													cout << endl << endl;
-												#endif
-												// Выполняем отправку трейлеров
-												if(!web2_t::send(options->sid, bid, trailers))
-													// Выходим из функции
-													return;
+														cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+													#endif
+													// Если нужно установить флаг закрытия потока
+													if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
+														// Устанавливаем флаг завершения потока
+														flag = awh::http2_t::flag_t::END_STREAM;
+													// Выполняем отправку тела запроса на сервер
+													if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+														// Выходим из функции
+														return;
+												}
+												// Если список трейлеров установлен
+												if(stream->http.trailers() > 0){
+													// Выполняем извлечение трейлеров
+													const auto & trailers = stream->http.trailers2();
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Название выводимого заголовка
+														string name = "";
+														// Выводим заголовок трейлеров
+														cout << "<Trailers>" << endl << endl;
+														// Выполняем перебор всего списка отправляемых трейлеров
+														for(auto & trailer : trailers){
+															// Получаем название заголовка
+															name = trailer.first;
+															// Переводим заголовок в нормальный режим
+															this->_fmk->transform(name, fmk_t::transform_t::SMART);
+															// Выводим сообщение о выводе чанка тела
+															cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+														}
+														// Выводим завершение вывода информации
+														cout << endl << endl;
+													#endif
+													// Выполняем отправку трейлеров
+													if(!web2_t::send(sid, bid, trailers))
+														// Выходим из функции
+														return;
+												}
 											}
 										}
 									}
@@ -2077,7 +2134,7 @@ bool awh::server::Http2::shutdown2(const uint64_t bid) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2111,7 +2168,7 @@ bool awh::server::Http2::reject2(const int32_t sid, const uint64_t bid, const aw
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2147,7 +2204,7 @@ bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const a
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2181,7 +2238,7 @@ bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const vect
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2217,7 +2274,7 @@ bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const char
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2252,7 +2309,7 @@ int32_t awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const v
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2287,7 +2344,7 @@ int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const v
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Если протокол подключения соответствует HTTP/2
@@ -2560,7 +2617,7 @@ u_int awh::server::Http2::port(const uint64_t bid) const noexcept {
  */
 awh::server::web_t::agent_t awh::server::Http2::agent(const uint64_t bid) const noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Определяем протокола подключения
@@ -2633,7 +2690,7 @@ void awh::server::Http2::start() noexcept {
  */
 void awh::server::Http2::close(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
 	if((this->_core != nullptr) && (options != nullptr)){
 		// Определяем протокола подключения
@@ -2725,7 +2782,7 @@ const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const 
 	// Результат работы функции
 	static const set <string> result;
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Определяем протокола подключения
@@ -2784,7 +2841,7 @@ const vector <vector <string>> & awh::server::Http2::extensions(const uint64_t b
 	// Результат работы функции
 	static const vector <vector <string>> result;
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr){
 		// Определяем протокола подключения
@@ -2966,7 +3023,7 @@ void awh::server::Http2::alive(const time_t time) noexcept {
  */
 void awh::server::Http2::alive(const uint64_t bid, const bool mode) noexcept {
 	// Получаем параметры активного клиента
-	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
 	if(options != nullptr)
 		// Устанавливаем флаг пдолгоживущего подключения
@@ -3125,14 +3182,15 @@ void awh::server::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 }
 /**
  * crypted Метод получения флага шифрования
+ * @param sid идентификатор потока HTTP
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::Http2::crypted(const uint64_t bid) const noexcept {
+bool awh::server::Http2::crypted(const int32_t sid, const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -3161,9 +3219,14 @@ bool awh::server::Http2::crypted(const uint64_t bid) const noexcept {
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
-							case static_cast <uint8_t> (agent_t::HTTP):
-								// Выводим установленный флаг шифрования
-								return options->crypted;
+							case static_cast <uint8_t> (agent_t::HTTP): {
+								// Извлекаем данные потока
+								const scheme::web2_t::stream_t * stream = this->_scheme.getStream(sid, bid);
+								// Если поток получен удачно
+								if(stream != nullptr)
+									// Выводим установленный флаг шифрования
+									return stream->crypted;
+							} break;
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выводим установленный флаг шифрования
@@ -3179,14 +3242,15 @@ bool awh::server::Http2::crypted(const uint64_t bid) const noexcept {
 }
 /**
  * encrypt Метод активации шифрования для клиента
+ * @param sid  идентификатор потока HTTP
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::Http2::encrypt(const uint64_t bid, const bool mode) noexcept {
+void awh::server::Http2::encrypt(const int32_t sid, const uint64_t bid, const bool mode) noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
-		scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Определяем протокола подключения
@@ -3217,10 +3281,15 @@ void awh::server::Http2::encrypt(const uint64_t bid, const bool mode) noexcept {
 						switch(static_cast <uint8_t> (it->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Устанавливаем флаг шифрования для клиента
-								options->crypted = mode;
-								// Устанавливаем флаг шифрования
-								options->http.encryption(options->crypted);
+								// Извлекаем данные потока
+								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+								// Если поток получен удачно
+								if(stream != nullptr){
+									// Устанавливаем флаг шифрования для клиента
+									stream->crypted = mode;
+									// Устанавливаем флаг шифрования
+									stream->http.encryption(stream->crypted);
+								}
 							} break;
 							// Если протокол соответствует протоколу WebSocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):

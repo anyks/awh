@@ -77,10 +77,6 @@ class WebServer {
 		 * @param mode режим события подключения
 		 */
 		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			// Если подключение клиента установлено
-			if(mode == server::web_t::mode_t::CONNECT)
-				// Аактивируем шифрование
-				this->_awh->encrypt(bid, true);
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -127,9 +123,9 @@ class WebServer {
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				this->_awh->encrypt(bid, false);
+				this->_awh->encrypt(sid, bid, false);
 				// Извлекаем адрес URL-запроса
-				cout << " URL: " << this->_awh->parser(bid)->request().url << endl;
+				cout << " URL: " << this->_awh->parser(sid, bid)->request().url << endl;
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
@@ -159,15 +155,15 @@ class WebServer {
 				}
 				*/
 				// Если клиент запросил передачу трейлеров
-				if(this->_awh->trailers(bid)){
+				if(this->_awh->trailers(sid, bid)){
 					// Устанавливаем тестовые трейлеры
-					this->_awh->trailer(bid, "Goga", "Hello");
-					this->_awh->trailer(bid, "Hello", "World");
-					this->_awh->trailer(bid, "Anyks", "Best of the best");
-					this->_awh->trailer(bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+					this->_awh->trailer(sid, bid, "Goga", "Hello");
+					this->_awh->trailer(sid, bid, "Hello", "World");
+					this->_awh->trailer(sid, bid, "Anyks", "Best of the best");
+					this->_awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
 				}
 				// Отправляем сообщение клиенту
-				this->_awh->send(bid, 200, "OK", vector <char> (body.begin(), body.end()));
+				this->_awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
 		}
 		/**
@@ -183,7 +179,7 @@ class WebServer {
 			// Если пришёл запрос на фавиконку
 			if(!url.empty() && (!url.path.empty() && url.path.back().compare("favicon.ico") == 0))
 				// Выполняем реджект
-				this->_awh->send(bid, 404);
+				this->_awh->send(sid, bid, 404);
 		}
 		/**
 		 * headers Метод получения заголовков запроса
@@ -211,7 +207,7 @@ class WebServer {
 			// Выводим информацию о входящих данных
 			cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
 			// Отправляем сообщение клиенту
-			this->_awh->send(bid, 200, "OK", entity, {{"Connection", "close"}});
+			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
 	public:
 		/**
