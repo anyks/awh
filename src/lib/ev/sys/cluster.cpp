@@ -27,7 +27,7 @@
 		// Если функция обратного вызова установлена
 		if(this->cluster->_callback.is("message"))
 			// Выполняем функцию обратного вызова
-			this->cluster->_callback.call <const uint16_t, const pid_t, const char *, const size_t> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
+			this->cluster->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
 	}
 	/**
 	 * message Функция обратного вызова получении сообщений
@@ -316,7 +316,7 @@
 					// Если функция обратного вызова установлена
 					if(this->cluster->_callback.is("process"))
 						// Выполняем функцию обратного вызова
-						this->cluster->_callback.call <const uint16_t, const pid_t, const event_t> ("process", jt->first, pid, event_t::STOP);
+						this->cluster->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", jt->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto it = this->cluster->_workers.find(jt->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
@@ -528,7 +528,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("process"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint16_t, const pid_t, const event_t> ("process", it->first, pid, event_t::START);
+									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, pid, event_t::START);
 							}
 							// Выполняем активацию базы событий
 							ev_loop_fork(this->_base);
@@ -591,7 +591,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("process"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const uint16_t, const pid_t, const event_t> ("process", it->first, this->_pid, event_t::START);
+					this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, this->_pid, event_t::START);
 			}
 		}
 	#endif

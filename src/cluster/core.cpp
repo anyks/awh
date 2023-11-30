@@ -57,9 +57,9 @@ void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const clus
 				// Выводим результат в отдельном потоке
 				std::thread(this->_callback.get <void (const status_t, awh::core_t *)> ("statusCluster"), status_t::START, const_cast <core_t *> (this)).detach();
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *> ("events", cluster_t::family_t::MASTER, pid, event, const_cast <core_t *> (this));
+			this->_callback.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)> ("events", cluster_t::family_t::MASTER, pid, event, const_cast <core_t *> (this));
 		// Если производится запуск воркера, выполняем функцию обратного вызова
-		} else this->_callback.call <const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *> ("events", cluster_t::family_t::CHILDREN, pid, event, const_cast <core_t *> (this));
+		} else this->_callback.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)> ("events", cluster_t::family_t::CHILDREN, pid, event, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -75,9 +75,9 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
 		// Определяем производится ли инициализация кластера
 		if(this->_pid == getpid())
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *> ("message", cluster_t::family_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
+			this->_callback.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", cluster_t::family_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
 		// Если производится запуск воркера, если функция обратного вызова установлена
-		else this->_callback.call <const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *> ("message", cluster_t::family_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
+		else this->_callback.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", cluster_t::family_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -146,10 +146,7 @@ void awh::cluster::Core::stop() noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("statusCluster"))
 				// Выполняем получение функции обратного вызова
-				this->_callback.set <void (const status_t, awh::core_t *)> (
-					"status",
-					this->_callback.get <void (const status_t, awh::core_t *)> ("statusCluster")
-				);
+				this->_callback.set("statusCluster", "status", this->_callback);
 		// Выполняем разблокировку потока
 		} else this->_mtx.status.unlock();
 	// Если процесс является дочерним, выполняем остановку процесса
@@ -172,10 +169,7 @@ void awh::cluster::Core::start() noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
 				// Выполняем получение функции обратного вызова
-				this->_callback.set <void (const status_t, awh::core_t *)> (
-					"statusCluster",
-					this->_callback.get <void (const status_t, awh::core_t *)> ("status")
-				);
+				this->_callback.set("status", "statusCluster", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.set <void (const status_t, awh::core_t *)> ("status", std::bind(&cluster::core_t::active, this, _1, _2));
 			// Выполняем запуск чтения базы событий
@@ -189,7 +183,7 @@ void awh::cluster::Core::start() noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::START, "It is not possible to start a cluster from a child process");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, "It is not possible to start a cluster from a child process");
 	}
 }
 /**
@@ -260,7 +254,7 @@ void awh::cluster::Core::async(const bool mode) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -285,7 +279,7 @@ void awh::cluster::Core::size(const uint16_t size) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -310,7 +304,7 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**

@@ -39,7 +39,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("chunking"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", this->_id, this->_chunk.data, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
@@ -53,7 +53,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("chunking"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", this->_id, this->_chunk.data, this);
 					// Если тело сообщения полностью собранно
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
@@ -65,14 +65,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entity"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
+									this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entity"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
+									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
 							} break;
 						}
 						// Тело в запросе не передано
@@ -123,7 +123,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 									if(this->_callback.is("header"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+										this->_callback.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
 									// Выполняем поиск ключа заголовка в списке трейлеров
 									auto it = this->_trailers.find(key);
 									// Если трейлер найден в списке
@@ -143,7 +143,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на на вывод ошибок установлена
 										if(this->_callback.is("error"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_res.message.c_str());
+											this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_res.message.c_str());
 										// Выполняем переход к ошибке
 										goto Stop;
 									}
@@ -203,7 +203,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 											// Если функция обратного вызова на на вывод ошибок установлена
 											if(this->_callback.is("error"))
 												// Выполняем функцию обратного вызова
-												this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Client cannot transfer trailers");
+												this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Client cannot transfer trailers");
 										}
 									// Меняем стейт чанка на завершение сбора данных
 									} else this->_chunk.state = process_t::STOP_BODY;
@@ -302,7 +302,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на перехват входящих чанков установлена
 								else if(this->_callback.is("chunking"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t, const vector <char> &, const web_t *> ("chunking", this->_id, this->_chunk.data, this);
+									this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", this->_id, this->_chunk.data, this);
 								// Выполняем очистку чанка
 								this->_chunk.clear();
 							// Если символ отличается, значит ошибка
@@ -328,14 +328,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
+							this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
+							this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
 					} break;
 				}
 				// Тело в запросе не передано
@@ -347,7 +347,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Body chunk contains errors, [\\%c] is expected", error));
+						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Body chunk contains errors, [\\%c] is expected", error));
 				}
 			}
 		}
@@ -394,14 +394,14 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_res.code, this->_res.message, this->_headers);
+								this->_callback.call <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", this->_id, this->_res.code, this->_res.message, this->_headers);
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (hid_t::SERVER): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
+								this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
 					}
 					// Получаем размер тела
@@ -482,7 +482,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 										if(this->_callback.is("response"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const u_int, const string &> ("response", this->_id, this->_res.code, this->_res.message);
+											this->_callback.call <void (const uint64_t, const u_int, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -492,7 +492,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на на вывод ошибок установлена
 										if(this->_callback.is("error"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken response server");
+											this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken response server");
 									}
 								} break;
 								// Если мы работаем с сервером
@@ -560,7 +560,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на вывод запроса клиента на выполненный запрос к серверу установлена
 										if(this->_callback.is("request"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const method_t, const uri_t::url_t &> ("request", this->_id, this->_req.method, this->_req.url);
+											this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_req.method, this->_req.url);
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -570,7 +570,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на на вывод ошибок установлена
 										if(this->_callback.is("error"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request client");
+											this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request client");
 									}
 								} break;
 							}
@@ -652,7 +652,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 								if(this->_callback.is("header"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t,const string &, const string &> ("header", this->_id, std::move(key), std::move(val));
+									this->_callback.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
 							}
 						} break;
 					}

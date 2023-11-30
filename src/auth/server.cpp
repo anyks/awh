@@ -69,7 +69,7 @@ bool awh::server::Auth::check(const string & method) noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("auth"))
 				// Выполняем проверку авторизации
-				return this->_callback.apply <bool, const string &, const string &> ("auth", this->_user, this->_pass);
+				return this->_callback.call <bool (const string &, const string &)> ("auth", this->_user, this->_pass);
 		} break;
 		// Если тип авторизации - Дайджест
 		case static_cast <uint8_t> (type_t::DIGEST): {
@@ -78,7 +78,7 @@ bool awh::server::Auth::check(const string & method) noexcept {
 				// Если на сервере счётчик меньше
 				if((this->_fmk->atoi(this->_digest.nc, 16) <= this->_fmk->atoi(this->_locale.nc, 16)) && this->_callback.is("extract")){
 					// Получаем пароль пользователя
-					const string & pass = this->_callback.apply <string, const string &> ("extract", this->_user);
+					const string & pass = this->_callback.call <string (const string &)> ("extract", this->_user);
 					// Если пароль пользователя получен
 					if(!pass.empty()){
 						// Параметры проверки дайджест авторизации

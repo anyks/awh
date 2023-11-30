@@ -25,7 +25,7 @@ string awh::server::Proxy::passwordCallback(const uint64_t bid, const string & l
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("extractPassword"))
 		// Выполняем функцию обратного вызова
-		return this->_callback.apply <string, const uint64_t, const string &> ("extractPassword", bid, login);
+		return this->_callback.call <string (const uint64_t, const string &)> ("extractPassword", bid, login);
 	// Сообщаем, что пароль для пользователя не найден
 	return "";
 }
@@ -40,7 +40,7 @@ bool awh::server::Proxy::authCallback(const uint64_t bid, const string & login, 
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("checkPassword"))
 		// Выполняем функцию обратного вызова
-		return this->_callback.apply <bool, const uint64_t, const string &, const string &> ("checkPassword", bid, login, password);
+		return this->_callback.call <bool (const uint64_t, const string &, const string &)> ("checkPassword", bid, login, password);
 	// Сообщаем, что пользователь не прошёл валидацию
 	return false;
 }
@@ -55,7 +55,7 @@ bool awh::server::Proxy::acceptServer(const string & ip, const string & mac, con
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("accept"))
 		// Выполняем функцию обратного вызова
-		return this->_callback.apply <bool, const string &, const string &, const u_int> ("accept", ip, mac, port);
+		return this->_callback.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
 	// Запрещаем выполнение подключения
 	return false;
 }
@@ -73,7 +73,7 @@ void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("erase"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t> ("erase", bid);
+		this->_callback.call <void (const uint64_t)> ("erase", bid);
 }
 /**
  * endClient Метод завершения запроса клиента
@@ -123,7 +123,7 @@ void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, c
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("response"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const u_int, const string &> ("response", bid, code, message);
+		this->_callback.call <void (const uint64_t, const u_int, const string &)> ("response", bid, code, message);
 }
 /**
  * activeServer Метод идентификации активности на Web сервере (для сервера)
@@ -265,7 +265,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("active"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const broker_t, const web_t::mode_t> ("active", bid, broker_t::SERVER, mode);
+		this->_callback.call <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", bid, broker_t::SERVER, mode);
 }
 /**
  * activeClient Метод идентификации активности на Web сервере (для клиента)
@@ -390,7 +390,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const broker_t, const web_t::mode_t> ("active", bid, broker_t::CLIENT, result);
+		this->_callback.call <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", bid, broker_t::CLIENT, result);
 	}
 }
 /**
@@ -413,7 +413,7 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("entityServer"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *> ("entityServer", bid, method, url, &it->second->request.entity);
+				this->_callback.call <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> ("entityServer", bid, method, url, &it->second->request.entity);
 		// Выполняем очистку тела запроса
 		} else it->second->request.entity.clear();
 	}
@@ -439,7 +439,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("entityClient"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const u_int, const string &, vector <char> *> ("entityClient", bid, code, message, &i->second->response.entity);
+				this->_callback.call <void (const uint64_t, const u_int, const string &, vector <char> *)> ("entityClient", bid, code, message, &i->second->response.entity);
 		// Выполняем очистку тела ответа
 		} else i->second->response.entity.clear();
 		// Снимаем флаг отправки результата
@@ -537,7 +537,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("headersServer"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *> ("headersServer", bid, method, url, &i->second->request.headers);
+				this->_callback.call <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> ("headersServer", bid, method, url, &i->second->request.headers);
 		}
 	}
 }
@@ -621,7 +621,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("headersClient"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const uint64_t, const u_int, const string &, unordered_multimap <string, string> *> ("headersClient", bid, code, message, &i->second->response.headers);
+					this->_callback.call <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> ("headersClient", bid, code, message, &i->second->response.headers);
 				// Если производится активация WebSocket
 				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 					// Флаг удачно-выполненного подключения
@@ -675,7 +675,7 @@ void awh::server::Proxy::pushClient(const int32_t sid, const uint64_t bid, const
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("push"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &> ("push", bid, method, url, headers);
+		this->_callback.call <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", bid, method, url, headers);
 }
 /**
  * handshake Метод получения удачного запроса
@@ -695,7 +695,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const uint64_t, const engine_t::proto_t> ("handshake", bid, this->_core.proto(bid));
+					this->_callback.call <void (const uint64_t, const engine_t::proto_t)> ("handshake", bid, this->_core.proto(bid));
 				// Определяем тип активного сокета сервера
 				switch(static_cast <uint8_t> (this->_core.sonet())){
 					// Если тип сокета установлен как TCP/IP
@@ -1093,7 +1093,7 @@ void awh::server::Proxy::completed(const int32_t sid, const uint64_t bid) noexce
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("completed"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &> ("completed", bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
+				this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
 		}
 	}
 }

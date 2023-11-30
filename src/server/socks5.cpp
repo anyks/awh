@@ -59,7 +59,7 @@ void awh::server::ProxySocks5::eventsCallback(const awh::core_t::status_t status
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
+			this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
 	}
 }
 /**
@@ -174,7 +174,7 @@ void awh::server::ProxySocks5::connectServerCallback(const uint64_t bid, const u
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выводим функцию обратного вызова
-				this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::CONNECT);
+				this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 		}
 	}
 }
@@ -242,7 +242,7 @@ bool awh::server::ProxySocks5::acceptServerCallback(const string & ip, const str
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callback.apply <bool, const string &, const string &, const u_int> ("accept", ip, mac, port);
+			return this->_callback.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение клиенту
 	return false;
@@ -269,7 +269,7 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
 				// Если функция обратного вызова при получении входящих сообщений установлена
 				if(this->_callback.is("message")){
 					// Выводим данные полученного сообщения
-					if(this->_callback.apply <bool, const uint64_t, const event_t, const char *, const size_t> ("message", it->second, event_t::RESPONSE, buffer, size))
+					if(this->_callback.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", it->second, event_t::RESPONSE, buffer, size))
 						// Отправляем ответ клиенту
 						this->_core.server.write(buffer, size, it->second);
 				// Отправляем ответ клиенту
@@ -362,7 +362,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 					// Если функция обратного вызова при получении входящих сообщений установлена
 					if(this->_callback.is("message")){
 						// Выводим данные полученного сообщения
-						if(this->_callback.apply <bool, const uint64_t, const event_t, const char *, const size_t> ("message", bid, event_t::REQUEST, buffer, size))
+						if(this->_callback.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::REQUEST, buffer, size))
 							// Отправляем запрос на внешний сервер
 							this->_core.client.write(buffer, size, bid);
 					// Отправляем запрос на внешний сервер
@@ -559,7 +559,7 @@ void awh::server::ProxySocks5::close(const uint64_t bid) noexcept {
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**

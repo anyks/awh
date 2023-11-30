@@ -40,7 +40,7 @@ void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh
 	// Если функция получения событий запуска и остановки сетевого ядра установлена
 	if((core != nullptr) && this->_callback.is("events"))
 		// Выводим функцию обратного вызова
-		this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
+		this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
@@ -60,7 +60,7 @@ void awh::client::Sample::connectCallback(const uint64_t bid, const uint16_t sid
 			// Если функция обратного вызова существует
 			if(this->_callback.is("active"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const mode_t> ("active", mode_t::CONNECT);
+				this->_callback.call <void (const mode_t)> ("active", mode_t::CONNECT);
 		}
 	}
 }
@@ -85,7 +85,7 @@ void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 		// Если функция обратного вызова существует
 		if(this->_callback.is("active"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const mode_t> ("active", mode_t::DISCONNECT);
+			this->_callback.call <void (const mode_t)> ("active", mode_t::DISCONNECT);
 	}
 }
 /**
@@ -106,7 +106,7 @@ void awh::client::Sample::readCallback(const char * buffer, const size_t size, c
 			// Если функция обратного вызова существует
 			if(this->_callback.is("message"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const vector <char> &> ("message", vector <char> (buffer, buffer + size));
+				this->_callback.call <void (const vector <char> &)> ("message", vector <char> (buffer, buffer + size));
 		}
 	}
 }

@@ -344,12 +344,12 @@ void awh::Core::launching() noexcept {
 				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const uint16_t, core_t *> ();
+		callback.bind();
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("status"))
 		// Выполняем запуск функции в основном потоке
-		this->_callback.call <const status_t, core_t *> ("status", this->_status, this);
+		this->_callback.call <void (const status_t, core_t *)> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
 	if(!this->_noinfo)
 		// Выводим в консоль информацию
@@ -368,7 +368,7 @@ void awh::Core::closedown() noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("status"))
 		// Выполняем запуск функции в основном потоке
-		this->_callback.call <const status_t, core_t *> ("status", this->_status, this);
+		this->_callback.call <void (const status_t, core_t *)> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
 	if(!this->_noinfo)
 		// Выводим в консоль информацию
@@ -422,7 +422,7 @@ void awh::Core::signal(const int signal) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("crash"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const int> ("crash", signal);
+			this->_callback.call <void (const int)> ("crash", signal);
 		// Выходим из приложения
 		else exit(signal);
 	}
@@ -1261,7 +1261,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
 		// Выходим принудительно из приложения
 		exit(EXIT_FAILURE);
 	#endif
@@ -1332,7 +1332,7 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
+				this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
 			// Выходим принудительно из приложения
 			exit(EXIT_FAILURE);
 		}

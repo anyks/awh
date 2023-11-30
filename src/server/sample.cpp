@@ -59,7 +59,7 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
+			this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
 	}
 }
 /**
@@ -76,7 +76,7 @@ void awh::server::Sample::connectCallback(const uint64_t bid, const uint16_t sid
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::CONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 	}
 }
 /**
@@ -93,7 +93,7 @@ void awh::server::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**
@@ -118,7 +118,7 @@ void awh::server::Sample::readCallback(const char * buffer, const size_t size, c
 				// Если функция обратного вызова при получении входящих сообщений установлена
 				if(this->_callback.is("message"))
 					// Выводим данные полученного сообщения
-					this->_callback.call <const uint64_t, const vector <char> &> ("message", bid, vector <char> (buffer, buffer + size));
+					this->_callback.call <void (const uint64_t, const vector <char> &)> ("message", bid, vector <char> (buffer, buffer + size));
 			}
 		}
 	}
@@ -165,7 +165,7 @@ bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, 
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callback.apply <bool, const string &, const string &, const u_int> ("accept", ip, mac, port);
+			return this->_callback.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
 	return result;

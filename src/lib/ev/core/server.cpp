@@ -59,7 +59,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Если функция обратного вызова установлена
 					if(this->core->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Client address not received, pid = %d", getpid()));
+						this->core->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Client address not received, pid = %d", getpid()));
 				// Если все данные получены
 				} else {
 					// Получаем адрес подключения клиента
@@ -69,7 +69,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Получаем порт подключения клиента
 					adj->_port = adj->_addr.port;
 					// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this->core)){
+					if((shm->callback.is("accept")) && !shm->callback.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this->core)){
 						// Если порт установлен
 						if(adj->_port > 0){
 							// Выводим сообщение об ошибке
@@ -85,7 +85,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 							// Если функция обратного вызова установлена
 							if(this->core->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->core->_callback.call <const log_t::flag_t, const error_t, const string &> (
+								this->core->_callback.call <void (const log_t::flag_t, const error_t, const string &)> (
 									"error",
 									log_t::flag_t::WARNING,
 									error_t::ACCEPT,
@@ -112,7 +112,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 							// Если функция обратного вызова установлена
 							if(this->core->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->core->_callback.call <const log_t::flag_t, const error_t, const string &> (
+								this->core->_callback.call <void (const log_t::flag_t, const error_t, const string &)> (
 									"error",
 									log_t::flag_t::WARNING,
 									error_t::ACCEPT,
@@ -162,7 +162,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("connect"))
 						// Выполняем функцию обратного вызова
-						shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", this->bid, shm->sid, this->core);
+						shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", this->bid, shm->sid, this->core);
 				}
 			// Подключение не установлено
 			} else {
@@ -171,7 +171,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 				// Если функция обратного вызова установлена
 				if(this->core->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->core->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Accepting failed, pid = %d", getpid()));
+					this->core->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Accepting failed, pid = %d", getpid()));
 			}
 		// Запускаем таймер вновь на 100мс
 		} else timer.start(.1);
@@ -232,7 +232,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("cluster"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *> ("cluster", family, sid, pid, event, dynamic_cast <awh::core_t *> (this));
+			this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", family, sid, pid, event, dynamic_cast <awh::core_t *> (this));
 	}
 }
 /**
@@ -307,7 +307,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
+								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
 							// Выходим из функции
 							return;
 						}
@@ -326,7 +326,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
-							shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
+							shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
 					// Подключение не установлено
 					} else {
 						// Выводим сообщение об ошибке
@@ -334,7 +334,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
 					}
 				} break;
 				// Если подключение зашифрованно
@@ -346,7 +346,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
 						// Выходим
 						break;
 					}
@@ -394,7 +394,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
 						// Выходим
 						break;
 					}
@@ -430,7 +430,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
+								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
 						// Если все данные получены
 						} else {
 							// Получаем адрес подключения клиента
@@ -440,7 +440,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Получаем порт подключения клиента
 							adj->_port = adj->_addr.port;
 							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const uint16_t, awh::core_t *> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
+							if((shm->callback.is("accept")) && !shm->callback.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
 								// Если порт установлен
 								if(adj->_port > 0){
 									// Выводим сообщение об ошибке
@@ -456,7 +456,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const error_t, const string &> (
+										this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> (
 											"error",
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
@@ -483,7 +483,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const error_t, const string &> (
+										this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> (
 											"error",
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
@@ -518,7 +518,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Encryption mode cannot be activated");
+										this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Encryption mode cannot be activated");
 									// Выходим
 									break;
 								}
@@ -530,7 +530,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
 								// Выходим
 								break;
 							}
@@ -574,7 +574,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <const uint64_t, const uint16_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
+								shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
 						}
 					// Если подключение не установлено
 					} else {
@@ -583,7 +583,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
 					}
 				} break;
 			}
@@ -652,7 +652,7 @@ void awh::server::Core::close() noexcept {
 			shm->_addr.clear();
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
+		callback.bind();
 	}
 }
 /**
@@ -711,7 +711,7 @@ void awh::server::Core::remove() noexcept {
 			it = this->_schemes.erase(it);
 		}
 		// Выполняем все функции обратного вызова
-		callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
+		callback.bind();
 	}
 }
 /**
@@ -837,7 +837,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 			// Выполняем удаление схемы сети
 			this->_schemes.erase(sid);
 			// Выполняем все функции обратного вызова
-			callback.bind <const uint64_t, const uint16_t, awh::core_t *> ();
+			callback.bind();
 		}
 	}
 }
@@ -887,9 +887,9 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 					// Если функция обратного вызова установлена
 					if(callback.is(bid)){
 						// Выполняем все функции обратного вызова
-						callback.bind <const uint64_t, const uint16_t, awh::core_t *> (bid);
+						callback.bind(bid);
 						// Очищаем список функций обратного вызова
-						callback.rm(bid);
+						callback.erase(bid);
 					}
 					// Выполняем закрытие подключение сервера
 					shm->_addr.clear();
@@ -906,7 +906,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 			// Если функция обратного вызова установлена
 			if(callback.is(bid))
 				// Выполняем все функции обратного вызова
-				callback.bind <const uint64_t, const uint16_t, awh::core_t *> (bid);
+				callback.bind(bid);
 		}
 	}
 }
@@ -970,14 +970,14 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 										// Если функция обратного вызова на получение данных установлена
 										if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
-											shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 										// Увеличиваем смещение в буфере
 										offset += actual;
 									}
 								// Если данных достаточно и функция обратного вызова на получение данных установлена
 								} else if(shm->callback.is("read"))
 									// Выводим функцию обратного вызова
-									shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+									shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 								// Если флаг ожидания входящих сообщений, активирован
 								if(adj->_timeouts.read > 0){
 									// Определяем тип активного сокета
@@ -1104,7 +1104,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callback.is("write"))
 						// Выводим функцию обратного вызова
-						shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", buffer, offset, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", buffer, offset, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 				// Если данных недостаточно для записи в сокет
 				} else {
 					// Останавливаем ожидание записи данных
@@ -1112,7 +1112,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callback.is("write"))
 						// Выводим функцию обратного вызова
-						shm->callback.call <const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *> ("write", nullptr, 0, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", nullptr, 0, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 				if((this->_settings.sonet == scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
@@ -1146,7 +1146,7 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host = %s, mac = %s", adj->_ip.c_str(), adj->_mac.c_str()));
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host = %s, mac = %s", adj->_ip.c_str(), adj->_mac.c_str()));
 			} break;
 			// Если тип протокола подключения unix-сокет
 			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
@@ -1155,7 +1155,7 @@ void awh::server::Core::timeout(const uint64_t bid) noexcept {
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
 			} break;
 		}
 		// Останавливаем чтение данных
@@ -1297,7 +1297,7 @@ void awh::server::Core::activation(const uint16_t sid, const string & ip, const 
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.filename.c_str()));
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.filename.c_str()));
 							// Если unix-сокет не используется
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
@@ -1305,7 +1305,7 @@ void awh::server::Core::activation(const uint16_t sid, const string & ip, const 
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
 							}
 						}
 					}
@@ -1317,7 +1317,7 @@ void awh::server::Core::activation(const uint16_t sid, const string & ip, const 
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Broken host server %s", shm->_host.c_str()));
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Broken host server %s", shm->_host.c_str()));
 			}
 			// Останавливаем работу сервера
 			this->stop();
@@ -1379,7 +1379,7 @@ void awh::server::Core::clusterSize(const uint16_t size) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -1405,7 +1405,7 @@ void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) 
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const log_t::flag_t, const error_t, const string &> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**

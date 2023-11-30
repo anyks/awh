@@ -68,7 +68,7 @@ void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
 		if(this->_callback.is("events"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
+			this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
 	}
 }
 /**
@@ -219,7 +219,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 								if(this->_callback.is("response"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const u_int, const string &> ("response", 1, 0, code, message);
+									this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", 1, 0, code, message);
 								// Завершаем работу
 								dynamic_cast <client::core_t *> (core)->close(bid);
 								// Завершаем работу
@@ -316,19 +316,19 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, 0, mode_t::CLOSE);
+								this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, 0, mode_t::CLOSE);
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callback.is("response"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &> ("response", 1, 0, response.code, response.message);
+								this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", 1, 0, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <const int32_t, const uint64_t, const u_int, const string &, const vector <char> &> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
+								this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
 							// Завершаем работу
 							dynamic_cast <client::core_t *> (core)->close(bid);
 							// Завершаем работу
@@ -384,7 +384,7 @@ void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const int32_t, const vector <char> &> ("chunks", 1, chunk);
+			this->_callback.call <void (const int32_t, const vector <char> &)> ("chunks", 1, chunk);
 	}
 }
 /**
@@ -398,7 +398,7 @@ void awh::client::Web::errors(const uint64_t bid, const log_t::flag_t flag, cons
 	// Если функция обратного вызова на на вывод ошибок установлена
 	if(this->_callback.is("error"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, flag, error, message);
+		this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, flag, error, message);
 }
 /**
  * init Метод инициализации WEB клиента

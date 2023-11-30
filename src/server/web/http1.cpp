@@ -99,7 +99,7 @@ void awh::server::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::CONNECT);
+				this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 		}
 	}
 }
@@ -117,7 +117,7 @@ void awh::server::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <const uint64_t, const mode_t> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**
@@ -136,7 +136,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 		// Если установлена функция обратного вызова для вывода данных в сыром виде
 		if(!(process = !this->_callback.is("raw")))
 			// Выполняем функцию обратного вызова
-			process = this->_callback.apply <bool, const uint64_t, const char *, const size_t> ("raw", bid, buffer, size);
+			process = this->_callback.call <bool (const uint64_t, const char *, const size_t)> ("raw", bid, buffer, size);
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Выполняем поиск агента которому соответствует клиент
@@ -163,7 +163,7 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 					// Если функция обратного вызова активности потока установлена
 					if(!options->mode && (options->mode = this->_callback.is("stream")))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::OPEN);
+						this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::OPEN);
 					// Выполняем обработку полученных данных
 					while(!options->close){
 						// Выполняем парсинг полученных данных
@@ -260,15 +260,15 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 								// Если функция обратного вызова активности потока установлена
 								if(this->_callback.is("stream"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+									this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 								// Если функция обратного вызова на на вывод ошибок установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
+									this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
 								// Если установлена функция отлова завершения запроса
 								if(this->_callback.is("end"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+									this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 							};
 							// Если метод CONNECT на сервере запрещён и в данный момент он выполняется
 							if(!this->_methodConnect && (options->http.request().method == awh::web_t::method_t::CONNECT)){
@@ -318,19 +318,19 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callback.is("stream"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+										this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 									// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 									if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", 1, bid, request.method, request.url, options->http.body());
+										this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", 1, bid, request.method, request.url, options->http.body());
 									// Если функция обратного вызова на получение удачного запроса установлена
 									if(this->_callback.is("handshake"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", 1, bid, agent_t::HTTP);
+										this->_callback.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", 1, bid, agent_t::HTTP);
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+										this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 									// Завершаем обработку
 									goto Next;
 								} break;
@@ -404,15 +404,15 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callback.is("stream"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", 1, bid, mode_t::CLOSE);
+										this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 									// Если функция обратного вызова на на вывод ошибок установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+										this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::RECV);
+										this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 									// Выходим из функции
 									return;
 								}
@@ -637,15 +637,15 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 						if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, options->http.body());
 						// Если функция обратного вызова активности потока установлена
 						if(this->_callback.is("stream"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::OPEN);
+							this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", options->sid, bid, mode_t::OPEN);
 						// Если функция обратного вызова на получение удачного запроса установлена
 						if(this->_callback.is("handshake"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <const int32_t, const uint64_t, const agent_t> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
+							this->_callback.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
@@ -698,21 +698,21 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid, awh::
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(!web->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &> ("entity", options->sid, bid, request.method, request.url, web->http.body());
+						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, web->http.body());
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const mode_t> ("stream", options->sid, bid, mode_t::CLOSE);
+						this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", options->sid, bid, mode_t::CLOSE);
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const uint64_t, const log_t::flag_t, const http::error_t, const string &> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
+						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end")){
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::RECV);
+						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", options->sid, bid, direct_t::SEND);
+						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::SEND);
 					}
 					// Выполняем очистку HTTP-парсера
 					options->http.clear();
@@ -775,7 +775,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callback.is("erase"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <const uint64_t> ("erase", bid);
+					this->_callback.call <void (const uint64_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
 				eraseFn(it->first);
 				// Выполняем удаление брокера
@@ -790,7 +790,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callback.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const uint64_t> ("erase", it->first);
+						this->_callback.call <void (const uint64_t)> ("erase", it->first);
 					// Выполняем удаление отключившегося брокера
 					eraseFn(it->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
@@ -1247,7 +1247,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <const int32_t, const uint64_t, const direct_t> ("end", 1, bid, direct_t::SEND);
+						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::SEND);
 				}
 			}
 		}
