@@ -77,8 +77,10 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Объект DNS-резолвера
+	dns_t dns(&fmk, &log);
 	// Создаём биндинг
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	// Создаём объект SAMPLE запроса
 	client::sample_t sample(&core, &fmk, &log);
 	// Создаём объект исполнителя

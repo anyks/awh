@@ -21,7 +21,6 @@ using namespace awh;
  */
 class Server {
 	private:
-		private:
 		// Создаём объект фреймворка
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами

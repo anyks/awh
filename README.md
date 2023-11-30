@@ -131,95 +131,115 @@ $ cmake \
 $ cmake --build .
 ```
 
-### Example WEB Client Full
+### Example WEB Client Multi requests
 
 ```c++
-#include <client/rest.hpp>
+#include <client/awh.hpp>
 
 using namespace std;
 using namespace awh;
 
 class WebClient {
 	private:
+		uint8_t _count;
+	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
 	private:
-		client::rest_t * _rest;
+		client::awh_t * _awh;
 	public:
-
-		void message(const int32_t id, const u_int code, const string & message){
+		
+		void message(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+			(void) rid;
+			
 			if(code >= 300)
-				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), id);
+				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
-
+		
 		void active(const client::web_t::mode_t mode){
-
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
-
+			
 			if(mode == client::web_t::mode_t::CONNECT){
 				uri_t uri(this->_fmk);
 
-				client::web_t::request_t req;
+				client::web_t::request_t req1, req2;
 
-				req.method = web_t::method_t::GET;
-				req.headers = {{"User-Agent", "curl/7.64.1"}};
+				req1.method = web_t::method_t::GET;
+				req2.method = web_t::method_t::GET;
 
-				req.url = uri.parse("/ru/mac");
+				req1.url = uri.parse("/mac/");
+				req2.url = uri.parse("/iphone/");
 
-				this->_rest->send(client::web_t::agent_t::HTTP, req);
+				this->_awh->send(std::move(req1));
+				this->_awh->send(std::move(req2));
 			}
 		}
 
-		void entity(const int32_t id, const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity){
+
+			(void) sid;
+			(void) rid;
+
+			this->_count++;
 
 			cout << "RESPONSE: " << string(entity.begin(), entity.end()) << endl;
 
-			this->_rest->stop();
+			if(this->_count == 2)
+				this->_awh->stop();
 		}
 
-		void headers(const int32_t id, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+			(void) sid;
+			(void) rid;
+
 			for(auto & header : headers)
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+
+			cout << endl;
 		}
 	public:
-		WebClient(const fmk_t * fmk, const log_t * log, client::rest_t * rest) : _fmk(fmk), _log(log), _rest(rest) {}
+		WebClient(const fmk_t * fmk, const log_t * log, client::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk{};
 	log_t log(&fmk);
+	uri_t uri(&fmk);
 
 	client::core_t core(&fmk, &log);
-	client::rest_t rest(&core, &fmk, &log);
-	WebClient executor(&fmk, &log, &rest);
+	client::awh_t awh(&core, &fmk, &log);
+
+	WebClient executor(&fmk, &log, &awh);
+
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
 	log.name("WEB Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	rest.mode({
-		// client::web_t::flag_t::ALIVE,
-		// client::web_t::flag_t::NOT_INFO,
-		// client::web_t::flag_t::WAIT_MESS,
+	awh.mode({
+		client::web_t::flag_t::NOT_INFO,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::VERIFY_SSL,
-		// client::web_t::flag_t::PROXY_NOCONNECT
+		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
 	core.ca("./ca/cert.pem");
-	core.proto(awh::engine_t::proto_t::HTTP2);
 
-	// rest.proxy("http://user:password@host.com:port");
-	// rest.proxy("socks5://user:password@host.com:port");
-	// rest.authTypeProxy(auth_t::type_t::BASIC);
-	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.proxy("http://user:password@host.com:port");
+	// awh.proxy("https://user:password@host.com:port");
+	// awh.proxy("socks5://user:password@host.com:port");
 
-	rest.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
-	rest.on((function <void (const int32_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3));
-	rest.on((function <void (const int32_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4));
-	rest.on((function <void (const int32_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4));
+	// awh.authTypeProxy(auth_t::type_t::BASIC);
+	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
-	rest.init("https://apple.com");
-	rest.start();
+	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+
+	awh.init("https://apple.com");
+	awh.start();
 
 	return 0;
 }
@@ -228,7 +248,7 @@ int main(int argc, char * argv[]){
 ### Example WEB Client Simple
 
 ```c++
-#include <client/rest.hpp>
+#include <client/awh.hpp>
 
 using namespace std;
 using namespace awh;
@@ -239,26 +259,34 @@ int main(int argc, char * argv[]){
 	uri_t uri(&fmk);
 
 	client::core_t core(&fmk, &log);
-	client::rest_t rest(&core, &fmk, &log);
+	client::awh_t awh(&core, &fmk, &log);
+
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
 	log.name("WEB Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	rest.mode({
+	awh.mode({
+		client::web_t::flag_t::NOT_INFO,
 		client::web_t::flag_t::REDIRECTS,
-		client::web_t::flag_t::VERIFY_SSL
+		client::web_t::flag_t::VERIFY_SSL,
+		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
 	core.ca("./ca/cert.pem");
-	core.proto(awh::engine_t::proto_t::HTTP2);
 
-	// rest.proxy("http://user:password@host.com:port");
-	// rest.proxy("socks5://user:password@host.com:port");
-	// rest.authTypeProxy(auth_t::type_t::BASIC);
-	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// awh.proxy("http://user:password@host.com:port");
+	// awh.proxy("https://user:password@host.com:port");
+	// awh.proxy("socks5://user:password@host.com:port");
 
-	const auto & body = rest.GET(uri.parse("https://apple.com/ru/mac"), {{"User-Agent", "curl/7.64.1"}});
+	// awh.authTypeProxy(auth_t::type_t::BASIC);
+	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
+	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+
+	const auto & body = awh.GET(url);
+	
 	if(!body.empty())
 		cout << "RESPONSE: " << string(body.begin(), body.end()) << endl;
 
@@ -269,37 +297,52 @@ int main(int argc, char * argv[]){
 ### Example WEB Server
 
 ```c++
-#include <server/web.hpp>
+#include <server/awh.hpp>
 
 using namespace std;
 using namespace awh;
 
 class WebServer {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::awh_t * _awh;
+	private:
+		awh::web_t::method_t _method;
 	public:
-		string password(const string & login){
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+
+		string password(const uint64_t bid, const string & login){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
+
 			return "password";
 		}
-		bool auth(const string & login, const string & password){
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+
+		bool auth(const uint64_t bid, const string & login, const string & password){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
+
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::web_t * web){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
+		bool accept(const string & ip, const string & mac, const u_int port){
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::web_t::mode_t mode, server::web_t * web){
+
+		void active(const uint64_t bid, const server::web_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const awh::http_t * http, server::web_t * web){
-			const auto & query = http->query();
 
-			if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
-				web->reject(aid, 404);
-			else if(query.method == web_t::method_t::GET){
+		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent){
+
+			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
+
+				cout << "URL: " << this->_awh->parser(sid, bid)->request().url << endl << endl;
+			
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
 				"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
@@ -309,42 +352,119 @@ class WebServer {
 				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
 				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 				"</div>\n</body>\n</html>\n";
-				web->response(aid, 200, "OK", vector <char> (body.begin(), body.end()));
+
+				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
+
+					vector <pair <string, string>> headers = {
+						{":method", "GET"},
+						{":scheme", "https"},
+						{":path", "/stylesheets/screen.css"},
+						{":authority", "example.com"},
+						{"accept-encoding", "gzip, deflate"}
+					};
+
+					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
+						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
+				}
+
+				if(this->_awh->trailers(sid, bid)){
+
+					this->_awh->trailer(sid, bid, "Goga", "Hello");
+					this->_awh->trailer(sid, bid, "Hello", "World");
+					this->_awh->trailer(sid, bid, "Anyks", "Best of the best");
+					this->_awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+
+				}
+
+				this->_awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
 		}
+
+		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url){
+			this->_method = method;
+
+			if(!url.empty() && (!url.path.empty() && url.path.back().compare("favicon.ico") == 0))
+				this->_awh->send(sid, bid, 404);
+		}
+
+		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+			(void) sid;
+			(void) bid;
+			(void) url;
+			(void) method;
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+		}
+
+		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
+			(void) method;
+
+			cout << "URL: " << url << endl << endl;
+
+			cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
+
+			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+		}
 	public:
-		WebServer(log_t * log) : _log(log) {}
+		WebServer(const fmk_t * fmk, const log_t * log, server::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh), _method(awh::web_t::method_t::NONE) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	WebServer executor(&log);
-
 	server::core_t core(&fmk, &log);
-	server::web_t web(&core, &fmk, &log);
+	server::awh_t awh(&core, &fmk, &log);
 
-	log.name("Web Server");
+	WebServer executor(&fmk, &log, &awh);
+
+	log.name("WEB Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.clusterSize();
-	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	
+	core.clusterSize();
+
+	awh.clusterAutoRestart(true);
+
+	// awh.authType(auth_t::type_t::BASIC);
+	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::BROTLI,
+		awh::http_t::compress_t::GZIP,
+		awh::http_t::compress_t::DEFLATE,
+	});
+
+	/*
+	awh.init("anyks", {
+		awh::http_t::compress_t::BROTLI,
+		awh::http_t::compress_t::GZIP,
+		awh::http_t::compress_t::DEFLATE,
+	});
+	*/
+
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
-	web.realm("ANYKS");
-	web.opaque("keySession");
-	web.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
-	web.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
+	// awh.addOrigin("example.net");
 
-	web.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
-	// web.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
-	web.on((function <void (const size_t, const awh::http_t *, server::web_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
-	web.on((function <void (const size_t, const server::web_t::mode_t, server::web_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
-	web.on((function <bool (const string &, const string &, const u_int, server::web_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
-	
-	web.start();
+	// awh.addAltSvc("example.net", "h2=\":2222\"");
+	// awh.addAltSvc("example.com", "h2=\":8000\"");
+
+	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
+	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
+
+	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
+	awh.on((function <bool (const string &, const string &, const u_int)>) std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const server::web_t::agent_t)>) std::bind(&WebServer::handshake, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)>) std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+
+	awh.start();
 
 	return 0;
 }
@@ -368,7 +488,6 @@ class Executor {
 	public:
 
 		void status(const awh::core_t::status_t status, awh::core_t * core){
-
 			(void) core;
 
 			switch(static_cast <uint8_t> (status)){
@@ -381,20 +500,16 @@ class Executor {
 			}
 		}
 
-		void active(const int32_t sid, const client::web_t::mode_t mode){
-
+		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent){
 			(void) sid;
+			(void) rid;
 
-			switch(static_cast <uint8_t> (mode)){
-				case static_cast <uint8_t> (client::web_t::mode_t::OPEN): {
-					this->_log->print("CONNECT", log_t::flag_t::INFO);
-					
-					const string query = "{\"text\":\"Hello World!\"}";
-					this->_ws->send(query.data(), query.size());
-				} break;
-				case static_cast <uint8_t> (client::web_t::mode_t::CLOSE):
-					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
-				break;
+			if(agent == client::web_t::agent_t::WEBSOCKET){
+				this->_log->print("Handshake", log_t::flag_t::INFO);
+				
+				const string query = "Hello World!!!";
+
+				this->_ws->sendMessage(vector <char> (query.begin(), query.end()));
 			}
 		}
 	public:
@@ -404,8 +519,19 @@ class Executor {
 		}
 
 		void message(const vector <char> & buffer, const bool utf8){
-			if(utf8 && !buffer.empty())
-				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), this->_ws->sub().c_str());
+			string subprotocol = "";
+
+			const auto subprotocols = this->_ws->subprotocols();
+
+			if(!subprotocols.empty())
+				subprotocol = (* subprotocols.begin());
+
+			if(utf8){
+				
+				cout << "MESSAGE: " << string(buffer.begin(), buffer.end()) << endl;
+
+				cout << "SUB PROTOCOL: " << subprotocol << endl;
+			}
 		}
 	public:
 		Executor(const fmk_t * fmk, const log_t * log, client::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
@@ -417,6 +543,7 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&fmk, &log);
 	websocket_t ws(&core, &fmk, &log);
+
 	Executor executor(&fmk, &log, &ws);
 
 	log.name("WebSocket Client");
@@ -425,35 +552,42 @@ int main(int argc, char * argv[]){
 	ws.mode({
 		client::web_t::flag_t::ALIVE,
 		client::web_t::flag_t::REDIRECTS,
-		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
-		client::web_t::flag_t::TAKEOVER_SERVER
+		client::web_t::flag_t::TAKEOVER_SERVER,
+		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
 	core.ca("./ca/cert.pem");
+
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
 	// ws.proxy("http://user:password@host.com:port");
+	// ws.proxy("https://user:password@host.com:port");
 	// ws.proxy("socks5://user:password@host.com:port");
-	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
-	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
+	// ws.authTypeProxy(auth_t::type_t::BASIC);
+	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	
 	ws.user("user", "password");
+
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
-	ws.subs({"test2", "test8", "test9"});
-	ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
+	ws.init("wss://127.0.0.1:2222", {awh::http_t::compress_t::DEFLATE});
+
+	ws.subprotocols({"test2", "test8", "test9"});
+	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 
 	ws.on((function <void (const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2));
 	ws.on((function <void (const vector <char> &, const bool)>) std::bind(&Executor::message, &executor, _1, _2));
-	ws.on((function <void (const int32_t, const client::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2));
 	ws.on((function <void (const awh::core_t::status_t, awh::core_t *)>) std::bind(&Executor::status, &executor, _1, _2));
-	
-	ws.init("wss://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
-	ws.start();	
+	ws.on((function <void (const int32_t, const uint64_t, const client::web_t::agent_t)>) std::bind(&Executor::handshake, &executor, _1, _2, _3));
+
+	ws.start();
 
 	return 0;
 }
@@ -462,7 +596,7 @@ int main(int argc, char * argv[]){
 ### Example WebSocket Server
 
 ```c++
-#include <server/websocket.hpp>
+#include <server/ws.hpp>
 
 using namespace std;
 using namespace awh;
@@ -470,70 +604,313 @@ using namespace awh::server;
 
 class Executor {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::websocket_t * _ws;
 	public:
-		string password(const string & login){
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+
+		string password(const uint64_t bid, const string & login){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
+
 			return "password";
 		}
-		bool auth(const string & login, const string & password){
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+
+		bool auth(const uint64_t bid, const string & login, const string & password){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
+
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, websocket_t * ws){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
+		bool accept(const string & ip, const string & mac, const u_int port){
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const websocket_t::mode_t mode, websocket_t * ws){
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == websocket_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
-		}
-		void error(const size_t aid, const u_int code, const string & mess, websocket_t * ws){
-			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
-		}
-		void message(const size_t aid, const vector <char> & buffer, const bool utf8, websocket_t * ws){
-			if(!buffer.empty()){
-				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub(aid).c_str());
-				ws->send(aid, buffer.data(), buffer.size(), utf8);
+
+		void active(const int32_t sid, const uint64_t bid, const server::web_t::mode_t mode){
+			(void) sid;
+			(void) bid;
+
+			switch(static_cast <uint8_t> (mode)){
+				case static_cast <uint8_t> (server::web_t::mode_t::OPEN):
+					this->_log->print("CONNECT", log_t::flag_t::INFO);
+				break;
+				case static_cast <uint8_t> (server::web_t::mode_t::CLOSE):
+					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
+				break;
 			}
 		}
+
+		void error(const uint64_t bid, const u_int code, const string & mess){
+			(void) bid;
+
+			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+		}
+
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
+			if(!buffer.empty()){
+				string subprotocol = "";
+
+				const auto subprotocols = this->_ws->subprotocols(bid);
+
+				if(!subprotocols.empty())
+					subprotocol = (* subprotocols.begin());
+
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
+
+				this->_ws->sendMessage(bid, buffer, text);
+			}
+		}
+
+		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+			(void) sid;
+			(void) bid;
+			(void) method;
+
+			uri_t uri(this->_fmk);
+
+			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+		}
 	public:
-		Executor(log_t * log) : _log(log) {}
+		Executor(const fmk_t * fmk, const log_t * log, server::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	Executor executor(&log);
-
 	server::core_t core(&fmk, &log);
 	websocket_t ws(&core, &fmk, &log);
+
+	Executor executor(&fmk, &log, &ws);
 
 	log.name("WebSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
+	ws.mode({
+		server::web_t::flag_t::TAKEOVER_CLIENT,
+		server::web_t::flag_t::TAKEOVER_SERVER
+	});
+
 	core.clusterSize();
-	core.verifySSL(false);
+
 	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
-	ws.realm("ANYKS");
-	ws.opaque("keySession");
-	ws.subs({"test1", "test2", "test3"});
+	ws.subprotocols({"test1", "test2", "test3"});
 
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
-	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 
-	ws.on((function <string (const string &)>) bind(&Executor::password, &executor, _1));
-	// ws.on((function <bool (const string &, const string &)>) bind(&Executor::auth, &executor, _1, _2));
-	ws.on((function <void (const size_t, const websocket_t::mode_t, websocket_t *)>) bind(&Executor::active, &executor, _1, _2, _3));
-	ws.on((function <void (const size_t, const u_int, const string &, websocket_t *)>) bind(&Executor::error, &executor, _1, _2, _3, _4));
-	ws.on((function <bool (const string &, const string &, const u_int, websocket_t *)>) bind(&Executor::accept, &executor, _1, _2, _3, _4));
-	ws.on((function <void (const size_t, const vector <char> &, const bool, websocket_t *)>) bind(&Executor::message, &executor, _1, _2, _3, _4));
+	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
+	// ws.init(2222, "", {awh::http_t::compress_t::DEFLATE});
+	ws.init(2222, "127.0.0.1", {awh::http_t::compress_t::DEFLATE});
+
+	ws.on((function <string (const uint64_t, const string &)>) std::bind(&Executor::password, &executor, _1, _2));
+	// ws.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Executor::auth, &executor, _1, _2, _3));
+	ws.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&Executor::error, &executor, _1, _2, _3));
+	ws.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Executor::accept, &executor, _1, _2, _3));
+	ws.on((function <void (const uint64_t, const vector <char> &, const bool)>) bind(&Executor::message, &executor, _1, _2, _3));
+	ws.on((function <void (const int32_t, const uint64_t, const server::web_t::mode_t)>) std::bind(&Executor::active, &executor, _1, _2, _3));
+	ws.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 
 	ws.start();
+
+	return 0;
+}
+```
+
+### Example HTTPS Multi Server
+```c++
+#include <server/awh.hpp>
+
+using namespace std;
+using namespace awh;
+
+class WebServer {
+	private:
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::awh_t * _awh;
+	private:
+		awh::web_t::method_t _method;
+	public:
+
+		string password(const uint64_t bid, const string & login){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
+
+			return "password";
+		}
+
+		bool auth(const uint64_t bid, const string & login, const string & password){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
+
+			return true;
+		}
+	public:
+
+		bool accept(const string & ip, const string & mac, const u_int port){
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
+			return true;
+		}
+
+		void active(const uint64_t bid, const server::web_t::mode_t mode){
+			(void) bid;
+
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		}
+
+		void error(const uint64_t bid, const u_int code, const string & mess){
+			(void) bid;
+
+			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+		}
+
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
+			if(!buffer.empty()){
+				string subprotocol = "";
+
+				const auto subprotocols = this->_awh->subprotocols(bid);
+
+				if(!subprotocols.empty())
+					subprotocol = (* subprotocols.begin());
+
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
+
+				this->_awh->sendMessage(bid, buffer, text);
+			}
+		}
+
+		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent){
+			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
+				cout << " URL: " << this->_awh->parser(sid, bid)->request().url << endl;
+
+				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
+				"<h1>\"Hello, World!\" program</h1>\n"
+				"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
+				"(Redirected from Hello, world!)<br>\n"
+				"Jump to navigationJump to search<br>\n"
+				"<strong>\"Hello World\"</strong> redirects here. For other uses, see Hello World (disambiguation).<br>\n"
+				"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
+				"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
+				"</div>\n</body>\n</html>\n";
+
+				if(this->_awh->trailers(sid, bid)){
+					this->_awh->trailer(sid, bid, "Goga", "Hello");
+					this->_awh->trailer(sid, bid, "Hello", "World");
+					this->_awh->trailer(sid, bid, "Anyks", "Best of the best");
+					this->_awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+				}
+
+				this->_awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
+			}
+		}
+
+		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url){
+			this->_method = method;
+
+			if(!url.empty() && (!url.path.empty() && url.path.back().compare("favicon.ico") == 0))
+				this->_awh->send(sid, bid, 404);
+		}
+
+		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+			(void) sid;
+			(void) bid;
+			(void) method;
+			(void) url;
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+		}
+
+		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
+			(void) method;
+
+			cout << "URL: " << url << endl << endl;
+
+			cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
+
+			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+		}
+	public:
+		WebServer(const fmk_t * fmk, const log_t * log, server::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh), _method(awh::web_t::method_t::NONE) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+
+	server::core_t core(&fmk, &log);
+	server::awh_t awh(&core, &fmk, &log);
+
+	WebServer executor(&fmk, &log, &awh);
+
+	log.name("WEB Server");
+	log.format("%H:%M:%S %d.%m.%Y");
+
+	awh.mode({
+		server::web_t::flag_t::TAKEOVER_CLIENT,
+		server::web_t::flag_t::TAKEOVER_SERVER,
+		server::web_t::flag_t::WEBSOCKET_ENABLE,
+		server::web_t::flag_t::CONNECT_METHOD_ENABLE
+	});
+
+	core.clusterSize();
+
+	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+
+	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+
+	awh.clusterAutoRestart(true);
+
+	// awh.authType(auth_t::type_t::BASIC);
+	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::BROTLI,
+		awh::http_t::compress_t::GZIP,
+		awh::http_t::compress_t::DEFLATE,
+	});
+
+	/*
+	awh.init("anyks", {
+		awh::http_t::compress_t::BROTLI,
+		awh::http_t::compress_t::GZIP,
+		awh::http_t::compress_t::DEFLATE,
+	});
+	*/
+
+	awh.addOrigin("example.net");
+
+	awh.addAltSvc("example.net", "h2=\":2222\"");
+	awh.addAltSvc("example.com", "h2=\":8000\"");
+
+	awh.subprotocols({"test1", "test2", "test3"});
+
+	awh.on((function <string (const uint64_t, const string &)>) std::bind(&WebServer::password, &executor, _1, _2));
+	// awh.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&WebServer::auth, &executor, _1, _2, _3));
+	awh.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&WebServer::active, &executor, _1, _2));
+	awh.on((function <void (const uint64_t, const u_int, const string &)>) std::bind(&WebServer::error, &executor, _1, _2, _3));
+	awh.on((function <bool (const string &, const string &, const u_int)>) std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.on((function <void (const uint64_t, const vector <char> &, const bool)>) bind(&WebServer::message, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const server::web_t::agent_t)>) std::bind(&WebServer::handshake, &executor, _1, _2, _3));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)>) std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)>) std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
+	awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+
+	awh.start();
 
 	return 0;
 }
@@ -551,27 +928,36 @@ class Proxy {
 	private:
 		log_t * _log;
 	public:
-		string password(const string & login){
+
+		string password(const uint64_t bid, const string & login){
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+
 			return "password";
 		}
-		bool auth(const string & login, const string & password){
+
+		bool auth(const uint64_t bid, const string & login, const string & password){
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::proxy_t * proxy){
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::proxy_t::mode_t mode, server::proxy_t * proxy){
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::proxy_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
-		}
-		bool message(const size_t aid, const server::proxy_t::event_t event, awh::http_t * http, server::proxy_t * proxy){
-			cout << (event == server::proxy_t::event_t::REQUEST ? "REQUEST" : "RESPONSE") << endl;
-			for(auto & header : http->headers())
-				cout << "Header: " << header.first << " = " << header.second << endl << endl;
-			return true;
+
+		void active(const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
+			(void) bid;
+
+			switch(static_cast <uint8_t> (broker)){
+				case static_cast <uint8_t> (server::proxy_t::broker_t::CLIENT):
+					this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+				break;
+				case static_cast <uint8_t> (server::proxy_t::broker_t::SERVER):
+					this->_log->print("%s server", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+				break;
+			}
 		}
 	public:
 		Proxy(log_t * log) : _log(log) {}
@@ -582,31 +968,35 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 
 	Proxy executor(&log);
-
 	server::proxy_t proxy(&fmk, &log);
 
 	log.name("Proxy Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.mode(
-		(uint8_t) server::proxy_t::flag_t::NOT_INFO |
-		(uint8_t) server::proxy_t::flag_t::WAIT_MESS
-	);
 	proxy.clusterSize();
 
-	// proxy.realm("ANYKS");
-	// proxy.opaque("keySession");
+	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
 
-	proxy.authType(auth_t::type_t::BASIC);
-	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
-	proxy.sonet(awh::scheme_t::sonet_t::TCP);
+	proxy.mode({
+		server::proxy_t::flag_t::SYNCPROTO,
+		server::proxy_t::flag_t::REDIRECTS,
+		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
+	});
+
+	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
+	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
+	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	// proxy.init("anyks", http_t::compress_t::GZIP);
+	// proxy.init(2222, "", http_t::compress_t::GZIP);
 	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+	
+	proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
-	// proxy.on((function <string (const string &)>) bind(&Proxy::password, &executor, _1));
-	proxy.on((function <bool (const string &, const string &)>) bind(&Proxy::auth, &executor, _1, _2));
-	proxy.on((function <void (const size_t, const server::proxy_t::mode_t, server::proxy_t *)>) bind(&Proxy::active, &executor, _1, _2, _3));
-	proxy.on((function <bool (const string &, const string &, const u_int, server::proxy_t *)>) bind(&Proxy::accept, &executor, _1, _2, _3, _4));
-	proxy.on((function <bool (const size_t, const server::proxy_t::event_t, awh::http_t *, server::proxy_t *)>) bind(&Proxy::message, &executor, _1, _2, _3, _4));
+	proxy.on((function <string (const uint64_t, const string &)>) std::bind(&Proxy::password, &executor, _1, _2));
+	proxy.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	proxy.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Proxy::auth, &executor, _1, _2, _3));
+	proxy.on((function <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2, _3));
 
 	proxy.start();
 
@@ -625,46 +1015,59 @@ using namespace server;
 
 class Proxy {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		proxy_socks5_t * _socks5;
 	public:
-		bool auth(const string & login, const string & password){
-			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+
+		bool auth(const uint64_t bid, const string & login, const string & password){
+			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
+
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, proxy_socks5_t * proxy){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const proxy_socks5_t::mode_t mode, proxy_socks5_t * proxy){
+
+		void active(const uint64_t bid, const proxy_socks5_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 	public:
-		Proxy(log_t * log) : _log(log) {}
+		Proxy(const fmk_t * fmk, const log_t * log, proxy_socks5_t * socks5) : _fmk(fmk), _log(log), _socks5(socks5) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	Proxy executor(&log);
-
 	proxy_socks5_t proxy(&fmk, &log);
+	Proxy executor(&fmk, &log, &proxy);
 
 	log.name("Proxy Socks5 Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.mode(
-		(uint8_t) proxy_socks5_t::flag_t::NOT_INFO |
-		(uint8_t) proxy_socks5_t::flag_t::WAIT_MESS
-	);
 	proxy.clusterSize();
 
-	proxy.init(2222, "127.0.0.1");
+	proxy.ca("./ca/cert.pem");
 
-	proxy.on((function <bool (const string &, const string &)>) bind(&Proxy::auth, &executor, _1, _2));
-	proxy.on((function <void (const size_t, const proxy_socks5_t::mode_t, proxy_socks5_t *)>) bind(&Proxy::active, &executor, _1, _2, _3));
-	proxy.on((function <bool (const string &, const string &, const u_int, proxy_socks5_t *)>) bind(&Proxy::accept, &executor, _1, _2, _3, _4));
+	proxy.sonet(awh::scheme_t::sonet_t::TCP);
+
+	proxy.mode({proxy_socks5_t::flag_t::WAIT_MESS});
+
+	// proxy.init("anyks");
+	// proxy.init(2222);
+	proxy.init(2222, "127.0.0.1");
+	
+	proxy.on((function <void (const size_t, const proxy_socks5_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2));
+	proxy.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	// proxy.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Proxy::auth, &executor, _1, _2, _3));
 
 	proxy.start();
 
@@ -681,7 +1084,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-class Timer {
+class Executor {
 	private:
 		chrono::time_point <chrono::system_clock> ts;
 		chrono::time_point <chrono::system_clock> is;
@@ -690,6 +1093,7 @@ class Timer {
 	private:
 		log_t * _log;
 	public:
+
 		void interval(const u_short id, core_t * core){
 			auto shift = chrono::system_clock::now();
 
@@ -702,34 +1106,45 @@ class Timer {
 				core->stop();
 			}
 		}
+
 		void timeout(const u_short id, core_t * core){
+			(void) id;
+			(void) core;
+
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
 		}
-		void run(const bool mode, Core * core){
-			if(mode){
-				this->ts = chrono::system_clock::now();
-				this->is = chrono::system_clock::now();
 
-				this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
+		void run(const awh::core_t::status_t status, core_t * core){
+			switch(static_cast <uint8_t> (status)){
+				case static_cast <uint8_t> (awh::core_t::status_t::START): {
+					this->ts = chrono::system_clock::now();
+					this->is = this->ts;
 
-				core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
-				core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
-			} else this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
+					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
+
+					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1, _2));
+					core->setInterval(5000, std::bind(&Executor::interval, this, _1, _2));
+				} break;
+				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
+				break;
+			}
 		}
 	public:
-		Timer(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
+		Executor(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	Timer executor(&log);
+	Executor executor(&log);
+	core_t core(&fmk, &log);
 
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
+	core.on(std::bind(&Executor::run, &executor, _1, _2));
 
 	core.start();
 
@@ -755,14 +1170,16 @@ int main(int argc, char * argv[]){
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");
 
+	dns.prefix("AWH");
+
 	dns.servers({"77.88.8.88", "77.88.8.2"});
 
 	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost").c_str());
 	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru").c_str());
 	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
 
+	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
-
 	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 
 	return 0;
@@ -788,6 +1205,7 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	ntp.ns({"77.88.8.88", "77.88.8.2"});
+
 	ntp.servers({"0.ru.pool.ntp.org", "1.ru.pool.ntp.org", "2.ru.pool.ntp.org", "3.ru.pool.ntp.org"});
 
 	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
@@ -843,6 +1261,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -861,8 +1280,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -872,7 +1292,6 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
@@ -897,42 +1316,55 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.name("TCP Server");
+	Server executor(&fmk, &log, &sample);
+
+	log.name("SAMPLE Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 
 	sample.init(2222, "127.0.0.1");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -961,6 +1393,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -979,8 +1412,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -990,11 +1424,9 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
-
 	core.verifySSL(false);
-	core.ca("./ca/cert.pem");
+
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
@@ -1018,32 +1450,44 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
+
+	Server executor(&fmk, &log, &sample);
 
 	log.name("TLS Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1053,9 +1497,10 @@ int main(int argc, char * argv[]){
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1084,6 +1529,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -1102,8 +1548,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -1113,7 +1560,6 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
@@ -1138,32 +1584,44 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
+
+	Server executor(&fmk, &log, &sample);
 
 	log.name("UDP Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1171,9 +1629,10 @@ int main(int argc, char * argv[]){
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 
 	sample.init(2222, "127.0.0.1");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1202,6 +1661,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -1220,8 +1680,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -1231,11 +1692,9 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
-
 	core.verifySSL(false);
-	core.ca("./ca/cert.pem");
+
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
@@ -1259,32 +1718,44 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
+
+	Server executor(&fmk, &log, &sample);
 
 	log.name("SCTP Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1294,9 +1765,10 @@ int main(int argc, char * argv[]){
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1325,6 +1797,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -1343,8 +1816,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -1354,11 +1828,9 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
-
 	core.verifySSL(false);
-	core.ca("./ca/cert.pem");
+
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
@@ -1382,32 +1854,44 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
+
+	Server executor(&fmk, &log, &sample);
 
 	log.name("DTLS Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1417,9 +1901,10 @@ int main(int argc, char * argv[]){
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1448,6 +1933,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -1466,20 +1952,20 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
-	log.name("TCP UnixSocket Client");
+	log.name("UnixSocket Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
-
+	
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
 
@@ -1503,43 +1989,55 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.name("TCP UnixSocket Server");
+	Server executor(&fmk, &log, &sample);
+
+	log.name("UnixSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
 
 	sample.init("anyks");
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1568,6 +2066,7 @@ class Client {
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
+
 				this->_sample->send(message.data(), message.size());
 			}
 		}
@@ -1586,8 +2085,9 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	client::core_t core(&fmk, &log);
+	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 	Client executor(&fmk, &log, &sample);
 
@@ -1597,9 +2097,8 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		client::sample_t::flag_t::VERIFY_SSL
 	});
-
+	
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);
 
@@ -1623,32 +2122,44 @@ using namespace awh;
 
 class Server {
 	private:
-		log_t * _log;
+		const fmk_t * _fmk;
+		const log_t * _log;
+	private:
+		server::sample_t * _sample;
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+
+		bool accept(const string & ip, const string & mac, const u_int port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+
 			return true;
 		}
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+
+		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+			(void) bid;
+
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
-			const string message(buffer.begin(), buffer.end());
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
-			sample->send(aid, buffer.data(), buffer.size());
+
+		void message(const uint64_t bid, const vector <char> & buffer){
+			(void) bid;
+
+			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+
+			this->_sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(log_t * log) : _log(log) {}
+		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	dns_t dns(&fmk, &log);
 
-	Server executor(&log);
-
-	server::core_t core(&fmk, &log);
+	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
+
+	Server executor(&fmk, &log, &sample);
 
 	log.name("UDP UnixSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1657,10 +2168,9 @@ int main(int argc, char * argv[]){
 	core.family(awh::scheme_t::family_t::NIX);
 
 	sample.init("anyks");
-
-	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
-	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
-	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
 
 	sample.start();
 
@@ -1681,33 +2191,41 @@ class Executor {
 		log_t * _log;
 	public:
 
-		void events(const cluster::core_t::worker_t worker, const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
+		void events(const cluster_t::family_t worker, const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
+			(void) pid;
+
 			if(event == cluster_t::event_t::START){
 				switch(static_cast <uint8_t> (worker)){
-					case static_cast <uint8_t> (cluster::core_t::worker_t::MASTER): {
+					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 						const char * message = "Hi!";
+
 						core->broadcast(message, strlen(message));
 					} break;
-					case static_cast <uint8_t> (cluster::core_t::worker_t::CHILDREN): {
+					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
 						const char * message = "Hello";
+
 						core->send(message, strlen(message));
 					} break;
 				}
 			}
 		}
 
-		void message(const cluster::core_t::worker_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
+		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
+			(void) core;
+
 			switch(static_cast <uint8_t> (worker)){
-				case static_cast <uint8_t> (cluster::core_t::worker_t::MASTER):
+				case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 					this->_log->print("Message from children [%u]: %s", log_t::flag_t::INFO, pid, string(buffer, size).c_str());
 				break;
-				case static_cast <uint8_t> (cluster::core_t::worker_t::CHILDREN):
+				case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
 					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), getpid());
 				break;
 			}
 		}
 
 		void run(const awh::core_t::status_t status, core_t * core){
+			(void) core;
+
 			switch(static_cast <uint8_t> (status)){
 				case static_cast <uint8_t> (awh::core_t::status_t::START):
 					this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
@@ -1724,19 +2242,19 @@ class Executor {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	Executor executor(&log);
 
+	Executor executor(&log);
 	cluster::core_t core(&fmk, &log);
 
 	log.name("Cluster");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.clusterSize();
-	core.clusterAutoRestart(true);
+	core.size();
+	core.autoRestart(true);
 
 	core.on((function <void (const awh::core_t::status_t, core_t *)>) std::bind(&Executor::run, &executor, _1, _2));
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) std::bind(&Executor::events, &executor, _1, _2, _3, _4));
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t, cluster::core_t *)>) std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	core.on((function <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) std::bind(&Executor::events, &executor, _1, _2, _3, _4));
+	core.on((function <void (const cluster_t::family_t, const pid_t, const char *, const size_t, cluster::core_t *)>) std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
 
 	core.start();
 
@@ -1753,240 +2271,180 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]){
-	fmk_t fmk;
-	log_t log(&fmk);
-	net_t net(&fmk, &log);
+	net_t net{};
 
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
-	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] == " << net << endl;
-	// -> [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] == 2001:DB8:11A3:9D7:1F34:8A2E:7A0:765D
+	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || " << net << " === " << net.get(net_t::format_t::LONG_IPV4) << " === " << net.get(net_t::format_t::MIDDLE_IPV4) << " === " << net.get(net_t::format_t::SHORT_IPV4) << endl;
 
 	net = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
-	cout << " 2001:0db8:0000:0000:0000:0000:ae21:ad12 == " << net << endl;
-	// -> 2001:0db8:0000:0000:0000:0000:ae21:ad12 == 2001:DB8::AE21:AD12
+	cout << " 2001:0db8:0000:0000:0000:0000:ae21:ad12 || " << net << endl;
 
 	net = "2001:db8::ae21:ad12";
-	cout << " 2001:db8::ae21:ad12 == " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDDLE) << endl;
-	// -> 2001:db8::ae21:ad12 == 2001:0DB8:0000:0000:0000:0000:AE21:AD12 and 2001:DB8:0:0:0:0:AE21:AD12
+	cout << " 2001:db8::ae21:ad12 || " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDDLE) << endl;
 
 	net = "0000:0000:0000:0000:0000:0000:ae21:ad12";
-	cout << " 0000:0000:0000:0000:0000:0000:ae21:ad12 == " << net.get(net_t::format_t::SHORT) << endl;
-	// -> 0000:0000:0000:0000:0000:0000:ae21:ad12 == ::AE21:AD12
+	cout << " 0000:0000:0000:0000:0000:0000:ae21:ad12 || " << net.get(net_t::format_t::SHORT) << endl;
 
 	net = "::ae21:ad12";
-	cout << " ::ae21:ad12 == " << net.get(net_t::format_t::MIDDLE) << endl;
-	// -> ::ae21:ad12 == 0:0:0:0:0:0:AE21:AD12
+	cout << " ::ae21:ad12 || " << net.get(net_t::format_t::MIDDLE) << endl;
 
 	net = "2001:0db8:11a3:09d7:1f34::";
-	cout << " 2001:0db8:11a3:09d7:1f34:: == " << net.get(net_t::format_t::LONG) << endl;
-	// -> 2001:0db8:11a3:09d7:1f34:: == 2001:0DB8:11A3:09D7:1F34:0000:0000:0000
+	cout << " 2001:0db8:11a3:09d7:1f34:: || " << net.get(net_t::format_t::LONG) << endl;
 
 	net = "::ffff:192.0.2.1";
-	cout << " ::ffff:192.0.2.1 == " << net << endl;
-	// -> ::ffff:192.0.2.1 == ::FFFF:192.0.2.1
+	cout << boolalpha;
+	cout << " ::ffff:192.0.2.1 || " << net << " ==== " << net.broadcastIPv6ToIPv4() << endl;
 
 	net = "::1";
-	cout << " ::1 == " << net.get(net_t::format_t::LONG) << endl;
-	// -> ::1 == 0000:0000:0000:0000:0000:0000:0000:0001
+	cout << " ::1 || " << net.get(net_t::format_t::LONG) << endl;
 
 	net = "[::]";
-	cout << " [::] == " << net.get(net_t::format_t::LONG) << endl;
-	// -> [::] == 0000:0000:0000:0000:0000:0000:0000:0000
+	cout << " [::] || " << net.get(net_t::format_t::LONG) << endl;
 
 	net = "46.39.230.51";
-	cout << " 46.39.230.51 == " << net.get(net_t::format_t::LONG) << endl;
-	// -> 46.39.230.51 == 046.039.230.051
+	cout << " 46.39.230.51 || " << net.get(net_t::format_t::LONG) << " ==== " << net.broadcastIPv6ToIPv4() << endl;
 
 	net = "192.16.0.1";
-	cout << " 192.16.0.1 == " << net.get(net_t::format_t::LONG) << endl;
-	// -> 192.16.0.1 == 192.016.000.001
+	cout << " 192.16.0.1 || " << net.get(net_t::format_t::LONG) << " === " << net.get(net_t::format_t::LONG_IPV6) << " === " << net.get(net_t::format_t::SHORT_IPV6) << " === " << net.get(net_t::format_t::MIDDLE_IPV6) << endl;
 
 	net = "2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d";
-	cout << " Part of the address: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d == " << net.v6()[0] << " and " << net.v6()[1] << endl;
-	// -> Part of the address: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d == 709054858341654529 and 8528981655404027700
+	cout << " Составная часть адреса: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d || " << net.v6()[0] << " and " << net.v6()[1] << endl;
 
 	net = "46.39.230.51";
-	cout << " Part of the address: 46.39.230.51 == " << net.v4() << endl;
-	// -> Part of the address: 46.39.230.51 == 870721326
+	cout << " Составная часть адреса: 46.39.230.51 || " << net.v4() << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose(53, net_t::addr_t::NETW);
-	cout << " Prefix Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == " << net << endl;
-	// -> Prefix Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == 2001:1234:ABCD:5000::
+	cout << " Наложение префикса: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW);
-	cout << " Mask Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == " << net << endl;
-	// -> Mask Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == 2001:1234:ABCD:5000::
+	cout << " Наложение префикса: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose(9, net_t::addr_t::NETW);
-	cout << " Prefix Overlay: 192.168.3.192/9 == " << net << endl;
-	// -> Prefix Overlay: 192.168.3.192/9 == 192.128.0.0
+	cout << " Наложение префикса: 192.168.3.192/9 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.128.0.0", net_t::addr_t::NETW);
-	cout << " Mask Overlay: 192.168.3.192/255.128.0.0 == " << net << endl;
-	// -> Mask Overlay: 192.168.3.192/255.128.0.0 == 192.128.0.0
+	cout << " Наложение префикса: 192.168.3.192/255.128.0.0 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.255.255.0", net_t::addr_t::NETW);
-	cout << " Mask Overlay: 192.168.3.192/255.255.255.0 == " << net << endl;
-	// -> Mask Overlay: 192.168.3.192/255.255.255.0 == 192.168.3.0
+	cout << " Наложение префикса: 192.168.3.192/255.255.255.0 || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose(53, net_t::addr_t::HOST);
-	cout << " Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == " << net << endl;
-	// -> Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == ::678:9877:3322:5541:AABB
+	cout << " Получаем хост адреса: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST);
-	cout << " Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == " << net << endl;
-	// -> Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == ::678:9877:3322:5541:AABB
+	cout << " Получаем хост адреса: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose(9, net_t::addr_t::HOST);
-	cout << " Get the host address: 192.168.3.192/9 == " << net << endl;
-	// -> Get the host address: 192.168.3.192/9 == 0.40.3.192
+	cout << " Получаем хост адреса: 192.168.3.192/9 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.128.0.0", net_t::addr_t::HOST);
-	cout << " Get the host address: 192.168.3.192/255.128.0.0 == " << net << endl;
-	// -> Get the host address: 192.168.3.192/255.128.0.0 == 0.40.3.192
+	cout << " Получаем хост адреса: 192.168.3.192/255.128.0.0 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose(24, net_t::addr_t::HOST);
-	cout << " Get the host address: 192.168.3.192/24 == " << net << endl;
-	// -> Get the host address: 192.168.3.192/24 == 0.0.0.192
+	cout << " Получаем хост адреса: 192.168.3.192/24 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.255.255.0", net_t::addr_t::HOST);
-	cout << " Get the host address: 192.168.3.192/255.255.255.0 == " << net << endl;
-	// -> Get the host address: 192.168.3.192/255.255.255.0 == 0.0.0.192
+	cout << " Получаем хост адреса: 192.168.3.192/255.255.255.0 || " << net << endl;
 
 	net = "192.168.3.192";
-	cout << " Getting the address mask from the network prefix 9 == " << net.prefix2Mask(9) << endl;
-	cout << " Getting the network prefix from the address mask 255.128.0.0 == " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
-	// -> Getting the address mask from the network prefix 9 == 255.128.0.0
-	// -> Getting the network prefix from the address mask 255.128.0.0 == 9
+	cout << " Получаем маску адреса из префикса сети 9 || " << net.prefix2Mask(9) << endl;
+	cout << " Получаем префикс сети из маски адреса 255.128.0.0 || " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
-	cout << " Getting the address mask from the network prefix 53 == " << net.prefix2Mask(53) << endl;
-	cout << " Getting the network prefix from the address mask FFFF:FFFF:FFFF:F800:: == " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
-	// -> Getting the address mask from the network prefix 53 == FFFF:FFFF:FFFF:F800::
-	// -> Getting the network prefix from the address mask FFFF:FFFF:FFFF:F800:: == 53
+	cout << " Получаем маску адреса из префикса сети 53 || " << net.prefix2Mask(53) << endl;
+	cout << " Получаем префикс сети из маски адреса FFFF:FFFF:FFFF:F800:: || " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Performing an address match check 192.168.3.192 network 192.168.0.0 == " << net.mapping("192.168.0.0") << endl;
-	// -> Performing an address match check 192.168.3.192 network 192.168.0.0 == true
+	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.168.0.0 || " << net.mapping("192.168.0.0") << endl;
 	
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5678:: == " << net.mapping("2001:1234:abcd:5678::") << endl;
-	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5678:: == true
+	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5678:: || " << net.mapping("2001:1234:abcd:5678::") << endl;
 	
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Performing an address match check 192.168.3.192 network 192.128.0.0/9 == " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETW) << endl;
-	// -> Performing an address match check 192.168.3.192 network 192.128.0.0/9 == true
+	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.128.0.0/9 || " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETW) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/53 == " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETW) << endl;
-	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/53 == true
+	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5000::/53 || " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETW) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Performing an address match check 192.168.3.192 network 192.128.0.0/255.128.0.0 == " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETW) << endl;
-	// -> Performing an address match check 192.168.3.192 network сети 192.128.0.0/255.128.0.0 == true
+	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.128.0.0/255.128.0.0 || " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETW) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: == " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW) << endl;
-	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: == true
+	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: || " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Performing an address match check 192.168.3.192 host 9/0.40.3.192 == " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
-	// -> Performing an address match check 192.168.3.192 host 9/0.40.3.192 == true
+	cout << " Выполняем проверку соответствия адреса 192.168.3.192 хосту 9/0.40.3.192 || " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host 53/::678:9877:3322:5541:AABB == " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
-	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host 53/::678:9877:3322:5541:AABB == true
+	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb хосту 53/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Performing an address match check 192.168.3.192 host 255.128.0.0/0.40.3.192 == " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
-	// -> Performing an address match check 192.168.3.192 host 255.128.0.0/0.40.3.192 == true
+	cout << " Выполняем проверку соответствия адреса 192.168.3.192 хосту 255.128.0.0/0.40.3.192 || " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB == " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
-	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB == true
+	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb хосту FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Checking if the address is in the range 192.168.3.192 in the range [192.168.3.100 - 192.168.3.200] == " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
-	// -> Checking if the address is in the range 192.168.3.192 in the range [192.168.3.100 - 192.168.3.200] == true
+	cout << " Выполняем проверку на вхождение адреса в диапазон 192.168.3.192 в диапазон [192.168.3.100 - 192.168.3.200] || " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	const auto & dump = net.data <vector <uint16_t>> ();
 	for(auto & item : dump)
-		cout << " IPv6 address chunk data == " << item << endl;
-	// -> IPv6 address chunk data == 8193
-	// -> IPv6 address chunk data == 4660
-	// -> IPv6 address chunk data == 43981
-	// -> IPv6 address chunk data == 22136
-	// -> IPv6 address chunk data == 39031
-	// -> IPv6 address chunk data == 13090
-	// -> IPv6 address chunk data == 21825
-	// -> IPv6 address chunk data == 43707
+		cout << " Данные чанков адреса IPv6 || " << item << endl;
 
 	net = "46.39.230.51";
 	cout << boolalpha;
-	cout << " Checking if the IP address is global 46.39.230.51 == " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
-	// -> Checking if the IP address is global 46.39.230.51 == true
+	cout << " Выполняем проверку является ли IP адрес глобальным 46.39.230.51 || " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
 
 	net = "192.168.31.12";
 	cout << boolalpha;
-	cout << " Checking if the IP address is local 192.168.31.12 == " << (net.mode() == net_t::mode_t::LOCAL) << endl;
-	// -> Checking if the IP address is local 192.168.31.12 == true
+	cout << " Выполняем проверку является ли IP адрес локальным 192.168.31.12 || " << (net.mode() == net_t::mode_t::LOCAL) << endl;
 
 	net = "0.0.0.0";
 	cout << boolalpha;
-	cout << " Checking if the IP address is reserved 0.0.0.0 == " << (net.mode() == net_t::mode_t::RESERV) << endl;
-	// -> Checking if the IP address is reserved 0.0.0.0 == true
+	cout << " Выполняем проверку является ли IP адрес зарезервированным 0.0.0.0 || " << (net.mode() == net_t::mode_t::RESERV) << endl;
 
 	net = "[2a00:1450:4010:c0a::8b]";
 	cout << boolalpha;
-	cout << " Checking if the IP address is global [2a00:1450:4010:c0a::8b] == " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
-	// -> Checking if the IP address is global [2a00:1450:4010:c0a::8b] == true
+	cout << " Выполняем проверку является ли IP адрес глобальным [2a00:1450:4010:c0a::8b] || " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
 
 	net = "::1";
 	cout << boolalpha;
-	cout << " Checking if the IP address is local [::1] == " << (net.mode() == net_t::mode_t::LOCAL) << endl;
-	// -> Checking if the IP address is local [::1] == true
+	cout << " Выполняем проверку является ли IP адрес локальным [::1] || " << (net.mode() == net_t::mode_t::LOCAL) << endl;
 
 	net = "::";
 	cout << boolalpha;
-	cout << " Checking if the IP address is reserved [::] == " << (net.mode() == net_t::mode_t::RESERV) << endl;
-	// -> Checking if the IP address is reserved [::] == true
+	cout << " Выполняем проверку является ли IP адрес зарезервированным [::] || " << (net.mode() == net_t::mode_t::RESERV) << endl;
 
 	string ip = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
-	cout << " Long address entry == " << ip << endl;
-	// -> Long address entry == 2001:0db8:0000:0000:0000:0000:ae21:ad12
-
-	net = ip;
-	ip = net;
-	
-	cout << " Short address entry == " << ip << endl;
-	// -> Short address entry == 2001:DB8::AE21:AD12
+	cout << " Длинная запись адреса || " << ip << endl;
+	ip = net = ip;
+	cout << " Короткая запись адреса || " << ip << endl;
 
 	net = "73:0b:04:0d:db:79";
-	cout << " MAC == " << net << endl;
-	// -> MAC == 73:0B:04:0D:DB:79
+	cout << " 73:0b:04:0d:db:79 || " << net << endl;
 
 	return 0;
 }
