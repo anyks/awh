@@ -18,6 +18,7 @@
  * Стандартная библиотека
  */
 #include <map>
+#include <set>
 #include <tuple>
 #include <string>
 #include <vector>
@@ -53,6 +54,20 @@ namespace awh {
 			idw_t _idw;
 		private:
 			/**
+			 * Основные типы данных возвращаемые функциями
+			 */
+			enum class type_t : uint8_t {
+				NONE          = 0x00, // Тип данных не установлен
+				TYPE_ENUM     = 0x01, // Тип данных принадлежит к перечислениям
+				TYPE_VOID     = 0x02, // Тип данных не возвращает значения
+				TYPE_UNION    = 0x03, // Тип данных принадлежит к объединениям
+				TYPE_ARRAY    = 0x04, // Тип данных принадлежит к массивам
+				TYPE_CLASS    = 0x05, // Тип данных принадлежит к классам и структурам
+				TYPE_POINTER  = 0x06, // Тип данных принадлежит к указателям и ссылкам
+				TYPE_FUNCTION = 0x07  // Тип данных принадлежит к функциям
+			};
+		private:
+			/**
 			 * Function Структура базовой функции
 			 */
 			struct Function {
@@ -79,34 +94,84 @@ namespace awh {
 				BasicFunction(std::function <A> fn) noexcept : fn(fn) {}
 			};
 		public:
+			// Создаём тип данных возвращаемых значений функций обратного вызова
+			typedef map <uint64_t, type_t> types_t;
 			// Создаём тип данных функций обратного вызова
 			typedef map <uint64_t, std::shared_ptr <Function>> fns_t;
 		private:
+			// Поддерживаемые типы данных
+			types_t _types;
 			// Список функций обратного вызова
 			fns_t _functions;
 		private:
 			// Создаём объект работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * Шаблон метода установки функции обратного вызова
+			 * @tparam A сигнатура функции
+			 */
+			template <typename A>
+			/**
+			 * type Метод определения типа значения
+			 * @return тип которому соответствует переменная
+			 */
+			auto type() const noexcept -> type_t {
+				// Если тип данных принадлежит к VOID
+				if(is_void <A>::value)
+					// Выводим результат
+					return type_t::TYPE_VOID;
+				// Если тип данных принадлежит к ENUM
+				else if(is_enum <A>::value)
+					// Выводим результат
+					return type_t::TYPE_ENUM;
+				// Если тип данных принадлежит к UNION
+				else if(is_union <A>::value)
+					// Выводим результат
+					return type_t::TYPE_UNION;
+				// Если тип данных принадлежит к ARRAY
+				else if(is_array <A>::value)
+					// Выводим результат
+					return type_t::TYPE_ARRAY;
+				// Если тип данных принадлежит к CLASS
+				else if(is_class <A>::value)
+					// Выводим результат
+					return type_t::TYPE_CLASS;
+				// Если тип данных принадлежит к POINTER
+				else if(is_pointer <A>::value)
+					// Выводим результат
+					return type_t::TYPE_POINTER;
+				// Если тип данных принадлежит к FUNCTION
+				else if(is_function <A>::value)
+					// Выводим результат
+					return type_t::TYPE_FUNCTION;
+				// Выводим результат
+				return type_t::NONE;
+			}
 		public:
 			/**
 			 * dump Метод получения дампа функций обратного вызова
-			 * @return std::pair <const fns_t *, const sigs_t *> 
+			 * @return выводим созданный блок дампа контейнера
 			 */
-			const fns_t * dump() const noexcept {
+			const std::pair <const fns_t *, const types_t *> dump() const noexcept {
 				// Выводим дамп функций обратного вызова
-				return &this->_functions;
+				return std::make_pair(&this->_functions, &this->_types);
 			}
 			/**
 			 * dump Метод установки дампа функций обратного вызова
 			 * @param data данные функций обратного вызова
 			 */
-			void dump(const fns_t * & data) noexcept {
+			void dump(const std::pair <const fns_t *, const types_t *> & data) noexcept {
 				// Если данные функций обратного вызова переданы
-				if((data != nullptr) && !data->empty()){
+				if(((data.first != nullptr) && !data.first->empty()) && ((data.second != nullptr) && !data.second->empty())){
 					// Выполняем очистку текущего списка функций обратного вызова
 					this->clear();
+					// Выполняем перебор всех параметров возвращаемых функциями
+					for(auto & item : * data.second)
+						// Устанавливаем возвращаемое значение
+						this->_types.emplace(item.first, item.second);
 					// Выполняем перебор всех функций обратного вызова в хранилище
-					for(auto & item : * data)
+					for(auto & item : * data.first)
 						// Устанавливаем новую функцию обратного вызова
 						this->_functions.emplace(item.first, item.second);
 				}
@@ -117,31 +182,42 @@ namespace awh {
 			 * @param idw идентификатор функции обратного вызова
 			 * @return    дамп функции обратного вызова
 			 */
-			std::shared_ptr <Function> dump(const uint64_t idw) const noexcept {
+			std::pair <std::shared_ptr <Function>, type_t> dump(const uint64_t idw) const noexcept {
+				// Результат работы функции
+				std::pair <std::shared_ptr <Function>, type_t> result = std::make_pair(nullptr, type_t::NONE);
 				// Если название функции обратного вызова передано
 				if(idw > 0){
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_functions.find(idw);
-					// Если функция существует
-					if(it != this->_functions.end())
-						// Устанавливаем функцию обратного вызова
-						return it->second;
+					{
+						// Выполняем поиск типа возвращаемого значения
+						auto it = this->_types.find(idw);
+						// Если возвращаемое значение получено
+						if(it != this->_types.end())
+							// Устанавливаем тип возвращаемого значения
+							result.second = it->second;
+					}{
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_functions.find(idw);
+						// Если функция существует
+						if(it != this->_functions.end())
+							// Устанавливаем функцию обратного вызова
+							result.first = it->second;
+					}
 				}
 				// Выводим результат работы функции
-				return nullptr;
+				return result;
 			}
 			/**
 			 * dump Метод извлечения данных функции обратного вызова по её имени
 			 * @param name название функции обратного вызова
 			 * @return     дамп функции обратного вызова
 			 */
-			std::shared_ptr <Function> dump(const string & name) const noexcept {
+			std::pair <std::shared_ptr <Function>, type_t> dump(const string & name) const noexcept {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выводим получение дампа функции обратного вызова
 					return this->dump(this->_idw.id(name));
 				// Выводим результат работы функции
-				return nullptr;
+				return std::make_pair(nullptr, type_t::NONE);
 			}
 		public:
 			/**
@@ -149,17 +225,28 @@ namespace awh {
 			 * @param idw  идентификатор функции обратного вызова
 			 * @param data дамп функции обратного вызова
 			 */
-			void dump(const uint64_t idw, const std::shared_ptr <Function> & data) noexcept {
+			void dump(const uint64_t idw, const std::pair <std::shared_ptr <Function>, type_t> & data) noexcept {
 				// Если название функции обратного вызова передано
-				if((idw > 0) && (data != nullptr)){
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_functions.find(idw);
-					// Если функция существует
-					if(it != this->_functions.end())
-						// Устанавливаем функцию обратного вызова
-						it->second = data;
-					// Устанавливаем новую функцию обратного вызова
-					else this->_functions.emplace(idw, data);
+				if((idw > 0) && (data.first != nullptr)){
+					{
+						// Выполняем поиск типа возвращаемого значения
+						auto it = this->_types.find(idw);
+						// Если возвращаемое значение получено
+						if(it != this->_types.end())
+							// Устанавливаем тип возвращаемого значения
+							it->second = data.second;
+						// Устанавливаем новую функцию обратного вызова
+						else this->_types.emplace(idw, data.second);
+					}{
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_functions.find(idw);
+						// Если функция существует
+						if(it != this->_functions.end())
+							// Устанавливаем функцию обратного вызова
+							it->second = data.first;
+						// Устанавливаем новую функцию обратного вызова
+						else this->_functions.emplace(idw, data.first);
+					}
 				}
 			}
 			/**
@@ -167,82 +254,11 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param data дамп функции обратного вызова
 			 */
-			void dump(const string & name, const std::shared_ptr <Function> & data) noexcept {
+			void dump(const string & name, const std::pair <std::shared_ptr <Function>, type_t> & data) noexcept {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выполняем установку данных функции обратного вызова
 					this->dump(this->_idw.id(name), data);
-			}
-		public:
-			/**
-			 * set Метод установки функции из одного хранилища в текущее
-			 * @param idw     идентификатор копируемой функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 */
-			void set(const uint64_t idw, const FN & storage) noexcept {
-				// Если указанная функция существует
-				if(!storage._functions.empty() && storage.is(idw)){
-					// Выполняем поиск указанной функции в переданном хранилище
-					auto i = storage._functions.find(idw);
-					// Если функция в хранилище получена
-					if(i != storage._functions.end()){
-						// Выполняем поиск существующей функции обратного вызова
-						auto j = this->_functions.find(idw);
-						// Если функция такая уже существует
-						if(j != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							j->second = i->second;
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(idw, i->second);
-					}
-				}
-			}
-			/**
-			 * set Метод установки функции из одного хранилища в текущее
-			 * @param name    название копируемой функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 */
-			void set(const string & name, const FN & storage) noexcept {
-				// Если данные переданы правильно
-				if(!name.empty() && !storage._functions.empty())
-					// Выполняем установку функции обратного вызова
-					this->set(this->_idw.id(name), storage);
-			}
-			/**
-			 * set Метод установки функции из одного хранилища в текущее
-			 * @param idw     идентификатор копируемой функции
-			 * @param dest    новый идентификатор полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 */
-			void set(const uint64_t idw, const uint64_t dest, const FN & storage) noexcept {
-				// Если указанная функция существует
-				if(!storage._functions.empty() && storage.is(idw)){
-					// Выполняем поиск указанной функции в переданном хранилище
-					auto i = storage._functions.find(idw);
-					// Если функция в хранилище получена
-					if(i != storage._functions.end()){
-						// Выполняем поиск существующей функции обратного вызова
-						auto j = this->_functions.find(dest);
-						// Если функция такая уже существует
-						if(j != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							j->second = i->second;
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(dest, i->second);
-					}
-				}
-			}
-			/**
-			 * set Метод установки функции из одного хранилища в текущее
-			 * @param name    название копируемой функции
-			 * @param dest    новое название полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 */
-			void set(const string & name, const string & dest, const FN & storage) noexcept {
-				// Если данные переданы правильно
-				if(!name.empty() && !dest.empty() && !storage._functions.empty())
-					// Выполняем установку функции обратного вызова
-					this->set(this->_idw.id(name), this->_idw.id(dest), storage);
 			}
 		public:
 			/**
@@ -277,9 +293,13 @@ namespace awh {
 			 * clear Метод очистки параметров модуля
 			 */
 			void clear() noexcept {
+				// Выполняем очистку списка возвращаемых значений функций
+				this->_types.clear();
 				// Выполняем очистку функций обратного вызова
 				this->_functions.clear();
-				// Выполняем очистку выделенной памяти
+				// Выполняем очистку выделенной памяти для возвращаемых значений
+				types_t().swap(this->_types);
+				// Выполняем очистку выделенной памяти для функций
 				fns_t().swap(this->_functions);
 			}
 		public:
@@ -290,12 +310,21 @@ namespace awh {
 			void erase(const uint64_t idw) noexcept {
 				// Если название функции обратного вызова передано
 				if(idw > 0){
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_functions.find(idw);
-					// Если функция существует
-					if(it != this->_functions.end())
-						// Удаляем функцию обратного вызова
-						this->_functions.erase(it);
+					{
+						// Выполняем поиск типа возвращаемого значения
+						auto it = this->_types.find(idw);
+						// Если возвращаемое значение получено
+						if(it != this->_types.end())
+							// Удаляем возвращаемое значение функцией
+							this->_types.erase(it);
+					}{
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_functions.find(idw);
+						// Если функция существует
+						if(it != this->_functions.end())
+							// Удаляем функцию обратного вызова
+							this->_functions.erase(it);
+					}
 				}
 			}
 			/**
@@ -307,6 +336,109 @@ namespace awh {
 				if(!name.empty())
 					// Выполняем удаление функции обратного вызова
 					this->erase(this->_idw.id(name));
+			}
+		public:
+			/**
+			 * set Метод установки функции из одного хранилища в текущее
+			 * @param idw     идентификатор копируемой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void set(const uint64_t idw, const FN & storage) noexcept {
+				// Если указанная функция существует
+				if(!storage._functions.empty() && storage.is(idw)){
+					{
+						// Выполняем поиск указанного возвращаемого значения в переданном хранилище
+						auto i = storage._types.find(idw);
+						// Если возвращаемое значение в хранилище получено
+						if(i != storage._types.end()){
+							// Выполняем поиск типа возвращаемого значения
+							auto j = this->_types.find(idw);
+							// Если возвращаемое значение получено
+							if(j != this->_types.end())
+								// Устанавливаем новое значение типа возвращаемого значения
+								j->second = i->second;
+							// Если возращаемое значение ещё не установлено
+							else this->_types.emplace(idw, i->second);
+						}	
+					}{
+						// Выполняем поиск указанной функции в переданном хранилище
+						auto i = storage._functions.find(idw);
+						// Если функция в хранилище получена
+						if(i != storage._functions.end()){
+							// Выполняем поиск существующей функции обратного вызова
+							auto j = this->_functions.find(idw);
+							// Если функция такая уже существует
+							if(j != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								j->second = i->second;
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(idw, i->second);
+						}
+					}
+				}
+			}
+			/**
+			 * set Метод установки функции из одного хранилища в текущее
+			 * @param name    название копируемой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void set(const string & name, const FN & storage) noexcept {
+				// Если данные переданы правильно
+				if(!name.empty() && !storage._functions.empty())
+					// Выполняем установку функции обратного вызова
+					this->set(this->_idw.id(name), storage);
+			}
+			/**
+			 * set Метод установки функции из одного хранилища в текущее
+			 * @param idw     идентификатор копируемой функции
+			 * @param dest    новый идентификатор полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void set(const uint64_t idw, const uint64_t dest, const FN & storage) noexcept {
+				// Если указанная функция существует
+				if(!storage._functions.empty() && storage.is(idw)){
+					{
+						// Выполняем поиск указанного возвращаемого значения в переданном хранилище
+						auto i = storage._types.find(idw);
+						// Если возвращаемое значение в хранилище получено
+						if(i != storage._types.end()){
+							// Выполняем поиск типа возвращаемого значения
+							auto j = this->_types.find(dest);
+							// Если возвращаемое значение получено
+							if(j != this->_types.end())
+								// Устанавливаем новое значение типа возвращаемого значения
+								j->second = i->second;
+							// Если возращаемое значение ещё не установлено
+							else this->_types.emplace(dest, i->second);
+						}	
+					}{
+						// Выполняем поиск указанной функции в переданном хранилище
+						auto i = storage._functions.find(idw);
+						// Если функция в хранилище получена
+						if(i != storage._functions.end()){
+							// Выполняем поиск существующей функции обратного вызова
+							auto j = this->_functions.find(dest);
+							// Если функция такая уже существует
+							if(j != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								j->second = i->second;
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(dest, i->second);
+						}
+					}
+				}
+			}
+			/**
+			 * set Метод установки функции из одного хранилища в текущее
+			 * @param name    название копируемой функции
+			 * @param dest    новое название полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void set(const string & name, const string & dest, const FN & storage) noexcept {
+				// Если данные переданы правильно
+				if(!name.empty() && !dest.empty() && !storage._functions.empty())
+					// Выполняем установку функции обратного вызова
+					this->set(this->_idw.id(name), this->_idw.id(dest), storage);
 			}
 		public:
 			/**
@@ -326,14 +458,25 @@ namespace awh {
 					 * Выполняем отлов ошибок
 					 */
 					try {
-						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
-						// Если функция такая уже существует
-						if(it != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+						{
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(idw);
+							// Если тип данных получен
+							if(it != this->_types.end())
+								// Выполняем установку типа возвращаемого значения
+								it->second = this->type <typename function <A>::result_type> ();
+							// Выполняем добавление полученного типа возвращаемого значения
+							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
+						}{
+							// Выполняем поиск существующей функции обратного вызова
+							auto it = this->_functions.find(idw);
+							// Если функция такая уже существует
+							if(it != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+						}
 					/**
 					 * Если возникает ошибка
 					 */
@@ -362,14 +505,25 @@ namespace awh {
 					try {
 						// Получаем идентификатор обратного вызова
 						const uint64_t idw = this->_idw.id(name);
-						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
-						// Если функция такая уже существует
-						if(it != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+						{
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(idw);
+							// Если тип данных получен
+							if(it != this->_types.end())
+								// Выполняем установку типа возвращаемого значения
+								it->second = this->type <typename function <A>::result_type> ();
+							// Выполняем добавление полученного типа возвращаемого значения
+							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
+						}{
+							// Выполняем поиск существующей функции обратного вызова
+							auto it = this->_functions.find(idw);
+							// Если функция такая уже существует
+							if(it != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+						}
 					/**
 					 * Если возникает ошибка
 					 */
@@ -398,14 +552,25 @@ namespace awh {
 					 * Выполняем отлов ошибок
 					 */
 					try {
-						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
-						// Если функция такая уже существует
-						if(it != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+						{
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(idw);
+							// Если тип данных получен
+							if(it != this->_types.end())
+								// Выполняем установку типа возвращаемого значения
+								it->second = this->type <typename function <A>::result_type> ();
+							// Выполняем добавление полученного типа возвращаемого значения
+							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
+						}{
+							// Выполняем поиск существующей функции обратного вызова
+							auto it = this->_functions.find(idw);
+							// Если функция такая уже существует
+							if(it != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+						}
 					/**
 					 * Если возникает ошибка
 					 */
@@ -436,14 +601,25 @@ namespace awh {
 					try {
 						// Получаем идентификатор обратного вызова
 						const uint64_t idw = this->_idw.id(name);
-						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
-						// Если функция такая уже существует
-						if(it != this->_functions.end())
-							// Устанавливаем новую функцию обратного вызова
-							it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
-						// Если функция ещё не существует, создаём новую функцию
-						else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+						{
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(idw);
+							// Если тип данных получен
+							if(it != this->_types.end())
+								// Выполняем установку типа возвращаемого значения
+								it->second = this->type <typename function <A>::result_type> ();
+							// Выполняем добавление полученного типа возвращаемого значения
+							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
+						}{
+							// Выполняем поиск существующей функции обратного вызова
+							auto it = this->_functions.find(idw);
+							// Если функция такая уже существует
+							if(it != this->_functions.end())
+								// Устанавливаем новую функцию обратного вызова
+								it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+							// Если функция ещё не существует, создаём новую функцию
+							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+						}
 					/**
 					 * Если возникает ошибка
 					 */
@@ -670,8 +846,16 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
-							// Выполняем функцию обратного вызова
-							static_cast <const BasicFunction <void (void)> &> (* item.second).fn();
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(item.first);
+							// Если тип данных получен
+							if(it != this->_types.end()){
+								// Если функция не возвращает значение
+								if(it->second == type_t::TYPE_VOID)
+									// Выполняем функцию обратного вызова
+									static_cast <const BasicFunction <void (void)> &> (* item.second).fn();
+							// Выводим сообщение, что функция не найдена в хранилище
+							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -701,8 +885,16 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
-							// Выполняем функцию обратного вызова
-							result.push_back(static_cast <const BasicFunction <A (void)> &> (* item.second).fn());
+							// Выполняем поиск типа данных функции
+							auto it = this->_types.find(item.first);
+							// Если тип данных получен
+							if(it != this->_types.end()){
+								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
+								if((it->second == this->type <A> ()) && (it->second != type_t::TYPE_VOID))
+									// Выполняем функцию обратного вызова
+									result.push_back(static_cast <const BasicFunction <A (void)> &> (* item.second).fn());
+							// Выводим сообщение, что функция не найдена в хранилище
+							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -784,15 +976,25 @@ namespace awh {
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
-					auto it = this->_functions.find(idw);
+					auto i = this->_functions.find(idw);
 					// Если запрашиваемая функция найдена
-					if(it != this->_functions.end()){
+					if(i != this->_functions.end()){
 						/**
 						 * Выполняем отлов ошибок
 						 */
 						try {
-							// Выполняем функцию обратного вызова
-							return static_cast <const BasicFunction <A (void)> &> (* it->second).fn();
+							// Выполняем поиск типа данных функции
+							auto j = this->_types.find(i->first);
+							// Если тип данных получен
+							if(j != this->_types.end()){
+								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
+								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID))
+									// Выполняем функцию обратного вызова
+									return static_cast <const BasicFunction <A (void)> &> (* i->second).fn();
+								// Выводим сообщение об ошибке
+								else this->_log->print("Function does not match the specified call parameters", log_t::flag_t::WARNING);
+							// Выводим сообщение, что функция не найдена в хранилище
+							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -820,15 +1022,25 @@ namespace awh {
 				// Если название функции передано
 				if(!name.empty() && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
-					auto it = this->_functions.find(idw);
+					auto i = this->_functions.find(idw);
 					// Если запрашиваемая функция найдена
-					if(it != this->_functions.end()){
+					if(i != this->_functions.end()){
 						/**
 						 * Выполняем отлов ошибок
 						 */
 						try {
-							// Выполняем функцию обратного вызова
-							return static_cast <const BasicFunction <A (void)> &> (* it->second).fn();
+							// Выполняем поиск типа данных функции
+							auto j = this->_types.find(i->first);
+							// Если тип данных получен
+							if(j != this->_types.end()){
+								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
+								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID))
+									// Выполняем функцию обратного вызова
+									return static_cast <const BasicFunction <A (void)> &> (* i->second).fn();
+								// Выводим сообщение об ошибке
+								else this->_log->print("\"%s\" function does not match the specified call parameters", log_t::flag_t::WARNING, name.c_str());
+							// Выводим сообщение, что функция не найдена в хранилище
+							} else this->_log->print("Requested \"%s\" function was not found in the storage", log_t::flag_t::CRITICAL, name.c_str());
 						/**
 						 * Если возникает ошибка
 						 */
@@ -849,9 +1061,13 @@ namespace awh {
 			 */
 			FN & operator = (const FN & storage) noexcept {
 				// Если функции обратного вызова установлены
-				if(!storage._functions.empty()){
+				if(!storage._functions.empty() && !storage._types.empty()){
 					// Выполняем очистку списка функций обратного вызова
 					this->clear();
+					// Выполняем перебор всех параметров возвращаемых функциями
+					for(auto & item : storage._types)
+						// Устанавливаем возвращаемое значение
+						this->_types.emplace(item.first, item.second);
 					// Выполняем перебор всех функций обратного вызова в хранилище
 					for(auto & item : storage._functions)
 						// Устанавливаем новую функцию обратного вызова
