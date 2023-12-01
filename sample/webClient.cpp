@@ -225,10 +225,10 @@ int main(int argc, char * argv[]){
 	});
 	*/
 	// Устанавливаем тип авторизации прокси-сервера
-	awh.authTypeProxy(auth_t::type_t::BASIC);
+	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	awh.authType(auth_t::type_t::BASIC);
+	// awh.authType(auth_t::type_t::BASIC);
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	/**
 	 * Вариант с мультизапросами

@@ -302,7 +302,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем SSL сертификаты сервера
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
-	ws.user("user", "password");
+	// ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
@@ -322,11 +322,11 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
-	ws.proxy("https://user:password@anyks.net:2222");
+	// ws.proxy("https://user:password@anyks.net:2222");
 	// ws.proxy("socks5://user:password@anyks.net:2222");
 	
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.authTypeProxy(awh::auth_t::type_t::BASIC);
+	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
