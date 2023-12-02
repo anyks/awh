@@ -117,7 +117,7 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	proxy.clusterSize();
 	// Устанавливаем таймаут ожидания получения сообщений
-	// proxy.waitTimeDetect(60, 60);
+	// proxy.waitTimeDetect(10, 1);
 	// Выполняем инициализацию Websocket сервера
 	// proxy.init(2222, "anyks.net");
 	proxy.init(2222, "127.0.0.1");

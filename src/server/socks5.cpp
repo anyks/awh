@@ -166,6 +166,8 @@ void awh::server::ProxySocks5::connectServerCallback(const uint64_t bid, const u
 						options->scheme.url.domain = this->_host;
 					break;
 				}
+				// Устанавливаем хост сервера
+				options->scheme.url.host = this->_host;
 				// Устанавливаем порт сервера
 				options->scheme.url.port = this->_port;
 			}
@@ -728,7 +730,7 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(this->_log);
 		// Устанавливаем функцию активации ядра сервера
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&proxy_socks5_t::eventsCallback, this, _1, _2));
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&proxy_socks5_t::eventsCallback, this, _1, _2));
 		// Выполняем установку функций обратного вызова для Socks5-сервера
 		this->_core.server.callback(std::move(callback));
 	}

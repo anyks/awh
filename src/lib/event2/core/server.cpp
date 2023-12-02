@@ -1080,6 +1080,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						left = (size - offset);
 						// Определяем размер отправляемых данных
 						actual = (left >= max ? max : left);
+						// Выполняем установку таймаута ожидания записи в сокет
+						adj->_ectx.timeout(adj->_timeouts.write * 1000, engine_t::method_t::WRITE);
 						// Выполняем отправку сообщения клиенту
 						bytes = adj->_ectx.write(buffer + offset, actual);
 						// Если данные небыли записаны

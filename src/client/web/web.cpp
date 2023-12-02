@@ -794,7 +794,7 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(this->_log);
 		// Устанавливаем функцию активации ядра клиента
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::eventsCallback, this, _1, _2));
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::eventsCallback, this, _1, _2));
 		// Выполняем установку функций обратного вызова для HTTP-клиента
 		const_cast <client::core_t *> (this->_core)->callback(std::move(callback));
 	}

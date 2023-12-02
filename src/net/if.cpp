@@ -697,7 +697,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 						// Выполняем пропуск
 						continue;
 					// Если сетевой интерфейс получен
-					if(sdl->sdl_alen > 0x00){
+					if(sdl->sdl_alen > 0x0){
 						// Выделяем память для MAC адреса
 						char hardware[18];
 						// Заполняем нуляем наши буферы
@@ -768,7 +768,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 						// Выполняем пропуск
 						continue;
 					// Если сетевой интерфейс получен
-					if(sdl->sdl_alen > 0x00){
+					if(sdl->sdl_alen > 0x0){
 						// Выделяем память для MAC адреса
 						char hardware[18];
 						// Заполняем нуляем наши буферы
