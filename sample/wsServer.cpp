@@ -71,13 +71,10 @@ class Executor {
 		}
 		/**
 		 * active Метод событий сервера
-		 * @param sid  идентификатор потока
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode флаг события
 		 */
-		void active(const int32_t sid, const uint64_t bid, const server::web_t::mode_t mode){
-			// Блокируем неиспользуемую переменную
-			(void) sid;
+		void active(const uint64_t bid, const server::web_t::mode_t mode){
 			// Определяем флаг события сервера
 			switch(static_cast <uint8_t> (mode)){
 				// Если клиент подключился к серверу
