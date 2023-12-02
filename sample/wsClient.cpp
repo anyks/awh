@@ -287,8 +287,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -302,7 +302,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем SSL сертификаты сервера
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
-	// ws.user("user", "password");
+	ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
@@ -322,6 +322,7 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
+	// ws.proxy("http://user:password@anyks.net:2222");
 	// ws.proxy("https://user:password@anyks.net:2222");
 	// ws.proxy("socks5://user:password@anyks.net:2222");
 	
@@ -331,11 +332,11 @@ int main(int argc, char * argv[]){
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию Websocket клиента
-	ws.init("wss://stream.binance.com:9443/stream");
+	// ws.init("wss://stream.binance.com:9443/stream");
 	// ws.init("wss://127.0.0.1:2222", {awh::http_t::compress_t::DEFLATE});
-	// ws.init("wss://anyks.net:2222", {awh::http_t::compress_t::DEFLATE});
+	ws.init("wss://anyks.net:2222", {awh::http_t::compress_t::DEFLATE});
 	// ws.init("wss://92.63.110.56:2222", {awh::http_t::compress_t::DEFLATE});
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
@@ -347,7 +348,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы
-	// ws.subprotocols({"test2", "test8", "test9"});
+	ws.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем поддерживаемые расширения
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов

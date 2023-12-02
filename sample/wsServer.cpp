@@ -201,7 +201,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Активируем максимальное количество рабочих процессов
-	core.clusterSize();
+	// core.clusterSize();
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
