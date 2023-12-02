@@ -201,7 +201,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Активируем максимальное количество рабочих процессов
-	// core.clusterSize();
+	core.clusterSize();
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
@@ -242,7 +242,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	callback.set <void (const int32_t, const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, _3));
+	callback.set <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
