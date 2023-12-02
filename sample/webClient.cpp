@@ -185,7 +185,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем пароль шифрования
 	// awh.encryption(string{"PASS"});
 	// Устанавливаем логин и пароль пользователя
-	awh.user("user", "password");
+	// awh.user("user", "password");
 	// Активируем получение PUSH уведомлений
 	awh.settings({
 		{awh::http2_t::settings_t::ENABLE_PUSH, 1},
