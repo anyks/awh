@@ -204,28 +204,16 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 	#endif
 }
 /**
- * on Метод установки функции обратного вызова при подключении/отключении
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::client::Sample::on(function <void (const mode_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const mode_t)> ("active", callback);
-}
-/**
- * setMessageCallback Метод установки функции обратного вызова при получении сообщения
- * @param callback функция обратного вызова
- */
-void awh::client::Sample::on(function <void (const vector <char> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const vector <char> &)> ("message", callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::client::Sample::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
+void awh::client::Sample::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова при подключении/отключении
+	this->_callback.set("active", callback);
+	// Выполняем установку функции обратного вызова при получения событий запуска и остановки сетевого ядра
+	this->_callback.set("events", callback);
+	// Выполняем установку функции обратного вызова при получении сообщения
+	this->_callback.set("message", callback);
 }
 /**
  * response Метод отправки сообщения брокеру
@@ -324,8 +312,14 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
  _callback(log), _scheme(fmk, log), _bid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
-	// Устанавливаем функцию активации ядра клиента
-	const_cast <client::core_t *> (this->_core)->on(std::bind(&sample_t::eventsCallback, this, _1, _2));
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Устанавливаем функцию активации ядра сервера
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&sample_t::eventsCallback, this, _1, _2));
+		// Выполняем установку функций обратного вызова для клиента
+		const_cast <client::core_t *> (this->_core)->callback(std::move(callback));
+	}
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения

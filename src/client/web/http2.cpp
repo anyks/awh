@@ -51,10 +51,6 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		this->_ws2._scheme.url = this->_scheme.url;
 		// Выполняем установку сетевого ядра
 		this->_ws2._core = dynamic_cast <client::core_t *> (core);
-		// Если функция обратного вызова, для вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callback.is("chunks"))
-			// Выполняем установку функции обратного вызова
-			this->_ws2._callback.set <void (const int32_t, const vector <char> &)> ("chunks", this->_callback.get <void (const int32_t, const vector <char> &)> ("chunks"));
 		// Если многопоточность активированна
 		if(this->_threads > -1)
 			// Выполняем инициализацию нового тредпула
@@ -129,8 +125,8 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 			if(core->proto(bid) == engine_t::proto_t::HTTP2){
 				// Если прочитать данные фрейма не удалось, выходим из функции
 				if(!this->_http2.frame((const uint8_t *) buffer, size)){
-					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-					this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), dynamic_cast <client::core_t *> (core), bid));
+					// Выполняем закрытие подключения
+					web2_t::close(bid, dynamic_cast <client::core_t *> (core));
 					// Выходим из функции
 					return;
 				}
@@ -198,7 +194,7 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 			// Если функция обратного вызова на перехват входящих чанков установлена
 			if(this->_callback.is("chunking"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const vector <char> &, const awh::http_t *)> ("chunking", vector <char> (buffer, buffer + size), &it->second->http);
+				this->_callback.call <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", it->second->id, vector <char> (buffer, buffer + size), &it->second->http);
 			// Если функция перехвата полученных чанков не установлена
 			else {
 				// Определяем протокол клиента
@@ -210,7 +206,7 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(this->_callback.is("chunks"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const vector <char> &)> ("chunks", sid, vector <char> (buffer, buffer + size));
+							this->_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", sid, it->second->id, vector <char> (buffer, buffer + size));
 					} break;
 					// Если агент является клиентом WebSocket
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -295,11 +291,11 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								// Если функция обратного вызова на вывода запроса клиента к серверу
 								if(this->_callback.is("request"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", sid, query.method, query.url);
+									this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", sid, it->second->id, query.method, query.url);
 								// Если функция обратного вызова на вывода push-уведомления
 								if(this->_callback.is("push"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const int32_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", sid, query.method, query.url, it->second->http.headers());
+									this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", sid, it->second->id, query.method, query.url, it->second->http.headers());
 							}
 						} break;
 						// Если мы получили входящие данные тела ответа
@@ -509,8 +505,8 @@ int awh::client::Http2::closedSignal(const int32_t sid, const awh::http2_t::erro
 	if(it != this->_workers.end()){
 		// Если флаг инициализации сессии HTTP/2 установлен
 		if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE) && this->_http2.is())
-			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+			// Выполняем закрытие подключения
+			web2_t::close(this->_bid, const_cast <client::core_t *> (this->_core));
 		// Если функция обратного вызова активности потока установлена
 		if(this->_callback.is("stream"))
 			// Выполняем функцию обратного вызова
@@ -916,8 +912,8 @@ void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 					if(!this->ping())
-						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+						// Выполняем закрытие подключения
+						web2_t::close(this->_bid, const_cast <client::core_t *> (this->_core));
 				} break;
 				// Если агент является клиентом WebSocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -1048,8 +1044,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								// Завершаем работу
 								return status_t::SKIP;
 							}
-							// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-							this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+							// Выполняем закрытие подключения
+							web2_t::close(bid, core);
 							// Завершаем работу
 							return status_t::SKIP;
 						// Если URL-адрес запроса не получен
@@ -1063,8 +1059,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 								// Завершаем работу
 								return status_t::SKIP;
 							}
-							// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-							this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+							// Выполняем закрытие подключения
+							web2_t::close(bid, core);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -1081,8 +1077,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					it->second->callback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second->id, response.code, response.message, it->second->http.body());
 				// Устанавливаем размер стопбайт
 				if(!it->second->http.is(http_t::state_t::ALIVE)){
-					// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-					this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+					// Выполняем закрытие подключения
+					web2_t::close(bid, core);
 					// Выполняем завершение работы
 					return status_t::STOP;
 				}
@@ -1109,8 +1105,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		if(!it->second->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
 			it->second->callback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second->id, response.code, response.message, it->second->http.body());
-		// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-		this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
+		// Выполняем закрытие подключения
+		web2_t::close(bid, core);
 	}
 	// Выполняем завершение работы
 	return status_t::STOP;
@@ -1194,8 +1190,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						this->_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
 					// Если флаг инициализации сессии HTTP/2 установлен
 					if(this->_http2.is())
-						// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-						this->_http2.on((function <void (void)>) std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), this->_bid));
+						// Выполняем закрытие подключения
+						web2_t::close(this->_bid, const_cast <client::core_t *> (this->_core));
 					// Выполняем отключение в обычном режиме
 					else const_cast <client::core_t *> (this->_core)->close(this->_bid);
 					// Выходим из функции
@@ -1475,10 +1471,15 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Устанавливаем параметры шифрования для HTTP-клиента
 						ret.first->second->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}
-					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
-						// Устанавливаем функцию обратного вызова для вывода ошибок
-						ret.first->second->http.on(std::bind(&http2_t::errors, this, _1, _2, _3, _4));
+					// Если функция обратного вызова на событие получения ошибок установлена
+					if(this->_callback.is("error")){
+						// Создаём локальный контейнер функций обратного вызова
+						fn_t callback(this->_log);
+						// Устанавливаем функцию обработки вызова на событие получения ошибок
+						callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
+						// Выполняем установку функции обратного вызова
+						ret.first->second->http.callback(std::move(callback));
+					}
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
@@ -1699,220 +1700,90 @@ void awh::client::Http2::pause() noexcept {
 	}
 }
 /**
- * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::client::Http2::on(function <void (const mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибок
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const vector <char> &, const bool)> callback) noexcept {
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-	// Устанавливаем функцию обратного вызова для вывода ошибок
-	this->_http.on(std::bind(&http2_t::errors, this, _1, _2, _3, _4));
-}
-/**
- * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <bool (const char *, const size_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова завершения запроса
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int32_t, const int32_t)> ("redirect", callback);
-}
-/**
- * on Метод установки функция обратного вызова активности потока
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const agent_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при завершении запроса
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const direct_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении источника подключения
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const vector <string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении альтернативных сервисов
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного чанка бинарных данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного заголовка с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	web2_t::on(callback);
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(callback);
-	// Выполняем установку функции обратного вызова для HTTP/1.1 клиента
-	this->_http1.on(callback);
-}
-/**
- * on Метод установки функции вывода запроса клиента к серверу
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", callback);
-}
-/**
- * on Метод установки функции обратного вызова на вывода push-уведомления
- * @param callback функция обратного вызова
- */
-void awh::client::Http2::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", callback);
+void awh::client::Http2::callback(const fn_t & callback) noexcept {
+	// Выполняем добавление функций обратного вызова в основноной модуль
+	web2_t::callback(callback);
+	// Выполняем установку функции обратного вызова выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
+	this->_callback.set("redirect", callback);
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Выполняем установку функции обратного вызова для вывода бинарных данных в сыром виде полученных с сервера
+		callback.set("raw", this->_callback);
+		// Выполняем установку функции обратного вызова при завершении запроса
+		callback.set("end", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибки
+		callback.set("error", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного тела данных с сервера
+		callback.set("entity", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного списка разрешённых ресурсов для подключения
+		callback.set("origin", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного альтернативного сервиса от сервера
+		callback.set("altsvc", this->_callback);
+		// Выполняем установку функции обратного вызова активности потока
+		callback.set("stream", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного чанка бинарных данных с сервера
+		callback.set("chunks", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного заголовка с сервера
+		callback.set("header", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученных заголовков с сервера
+		callback.set("headers", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
+		callback.set("wserror", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
+		callback.set("message", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
+		callback.set("response", this->_callback);
+		// Выполняем установку функции обратного вызова для перехвата полученных чанков
+		callback.set("chunking", this->_callback);
+		// Выполняем установку функции обратного вызова при выполнении рукопожатия
+		callback.set("handshake", this->_callback);
+		// Если функции обратного вызова установлены
+		if(!callback.empty())
+			// Выполняем установку функций обратного вызова для WebSocket-клиента
+			this->_ws2.callback(std::move(callback));
+	}{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Выполняем установку функции обратного вызова для вывода бинарных данных в сыром виде полученных с сервера
+		callback.set("raw", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибки
+		callback.set("error", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного тела данных с сервера
+		callback.set("entity", this->_callback);
+		// Выполняем установку функции обратного вызова активности потока
+		callback.set("stream", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученного чанка бинарных данных с сервера
+		callback.set("chunks", this->_callback);
+		// Выполняем установку функции обратного вызова длявывода полученного заголовка с сервера
+		callback.set("header", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода полученных заголовков с сервера
+		callback.set("headers", this->_callback);
+		// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
+		callback.set("response", this->_callback);
+		// Выполняем установку функции обратного вызова для перехвата полученных чанков
+		callback.set("chunking", this->_callback);
+		// Выполняем установку функции обратного вызова при выполнении рукопожатия
+		callback.set("handshake", this->_callback);
+		// Если функции обратного вызова установлены
+		if(!callback.empty())
+			// Выполняем установку функции обратного вызова для HTTP-клиента
+			this->_http1.callback(std::move(callback));
+	}{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Если функция обратного вызова на событие получения ошибок установлена
+		if(this->_callback.is("error"))
+			// Устанавливаем функцию обработки вызова на событие получения ошибок
+			callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
+		// Если функции обратного вызова установлены
+		if(!callback.empty())
+			// Выполняем установку функции обратного вызова для парсера HTTP
+			this->_http.callback(std::move(callback));
+	}
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -2199,12 +2070,23 @@ void awh::client::Http2::encryption(const string & pass, const string & salt, co
  */
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
-	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
-	this->_http1.on((function <void (const int32_t, const uint64_t)>) std::bind(&http2_t::result, this, _1, _2));
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2, _3));
-	// Выполняем установку функции обратного вызова перехвата события редиректа
-	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(log);
+		// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
+		callback.set <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
+		// Выполняем установку функции обратного вызова для HTTP-клиента
+		this->_http1.callback(std::move(callback));
+	}{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(log);
+		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		callback.set <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
+		// Выполняем установку функции обратного вызова перехвата события редиректа
+		callback.set <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		this->_ws2.callback(std::move(callback));
+	}
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }
@@ -2216,12 +2098,23 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
-	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
-	this->_http1.on((function <void (const int32_t, const uint64_t)>) std::bind(&http2_t::result, this, _1, _2));
-	// Выполняем установку функции обратного вызова для WebSocket-клиента
-	this->_ws2.on(std::bind(&http2_t::end, this, _1, _2, _3));
-	// Выполняем установку функции обратного вызова перехвата события редиректа
-	this->_ws2.on((function <void (const int32_t, const int32_t)>) std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(log);
+		// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
+		callback.set <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
+		// Выполняем установку функции обратного вызова для HTTP-клиента
+		this->_http1.callback(std::move(callback));
+	}{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(log);
+		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		callback.set <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
+		// Выполняем установку функции обратного вызова перехвата события редиректа
+		callback.set <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		this->_ws2.callback(std::move(callback));
+	}
 	// Устанавливаем функцию записи данных
 	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
 }

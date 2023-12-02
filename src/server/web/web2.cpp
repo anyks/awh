@@ -51,24 +51,28 @@ void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 			if(core->proto(bid) != engine_t::proto_t::HTTP2)
 				// Выходим из функции
 				return;
-			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
+			// Создаём локальный контейнер функций обратного вызова
+			fn_t callback(this->_log);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			ret.first->second->on((function <int (const int32_t)>) std::bind(&web2_t::beginSignal, this, _1, bid));
-			// Выполняем установку функции обратного вызова при отправки сообщения клиенту
-			ret.first->second->on((function <void (const uint8_t *, const size_t)>) std::bind(&web2_t::sendSignal, this, bid, _1, _2));
+			callback.set <int (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1, bid));
+			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
+			callback.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			ret.first->second->on((function <int (const int32_t, const http2_t::error_t)>) std::bind(&web2_t::closedSignal, this, _1, bid, _2));
+			callback.set <int (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			ret.first->second->on((function <int (const int32_t, const uint8_t *, const size_t)>) std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
+			callback.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			ret.first->second->on((function <int (const int32_t, const string &, const string &)>) std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
-			// Выполняем установку функции обратного вызова получения фрейма HTTP/2
-			ret.first->second->on((function <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)>) std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			callback.set <int (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
+			// Выполняем установку функции обратного вызова получения фрейма
+			callback.set <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
-				// Выполняем установку функции обратного вызова на событие получения ошибки
-				ret.first->second->on(std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
+				// Устанавливаем функцию обработки вызова на событие получения ошибок
+				callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
+			// Выполняем создание нового объекта сессии HTTP/2
+			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
+			// Выполняем установку функции обратного вызова
+			ret.first->second->callback(std::move(callback));
 			// Если инициализация модуля NgHttp2 не выполнена
 			if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
 				// Выполняем удаление созданного ранее объекта
@@ -136,6 +140,28 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * close Метод выполнения закрытия подключения
+ * @param bid  идентификатор брокера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Web2::close(const uint64_t bid, server::core_t * core) noexcept {
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end()){
+			// Создаём локальный контейнер функций обратного вызова
+			fn_t callback(this->_log);
+			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+			callback.set <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), core, bid));
+			// Выполняем установку функции обратного вызова
+			it->second->callback(std::move(callback));
+		// Завершаем работу
+		} else core->close(bid);
+	}
 }
 /**
  * reject Метод выполнения сброса подключения

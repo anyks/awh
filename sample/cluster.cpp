@@ -127,12 +127,16 @@ int main(int argc, char * argv[]){
 	core.size();
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.autoRestart(true);
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.on((function <void (const awh::core_t::status_t, core_t *)>) std::bind(&Executor::run, &executor, _1, _2));
+	callback.set <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении событий
-	core.on((function <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) std::bind(&Executor::events, &executor, _1, _2, _3, _4));
+	callback.set <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки входящих сообщений
-	core.on((function <void (const cluster_t::family_t, const pid_t, const char *, const size_t, cluster::core_t *)>) std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	callback.set <void (const cluster_t::family_t, const pid_t, const char *, const size_t, cluster::core_t *)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	// Выполняем установку функций обратного вызова
+	core.callback(std::move(callback));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

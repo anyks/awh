@@ -56,142 +56,6 @@ void awh::client::WebSocket::init(const string & dest, const vector <awh::http_t
 	this->_ws.init(dest, compressors);
 }
 /**
- * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const web_t::mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибок
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const vector <char> &, const bool)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного чанка бинарных данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова активности потока
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова при полном получении запроса клиента
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при завершении запроса
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении источника подключения
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const vector <string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении альтернативных сервисов
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного заголовка с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::WebSocket::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_ws.on(callback);
-}
-/**
  * open Метод открытия подключения
  */
 void awh::client::WebSocket::open() noexcept {
@@ -211,6 +75,14 @@ void awh::client::WebSocket::stop() noexcept {
 void awh::client::WebSocket::start() noexcept {
 	// Выполняем запуск работы модуля
 	this->_ws.start();
+}
+/**
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
+ */
+void awh::client::WebSocket::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функций обратного вызова
+	this->_ws.callback(callback);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

@@ -155,14 +155,18 @@ int main(int argc, char * argv[]){
 	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Устанавливаем функцию извлечения пароля
-	proxy.on((function <string (const uint64_t, const string &)>) std::bind(&Proxy::password, &executor, _1, _2));
+	callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Proxy::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	proxy.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&Proxy::auth, &executor, _1, _2, _3));
+	callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	proxy.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on((function <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)>) std::bind(&Proxy::active, &executor, _1, _2, _3));
+	callback.set <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2, _3));
+	// Выполняем установку функций обратного вызова
+	proxy.callback(std::move(callback));
 	// Выполняем запуск Proxy-сервер
 	proxy.start();
 	// Выводим результат

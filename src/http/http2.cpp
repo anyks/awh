@@ -882,11 +882,11 @@ void awh::Http2::completed(const event_t event) noexcept {
 		// Выполняем сброс активного события
 		this->_event = event_t::NONE;
 		// Если функция обратного вызова на тригер установлена
-		if(this->_callback.is("trigger")){
+		if(this->_callback.is(1)){
 			// Выполняем функцию триггера
-			this->_callback.bind("trigger");
+			this->_callback.bind(1);
 			// Выполняем удаление функции триггера
-			this->_callback.erase("trigger");
+			this->_callback.erase(1);
 		}
 		// Если есть требование закрыть подключение
 		if(this->_close)
@@ -1856,6 +1856,43 @@ bool awh::Http2::is() const noexcept {
 	return (this->_session != nullptr);
 }
 /**
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
+ */
+void awh::Http2::callback(const fn_t & callback) noexcept {
+	// Если установлена триггерная функция
+	if(callback.is(1)){
+		// Если активное событие не установлено
+		if(this->_event == event_t::NONE)
+			// Выполняем функцию обратного вызова
+			callback.bind(1);
+		// Устанавливаем функцию обратного вызова
+		else this->_callback.set(1, callback);
+	// Если триггерная функция не установлена
+	} else {
+		// Устанавливаем функцию обратного вызова при отправки сообщения
+		this->_callback.set("send", callback);
+		// Устанавливаем функцию обратного вызова при закрытии потока
+		this->_callback.set("close", callback);
+		// Устанавливаем функцию обратного вызова начала открытии потока
+		this->_callback.set("begin", callback);
+		// Устанавливаем функцию обратного вызова при получении чанка
+		this->_callback.set("chunk", callback);
+		// Устанавливаем функцию обратного вызова на событие получения ошибки
+		this->_callback.set("error", callback);
+		// Устанавливаем функцию обратного вызова при обмене фреймами
+		this->_callback.set("frame", callback);
+		// Устанавливаем функцию обратного вызова при создании фрейма
+		this->_callback.set("create", callback);
+		// Устанавливаем функцию обратного вызова при получении данных заголовка
+		this->_callback.set("header", callback);
+		// Устанавливаем функцию обратного вызова при получении источника подключения
+		this->_callback.set("origin", callback);
+		// Устанавливаем функцию обратного вызова при получении альтернативных сервисов
+		this->_callback.set("altsvc", callback);
+	}
+}
+/**
  * origin Метод установки списка разрешённых источников
  * @param origins список разрешённых источников
  */
@@ -2100,101 +2137,6 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * on Метод установки функции обратного вызова триггера выполнения операции
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <void (void)> callback) noexcept {
-	// Если функция обратного вызова передана
-	if(callback != nullptr){
-		// Если активное событие не установлено
-		if(this->_event == event_t::NONE)
-			// Выполняем функцию обратного вызова
-			callback();
-		// Устанавливаем функцию обратного вызова
-		else this->_callback.set <void (void)> ("trigger", callback);
-	}
-}
-/**
- * on Метод установки функции обратного вызова начала открытии потока
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t)> ("begin", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении источника подключения
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <void (const vector <string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const vector <string> &)> ("origin", callback);
-}
-/**
- * on Метод установки функции обратного вызова при создании фрейма
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const frame_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const frame_t)> ("create", callback);
-}
-/**
- * on Метод установки функции обратного вызова при закрытии потока
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const error_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const error_t)> ("close", callback);
-}
-/**
- * on Метод установки функции обратного вызова при отправки сообщения
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <void (const uint8_t *, const size_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint8_t *, const size_t)> ("send", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении альтернативных сервисов
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <void (const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const string &, const string &)> ("altsvc", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении чанка
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении данных заголовка
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const string &, const string &)> ("header", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
-}
-/**
- * on Метод установки функции обратного вызова при обмене фреймами
- * @param callback функция обратного вызова
- */
-void awh::Http2::on(function <int (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <int (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> ("frame", callback);
 }
 /**
  * Оператор [=] зануления фрейма Http2

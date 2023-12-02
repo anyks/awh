@@ -194,44 +194,18 @@ void awh::cluster::Core::close() noexcept {
 	this->_cluster.close(0);
 }
 /**
- * on Метод установки функции обратного вызова при краше приложения
- * @param callback функция обратного вызова для установки
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::cluster::Core::on(function <void (const int)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при запуске/остановки работы модуля
- * @param callback функция обратного вызова для установки
- */
-void awh::cluster::Core::on(function <void (const status_t, awh::core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::cluster::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении события
- * @param callback функция обратного вызова для установки
- */
-void awh::cluster::Core::on(function <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_callback.set <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)>("events", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении сообщения
- * @param callback функция обратного вызова для установки
- */
-void awh::cluster::Core::on(function <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_callback.set <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", callback);
+void awh::cluster::Core::callback(const fn_t & callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функций обратного вызова
+	awh::core_t::callback(callback);
+	// Выполняем установку функции обратного вызова при получении события
+	this->_callback.set("events", callback);
+	// Выполняем установку функции обратного вызова при получении сообщения
+	this->_callback.set("message", callback);
 }
 /**
  * async Метод установки флага асинхронного режима работы

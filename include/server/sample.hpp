@@ -175,25 +175,10 @@ namespace awh {
 				void init(const u_int port, const string & host = "") noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param callback функция обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void on(function <void (const uint64_t, const mode_t)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения сообщений
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const vector <char> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие активации брокера на сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
+				void callback(const fn_t & callback) noexcept;
 			public:
 				/**
 				 * response Метод отправки сообщения брокеру

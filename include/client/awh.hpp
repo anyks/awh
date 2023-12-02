@@ -272,123 +272,6 @@ namespace awh {
 				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const web_t::mode_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения ошибок
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const u_int, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения сообщений
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <char> &, const bool)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения ошибки
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const vector <char> &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const char *, const size_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функция обратного вызова завершения запроса
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const int32_t)> callback) noexcept;
-				/**
-				 * on Метод установки функция обратного вызова активности потока
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
-				/**
-				 * on Метод установки функция обратного вызова при выполнении рукопожатия
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова при завершении запроса
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова при получении источника подключения
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const vector <string> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова при получении альтернативных сервисов
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const string &, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного заголовка с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного тела данных с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученных заголовков с сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода запроса клиента к серверу
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на вывода push-уведомления
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
-			public:
-				/**
 				 * open Метод открытия подключения
 				 */
 				void open() noexcept;
@@ -401,6 +284,12 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				void start() noexcept;
+			public:
+				/**
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const fn_t & callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

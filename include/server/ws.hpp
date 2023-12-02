@@ -75,98 +75,10 @@ namespace awh {
 				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param callback функция обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void on(function <void (const uint64_t, const web_t::mode_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова для извлечения пароля
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <string (const uint64_t, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова для обработки авторизации
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова для перехвата полученных чанков
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие активации брокера на сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения ошибок
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения сообщений
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const vector <char> &, const bool)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения ошибки
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функция обратного вызова активности потока
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept;
-				/**
-				 * on Метод установки функция обратного вызова при выполнении рукопожатия
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова при завершении запроса
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода полученного чанка бинарных данных с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const vector <char> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного заголовка с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода запроса клиента к серверу
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученного тела данных с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции вывода полученных заголовков с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void callback(const fn_t & callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

@@ -1552,38 +1552,16 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 	}
 }
 /**
- * on Метод установки функции обратного вызова при краше приложения
- * @param callback функция обратного вызова для установки
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::server::Core::on(function <void (const int)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при запуске/остановки работы модуля
- * @param callback функция обратного вызова для установки
- */
-void awh::server::Core::on(function <void (const status_t, awh::core_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::server::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	awh::core_t::on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие запуска и остановки процессов кластера
- * @param callback функция обратного вызова
- */
-void awh::server::Core::on(function <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> callback) noexcept {
+void awh::server::Core::callback(const fn_t & callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, Core *)> ("cluster", callback);
+	// Устанавливаем функций обратного вызова
+	awh::core_t::callback(callback);
+	// Выполняем установку функции обратного вызова на событие запуска и остановки процессов кластера
+	this->_callback.set("cluster", callback);
 }
 /**
  * Core Конструктор

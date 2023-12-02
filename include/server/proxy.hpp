@@ -458,102 +458,10 @@ namespace awh {
 				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
 			public:
 				/**
-				 * on Метод установки функция обратного вызова при удаление клиента из стека сервера
-				 * @param callback функция обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void on(function <void (const uint64_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова при выполнении рукопожатия на прокси-сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const engine_t::proto_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова для извлечения пароля
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <string (const uint64_t, const string &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова для обработки авторизации
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие активации брокера на сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <bool (const string &, const string &, const u_int)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова при получении источников подключения
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const vector <string> &)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова при получении альтернативных сервисов
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const string &, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const broker_t, const web_t::mode_t)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения ошибки
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения тела ответа с удалённого сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &, vector <char> *)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения тела запроса на прокси-сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие получения заголовков ответа с удалённого сервера
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения заголовков запроса на прокси-сервере
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции вывода полученных заголовков с клиента
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
-			public:
-				/**
-				 * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
-				 * @param callback функция обратного вызова
-				 */
-				void on(function <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept;
+				void callback(const fn_t & callback) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

@@ -125,12 +125,16 @@ int main(int argc, char * argv[]){
 	core.signalInterception(core_t::mode_t::DISABLED);
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.on((function <void (const uint64_t, const vector <char> &)>) std::bind(&Server::message, &executor, _1, _2));
+	callback.set <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	sample.on((function <void (const uint64_t, const server::sample_t::mode_t)>) std::bind(&Server::active, &executor, _1, _2));
+	callback.set <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	sample.on((function <bool (const string &, const string &, const u_int)>) std::bind(&Server::accept, &executor, _1, _2, _3));
+	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	// Выполняем установку функций обратного вызова
+	sample.callback(std::move(callback));
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

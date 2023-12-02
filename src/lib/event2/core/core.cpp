@@ -1154,34 +1154,18 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 	return result;
 }
 /**
- * on Метод установки функции обратного вызова при краше приложения
- * @param callback функция обратного вызова для установки
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Core::on(function <void (const int)> callback) noexcept {
+void awh::Core::callback(const fn_t & callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const int)> ("crash", callback);
-}
-/**
- * on Метод установки функции обратного вызова при запуске/остановки работы модуля
- * @param callback функция обратного вызова для установки
- */
-void awh::Core::on(function <void (const status_t, core_t *)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const status_t, core_t *)> ("status", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::Core::on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const log_t::flag_t, const error_t, const string &)> ("error", callback);
+	// Выполняем установку функции обратного вызова при краше приложения
+	this->_callback.set("crash", callback);
+	// Выполняем установку функции обратного вызова на событие получения ошибки
+	this->_callback.set("error", callback);
+	// Выполняем установку функции обратного вызова при запуске/остановки работы модуля
+	this->_callback.set("status", callback);
 }
 /**
  * easily Метод активации простого режима чтения базы событий

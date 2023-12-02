@@ -417,42 +417,13 @@ unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t
 void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
-		/**
-		 * Подписываемся на получение сообщения сервера
-		 * @param sid     идентификатор потока
-		 * @param rid     идентификатор запроса
-		 * @param code    код ответа сервера
-		 * @param message сообщение ответа сервера
-		 */
-		this->on([this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
-			// Блокируем пустые переменные
-			(void) sid;
-			(void) rid;
-			// Если возникла ошибка, выводим сообщение
-			if(code >= 300)
-				// Выводим сообщение о неудачном запросе
-				this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
-		});
-		/**
-		 * Подписываемся на завершение выполнения запроса
-		 * @param sid    идентификатор потока
-		 * @param rid    идентификатор запроса
-		 * @param direct направление передачи данных
-		 */
-		this->on([this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
-			// Блокируем пустую переменную
-			(void) sid;
-			(void) rid;
-			// Если мы получили данные
-			if(direct == web_t::direct_t::RECV)
-				// Выполняем остановку
-				this->stop();
-		});
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
 		/**
 		 * Подписываемся на событие коннекта и дисконнекта клиента
 		 * @param mode событие модуля HTTP
 		 */
-		this->on([method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
+		callback.set <void (const web_t::mode_t)> ("active", [method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект запроса
@@ -471,6 +442,37 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			} else this->stop();
 		});
 		/**
+		 * Подписываемся на завершение выполнения запроса
+		 * @param sid    идентификатор потока
+		 * @param rid    идентификатор запроса
+		 * @param direct направление передачи данных
+		 */
+		callback.set <void (const int32_t, const uint64_t, const web_t::direct_t)> ("end", [this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
+			// Блокируем пустую переменную
+			(void) sid;
+			(void) rid;
+			// Если мы получили данные
+			if(direct == web_t::direct_t::RECV)
+				// Выполняем остановку
+				this->stop();
+		});
+		/**
+		 * Подписываемся на получение сообщения сервера
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 */
+		callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
+			// Блокируем пустые переменные
+			(void) sid;
+			(void) rid;
+			// Если возникла ошибка, выводим сообщение
+			if(code >= 300)
+				// Выводим сообщение о неудачном запросе
+				this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+		});
+		/**
 		 * Подписываемся на событие получения тела ответа
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
@@ -478,7 +480,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученного тела сообщения
 		 */
-		this->on([&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
+		callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", [&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -499,7 +501,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		this->on([&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+		callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", [&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -514,177 +516,11 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			awh::http_t::compress_t::GZIP,
 			awh::http_t::compress_t::DEFLATE
 		});
+		// Устанавливаем функции обратного вызова
+		this->_http.callback(std::move(callback));
 		// Выполняем запуск работы
 		this->start();
 	}
-}
-/**
- * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const web_t::mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибок
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const vector <char> &, const bool)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова для перехвата полученных чанков
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const uint64_t, const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного чанка бинарных данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода бинарных данных в сыром виде полученных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <bool (const char *, const size_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова завершения запроса
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод выполнения редиректа с одного потока на другой (необходим для совместимости с HTTP/2)
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const int32_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова активности потока
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::mode_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функция обратного вызова при выполнении рукопожатия
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::agent_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при завершении запроса
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const web_t::direct_t)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении источника подключения
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const vector <string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении альтернативных сервисов
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного заголовка с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const string &, const string &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции вывода запроса клиента к серверу
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова на вывода push-уведомления
- * @param callback функция обратного вызова
- */
-void awh::client::AWH::on(function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Выполняем установку функции обратного вызова
-	this->_http.on(callback);
 }
 /**
  * open Метод открытия подключения
@@ -706,6 +542,14 @@ void awh::client::AWH::stop() noexcept {
 void awh::client::AWH::start() noexcept {
 	// Выполняем запуск работы модуля
 	this->_http.start();
+}
+/**
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
+ */
+void awh::client::AWH::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функций обратного вызова
+	this->_http.callback(callback);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

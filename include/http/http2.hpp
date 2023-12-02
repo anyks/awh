@@ -420,6 +420,12 @@ namespace awh {
 			bool is() const noexcept;
 		public:
 			/**
+			 * callback Метод установки функций обратного вызова
+			 * @param callback функции обратного вызова
+			 */
+			void callback(const fn_t & callback) noexcept;
+		public:
+			/**
 			 * origin Метод установки списка разрешённых источников
 			 * @param origins список разрешённых источников
 			 */
@@ -438,62 +444,6 @@ namespace awh {
 			 * @return         результат выполнения инициализации
 			 */
 			bool init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept;
-		public:
-			/**
-			 * on Метод установки функции обратного вызова триггера выполнения операции
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (void)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова начала открытии потока
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при получении источника подключения
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const vector <string> &)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при создании фрейма
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const frame_t)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при закрытии потока
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const error_t)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при отправки сообщения
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint8_t *, const size_t)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при получении альтернативных сервисов
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const string &, const string &)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при получении чанка с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const uint8_t *, const size_t)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при получении данных заголовка
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const string &, const string &)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения ошибки
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при обмене фреймами
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <int (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> callback) noexcept;
 		public:
 			/**
 			 * Оператор [=] зануления фрейма Http2

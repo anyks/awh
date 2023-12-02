@@ -266,12 +266,12 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
+			 * chunking Метод вывода полученных чанков полезной нагрузки
 			 * @param id     идентификатор объекта
 			 * @param buffer буфер данных чанка полезной нагрузки
 			 * @param web    объект HTTP-парсера
 			 */
-			void chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
+			void chunking(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
 		protected:
 			/**
 			 * encrypt Метод выполнения шифрования полезной нагрузки
@@ -590,55 +590,11 @@ namespace awh {
 			 */
 			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
-			/** 
-			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept;
-			/** 
-			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &)> callback) noexcept;
-		public:
-			/** 
-			 * on Метод установки функции вывода полученного заголовка с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const string &, const string &)> callback) noexcept;
 			/**
-			 * on Метод установки функции обратного вызова для получения чанков
-			 * @param callback функция обратного вызова
+			 * callback Метод установки функций обратного вызова
+			 * @param callback функции обратного вызова
 			 */
-			void on(function <void (const uint64_t, const vector <char> &, const Http *)> callback) noexcept;
-		public:
-			/**
-			 * on Метод установки функции обратного вызова на событие получения ошибки
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept;
-		public:
-			/** 
-			 * on Метод установки функции вывода полученного тела данных с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept;
-			/** 
-			 * on Метод установки функции вывода полученного тела данных с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept;
-		public:
-			/** 
-			 * on Метод установки функции вывода полученных заголовков с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
-			/** 
-			 * on Метод установки функции вывода полученных заголовков с сервера
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept;
+			void callback(const fn_t & callback) noexcept;
 		public:
 			/**
 			 * id Метод получения идентификатора объекта

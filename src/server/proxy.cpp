@@ -228,26 +228,32 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			ret.first->second->awh.authTypeProxy(this->_settings.proxy.auth.type, this->_settings.proxy.auth.hash);
 			// Выполняем установку таймаутов на обмен данными в миллисекундах
 			ret.first->second->awh.waitTimeDetect(this->_settings.wtd.read, this->_settings.wtd.write, this->_settings.wtd.connect);
-			// Устанавливаем функцию обратного вызова активности на Web-сервере
-			ret.first->second->awh.on((function <void (const client::web_t::mode_t)>) std::bind(&server::proxy_t::activeClient, this, bid, _1));
-			// Устанавливаем функцию обратного вызова при завершении работы потока передачи данных клиента
-			ret.first->second->awh.on((function <void (const int32_t, const uint64_t, const client::web_t::direct_t)>) std::bind(&server::proxy_t::endClient, this, _1, bid, _2, _3));
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("error"))
-				// Выполняем установку функции обратного вызова получения ошибок клиента
-				ret.first->second->awh.on((function <void (const log_t::flag_t, const http::error_t, const string &)>) std::bind(this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, broker_t::CLIENT, _1, _2, _3));
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("origin"))
-				// Выполняем установку функции обратного вызова при получении источников подключения
-				ret.first->second->awh.on((function <void (const vector <string> &)>) std::bind(this->_callback.get <void (const uint64_t, const vector <string> &)> ("origin"), bid, _1));
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("altsvc"))
-				// Устанавливаем функцию обратного вызова при получении альтернативного источника
-				ret.first->second->awh.on((function <void (const string &, const string &)> ) std::bind(this->_callback.get <void (const uint64_t, const string &, const string &)> ("altsvc"), bid, _1, _2));
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("push"))
-				// Выполняем установку функции обратного вызова при получении PUSH уведомлений
-				ret.first->second->awh.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::pushClient, this, _1, bid, _2, _3, _4, _5));
+			{
+				// Создаём локальный контейнер функций обратного вызова
+				fn_t callback(this->_log);
+				// Устанавливаем функцию обратного вызова активности клиента на Web-сервере
+				callback.set <void (const client::web_t::mode_t)> ("active", std::bind(&server::proxy_t::activeClient, this, bid, _1));
+				// Устанавливаем функцию обратного вызова при завершении работы потока передачи данных клиента
+				callback.set <void (const int32_t, const uint64_t, const client::web_t::direct_t)> ("end", std::bind(&server::proxy_t::endClient, this, _1, bid, _2, _3));
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("origin"))
+					// Выполняем установку функции обратного вызова при получении источников подключения
+					callback.set <void (const vector <string> &)> ("origin", std::bind(this->_callback.get <void (const uint64_t, const vector <string> &)> ("origin"), bid, _1));
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("altsvc"))
+					// Устанавливаем функцию обратного вызова при получении альтернативного источника
+					callback.set <void (const string &, const string &)> ("altsvc", std::bind(this->_callback.get <void (const uint64_t, const string &, const string &)> ("altsvc"), bid, _1, _2));
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("push"))
+					// Выполняем установку функции обратного вызова при получении PUSH уведомлений
+					callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", std::bind(&server::proxy_t::pushClient, this, _1, bid, _2, _3, _4, _5));
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем установку функции обратного вызова получения ошибок клиента
+					callback.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, broker_t::CLIENT, _1, _2, _3));
+				// Выполняем установку функций обратного вызова для HTTP-клиента
+				ret.first->second->awh.callback(std::move(callback));
+			}
 		} break;
 		// Если производится отключение клиента от сервера
 		case static_cast <uint8_t> (server::web_t::mode_t::DISCONNECT): {
@@ -351,9 +357,14 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 							// Если клиент активирован как HTTP
 							} else {
 								// Если тип сокета установлен как TCP/IP
-								if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP)
+								if(this->_core.sonet() == awh::scheme_t::sonet_t::TCP){
+									// Создаём локальный контейнер функций обратного вызова
+									fn_t callback(this->_log);
 									// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-									it->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+									callback.set <bool (const char *, const size_t)> ("raw", std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+									// Выполняем установку функций обратного вызова для HTTP-клиента
+									it->second->awh.callback(std::move(callback));
+								}
 								// Выполняем отправку ответа клиенту
 								this->_server.send(it->second->sid, bid);
 							}
@@ -647,8 +658,14 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 						i->second->method = awh::web_t::method_t::CONNECT;
 						// Меняем метод подключения на CONNECT
 						i->second->request.params.method = awh::web_t::method_t::CONNECT;
-						// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
-						i->second->awh.on((function <bool (const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+						{
+							// Создаём локальный контейнер функций обратного вызова
+							fn_t callback(this->_log);
+							// Подписываемся на получение сырых данных полученных клиентом с удалённого сервера
+							callback.set <bool (const char *, const size_t)> ("raw", std::bind(&server::proxy_t::raw, this, bid, broker_t::CLIENT, _1, _2));
+							// Выполняем установку функций обратного вызова для HTTP-клиента
+							i->second->awh.callback(std::move(callback));
+						}
 						// Выводим полученный результат
 						this->completed(j->second, bid);
 						// Выполняем удаление потока из списка
@@ -728,12 +745,16 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 							// Если метод запроса не является методом CONNECT
 							if(it->second->request.params.method != awh::web_t::method_t::CONNECT){
+								// Создаём локальный контейнер функций обратного вызова
+								fn_t callback(this->_log);
 								// Подписываемся на получение сообщения сервера
-								it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+								callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
 								// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-								it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+								callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
 								// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-								it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+								callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+								// Выполняем установку функций обратного вызова для HTTP-клиента
+								it->second->awh.callback(std::move(callback));
 							// Если метод CONNECT не разрешён для запроса
 							} else if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1) {
 								// Формируем сообщение ответа
@@ -832,12 +853,18 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									if((it->second->request.params.url.port != 80) && (it->second->request.params.url.port != 443))
 										// Выполняем установку защищённого протокола
 										it->second->request.params.url.schema = "https";
-									// Подписываемся на получение сообщения сервера
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
-									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
-									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+									{
+										// Создаём локальный контейнер функций обратного вызова
+										fn_t callback(this->_log);
+										// Подписываемся на получение сообщения сервера
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+										// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+										// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+										// Выполняем установку функций обратного вызова для HTTP-клиента
+										it->second->awh.callback(std::move(callback));
+									}
 									// Устанавливаем флаги настроек модуля
 									it->second->awh.mode(std::move(flags));
 									// Выполняем инициализацию подключения
@@ -946,12 +973,18 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										awh::http_t::compress_t::GZIP,
 										awh::http_t::compress_t::DEFLATE
 									});
-									// Подписываемся на получение сообщения сервера
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
-									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
-									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									it->second->awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+									{
+										// Создаём локальный контейнер функций обратного вызова
+										fn_t callback(this->_log);
+										// Подписываемся на получение сообщения сервера
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+										// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+										// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
+										callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+										// Выполняем установку функций обратного вызова для HTTP-клиента
+										it->second->awh.callback(std::move(callback));
+									}
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&it->second->core);
 								}
@@ -1140,142 +1173,56 @@ void awh::server::Proxy::init(const u_int port, const string & host, const http_
 	this->_compressor = compressor;
 }
 /**
- * on Метод установки функция обратного вызова при удаление клиента из стека сервера
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::server::Proxy::on(function <void (const uint64_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t)> ("erase", callback);
-}
-/**
- * on Метод установки функции обратного вызова при выполнении рукопожатия на прокси-сервере
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const engine_t::proto_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const engine_t::proto_t)> ("handshake", callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_server.on(callback);
-}
-/**
- * on Метод установки функции обратного вызова для извлечения пароля
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <string (const uint64_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <string (const uint64_t, const string &)> ("extractPassword", callback);
-}
-/**
- * on Метод установки функции обратного вызова для обработки авторизации
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие активации брокера на сервере
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <bool (const string &, const string &, const u_int)> ("accept", callback);
-}
-/**
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("response", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении источников подключения
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const vector <string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const vector <string> &)> ("origin", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении альтернативных сервисов
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const string &, const string &)> ("altsvc", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const broker_t, const web_t::mode_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_server.on(std::bind(callback, _1, broker_t::SERVER, _2, _3, _4));
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения тела ответа с удалённого сервера
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const u_int, const string &, vector <char> *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &, vector <char> *)> ("entityClient", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения тела запроса на прокси-сервере
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> ("entityServer", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения заголовков ответа с удалённого сервера
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> ("headersClient", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения заголовков запроса на прокси-сервере
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> ("headersServer", callback);
-}
-/**
- * on Метод установки функции вывода полученных заголовков с клиента
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для HTTP/2
-	this->_callback.set <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
- * @param callback функция обратного вызова
- */
-void awh::server::Proxy::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", callback);
+void awh::server::Proxy::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова для вывода полученных заголовков с клиента
+	this->_callback.set("push", callback);
+	// Выполняем установку функции обратного вызова на событие получения ошибки
+	this->_callback.set("error", callback);
+	// Выполняем установку функции обратного вызова при удаление клиента из стека сервера
+	this->_callback.set("erase", callback);
+	// Выполняем установку функции обратного вызова на событие активации брокера на сервере
+	this->_callback.set("accept", callback);
+	// Выполняем установку функции обратного вызова при получении источников подключения
+	this->_callback.set("origin", callback);
+	// Выполняем установку функции обратного вызова при получении альтернативных сервисов
+	this->_callback.set("altsvc", callback);
+	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
+	this->_callback.set("active", callback);
+	// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
+	this->_callback.set("response", callback);
+	// Выполняем установку функции обратного вызова при выполнении рукопожатия на прокси-сервере
+	this->_callback.set("handshake", callback);
+	// Выполняем установку функции обратного вызова на событие формирования готового ответа клиенту подключённого к прокси-серверу
+	this->_callback.set("completed", callback);
+	// Выполняем установку функции обратного вызова на событие получения тела ответа с удалённого сервера
+	this->_callback.set("entityClient", callback);
+	// Выполняем установку функции обратного вызова на событие получения тела запроса на прокси-сервере
+	this->_callback.set("entityServer", callback);
+	// Выполняем установку функции обратного вызова на событие получения заголовков ответа с удалённого сервера
+	this->_callback.set("headersClient", callback);
+	// Выполняем установку функции обратного вызова на событие получения заголовков запроса на прокси-сервере
+	this->_callback.set("headersServer", callback);
+	// Выполняем установку функции обратного вызова для обработки авторизации
+	this->_callback.set("checkPassword", callback);
+	// Выполняем установку функции обратного вызова для извлечения пароля
+	this->_callback.set("extractPassword", callback);
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
+		callback.set("events", this->_callback);
+		// Если функция установки обратного вызова на событие получении ошибки передана
+		if(this->_callback.is("error"))
+			// Выполняем установку функции обратного вызова на событие получения ошибки
+			callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4));
+		// Если функции обратного вызова установлены
+		if(!callback.empty())
+			// Выполняем установку функций обратного вызова для HTTP-сервера
+			this->_server.callback(std::move(callback));
+	}
 }
 /**
  * port Метод получения порта подключения брокера
@@ -2046,22 +1993,28 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Выполняем установку идентичности протокола модуля
 	this->_server.identity(awh::http_t::identity_t::PROXY);
-	// Устанавливаем функцию удаления клиента из стека подключений сервера
-	this->_server.on((function <void (const uint64_t)>) std::bind(&server::proxy_t::eraseClient, this, _1));
-	// Устанавливаем функцию извлечения пароля пользователя
-	this->_server.on((function <string (const uint64_t, const string &)>) std::bind(&server::proxy_t::passwordCallback, this, _1, _2));
-	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	this->_server.on((function <void (const uint64_t, const server::web_t::mode_t)>) std::bind(&server::proxy_t::activeServer, this, _1, _2));
-	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	this->_server.on((function <bool (const string &, const string &, const u_int)>) std::bind(&server::proxy_t::acceptServer, this, _1, _2, _3));
-	// Устанавливаем функцию проверки ввода логина и пароля пользователя
-	this->_server.on((function <bool (const uint64_t, const string &, const string &)>) std::bind(&server::proxy_t::authCallback, this, _1, _2, _3));
-	// Устанавливаем функцию получения сырых данных полученных сервером с клиента
-	this->_server.on((function <bool (const uint64_t, const char *, const size_t)>) std::bind(&server::proxy_t::raw, this, _1, broker_t::SERVER, _2, _3));
-	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	this->_server.on((function <void (const int32_t, const uint64_t, const server::web_t::agent_t)>) std::bind(&server::proxy_t::handshake, this, _1, _2, _3));
-	// Устанавливаем функцию обратного вызова при получении тела запроса с клиента
-	this->_server.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)>) std::bind(&server::proxy_t::entityServer, this, _1, _2, _3, _4, _5));
-	// Устанавливаем функцию обратного вызова при получении HTTP-заголовков запроса с клиента
-	this->_server.on((function <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)>) std::bind(&server::proxy_t::headersServer, this, _1, _2, _3, _4, _5));
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Устанавливаем функцию удаления клиента из стека подключений сервера
+		callback.set <void (const uint64_t)> ("erase", std::bind(&server::proxy_t::eraseClient, this, _1));
+		// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+		callback.set <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&server::proxy_t::activeServer, this, _1, _2));
+		// Устанавливаем функцию извлечения пароля пользователя
+		callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&server::proxy_t::passwordCallback, this, _1, _2));
+		// Установливаем функцию обратного вызова на событие активации клиента на сервере
+		callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&server::proxy_t::acceptServer, this, _1, _2, _3));
+		// Устанавливаем функцию получения сырых данных полученных сервером с клиента
+		callback.set <bool (const uint64_t, const char *, const size_t)> ("raw", std::bind(&server::proxy_t::raw, this, _1, broker_t::SERVER, _2, _3));
+		// Устанавливаем функцию проверки ввода логина и пароля пользователя
+		callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&server::proxy_t::authCallback, this, _1, _2, _3));
+		// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
+		callback.set <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&server::proxy_t::handshake, this, _1, _2, _3));
+		// Устанавливаем функцию обратного вызова при получении тела запроса с клиента
+		callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityServer, this, _1, _2, _3, _4, _5));
+		// Устанавливаем функцию обратного вызова при получении HTTP-заголовков запроса с клиента
+		callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersServer, this, _1, _2, _3, _4, _5));
+		// Выполняем установку функций обратного вызова для HTTP-сервера
+		this->_server.callback(std::move(callback));
+	}
 }

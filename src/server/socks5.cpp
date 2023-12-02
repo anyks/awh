@@ -452,44 +452,20 @@ void awh::server::ProxySocks5::init(const u_int port, const string & host) noexc
 	#endif
 }
 /**
- * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::server::ProxySocks5::on(function <void (const uint64_t, const mode_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const mode_t)> ("active", callback);
-}
-/**
- * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
- * @param callback функция обратного вызова
- */
-void awh::server::ProxySocks5::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
- * @param callback функция обратного вызова
- */
-void awh::server::ProxySocks5::on(function <bool (const uint64_t, const event_t, const char *, const size_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения входящих сообщений
-	this->_callback.set <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие активации клиента на сервере
- * @param callback функция обратного вызова
- */
-void awh::server::ProxySocks5::on(function <bool (const string &, const string &, const u_int)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <bool (const string &, const string &, const u_int)> ("accept", callback);
-}
-/**
- * on Метод установки функции обратного вызова для обработки авторизации
- * @param callback функция обратного вызова
- */
-void awh::server::ProxySocks5::on(function <bool (const uint64_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", callback);
+void awh::server::ProxySocks5::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
+	this->_callback.set("active", callback);
+	// Выполняем установку функции обратного вызова на получения событий запуска и остановки сетевого ядра
+	this->_callback.set("events", callback);
+	// Выполняем установку функции обратного вызова на событие активации клиента на сервере
+	this->_callback.set("accept", callback);
+	// Выполняем установку функции обратного вызова на событие получения сообщений в бинарном виде
+	this->_callback.set("message", callback);
+	// Выполняем установку функции обратного вызова для обработки авторизации
+	this->_callback.set("checkPassword", callback);
 }
 /**
  * port Метод получения порта подключения брокера
@@ -748,6 +724,14 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.server.sonet(scheme_t::sonet_t::TCP);
+	{
+		// Создаём локальный контейнер функций обратного вызова
+		fn_t callback(this->_log);
+		// Устанавливаем функцию активации ядра сервера
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&proxy_socks5_t::eventsCallback, this, _1, _2));
+		// Выполняем установку функций обратного вызова для Socks5-сервера
+		this->_core.server.callback(std::move(callback));
+	}
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&proxy_socks5_t::openServerCallback, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -764,6 +748,4 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_core.server.add(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов
 	this->_core.server.clusterAutoRestart(this->_scheme.sid, true);
-	// Устанавливаем функцию активации ядра сервера
-	this->_core.server.on(std::bind(&proxy_socks5_t::eventsCallback, this, _1, _2));
 }

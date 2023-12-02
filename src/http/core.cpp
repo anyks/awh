@@ -16,12 +16,12 @@
 #include <http/core.hpp>
 
 /**
- * chunkingCallback Функция вывода полученных чанков полезной нагрузки
+ * chunking Метод вывода полученных чанков полезной нагрузки
  * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
  * @param web    объект HTTP-парсера
  */
-void awh::Http::chunkingCallback(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept {
+void awh::Http::chunking(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept {
 	// Если функция обратного вызова на вывод полученного чанка установлена
 	if(this->_callback.is("chunking"))
 		// Выполняем функцию обратного вызова
@@ -2896,12 +2896,6 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Добавляем заголовок в ответ
 								response.append(this->_fmk->format("Proxy-Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 						}
-						/*
-						// Устанавливаем Content-Type если не передан
-						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "Content-Type"))
-							// Добавляем заголовок в ответ
-							response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
-						*/
 						// Если заголовок не запрещён
 						if(!available[4] && !this->is(suite_t::BLACK, "X-Powered-By"))
 							// Добавляем название рабочей системы в ответ
@@ -2933,6 +2927,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						}
 						// Если запрос должен содержать тело и тело ответа существует
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+							// Устанавливаем Content-Type если не передан
+							if(!available[5] && !this->is(suite_t::BLACK, "Content-Type"))
+								// Добавляем заголовок в ответ
+								response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
 								// Выполняем компрессию полезной нагрузки
@@ -3597,12 +3595,6 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						if(!available[1] && !this->is(suite_t::BLACK, "server"))
 							// Добавляем название сервера в ответ
 							result.push_back(make_pair("server", this->_ident.name));
-						/*
-						// Устанавливаем Content-Type если не передан
-						if(!available[5] && (res.code >= 200) && !this->is(suite_t::BLACK, "content-type"))
-							// Добавляем заголовок в ответ
-							result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
-						*/
 						// Если заголовок не запрещён
 						if(!available[4] && !this->is(suite_t::BLACK, "x-powered-by"))
 							// Добавляем название рабочей системы в ответ
@@ -3634,6 +3626,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						}
 						// Если запрос должен содержать тело и тело ответа существует
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
+							// Устанавливаем Content-Type если не передан
+							if(!available[5] && !this->is(suite_t::BLACK, "content-type"))
+								// Добавляем заголовок в ответ
+								result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
 								// Выполняем компрессию полезной нагрузки
@@ -3712,81 +3708,21 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 	// Выводим результат
 	return result;
 }
-/** 
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
-/** 
- * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
-/** 
- * on Метод установки функции вывода полученного заголовка с сервера
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
 /**
- * on Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Http::on(function <void (const uint64_t, const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2, _3));
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для перехвата ошибок
-	this->_web.on(callback);
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
-}
-/** 
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
+void awh::Http::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова на событие получения ошибки
+	this->_callback.set("error", callback);
+	// Выполняем установку функции обратного вызова для получения чанков
+	this->_callback.set("chunking", callback);
+	// Если функция обратного вызова на вывод полученного чанка установлена
+	if(this->_callback.is("chunking"))
+		// Устанавливаем функцию обратного вызова для получения чанков
+		const_cast <fn_t &> (callback).set <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", std::bind(&awh::Http::chunking, this, _1, _2, _3));
 	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
-/** 
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
-/** 
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
-}
-/** 
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::Http::on(function <void (const uint64_t, const web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функции обратного вызова
-	this->_web.on(callback);
+	this->_web.callback(callback);
 }
 /**
  * id Метод получения идентификатора объекта
@@ -3947,6 +3883,4 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта
 	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
-	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2, _3));
 }

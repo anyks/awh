@@ -117,10 +117,14 @@ int main(int argc, char * argv[]){
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
-	// Подписываемся на событие коннекта и дисконнекта клиента
-	sample.on(std::bind(&Client::active, &executor, _1));
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Подписываемся на событие получения сообщения
-	sample.on(std::bind(&Client::message, &executor, _1));
+	callback.set <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
+	// Подписываемся на событие коннекта и дисконнекта клиента
+	callback.set <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	// Выполняем установку функций обратного вызова
+	sample.callback(std::move(callback));
 	// Выполняем инициализацию подключения
 	sample.init(2222, "127.0.0.1");
 	// sample.init("anyks");

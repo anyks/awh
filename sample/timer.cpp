@@ -67,7 +67,7 @@ class Executor {
 		 * @param status флаг запуска сетевого ядра
 		 * @param core   объект сетевого ядра
 		 */
-		void run(const awh::core_t::status_t status, Core * core){
+		void run(const awh::core_t::status_t status, core_t * core){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -117,8 +117,12 @@ int main(int argc, char * argv[]){
 	log.name("Timer");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.on(std::bind(&Executor::run, &executor, _1, _2));
+	callback.set <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
+	// Выполняем установку функций обратного вызова
+	core.callback(std::move(callback));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

@@ -33,13 +33,13 @@ class WebClient {
 		client::awh_t * _awh;
 	public:
 		/**
-		 * message Метод получения статуса результата запроса
+		 * response Метод получения статуса результата запроса
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void message(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+		void response(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
 			// Блокируем неиспользуемые переменные
 			(void) rid;
 			// Проверяем на наличие ошибок
@@ -234,14 +234,18 @@ int main(int argc, char * argv[]){
 	 * Вариант с мультизапросами
 	 */
 	/*
+	// Создаём локальный контейнер функций обратного вызова
+	fn_t callback(&log);
 	// Устанавливаем метод активации подключения
-	awh.on((function <void (const client::web_t::mode_t)>) std::bind(&WebClient::active, &executor, _1));
+	callback.set <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	// Устанавливаем метод получения сообщения сервера
-	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
+	callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения заголовков
-	awh.on((function <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// Выполняем установку функций обратного вызова
+	awh.callback(std::move(callback));
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы

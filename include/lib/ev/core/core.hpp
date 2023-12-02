@@ -479,20 +479,10 @@ namespace awh {
 			uint16_t setInterval(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
 		public:
 			/**
-			 * on Метод установки функции обратного вызова при краше приложения
-			 * @param callback функция обратного вызова для установки
+			 * callback Метод установки функций обратного вызова
+			 * @param callback функции обратного вызова
 			 */
-			virtual void on(function <void (const int)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова при запуске/остановки работы модуля
-			 * @param callback функция обратного вызова для установки
-			 */
-			virtual void on(function <void (const status_t, Core *)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения ошибки
-			 * @param callback функция обратного вызова
-			 */
-			virtual void on(function <void (const log_t::flag_t, const error_t, const string &)> callback) noexcept;
+			virtual void callback(const fn_t & callback) noexcept;
 		public:
 			/**
 			 * easily Метод активации простого режима чтения базы событий

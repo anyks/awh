@@ -63,16 +63,16 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (hid_t::CLIENT): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
-								if(this->_callback.is("entity"))
+								if(this->_callback.is("entityClient"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
+									this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
-								if(this->_callback.is("entity"))
+								if(this->_callback.is("entityServer"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
+									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_req.method, this->_req.url, this->_body);
 							} break;
 						}
 						// Тело в запросе не передано
@@ -326,16 +326,16 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (hid_t::CLIENT): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
-						if(this->_callback.is("entity"))
+						if(this->_callback.is("entityClient"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", this->_id, this->_res.code, this->_res.message, this->_body);
+							this->_callback.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
-						if(this->_callback.is("entity"))
+						if(this->_callback.is("entityServer"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", this->_id, this->_req.method, this->_req.url, this->_body);
+							this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_req.method, this->_req.url, this->_body);
 					} break;
 				}
 				// Тело в запросе не передано
@@ -392,16 +392,16 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (hid_t::CLIENT): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-							if(this->_callback.is("headers"))
+							if(this->_callback.is("headersResponse"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", this->_id, this->_res.code, this->_res.message, this->_headers);
+								this->_callback.call <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (hid_t::SERVER): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-							if(this->_callback.is("headers"))
+							if(this->_callback.is("headersRequest"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", this->_id, this->_req.method, this->_req.url, this->_headers);
+								this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
 					}
 					// Получаем размер тела
@@ -1257,77 +1257,29 @@ void awh::Web::state(const state_t state) noexcept {
 	// Выполняем установку стейта
 	this->_state = state;
 }
-/** 
- * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const u_int, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &)> ("response", callback);
-}
-/** 
- * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", callback);
-}
-/** 
- * on Метод установки функции вывода полученного заголовка с сервера
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const string &, const string &)> ("header", callback);
-}
 /**
- * on Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Web::on(function <void (const uint64_t, const vector <char> &, const Web *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", callback);
-}
-/**
- * on Метод установки функции обратного вызова на событие получения ошибки
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", callback);
-}
-/** 
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const u_int, const string &, const vector <char> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", callback);
-}
-/** 
- * on Метод установки функции вывода полученного тела данных с сервера
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entity", callback);
-}
-/** 
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
-}
-/** 
- * on Метод установки функции вывода полученных заголовков с сервера
- * @param callback функция обратного вызова
- */
-void awh::Web::on(function <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", callback);
+void awh::Web::callback(const fn_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова на событие получения ошибки
+	this->_callback.set("error", callback);
+	// Выполняем установку функции вывода полученного заголовка с сервера
+	this->_callback.set("header", callback);
+	// Выполняем установку функции вывода ответа сервера на ранее выполненный запрос
+	this->_callback.set("response", callback);
+	// Выполняем установку функции вывода запроса клиента на выполненный запрос к серверу
+	this->_callback.set("request", callback);
+	// Выполняем установку функции обратного вызова для получения чанков
+	this->_callback.set("chunking", callback);
+	// Выполняем установку функции обратного вывода полученного тела данных с сервера
+	this->_callback.set("entityServer", callback);
+	// Выполняем установку функции обратного вывода полученного тела данных с клиента
+	this->_callback.set("entityClient", callback);
+	// Выполняем установку функции вывода полученных заголовков с сервера
+	this->_callback.set("headersRequest", callback);
+	// Выполняем установку функции вывода полученных заголовков с клинета
+	this->_callback.set("headersResponse", callback);
 }
 /**
  * Web Конструктор
