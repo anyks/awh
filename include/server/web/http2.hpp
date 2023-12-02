@@ -39,13 +39,13 @@ namespace awh {
 		 */
 		typedef class Http2 : public web2_t {
 			private:
-				// Флаг разрешения использования протокол WebSocket
+				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 			private:
 				// Идентичность протокола
 				http_t::identity_t _identity;
 			private:
-				// Объект для работы c WebSocket
+				// Объект для работы c Websocket
 				ws2_t _ws2;
 				// Объект для работы с HTTP/1.1
 				http1_t _http1;
@@ -155,7 +155,7 @@ namespace awh {
 				 */
 				void prepare(const int32_t sid, const uint64_t bid, server::core_t * core) noexcept;
 				/**
-				 * websocket Метод инициализации WebSocket протокола
+				 * websocket Метод инициализации Websocket протокола
 				 * @param sid  идентификатор потока
 				 * @param bid  идентификатор брокера
 				 * @param core объект сетевого ядра
@@ -212,13 +212,13 @@ namespace awh {
 				void trailer(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 			public:
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & socket, const vector <http_t::compress_t> & compressors = {}) noexcept;
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров

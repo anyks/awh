@@ -32,13 +32,13 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * WebSocket Класс работы с WebSocket-сервером
+		 * Websocket Класс работы с Websocket-сервером
 		 */
-		typedef class WebSocket {
+		typedef class Websocket {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;
-				// Объект работы с протоколом WebSocket/2
+				// Объект работы с протоколом Websocket/2
 				server::ws2_t _ws;
 			private:
 				// Объект фреймворка
@@ -47,13 +47,13 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & socket, const vector <http_t::compress_t> & compressors = {}) noexcept;
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
@@ -313,16 +313,16 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * WebSocket Конструктор
+				 * Websocket Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket Деструктор
+				 * ~Websocket Деструктор
 				 */
-				~WebSocket() noexcept {}
+				~Websocket() noexcept {}
 		} websocket_t;
 	};
 };

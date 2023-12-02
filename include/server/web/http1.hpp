@@ -47,7 +47,7 @@ namespace awh {
 				 */
 				friend class Http2;
 			private:
-				// Флаг разрешения использования протокол WebSocket
+				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 				// Флаг разрешения метода CONNECT на сервере
 				bool _methodConnect;
@@ -55,7 +55,7 @@ namespace awh {
 				// Идентичность протокола
 				http_t::identity_t _identity;
 			private:
-				// Объект работы с WebSocket-сервером
+				// Объект работы с Websocket-сервером
 				ws1_t _ws1;
 			private:
 				// Объект рабочего
@@ -98,7 +98,7 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * websocket Метод инициализации WebSocket протокола
+				 * websocket Метод инициализации Websocket протокола
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра

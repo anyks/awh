@@ -126,7 +126,7 @@ void awh::cluster::Core::stop() noexcept {
 		this->_mtx.status.lock();
 		// Если система уже запущена
 		if(this->_mode){
-			// Запрещаем работу WebSocket
+			// Запрещаем работу Websocket
 			this->_mode = !this->_mode;
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
@@ -162,7 +162,7 @@ void awh::cluster::Core::start() noexcept {
 		this->_mtx.status.lock();
 		// Если система ещё не запущена
 		if(!this->_mode){
-			// Разрешаем работу WebSocket
+			// Разрешаем работу Websocket
 			this->_mode = !this->_mode;
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();

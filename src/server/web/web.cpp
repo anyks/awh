@@ -227,10 +227,6 @@ void awh::server::Web::callback(const fn_t & callback) noexcept {
 	this->_callback.set("request", callback);
 	// Выполняем установку функции обратного вызова для вывода полученных заголовков с клиента
 	this->_callback.set("headers", callback);
-	// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
-	this->_callback.set("wserror", callback);
-	// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
-	this->_callback.set("message", callback);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
 	this->_callback.set("chunking", callback);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
@@ -239,6 +235,10 @@ void awh::server::Web::callback(const fn_t & callback) noexcept {
 	this->_callback.set("checkPassword", callback);
 	// Выполняем установку функции обратного вызова для извлечения пароля
 	this->_callback.set("extractPassword", callback);
+	// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
+	this->_callback.set("errorWebsocket", callback);
+	// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
+	this->_callback.set("messageWebsocket", callback);
 }
 /**
  * alive Метод установки долгоживущего подключения

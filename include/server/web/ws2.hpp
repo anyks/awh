@@ -41,9 +41,9 @@ namespace awh {
 		 */
 		class Http2;
 		/**
-		 * WebSocket2 Класс WebSocket-сервера
+		 * Websocket2 Класс Websocket-сервера
 		 */
-		typedef class WebSocket2 : public web2_t {
+		typedef class Websocket2 : public web2_t {
 			private:
 				/**
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
@@ -58,7 +58,7 @@ namespace awh {
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
-				// Объект работы с WebSocket-клиентом HTTP/1.1
+				// Объект работы с Websocket-клиентом HTTP/1.1
 				ws1_t _ws1;
 			private:
 				// Объект рабочего
@@ -203,13 +203,13 @@ namespace awh {
 				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
 			public:
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & socket, const vector <http_t::compress_t> & compressors = {http_t::compress_t::DEFLATE}) noexcept;
 				/**
-				 * init Метод инициализации WebSocket-сервера
+				 * init Метод инициализации Websocket-сервера
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
@@ -460,22 +460,22 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * WebSocket2 Конструктор
+				 * Websocket2 Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WebSocket2(const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * WebSocket2 Конструктор
+				 * Websocket2 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket2 Деструктор
+				 * ~Websocket2 Деструктор
 				 */
-				~WebSocket2() noexcept;
+				~Websocket2() noexcept;
 		} ws2_t;
 	};
 };

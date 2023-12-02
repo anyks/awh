@@ -40,9 +40,9 @@ namespace awh {
 		 */
 		class Http2;
 		/**
-		 * WebSocket2 Класс WebSocket-клиента
+		 * Websocket2 Класс Websocket-клиента
 		 */
-		typedef class WebSocket2 : public web2_t {
+		typedef class Websocket2 : public web2_t {
 			private:
 				/**
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента
@@ -72,11 +72,11 @@ namespace awh {
 					Partner() noexcept : wbit(0), takeover(false) {}
 				} __attribute__((packed)) partner_t;
 				/**
-				 * Frame Объект фрейма WebSocket
+				 * Frame Объект фрейма Websocket
 				 */
 				typedef struct Frame {
 					size_t size;                  // Минимальный размер сегмента
-					ws::frame_t methods;          // Методы работы с фреймом WebSocket
+					ws::frame_t methods;          // Методы работы с фреймом Websocket
 					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 					/**
 					 * Frame Конструктор
@@ -110,7 +110,7 @@ namespace awh {
 				// Количество активных ядер
 				uint16_t _threads;
 			private:
-				// Объект работы с WebSocket-клиентом HTTP/1.1
+				// Объект работы с Websocket-клиентом HTTP/1.1
 				ws1_t _ws1;
 			private:
 				// Объект тредпула для работы с потоками
@@ -119,7 +119,7 @@ namespace awh {
 				ws_t _http;
 				// Объект для компрессии-декомпрессии данных
 				hash_t _hash;
-				// Объект для работы с фреймом WebSocket
+				// Объект для работы с фреймом Websocket
 				frame_t _frame;
 				// Объект разрешения обмена данными
 				allow_t _allow;
@@ -437,22 +437,22 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * WebSocket2 Конструктор
+				 * Websocket2 Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WebSocket2(const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * WebSocket2 Конструктор
+				 * Websocket2 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket2 Деструктор
+				 * ~Websocket2 Деструктор
 				 */
-				~WebSocket2() noexcept;
+				~Websocket2() noexcept;
 		} ws2_t;
 	};
 };

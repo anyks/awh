@@ -66,7 +66,7 @@ namespace awh {
 				 */
 				void sendTimeout() noexcept;
 				/**
-				 * sendError Метод отправки сообщения об ошибке на сервер WebSocket
+				 * sendError Метод отправки сообщения об ошибке на сервер Websocket
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
@@ -139,7 +139,7 @@ namespace awh {
 				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * pause Метод установки на паузу клиента WebSocket
+				 * pause Метод установки на паузу клиента Websocket
 				 */
 				void pause() noexcept;
 			public:
@@ -308,12 +308,12 @@ namespace awh {
 				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
-				 * extensions Метод извлечения списка расширений WebSocket
+				 * extensions Метод извлечения списка расширений Websocket
 				 * @return список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions() const noexcept;
 				/**
-				 * extensions Метод установки списка расширений WebSocket
+				 * extensions Метод установки списка расширений Websocket
 				 * @param extensions список поддерживаемых расширений
 				 */
 				void extensions(const vector <vector <string>> & extensions) noexcept;
@@ -336,7 +336,7 @@ namespace awh {
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * segmentSize Метод установки размеров сегментов фрейма WebSocket
+				 * segmentSize Метод установки размеров сегментов фрейма Websocket
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
@@ -371,7 +371,7 @@ namespace awh {
 				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности в WebSocket
+				 * multiThreads Метод активации многопоточности в Websocket
 				 * @param count количество потоков для активации
 				 * @param mode  флаг активации/деактивации мультипоточности
 				 */

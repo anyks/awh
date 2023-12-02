@@ -21,7 +21,7 @@
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём брокера
@@ -65,7 +65,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 					callback.set("error", this->_callback);
 					// Если функции обратного вызова установлены
 					if(!callback.empty())
-						// Выполняем установку функций обратного вызова для WebSocket-сервера
+						// Выполняем установку функций обратного вызова для Websocket-сервера
 						options->http.callback(std::move(callback));
 				}
 				// Если сабпротоколы установлены
@@ -138,7 +138,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
 				// Выполняем инициализацию нового тредпула
 				this->_ws1.multiThreads(this->_threads);
 			}
-			// Выполняем переброс вызова коннекта на клиент WebSocket
+			// Выполняем переброс вызова коннекта на клиент Websocket
 			this->_ws1.connectCallback(bid, sid, core);
 		}
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -153,7 +153,7 @@ void awh::server::WebSocket2::connectCallback(const uint64_t bid, const uint16_t
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::WebSocket2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Выполняем поиск брокера в списке активных сессий
@@ -178,7 +178,7 @@ void awh::server::WebSocket2::disconnectCallback(const uint64_t bid, const uint1
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::WebSocket2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -220,7 +220,7 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
 							return;
 						}
 					}
-				// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент WebSocket
+				// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент Websocket
 				} else this->_ws1.readCallback(buffer, size, bid, sid, core);
 			}
 		}
@@ -234,7 +234,7 @@ void awh::server::WebSocket2::readCallback(const char * buffer, const size_t siz
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::WebSocket2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
@@ -243,7 +243,7 @@ void awh::server::WebSocket2::writeCallback(const char * buffer, const size_t si
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(options->proto != engine_t::proto_t::HTTP2)
-				// Выполняем переброс вызова записи клиенту WebSocket
+				// Выполняем переброс вызова записи клиенту Websocket
 				this->_ws1.writeCallback(buffer, size, bid, sid, core);
 		}
 	}
@@ -254,7 +254,7 @@ void awh::server::WebSocket2::writeCallback(const char * buffer, const size_t si
  * @param bid идентификатор брокера
  * @return    статус полученных данных
  */
-int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
+int awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -282,7 +282,7 @@ int awh::server::WebSocket2::beginSignal(const int32_t sid, const uint64_t bid) 
  * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
  */
-int awh::server::WebSocket2::closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
+int awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
 	// Если разрешено выполнить остановку
 	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE))
 		// Выполняем закрытие подключения
@@ -302,7 +302,7 @@ int awh::server::WebSocket2::closedSignal(const int32_t sid, const uint64_t bid,
  * @param val данные значения заголовка
  * @return    статус полученных данных
  */
-int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
+int awh::server::Websocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -325,7 +325,7 @@ int awh::server::WebSocket2::headerSignal(const int32_t sid, const uint64_t bid,
  * @param size   размер полученного буфера данных чанка
  * @return       статус полученных данных
  */
-int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
+int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -369,7 +369,7 @@ int awh::server::WebSocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
+int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -426,7 +426,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								ws::frame_t::head_t head;
 								// Выполняем обработку полученных данных
 								while(!options->close && options->allow.receive){
-									// Выполняем чтение фрейма WebSocket
+									// Выполняем чтение фрейма Websocket
 									const auto & data = options->frame.methods.get(head, options->buffer.payload.data(), options->buffer.payload.size());
 									// Если буфер данных получен
 									if(!data.empty()){
@@ -828,7 +828,7 @@ int awh::server::WebSocket2::frameSignal(const int32_t sid, const uint64_t bid, 
  * @param bid     идентификатор брокера
  * @param message сообщение с описанием ошибки
  */
-void awh::server::WebSocket2::error(const uint64_t bid, const ws::mess_t & message) const noexcept {
+void awh::server::Websocket2::error(const uint64_t bid, const ws::mess_t & message) const noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -848,10 +848,10 @@ void awh::server::WebSocket2::error(const uint64_t bid, const ws::mess_t & messa
 				this->_log->print("%s - %s [%u]", log_t::flag_t::WARNING, message.type.c_str(), message.text.c_str(), message.code);
 			// Иначе выводим сообщение в упрощёном виде
 			else this->_log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
-			// Если функция обратного вызова при получении ошибки WebSocket установлена
-			if(this->_callback.is("wserror"))
+			// Если функция обратного вызова при получении ошибки Websocket установлена
+			if(this->_callback.is("errorWebsocket"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t, const u_int, const string &)> ("wserror", bid, message.code, message.text);
+				this->_callback.call <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", bid, message.code, message.text);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
@@ -865,9 +865,9 @@ void awh::server::WebSocket2::error(const uint64_t bid, const ws::mess_t & messa
  * @param buffer данные в чистом виде полученные с сервера
  * @param text   данные передаются в текстовом виде
  */
-void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept {
+void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept {
 	// Если буфер данных передан
-	if((bid > 0) && !buffer.empty() && this->_callback.is("message")){
+	if((bid > 0) && !buffer.empty() && this->_callback.is("messageWebsocket")){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -909,13 +909,13 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 						// Отправляем полученный результат
 						if(!res.empty()){
 							// Выводим данные полученного сообщения
-							this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("message", bid, res, text);
+							this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, res, text);
 							// Выходим из функции
 							return;
 						}
 					}
 					// Выводим сообщение так - как оно пришло
-					this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("message", bid, data, text);
+					this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, data, text);
 				// Выводим сообщение об ошибке
 				} else if(this->_core != nullptr) {
 					// Создаём сообщение
@@ -938,13 +938,13 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
 					// Отправляем полученный результат
 					if(!res.empty()){
 						// Отправляем полученный результат
-						this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("message", bid, res, text);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, res, text);
 						// Выходим из функции
 						return;
 					}
 				}
 				// Выводим сообщение так - как оно пришло
-				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("message", bid, buffer, text);
+				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, buffer, text);
 			}
 		}
 	}
@@ -955,7 +955,7 @@ void awh::server::WebSocket2::extraction(const uint64_t bid, const vector <char>
  * @param core объект сетевого ядра
  * @param      message сообщение для отправки
  */
-void awh::server::WebSocket2::pong(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
+void awh::server::Websocket2::pong(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr)){
 		// Получаем параметры активного клиента
@@ -977,7 +977,7 @@ void awh::server::WebSocket2::pong(const uint64_t bid, awh::core_t * core, const
  * @param core объект сетевого ядра
  * @param      message сообщение для отправки
  */
-void awh::server::WebSocket2::ping(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
+void awh::server::Websocket2::ping(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
 	// Если необходимые данные переданы
 	if((bid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры активного клиента
@@ -997,7 +997,7 @@ void awh::server::WebSocket2::ping(const uint64_t bid, awh::core_t * core, const
  * erase Метод удаления отключившихся брокеров
  * @param bid идентификатор брокера
  */
-void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
+void awh::server::Websocket2::erase(const uint64_t bid) noexcept {
 	// Если список отключившихся брокеров не пустой
 	if(!this->_disconected.empty()){
 		/**
@@ -1017,7 +1017,7 @@ void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
 				options->buffer.fragmes.clear();
 				// Если переключение протокола на HTTP/2 не выполнено
 				if(options->proto != engine_t::proto_t::HTTP2)
-					// Выполняем очистку отключившихся брокеров у WebSocket-сервера
+					// Выполняем очистку отключившихся брокеров у Websocket-сервера
 					this->_ws1.erase(bid);
 				// Выполняем удаление созданной ранее сессии HTTP/2
 				else this->_sessions.erase(bid);
@@ -1066,7 +1066,7 @@ void awh::server::WebSocket2::erase(const uint64_t bid) noexcept {
  * disconnect Метод отключения брокера
  * @param bid идентификатор брокера
  */
-void awh::server::WebSocket2::disconnect(const uint64_t bid) noexcept {
+void awh::server::Websocket2::disconnect(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены и переключение протокола на HTTP/2 не выполнено
@@ -1081,14 +1081,14 @@ void awh::server::WebSocket2::disconnect(const uint64_t bid) noexcept {
  * @param tid  идентификатор таймера
  * @param core объект сетевого ядра
  */
-void awh::server::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(item.second->proto != engine_t::proto_t::HTTP2)
-				// Выполняем переброс события пинга в модуль WebSocket
+				// Выполняем переброс события пинга в модуль Websocket
 				this->_ws1.pinging(tid, core);
 			// Если переключение протокола на HTTP/2 выполнено
 			else if(item.second->allow.receive) {
@@ -1111,23 +1111,23 @@ void awh::server::WebSocket2::pinging(const uint16_t tid, awh::core_t * core) no
 	}
 }
 /**
- * init Метод инициализации WebSocket-сервера
+ * init Метод инициализации Websocket-сервера
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::WebSocket2::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket2::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
 	// Устанавливаем писок поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
 	web2_t::init(socket, compressors);
 }
 /**
- * init Метод инициализации WebSocket-сервера
+ * init Метод инициализации Websocket-сервера
  * @param port        порт сервера
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::WebSocket2::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket2::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
 	// Устанавливаем писок поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -1138,10 +1138,10 @@ void awh::server::WebSocket2::init(const u_int port, const string & host, const 
  * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::WebSocket2::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
+void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
-		// Если код ошибки относится к WebSocket
+		// Если код ошибки относится к Websocket
 		if(mess.code >= 1000){
 			// Получаем параметры активного клиента
 			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
@@ -1153,7 +1153,7 @@ void awh::server::WebSocket2::sendError(const uint64_t bid, const ws::mess_t & m
 			if((options != nullptr) && options->allow.send){
 				// Если переключение протокола на HTTP/2 не выполнено
 				if(options->proto != engine_t::proto_t::HTTP2)
-					// Выполняем отправку сообщение об ошибке на клиент WebSocket
+					// Выполняем отправку сообщение об ошибке на клиент Websocket
 					this->_ws1.sendError(bid, mess);
 				// Если переключение протокола на HTTP/2 выполнено
 				else {
@@ -1188,7 +1188,7 @@ void awh::server::WebSocket2::sendError(const uint64_t bid, const ws::mess_t & m
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  */
-void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+void awh::server::Websocket2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента
@@ -1199,7 +1199,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
 			options->allow.send = !options->allow.send;
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(options->proto != engine_t::proto_t::HTTP2)
-				// Выполняем отправку сообщения клиенту WebSocket
+				// Выполняем отправку сообщения клиенту Websocket
 				this->_ws1.sendMessage(bid, message, text);
 			// Если переключение протокола на HTTP/2 выполнено
 			else {
@@ -1319,7 +1319,7 @@ void awh::server::WebSocket2::sendMessage(const uint64_t bid, const vector <char
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
  */
-void awh::server::WebSocket2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+void awh::server::Websocket2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
@@ -1329,7 +1329,7 @@ void awh::server::WebSocket2::send(const uint64_t bid, const char * buffer, cons
  * callback Метод установки функций обратного вызова
  * @param callback функции обратного вызова
  */
-void awh::server::WebSocket2::callback(const fn_t & callback) noexcept {
+void awh::server::Websocket2::callback(const fn_t & callback) noexcept {
 	// Выполняем добавление функций обратного вызова в основноной модуль
 	web2_t::callback(callback);
 	{
@@ -1351,10 +1351,6 @@ void awh::server::WebSocket2::callback(const fn_t & callback) noexcept {
 		callback.set("accept", this->_callback);
 		// Выполняем установку функции обратного вызова полученного заголовка с клиента
 		callback.set("header", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
-		callback.set("wserror", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
-		callback.set("message", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода запроса клиента к серверу
 		callback.set("request", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода полученных заголовков с клиента
@@ -1367,9 +1363,13 @@ void awh::server::WebSocket2::callback(const fn_t & callback) noexcept {
 		callback.set("checkPassword", this->_callback);
 		// Выполняем установку функции обратного вызова для извлечения пароля
 		callback.set("extractPassword", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
+		callback.set("errorWebsocket", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
+		callback.set("messageWebsocket", this->_callback);
 		// Если функции обратного вызова установлены
 		if(!callback.empty())
-			// Выполняем установку функций обратного вызова для WebSocket-сервера
+			// Выполняем установку функций обратного вызова для Websocket-сервера
 			this->_ws1.callback(std::move(callback));
 	}
 }
@@ -1378,7 +1378,7 @@ void awh::server::WebSocket2::callback(const fn_t & callback) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::WebSocket2::port(const uint64_t bid) const noexcept {
+u_int awh::server::Websocket2::port(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -1387,7 +1387,7 @@ u_int awh::server::WebSocket2::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::WebSocket2::agent(const uint64_t bid) const noexcept {
+awh::server::web_t::agent_t awh::server::Websocket2::agent(const uint64_t bid) const noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) bid;
 	// Выводим сообщение, что ничего не найдено
@@ -1398,7 +1398,7 @@ awh::server::web_t::agent_t awh::server::WebSocket2::agent(const uint64_t bid) c
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
-const string & awh::server::WebSocket2::ip(const uint64_t bid) const noexcept {
+const string & awh::server::Websocket2::ip(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.ip(bid);
 }
@@ -1407,21 +1407,21 @@ const string & awh::server::WebSocket2::ip(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
-const string & awh::server::WebSocket2::mac(const uint64_t bid) const noexcept {
+const string & awh::server::Websocket2::mac(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.mac(bid);
 }
 /**
  * stop Метод остановки сервера
  */
-void awh::server::WebSocket2::stop() noexcept {
+void awh::server::Websocket2::stop() noexcept {
 	// Выполняем остановку работы основного модуля
 	web2_t::stop();
 }
 /**
  * start Метод запуска сервера
  */
-void awh::server::WebSocket2::start() noexcept {
+void awh::server::Websocket2::start() noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr){
 		// Если биндинг не запущен
@@ -1436,7 +1436,7 @@ void awh::server::WebSocket2::start() noexcept {
  * close Метод закрытия подключения брокера
  * @param bid идентификатор брокера
  */
-void awh::server::WebSocket2::close(const uint64_t bid) noexcept {
+void awh::server::Websocket2::close(const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
@@ -1466,7 +1466,7 @@ void awh::server::WebSocket2::close(const uint64_t bid) noexcept {
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
-void awh::server::WebSocket2::subprotocol(const string & subprotocol) noexcept {
+void awh::server::Websocket2::subprotocol(const string & subprotocol) noexcept {
 	// Устанавливаем сабпротокол
 	if(!subprotocol.empty())
 		// Выполняем установку сабпротокола
@@ -1476,7 +1476,7 @@ void awh::server::WebSocket2::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::WebSocket2::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::Websocket2::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку сабпротоколов
@@ -1487,7 +1487,7 @@ void awh::server::WebSocket2::subprotocols(const set <string> & subprotocols) no
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::WebSocket2::subprotocols(const uint64_t bid) const noexcept {
+const set <string> & awh::server::Websocket2::subprotocols(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	static const set <string> result;
 	// Получаем параметры активного клиента
@@ -1508,7 +1508,7 @@ const set <string> & awh::server::WebSocket2::subprotocols(const uint64_t bid) c
  * extensions Метод установки списка расширений
  * @param extensions список поддерживаемых расширений
  */
-void awh::server::WebSocket2::extensions(const vector <vector <string>> & extensions) noexcept {
+void awh::server::Websocket2::extensions(const vector <vector <string>> & extensions) noexcept {
 	// Выполняем установку списка расширений
 	this->_extensions = extensions;
 }
@@ -1517,7 +1517,7 @@ void awh::server::WebSocket2::extensions(const vector <vector <string>> & extens
  * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::server::WebSocket2::extensions(const uint64_t bid) const noexcept {
+const vector <vector <string>> & awh::server::Websocket2::extensions(const uint64_t bid) const noexcept {
 	// Результат работы функции
 	static const vector <vector <string>> result;
 	// Получаем параметры активного клиента
@@ -1526,7 +1526,7 @@ const vector <vector <string>> & awh::server::WebSocket2::extensions(const uint6
 	if(options != nullptr){
 		// Если переключение протокола на HTTP/2 не выполнено
 		if(options->proto != engine_t::proto_t::HTTP2)
-			// Выполняем извлечение списка поддерживаемых расширений WebSocket
+			// Выполняем извлечение списка поддерживаемых расширений Websocket
 			return this->_ws1.extensions(bid);
 		// Выполняем извлечение списка поддерживаемых расширений для текущего подключения
 		else return options->http.extensions();
@@ -1539,7 +1539,7 @@ const vector <vector <string>> & awh::server::WebSocket2::extensions(const uint6
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::server::WebSocket2::multiThreads(const uint16_t count, const bool mode) noexcept {
+void awh::server::Websocket2::multiThreads(const uint16_t count, const bool mode) noexcept {
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Выполняем установку количества активных ядер
@@ -1566,7 +1566,7 @@ void awh::server::WebSocket2::multiThreads(const uint16_t count, const bool mode
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::WebSocket2::total(const u_short total) noexcept {
+void awh::server::Websocket2::total(const u_short total) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Устанавливаем максимальное количество одновременных подключений
@@ -1576,21 +1576,21 @@ void awh::server::WebSocket2::total(const u_short total) noexcept {
  * segmentSize Метод установки размеров сегментов фрейма
  * @param size минимальный размер сегмента
  */
-void awh::server::WebSocket2::segmentSize(const size_t size) noexcept {
+void awh::server::Websocket2::segmentSize(const size_t size) noexcept {
 	// Если размер сегмента фрейма передан
 	if(size > 0)
 		// Устанавливаем размер одного сегмента фрейма
 		this->_frameSize = size;
 	// Иначе устанавливаем размер сегментов по умолчанию
 	else this->_frameSize = 0xFA000;
-	// Выполняем установку размеров сегментов фрейма для WebSocket-сервера
+	// Выполняем установку размеров сегментов фрейма для Websocket-сервера
 	this->_ws1.segmentSize(size);
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
-void awh::server::WebSocket2::clusterAutoRestart(const bool mode) noexcept {
+void awh::server::Websocket2::clusterAutoRestart(const bool mode) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Выполняем установку флага автоматического перезапуска
@@ -1602,7 +1602,7 @@ void awh::server::WebSocket2::clusterAutoRestart(const bool mode) noexcept {
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::server::WebSocket2::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::server::Websocket2::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -1614,7 +1614,7 @@ void awh::server::WebSocket2::keepAlive(const int cnt, const int idle, const int
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::WebSocket2::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket2::compressors(const vector <http_t::compress_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 }
@@ -1622,8 +1622,8 @@ void awh::server::WebSocket2::compressors(const vector <http_t::compress_t> & co
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::WebSocket2::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаги настроек модуля для WebSocket-сервера
+void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
+	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
@@ -1647,7 +1647,7 @@ void awh::server::WebSocket2::mode(const set <flag_t> & flags) noexcept {
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::WebSocket2::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Websocket2::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку основных настроек протокола HTTP/2
 	web2_t::settings(settings);
 	// Если метод CONNECT не установлен, разрешаем его по умолчанию
@@ -1659,27 +1659,27 @@ void awh::server::WebSocket2::settings(const map <awh::http2_t::settings_t, uint
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::WebSocket2::alive(const bool mode) noexcept {
+void awh::server::Websocket2::alive(const bool mode) noexcept {
 	// Выполняем установку долгоживущего подключения
 	web2_t::alive(mode);
-	// Выполняем установку долгоживущего подключения для WebSocket-сервера
+	// Выполняем установку долгоживущего подключения для Websocket-сервера
 	this->_ws1.alive(mode);
 }
 /**
  * alive Метод установки времени жизни подключения
  * @param time время жизни подключения
  */
-void awh::server::WebSocket2::alive(const time_t time) noexcept {
+void awh::server::Websocket2::alive(const time_t time) noexcept {
 	// Выполняем установку времени жизни подключения
 	web2_t::alive(time);
-	// Выполняем установку времени жизни подключения для WebSocket-сервера
+	// Выполняем установку времени жизни подключения для Websocket-сервера
 	this->_ws1.alive(time);
 }
 /**
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
  */
-void awh::server::WebSocket2::core(const server::core_t * core) noexcept {
+void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
 		// Выполняем установку объекта сетевого ядра
@@ -1719,7 +1719,7 @@ void awh::server::WebSocket2::core(const server::core_t * core) noexcept {
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::server::WebSocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Websocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков которые нужно передать клиенту
 	this->_headers = headers;
 }
@@ -1728,7 +1728,7 @@ void awh::server::WebSocket2::setHeaders(const unordered_multimap <string, strin
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::WebSocket2::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::Websocket2::waitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -1739,7 +1739,7 @@ void awh::server::WebSocket2::waitTimeDetect(const time_t read, const time_t wri
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::server::WebSocket2::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
+void awh::server::Websocket2::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
 	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
@@ -1757,40 +1757,40 @@ void awh::server::WebSocket2::bytesDetect(const scheme_t::mark_t read, const sch
  * realm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::server::WebSocket2::realm(const string & realm) noexcept {
+void awh::server::Websocket2::realm(const string & realm) noexcept {
 	// Устанавливаем название сервера
 	web2_t::realm(realm);
-	// Устанавливаем название сервера для WebSocket-сервера
+	// Устанавливаем название сервера для Websocket-сервера
 	this->_ws1.realm(realm);
 }
 /**
  * opaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::WebSocket2::opaque(const string & opaque) noexcept {
+void awh::server::Websocket2::opaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
 	web2_t::opaque(opaque);
-	// Устанавливаем временный ключ сессии сервера для WebSocket-сервера
+	// Устанавливаем временный ключ сессии сервера для Websocket-сервера
 	this->_ws1.opaque(opaque);
 }
 /**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
-void awh::server::WebSocket2::chunk(const size_t size) noexcept {
+void awh::server::Websocket2::chunk(const size_t size) noexcept {
 	// Устанавливаем размера чанка
 	web2_t::chunk(size);
-	// Устанавливаем размера чанка для WebSocket-сервера
+	// Устанавливаем размера чанка для Websocket-сервера
 	this->_ws1.chunk(size);
 }
 /**
  * maxRequests Метод установки максимального количества запросов
  * @param max максимальное количество запросов
  */
-void awh::server::WebSocket2::maxRequests(const size_t max) noexcept {
+void awh::server::Websocket2::maxRequests(const size_t max) noexcept {
 	// Устанавливаем максимальное количество запросов
 	web2_t::maxRequests(max);
-	// Устанавливаем максимальное количество запросов для WebSocket-сервера
+	// Устанавливаем максимальное количество запросов для Websocket-сервера
 	this->_ws1.maxRequests(max);
 }
 /**
@@ -1799,10 +1799,10 @@ void awh::server::WebSocket2::maxRequests(const size_t max) noexcept {
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::server::WebSocket2::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::server::Websocket2::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификацию сервера
 	web2_t::ident(id, name, ver);
-	// Устанавливаем идентификацию сервера для WebSocket-сервера
+	// Устанавливаем идентификацию сервера для Websocket-сервера
 	this->_ws1.ident(id, name, ver);
 }
 /**
@@ -1810,10 +1810,10 @@ void awh::server::WebSocket2::ident(const string & id, const string & name, cons
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::server::WebSocket2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::server::Websocket2::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
 	web2_t::authType(type, hash);
-	// Устанавливаем тип авторизации для WebSocket-сервера
+	// Устанавливаем тип авторизации для Websocket-сервера
 	this->_ws1.authType(type, hash);
 }
 /**
@@ -1821,7 +1821,7 @@ void awh::server::WebSocket2::authType(const auth_t::type_t type, const auth_t::
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::WebSocket2::crypted(const uint64_t bid) const noexcept {
+bool awh::server::Websocket2::crypted(const uint64_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
@@ -1830,7 +1830,7 @@ bool awh::server::WebSocket2::crypted(const uint64_t bid) const noexcept {
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(options->proto != engine_t::proto_t::HTTP2)
-				// Выводим установленный флаг шифрования клиента WebSocket
+				// Выводим установленный флаг шифрования клиента Websocket
 				return this->_ws1.crypted(bid);
 			// Выводим установленный флаг шифрования
 			return options->crypted;
@@ -1844,7 +1844,7 @@ bool awh::server::WebSocket2::crypted(const uint64_t bid) const noexcept {
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket2::encrypt(const uint64_t bid, const bool mode) noexcept {
+void awh::server::Websocket2::encrypt(const uint64_t bid, const bool mode) noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
@@ -1853,7 +1853,7 @@ void awh::server::WebSocket2::encrypt(const uint64_t bid, const bool mode) noexc
 		if(options != nullptr){
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(options->proto != engine_t::proto_t::HTTP2)
-				// Устанавливаем флаг шифрования для клиента WebSocket
+				// Устанавливаем флаг шифрования для клиента Websocket
 				this->_ws1.encrypt(bid, mode);
 			// Устанавливаем флаг шифрования для клиента
 			else options->crypted = mode;
@@ -1864,10 +1864,10 @@ void awh::server::WebSocket2::encrypt(const uint64_t bid, const bool mode) noexc
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::server::WebSocket2::encryption(const bool mode) noexcept {
+void awh::server::Websocket2::encryption(const bool mode) noexcept {
 	// Устанавливаем флага шифрования
 	web2_t::encryption(mode);
-	// Устанавливаем флага шифрования для WebSocket-сервера
+	// Устанавливаем флага шифрования для Websocket-сервера
 	this->_ws1.encryption(mode);
 }
 /**
@@ -1876,18 +1876,18 @@ void awh::server::WebSocket2::encryption(const bool mode) noexcept {
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::server::WebSocket2::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::server::Websocket2::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования
 	web2_t::encryption(pass, salt, cipher);
-	// Устанавливаем параметры шифрования для WebSocket-сервера
+	// Устанавливаем параметры шифрования для Websocket-сервера
 	this->_ws1.encryption(pass, salt, cipher);
 }
 /**
- * WebSocket2 Конструктор
+ * Websocket2 Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _threads(0), _frameSize(0xFA000), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _threads(0), _frameSize(0xFA000), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем событие на запуск системы
@@ -1904,12 +1904,12 @@ awh::server::WebSocket2::WebSocket2(const fmk_t * fmk, const log_t * log) noexce
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&ws2_t::acceptCallback, this, _1, _2, _3, _4, _5));
 }
 /**
- * WebSocket2 Конструктор
+ * Websocket2 Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket2::WebSocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _threads(0), _frameSize(0xFA000), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _threads(0), _frameSize(0xFA000), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Добавляем схему сети в сетевое ядро
@@ -1928,9 +1928,9 @@ awh::server::WebSocket2::WebSocket2(const server::core_t * core, const fmk_t * f
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&ws2_t::acceptCallback, this, _1, _2, _3, _4, _5));
 }
 /**
- * ~WebSocket2 Деструктор
+ * ~Websocket2 Деструктор
  */
-awh::server::WebSocket2::~WebSocket2() noexcept {
+awh::server::Websocket2::~Websocket2() noexcept {
 	// Если многопоточность активированна
 	if(this->_thr.is())
 		// Выполняем завершение всех активных потоков

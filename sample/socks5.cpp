@@ -58,7 +58,7 @@ class Proxy {
 			return true;
 		}
 		/**
-		 * active Метод идентификации активности на WebSocket сервере
+		 * active Метод идентификации активности на Websocket сервере
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode режим события подключения
 		 */
@@ -118,7 +118,7 @@ int main(int argc, char * argv[]){
 	proxy.clusterSize();
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
-	// Выполняем инициализацию WebSocket сервера
+	// Выполняем инициализацию Websocket сервера
 	// proxy.init(2222, "anyks.net");
 	proxy.init(2222, "127.0.0.1");
 	// proxy.init("anyks");

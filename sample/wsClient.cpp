@@ -31,7 +31,7 @@ class Executor {
 		// Создаём объект работы с логами
 		const log_t * _log;
 	private:
-		// Объект WebSocket-клиента
+		// Объект Websocket-клиента
 		client::websocket_t * _ws;
 	public:
 		/**
@@ -66,7 +66,7 @@ class Executor {
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
-			// Если агент соответствует WebSocket
+			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
 				this->_log->print("Handshake", log_t::flag_t::INFO);
@@ -197,7 +197,7 @@ class Executor {
 		}
 	public:
 		/**
-		 * error Метод вывода ошибок WebSocket клиента
+		 * error Метод вывода ошибок Websocket клиента
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
@@ -236,7 +236,7 @@ class Executor {
 		 * Executor Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param ws  объект WebSocket-клиента
+		 * @param ws  объект Websocket-клиента
 		 */
 		Executor(const fmk_t * fmk, const log_t * log, client::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
 };
@@ -254,12 +254,12 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём биндинг сетевого ядра
 	client::core_t core(&fmk, &log);
-	// Создаём объект WebSocket клиента
+	// Создаём объект Websocket клиента
 	websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log, &ws);
 	// Устанавливаем название сервиса
-	log.name("WebSocket Client");
+	log.name("Websocket Client");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
@@ -278,7 +278,7 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,
-		client::web_t::flag_t::CONNECT_METHOD_ENABLE
+		// client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
@@ -322,17 +322,17 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
-	// ws.proxy("https://user:password@anyks.net:2222");
+	ws.proxy("https://user:password@anyks.net:2222");
 	// ws.proxy("socks5://user:password@anyks.net:2222");
 	
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
 	// Устанавливаем тип авторизации прокси-сервера
-	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
-	// Выполняем инициализацию WebSocket клиента
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	// Выполняем инициализацию Websocket клиента
 	ws.init("wss://stream.binance.com:9443/stream");
 	// ws.init("wss://127.0.0.1:2222", {awh::http_t::compress_t::DEFLATE});
 	// ws.init("wss://anyks.net:2222", {awh::http_t::compress_t::DEFLATE});
@@ -355,16 +355,16 @@ int main(int argc, char * argv[]){
 	// Создаём локальный контейнер функций обратного вызова
 	fn_t callback(&log);
 	// Подписываемся на событие получения ошибки работы клиента
-	callback.set <void (const u_int, const string &)> ("error", std::bind(&Executor::error, &executor, _1, _2));
+	callback.set <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
-	callback.set <void (const vector <char> &, const bool)> ("message", std::bind(&Executor::message, &executor, _1, _2));
+	callback.set <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
 	callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
 	// Подписываемся на событие рукопожатия
 	callback.set <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3));
 	// Выполняем установку функций обратного вызова
 	ws.callback(std::move(callback));
-	// Выполняем запуск WebSocket клиента
+	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат
 	return 0;

@@ -31,7 +31,7 @@ void awh::client::AWH::sendTimeout() noexcept {
 	this->_http.sendTimeout();
 }
 /**
- * sendError Метод отправки сообщения об ошибке на сервер WebSocket
+ * sendError Метод отправки сообщения об ошибке на сервер Websocket
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::AWH::sendError(const ws::mess_t & mess) noexcept {
@@ -44,7 +44,7 @@ void awh::client::AWH::sendError(const ws::mess_t & mess) noexcept {
  * @param text    данные передаются в текстовом виде
  */
 void awh::client::AWH::sendMessage(const vector <char> & message, const bool text) noexcept {
-	// Выполняем отправку сообщения на WebSocket-сервер
+	// Выполняем отправку сообщения на Websocket-сервер
 	this->_http.sendMessage(message, text);
 }
 /**
@@ -124,10 +124,10 @@ int32_t awh::client::AWH::send2(const int32_t sid, const vector <pair <string, s
 	return this->_http.send2(sid, headers, flag);
 }
 /**
- * pause Метод установки на паузу клиента WebSocket
+ * pause Метод установки на паузу клиента Websocket
  */
 void awh::client::AWH::pause() noexcept {
-	// Выполняем постановку клиента WebSocket на паузу
+	// Выполняем постановку клиента Websocket на паузу
 	this->_http.pause();
 }
 /**
@@ -576,7 +576,7 @@ void awh::client::AWH::subprotocols(const set <string> & subprotocols) noexcept 
 	this->_http.subprotocols(subprotocols);
 }
 /**
- * extensions Метод извлечения списка расширений WebSocket
+ * extensions Метод извлечения списка расширений Websocket
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::client::AWH::extensions() const noexcept {
@@ -584,7 +584,7 @@ const vector <vector <string>> & awh::client::AWH::extensions() const noexcept {
 	return this->_http.extensions();
 }
 /**
- * extensions Метод установки списка расширений WebSocket
+ * extensions Метод установки списка расширений Websocket
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::AWH::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -616,11 +616,11 @@ void awh::client::AWH::chunk(const size_t size) noexcept {
 	this->_http.chunk(size);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма WebSocket
+ * segmentSize Метод установки размеров сегментов фрейма Websocket
  * @param size минимальный размер сегмента
  */
 void awh::client::AWH::segmentSize(const size_t size) noexcept {
-	// Выполняем установку размера сегмента фрейма WebSocket
+	// Выполняем установку размера сегмента фрейма Websocket
 	this->_http.segmentSize(size);
 }
 /**
@@ -669,12 +669,12 @@ void awh::client::AWH::compressors(const vector <awh::http_t::compress_t> & comp
 	this->_http.compressors(compressors);
 }
 /**
- * multiThreads Метод активации многопоточности в WebSocket
+ * multiThreads Метод активации многопоточности в Websocket
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
 void awh::client::AWH::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Выполняем активацию многопоточности при получения данных в WebSocket
+	// Выполняем активацию многопоточности при получения данных в Websocket
 	this->_http.multiThreads(count, mode);
 }
 /**

@@ -48,10 +48,10 @@ namespace awh {
 			private:
 				// Флаг открытия подключения
 				bool _mode;
-				// Флаг разрешения использования протокол WebSocket
+				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 			private:
-				// Объект для работы c WebSocket
+				// Объект для работы c Websocket
 				ws1_t _ws1;
 				// Объект для работы с HTTP-протколом
 				http_t _http;

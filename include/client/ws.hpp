@@ -29,9 +29,9 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * WebSocket Класс работы с WebSocket-клиентом
+		 * Websocket Класс работы с Websocket-клиентом
 		 */
-		typedef class WebSocket {
+		typedef class Websocket {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;
@@ -110,12 +110,12 @@ namespace awh {
 				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
-				 * extensions Метод извлечения списка расширений WebSocket
+				 * extensions Метод извлечения списка расширений Websocket
 				 * @return список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions() const noexcept;
 				/**
-				 * extensions Метод установки списка расширений WebSocket
+				 * extensions Метод установки списка расширений Websocket
 				 * @param extensions список поддерживаемых расширений
 				 */
 				void extensions(const vector <vector <string>> & extensions) noexcept;
@@ -126,7 +126,7 @@ namespace awh {
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * segmentSize Метод установки размеров сегментов фрейма WebSocket
+				 * segmentSize Метод установки размеров сегментов фрейма Websocket
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
@@ -166,7 +166,7 @@ namespace awh {
 				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности в WebSocket
+				 * multiThreads Метод активации многопоточности в Websocket
 				 * @param count количество потоков для активации
 				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
@@ -288,16 +288,16 @@ namespace awh {
 				void network(const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * WebSocket Конструктор
+				 * Websocket Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~WebSocket Деструктор
+				 * ~Websocket Деструктор
 				 */
-				~WebSocket() noexcept {}
+				~Websocket() noexcept {}
 		} websocket_t;
 	};
 };

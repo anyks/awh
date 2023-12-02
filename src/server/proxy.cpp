@@ -334,7 +334,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						if(it->second->method == awh::web_t::method_t::NONE){
 							// Выполняем установку метода подключения
 							it->second->method = it->second->request.params.method;
-							// Если активирован WebSocket клиент
+							// Если активирован Websocket клиент
 							if(it->second->agent == client::web_t::agent_t::WEBSOCKET){
 								// Создаём объект запроса
 								client::web_t::request_t request;
@@ -534,9 +534,9 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			const awh::http_t * http = this->_server.parser(sid, bid);
 			// Если объект HTTP-парсера получен
 			if(http != nullptr){
-				// Если нужно переключиться на протокол WebSocket
+				// Если нужно переключиться на протокол Websocket
 				if(this->_fmk->exists("websocket", http->upgrade()))
-					// Устанавливаем агента WebSocket
+					// Устанавливаем агента Websocket
 					i->second->agent = client::web_t::agent_t::WEBSOCKET;
 			}
 			// Выполняем получение заголовка Via
@@ -633,7 +633,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				if(this->_callback.is("headersClient"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> ("headersClient", bid, code, message, &i->second->response.headers);
-				// Если производится активация WebSocket
+				// Если производится активация Websocket
 				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 					// Флаг удачно-выполненного подключения
 					bool connected = false;
@@ -641,12 +641,12 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					switch(static_cast <uint8_t> (this->_core.proto(bid))){
 						// Если протокол подключения соответствует HTTP/1.1
 						case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
-							// Если переключение на протокол WebSocket произведено
+							// Если переключение на протокол Websocket произведено
 							connected = (i->second->response.params.code == 101);
 						break;
 						// Если протокол подключения соответствует HTTP/2
 						case static_cast <uint8_t> (engine_t::proto_t::HTTP2):
-							// Если переключение на протокол WebSocket произведено
+							// Если переключение на протокол Websocket произведено
 							connected = (i->second->response.params.code == 200);
 						break;
 					}
@@ -899,7 +899,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							} break;
 							// Если запрашивается клиентом метод CONNECT
 							case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
-								// Если активирован WebSocket клиент и подключение уже выполненно
+								// Если активирован Websocket клиент и подключение уже выполненно
 								if((it->second->method == awh::web_t::method_t::CONNECT) &&
 								   (it->second->agent == client::web_t::agent_t::WEBSOCKET)){
 									// Создаём объект запроса

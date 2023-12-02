@@ -64,7 +64,7 @@ namespace awh {
 				HTTP2     = 0x02, // Протокол принадлежит HTTP/2
 				HTTP1_1   = 0x03, // Протокол принадлежит HTTP/1.1
 				PROXY     = 0x04, // Протокол принадлежит Proxy
-				WEBSOCKET = 0x05  // Протокол принадлежит WebSocket
+				WEBSOCKET = 0x05  // Протокол принадлежит Websocket
 			};
 			/**
 			 * Стейты работы модуля

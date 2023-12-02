@@ -147,9 +147,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 		if(process){
 			// Выполняем поиск агента которому соответствует клиент
 			auto it = this->_agents.find(bid);
-			// Если агент соответствует WebSocket-у
+			// Если агент соответствует Websocket-у
 			if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-				// Выполняем передачу данных клиенту WebSocket
+				// Выполняем передачу данных клиенту Websocket
 				this->_ws1.readCallback(buffer, size, bid, sid, core);
 			// Иначе выполняем обработку входящих данных как Web-сервер
 			else {
@@ -309,9 +309,9 @@ void awh::server::Http1::readCallback(const char * buffer, const size_t size, co
 										if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
 											// Выполняем извлечение заголовка Upgrade
 											const string & header = options->http.header("upgrade");
-											// Если запрашиваемый протокол соответствует WebSocket
+											// Если запрашиваемый протокол соответствует Websocket
 											if(this->_webSocket && this->_fmk->compare(header, "websocket"))
-												// Выполняем инициализацию WebSocket-сервера
+												// Выполняем инициализацию Websocket-сервера
 												this->websocket(bid, sid, core);
 											// Если протокол запрещён или не поддерживается, выполняем закрытие подключения
 											else rejectFn(bid, dynamic_cast <server::core_t *> (core));
@@ -458,9 +458,9 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
+		// Если агент соответствует Websocket-у
 		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем передачу данных клиенту WebSocket
+			// Выполняем передачу данных клиенту Websocket
 			this->_ws1.writeCallback(buffer, size, bid, sid, core);
 		// Иначе выполняем обработку входящих данных как Web-сервер
 		else if(this->_core != nullptr) {
@@ -480,7 +480,7 @@ void awh::server::Http1::writeCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
- * websocket Метод инициализации WebSocket протокола
+ * websocket Метод инициализации Websocket протокола
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
@@ -751,7 +751,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			auto it = this->_agents.find(bid);
 			// Если агент найден в списке активных агентов
 			if(it != this->_agents.end()){
-				// Если агент соответствует серверу WebSocket
+				// Если агент соответствует серверу Websocket
 				if(it->second == agent_t::WEBSOCKET)
 					// Выполняем удаление отключённого брокера
 					this->_ws1.erase(it->first);
@@ -840,9 +840,9 @@ void awh::server::Http1::pinging(const uint16_t tid, awh::core_t * core) noexcep
 						}
 					}
 				} break;
-				// Если агент соответствует серверу WebSocket
+				// Если агент соответствует серверу Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем передачу данных клиенту WebSocket
+					// Выполняем передачу данных клиенту Websocket
 					this->_ws1.pinging(tid, core);
 				break;
 			}
@@ -950,9 +950,9 @@ void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) 
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
+		// Если агент соответствует Websocket-у
 		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем отправку ошибки клиенту WebSocket
+			// Выполняем отправку ошибки клиенту Websocket
 			this->_ws1.sendError(bid, mess);
 	}
 }
@@ -967,9 +967,9 @@ void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
 		auto it = this->_agents.find(bid);
-		// Если агент соответствует WebSocket-у
+		// Если агент соответствует Websocket-у
 		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-			// Выполняем передачу данных клиенту WebSocket
+			// Выполняем передачу данных клиенту Websocket
 			this->_ws1.sendMessage(bid, message, text);
 	}
 }
@@ -1285,10 +1285,6 @@ void awh::server::Http1::callback(const fn_t & callback) noexcept {
 		callback.set("accept", this->_callback);
 		// Выполняем установку функции обратного вызова полученного заголовка с клиента
 		callback.set("header", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
-		callback.set("wserror", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
-		callback.set("message", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода запроса клиента к серверу
 		callback.set("request", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода полученных заголовков с клиента
@@ -1301,9 +1297,13 @@ void awh::server::Http1::callback(const fn_t & callback) noexcept {
 		callback.set("checkPassword", this->_callback);
 		// Выполняем установку функции обратного вызова для извлечения пароля
 		callback.set("extractPassword", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
+		callback.set("errorWebsocket", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
+		callback.set("messageWebsocket", this->_callback);
 		// Если функции обратного вызова установлены
 		if(!callback.empty())
-			// Выполняем установку функций обратного вызова для WebSocket-сервера
+			// Выполняем установку функций обратного вызова для Websocket-сервера
 			this->_ws1.callback(std::move(callback));
 	}
 }
@@ -1377,9 +1377,9 @@ void awh::server::Http1::start() noexcept {
 void awh::server::Http1::close(const uint64_t bid) noexcept {
 	// Выполняем поиск агента которому соответствует клиент
 	auto it = this->_agents.find(bid);
-	// Если агент соответствует WebSocket-у
+	// Если агент соответствует Websocket-у
 	if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
-		// Выполняем закрытие подключения клиента WebSocket
+		// Выполняем закрытие подключения клиента Websocket
 		this->_ws1.close(bid);
 	// Иначе выполняем обработку входящих данных как Web-сервер
 	else if(this->_core != nullptr) {
@@ -1517,7 +1517,7 @@ void awh::server::Http1::compressors(const vector <http_t::compress_t> & compres
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаги настроек модуля для WebSocket-сервера
+	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
@@ -1525,7 +1525,7 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
-	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
+	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
 	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);

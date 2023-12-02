@@ -64,7 +64,7 @@ class Proxy {
 			return true;
 		}
 		/**
-		 * active Метод идентификации активности на WebSocket сервере
+		 * active Метод идентификации активности на Websocket сервере
 		 * @param bid    идентификатор брокера
 		 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 		 * @param mode   режим события подключения

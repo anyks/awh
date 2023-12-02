@@ -78,7 +78,7 @@ namespace awh {
 					~Worker() noexcept {}
 				} worker_t;
 			private:
-				// Объект для работы c WebSocket
+				// Объект для работы c Websocket
 				ws2_t _ws2;
 				// Объект для работы с HTTP/1.1 клиентом
 				http1_t _http1;
@@ -88,7 +88,7 @@ namespace awh {
 				// Объект параметров сервиса
 				service_t _service;
 			private:
-				// Флаг разрешения использования протокол WebSocket
+				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 			private:
 				// Количество активных ядер

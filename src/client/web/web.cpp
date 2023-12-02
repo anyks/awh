@@ -537,16 +537,16 @@ void awh::client::Web::callback(const fn_t & callback) noexcept {
 	this->_callback.set("entity", callback);
 	// Выполняем установку функции обратного вызова для вывода полученных заголовков с сервера
 	this->_callback.set("headers", callback);
-	// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
-	this->_callback.set("wserror", callback);
-	// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
-	this->_callback.set("message", callback);
 	// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
 	this->_callback.set("response", callback);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
 	this->_callback.set("chunking", callback);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
 	this->_callback.set("handshake", callback);
+	// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
+	this->_callback.set("errorWebsocket", callback);
+	// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
+	this->_callback.set("messageWebsocket", callback);
 }
 /**
  * bytesDetect Метод детекции сообщений по количеству байт

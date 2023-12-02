@@ -81,7 +81,7 @@ class WebServer {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
-		 * error Метод вывода ошибок WebSocket сервера
+		 * error Метод вывода ошибок Websocket сервера
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
@@ -244,7 +244,7 @@ int main(int argc, char * argv[]){
 	 * 1. Устанавливаем валидацию SSL сертификата
 	 * 2. Устанавливаем флаг перехвата контекста декомпрессии
 	 * 3. Устанавливаем флаг перехвата контекста компрессии
-	 * 4. Устанавливаем разрешение использовать протокол WebSocket
+	 * 4. Устанавливаем разрешение использовать протокол Websocket
 	 */
 	awh.mode({
 		// server::web_t::flag_t::NOT_STOP,
@@ -337,10 +337,10 @@ int main(int argc, char * argv[]){
 	callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	callback.set <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
-	// Установливаем функцию обратного вызова на событие получения ошибок
-	callback.set <void (const uint64_t, const u_int, const string &)> ("error", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие получения ошибок
+	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", std::bind(&WebServer::message, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия

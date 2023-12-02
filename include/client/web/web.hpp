@@ -75,7 +75,7 @@ namespace awh {
 				enum class agent_t : uint8_t {
 					NONE      = 0x00, // Агент не определён
 					HTTP      = 0x01, // HTTP-клиент
-					WEBSOCKET = 0x02  // WebSocket-клиент
+					WEBSOCKET = 0x02  // Websocket-клиент
 				};
 				/**
 				 * Основные флаги приложения
@@ -90,7 +90,7 @@ namespace awh {
 					NO_INIT_SSL           = 0x07, // Флаг запрещающий переключение контекста SSL
 					TAKEOVER_CLIENT       = 0x08, // Флаг ожидания входящих сообщений для клиента
 					TAKEOVER_SERVER       = 0x09, // Флаг ожидания входящих сообщений для сервера
-					WEBSOCKET_ENABLE      = 0x0A, // Флаг разрешения использования WebSocket-клиента
+					WEBSOCKET_ENABLE      = 0x0A, // Флаг разрешения использования Websocket-клиента
 					CONNECT_METHOD_ENABLE = 0x0B  // Флаг разрешающий метод CONNECT для прокси-сервера
 				};
 			public:

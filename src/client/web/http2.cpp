@@ -80,7 +80,7 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 	this->_workers.clear();
 	// Выполняем очистку списка запросов
 	this->_requests.clear();
-	// Выполняем передачу сигнала отключения от сервера на WebSocket-клиент
+	// Выполняем передачу сигнала отключения от сервера на Websocket-клиент
 	this->_ws2.disconnectCallback(bid, sid, core);
 	// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
 	this->_http1.disconnectCallback(bid, sid, core);
@@ -132,9 +132,9 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 				}
 			// Если активирован режим работы с HTTP/1.1 протоколом
 			} else {
-				// Если активирован WebSocket-клиент
+				// Если активирован Websocket-клиент
 				if(this->_ws2._bid > 0)
-					// Выполняем переброс вызова чтения на клиент WebSocket
+					// Выполняем переброс вызова чтения на клиент Websocket
 					this->_ws2.readCallback(buffer, size, bid, sid, core);
 				// Выполняем переброс вызова чтения на клиент HTTP/1.1
 				else this->_http1.readCallback(buffer, size, bid, sid, core);
@@ -164,9 +164,9 @@ void awh::client::Http2::writeCallback(const char * buffer, const size_t size, c
 						// Выполняем переброс вызова записи на клиент HTTP/1.1
 						this->_http1.writeCallback(buffer, size, bid, sid, core);
 				} break;
-				// Если агент является клиентом WebSocket
+				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем переброс вызова записи на клиент WebSocket
+					// Выполняем переброс вызова записи на клиент Websocket
 					this->_ws2.writeCallback(buffer, size, bid, sid, core);
 				break;
 			}
@@ -208,9 +208,9 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", sid, it->second->id, vector <char> (buffer, buffer + size));
 					} break;
-					// Если агент является клиентом WebSocket
+					// Если агент является клиентом Websocket
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
-						// Выполняем передачу полученных данных на WebSocket-клиент
+						// Выполняем передачу полученных данных на Websocket-клиент
 						this->_ws2.chunkSignal(sid, buffer, size);
 					break;
 				}
@@ -239,9 +239,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 				auto it = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
 				if(it != this->_workers.end()){
-					// Если агент является клиентом WebSocket
+					// Если агент является клиентом Websocket
 					if(it->second->agent == agent_t::WEBSOCKET)
-						// Выполняем передачу на WebSocket-клиент
+						// Выполняем передачу на Websocket-клиент
 						this->_ws2.frameSignal(sid, direct, frame, flags);
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end"))
@@ -356,9 +356,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										return 0;
 									}
 								} break;
-								// Если агент является клиентом WebSocket
+								// Если агент является клиентом Websocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
-									// Выполняем передачу на WebSocket-клиент
+									// Выполняем передачу на Websocket-клиент
 									return this->_ws2.frameSignal(sid, direct, frame, flags);
 							}
 						} break;
@@ -478,9 +478,9 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 									// Завершаем работу
 									return 0;
 								} break;
-								// Если агент является клиентом WebSocket
+								// Если агент является клиентом Websocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
-									// Выполняем передачу на WebSocket-клиент
+									// Выполняем передачу на Websocket-клиент
 									return this->_ws2.frameSignal(sid, direct, frame, flags);
 							}
 						} break;
@@ -545,9 +545,9 @@ int awh::client::Http2::beginSignal(const int32_t sid) noexcept {
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, it->second->id, mode_t::OPEN);
 				} break;
-				// Если агент является клиентом WebSocket
+				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем инициализации заголовков на WebSocket-клиенте
+					// Выполняем инициализации заголовков на Websocket-клиенте
 					this->_ws2.beginSignal(sid);
 				break;
 			}
@@ -585,9 +585,9 @@ int awh::client::Http2::headerSignal(const int32_t sid, const string & key, cons
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const int32_t, const uint64_t, const string &, const string &)> ("header", sid, it->second->id, key, val);
 				} break;
-				// Если агент является клиентом WebSocket
+				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем отправку полученных заголовков на WebSocket-клиент
+					// Выполняем отправку полученных заголовков на Websocket-клиент
 					this->_ws2.headerSignal(sid, key, val);
 				break;
 			}
@@ -803,9 +803,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 						}
 					}
 				} break;
-				// Если протоколом агента является WebSocket-клиент
+				// Если протоколом агента является Websocket-клиент
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-					// Выполняем переброс вызова дисконнекта на клиент WebSocket
+					// Выполняем переброс вызова дисконнекта на клиент Websocket
 					this->_ws2.disconnectCallback(bid, sid, core);
 					// Если список ответов получен
 					if((result = it->second->update = !this->_ws2._stopped)){
@@ -915,9 +915,9 @@ void awh::client::Http2::pinging(const uint16_t tid, awh::core_t * core) noexcep
 						// Выполняем закрытие подключения
 						web2_t::close(this->_bid, const_cast <client::core_t *> (this->_core));
 				} break;
-				// Если агент является клиентом WebSocket
+				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем переброс персистентного вызова на клиент WebSocket
+					// Выполняем переброс персистентного вызова на клиент Websocket
 					this->_ws2.pinging(tid, core);
 				break;
 			}
@@ -1128,9 +1128,9 @@ void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
 	if(!this->_workers.empty()){
 		// Выполняем перебор всего списка воркеров
 		for(auto & worker : this->_workers){
-			// Если найден воркер WebSocket-клиента
+			// Если найден воркер Websocket-клиента
 			if(worker.second->agent == agent_t::WEBSOCKET){
-				// Выполняем отправку сообщения ошибки на WebSocket-сервер
+				// Выполняем отправку сообщения ошибки на Websocket-сервер
 				this->_ws2.sendError(mess);
 				// Выходим из цикла
 				break;
@@ -1148,9 +1148,9 @@ void awh::client::Http2::sendMessage(const vector <char> & message, const bool t
 	if(!this->_workers.empty()){
 		// Выполняем перебор всего списка воркеров
 		for(auto & worker : this->_workers){
-			// Если найден воркер WebSocket-клиента
+			// Если найден воркер Websocket-клиента
 			if(worker.second->agent == agent_t::WEBSOCKET){
-				// Выполняем отправку сообщения на WebSocket-сервер
+				// Выполняем отправку сообщения на Websocket-сервер
 				this->_ws2.sendMessage(message, text);
 				// Выходим из цикла
 				break;
@@ -1178,9 +1178,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			if(request.id == 0)
 				// Выполняем генерацию идентификатора запроса
 				const_cast <request_t &> (request).id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-			// Если требуется выполнить подключение к WebSocket-клиенту
+			// Если требуется выполнить подключение к Websocket-клиенту
 			if(request.agent == agent_t::WEBSOCKET){
-				// Если протокол WebSocket запрещён
+				// Если протокол Websocket запрещён
 				if(!this->_webSocket){
 					// Выводим сообщение об ошибке
 					this->_log->print("Websocket protocol is prohibited for connection", log_t::flag_t::WARNING);
@@ -1348,7 +1348,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						result = this->_http1.send(request);
 					}
 				} break;
-				// Если протоколом агента является WebSocket-клиент
+				// Если протоколом агента является Websocket-клиент
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 					// Устанавливаем идентификатор запроса
 					this->_ws2._rid = request.id;
@@ -1378,7 +1378,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					if(this->_http2.is()){
 						// Если протокол ещё не установлен
 						if(request.headers.count(":protocol") < 1)
-							// Выполняем установку протокола WebSocket
+							// Выполняем установку протокола Websocket
 							const_cast <request_t &> (request).headers.emplace(":protocol", "websocket");
 					}
 					// Если HTTP-заголовки установлены
@@ -1393,7 +1393,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					else this->_ws2._compressors = this->_compressors;
 					// Устанавливаем новый адрес запроса
 					this->_uri.combine(this->_ws2._scheme.url, request.url);
-					// Выполняем установку подключения с WebSocket-сервером
+					// Выполняем установку подключения с Websocket-сервером
 					this->_ws2.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения
 					result = this->_ws2._sid;
@@ -1689,7 +1689,7 @@ void awh::client::Http2::pause() noexcept {
 	if(!this->_workers.empty()){
 		// Выполняем перебор всего списка воркеров
 		for(auto & worker : this->_workers){
-			// Если найден воркер WebSocket-клиента
+			// Если найден воркер Websocket-клиента
 			if(worker.second->agent == agent_t::WEBSOCKET){
 				// Выполняем постановку на паузу
 				this->_ws2.pause();
@@ -1731,19 +1731,19 @@ void awh::client::Http2::callback(const fn_t & callback) noexcept {
 		callback.set("header", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода полученных заголовков с сервера
 		callback.set("headers", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения ошибок WebSocket
-		callback.set("wserror", this->_callback);
-		// Выполняем установку функции обратного вызова на событие получения сообщений WebSocket
-		callback.set("message", this->_callback);
 		// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
 		callback.set("response", this->_callback);
 		// Выполняем установку функции обратного вызова для перехвата полученных чанков
 		callback.set("chunking", this->_callback);
 		// Выполняем установку функции обратного вызова при выполнении рукопожатия
 		callback.set("handshake", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
+		callback.set("errorWebsocket", this->_callback);
+		// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
+		callback.set("messageWebsocket", this->_callback);
 		// Если функции обратного вызова установлены
 		if(!callback.empty())
-			// Выполняем установку функций обратного вызова для WebSocket-клиента
+			// Выполняем установку функций обратного вызова для Websocket-клиента
 			this->_ws2.callback(std::move(callback));
 	}{
 		// Создаём локальный контейнер функций обратного вызова
@@ -1814,7 +1814,7 @@ void awh::client::Http2::subprotocols(const set <string> & subprotocols) noexcep
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::client::Http2::extensions() const noexcept {
-	// Выводим список расширений принадлежащих WebSocket-клиенту
+	// Выводим список расширений принадлежащих Websocket-клиенту
 	return this->_ws2.extensions();
 }
 /**
@@ -1822,7 +1822,7 @@ const vector <vector <string>> & awh::client::Http2::extensions() const noexcept
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::Http2::extensions(const vector <vector <string>> & extensions) noexcept {
-	// Выполняем установку списка доступных расширений для WebSocket-клиента
+	// Выполняем установку списка доступных расширений для Websocket-клиента
 	this->_ws2.extensions(extensions);
 }
 /**
@@ -1832,7 +1832,7 @@ void awh::client::Http2::extensions(const vector <vector <string>> & extensions)
 void awh::client::Http2::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	web2_t::chunk(size);
-	// Устанавливаем размер чанка для WebSocket-клиента
+	// Устанавливаем размер чанка для Websocket-клиента
 	this->_ws2.chunk(size);
 	// Устанавливаем размер чанка для HTTP-парсера
 	this->_http.chunk(size);
@@ -1846,7 +1846,7 @@ void awh::client::Http2::chunk(const size_t size) noexcept {
 void awh::client::Http2::segmentSize(const size_t size) noexcept {
 	// Если размер передан, устанавливаем
 	if(size > 0)
-		// Устанавливаем размер сегментов фрейма для WebSocket-клиента
+		// Устанавливаем размер сегментов фрейма для Websocket-клиента
 		this->_ws2.segmentSize(size);
 }
 /**
@@ -1854,13 +1854,13 @@ void awh::client::Http2::segmentSize(const size_t size) noexcept {
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаги настроек модуля для WebSocket-клиента
+	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP/2 клиента
 	this->_http1.mode(flags);
 	// Выполняем установку флагов настроек модуля
 	web2_t::mode(flags);
-	// Устанавливаем флаг разрешающий выполнять подключение к протоколу WebSocket
+	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 }
 /**
@@ -1904,7 +1904,7 @@ void awh::client::Http2::user(const string & login, const string & password) noe
 	this->_service.login = login;
 	// Устанавливаем пароль пользователя для авторизации на сервере
 	this->_service.password = password;
-	// Устанавливаем логин и пароль пользователя для WebSocket-клиента
+	// Устанавливаем логин и пароль пользователя для Websocket-клиента
 	this->_ws2.user(login, password);
 	// Устанавливаем логин и пароль пользователя для HTTP-арсера
 	this->_http.user(login, password);
@@ -1920,7 +1920,7 @@ void awh::client::Http2::userAgent(const string & userAgent) noexcept {
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента у родительского класса
 		web2_t::userAgent(userAgent);
-		// Устанавливаем пользовательского агента для WebSocket-клиента
+		// Устанавливаем пользовательского агента для Websocket-клиента
 		this->_ws2.userAgent(userAgent);
 		// Устанавливаем пользовательского агента для HTTP-парсера
 		this->_http.userAgent(userAgent);
@@ -1939,7 +1939,7 @@ void awh::client::Http2::ident(const string & id, const string & name, const str
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
 		web2_t::ident(id, name, ver);
-		// Устанавливаем данные сервиса для WebSocket-клиента
+		// Устанавливаем данные сервиса для Websocket-клиента
 		this->_ws2.ident(id, name, ver);
 		// Устанавливаем данные сервиса для HTTP-парсера
 		this->_http.ident(id, name, ver);
@@ -1968,7 +1968,7 @@ void awh::client::Http2::multiThreads(const int16_t count, const bool mode) noex
 void awh::client::Http2::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Выполняем установку параметры прокси-сервера
 	web2_t::proxy(uri, family);
-	// Выполняем установку параметры прокси-сервера для WebSocket-клиента
+	// Выполняем установку параметры прокси-сервера для Websocket-клиента
 	this->_ws2.proxy(uri, family);
 	// Выполняем установку параметры прокси-сервера для HTTP-клиента
 	this->_http1.proxy(uri, family);
@@ -1983,7 +1983,7 @@ void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 	this->_service.hash = hash;
 	// Устанавливаем тип авторизации
 	this->_service.type = type;
-	// Устанавливаем параметры авторизации для WebSocket-клиента
+	// Устанавливаем параметры авторизации для Websocket-клиента
 	this->_ws2.authType(type, hash);
 	// Устанавливаем параметры авторизации для HTTP-парсера
 	this->_http.authType(type, hash);
@@ -1998,7 +1998,7 @@ void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации на проксе-сервере
 	web2_t::authTypeProxy(type, hash);
-	// Устанавливаем тип авторизации на проксе-сервере для WebSocket-клиента
+	// Устанавливаем тип авторизации на проксе-сервере для Websocket-клиента
 	this->_ws2.authTypeProxy(type, hash);
 	// Устанавливаем тип авторизации на проксе-сервере для HTTP-клиента
 	this->_http1.authTypeProxy(type, hash);
@@ -2024,9 +2024,9 @@ bool awh::client::Http2::crypted(const int32_t sid) const noexcept {
 				// Выполняем получение флага шифрования для протокола HTTP/2
 				else return it->second->http.crypted();
 			}
-			// Если агент является клиентом WebSocket
+			// Если агент является клиентом Websocket
 			case static_cast <uint8_t> (agent_t::WEBSOCKET):
-				// Выполняем получение флага шифрования для протокола WebSocket
+				// Выполняем получение флага шифрования для протокола Websocket
 				return this->_ws2.crypted();
 		}
 	}
@@ -2040,7 +2040,7 @@ bool awh::client::Http2::crypted(const int32_t sid) const noexcept {
 void awh::client::Http2::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования у родительского объекта
 	web2_t::encryption(mode);
-	// Устанавливаем флаг шифрования для WebSocket-клиента
+	// Устанавливаем флаг шифрования для Websocket-клиента
 	this->_ws2.encryption(mode);
 	// Устанавливаем флаг шифрования для HTTP-парсера
 	this->_http.encryption(mode);
@@ -2056,7 +2056,7 @@ void awh::client::Http2::encryption(const bool mode) noexcept {
 void awh::client::Http2::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования у родительского объекта
 	web2_t::encryption(pass, salt, cipher);
-	// Устанавливаем параметры шифрования для WebSocket-клиента
+	// Устанавливаем параметры шифрования для Websocket-клиента
 	this->_ws2.encryption(pass, salt, cipher);
 	// Устанавливаем параметры шифрования для HTTP-парсера
 	this->_http.encryption(pass, salt, cipher);
@@ -2080,11 +2080,11 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
 	}{
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(log);
-		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		// Выполняем установку функции обратного вызова для Websocket-клиента
 		callback.set <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
 		// Выполняем установку функции обратного вызова перехвата события редиректа
 		callback.set <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
-		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		// Выполняем установку функции обратного вызова для Websocket-клиента
 		this->_ws2.callback(std::move(callback));
 	}
 	// Устанавливаем функцию записи данных
@@ -2108,11 +2108,11 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	}{
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(log);
-		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		// Выполняем установку функции обратного вызова для Websocket-клиента
 		callback.set <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
 		// Выполняем установку функции обратного вызова перехвата события редиректа
 		callback.set <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
-		// Выполняем установку функции обратного вызова для WebSocket-клиента
+		// Выполняем установку функции обратного вызова для Websocket-клиента
 		this->_ws2.callback(std::move(callback));
 	}
 	// Устанавливаем функцию записи данных

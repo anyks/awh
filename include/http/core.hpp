@@ -79,7 +79,7 @@ namespace awh {
 			 */
 			enum class identity_t : uint8_t {
 				NONE  = 0x00, // Протокол не установлен
-				WS    = 0x01, // Протокол WebSocket
+				WS    = 0x01, // Протокол Websocket
 				HTTP  = 0x02, // Протокол HTTP
 				PROXY = 0x03  // Протокол Proxy
 			};

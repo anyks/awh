@@ -61,7 +61,7 @@ class WebClient {
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
-			// Если агент соответствует WebSocket
+			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
 				this->_log->print("WS Handshake", log_t::flag_t::INFO);
@@ -181,7 +181,7 @@ class WebClient {
 			}
 		}
 		/**
-		 * error Метод вывода ошибок WebSocket клиента
+		 * error Метод вывода ошибок Websocket клиента
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
@@ -247,7 +247,7 @@ class WebClient {
 				req.url = uri.parse("/stream");
 				// Устанавливаем метод запроса
 				req.method = web_t::method_t::GET;
-				// Устанавливаем агента WebSocket
+				// Устанавливаем агента Websocket
 				req.agent = client::web_t::agent_t::WEBSOCKET;
 				// Устанавливаем тип компрессии данных
 				req.compressors = {http_t::compress_t::DEFLATE};
@@ -345,7 +345,7 @@ int main(int argc, char * argv[]){
 	 * 1. Устанавливаем постоянное подключение
 	 * 2. Устанавливаем поддержку редиректов
 	 * 3. Устанавливаем валидацию SSL сертификата
-	 * 4. Устанавливаем разрешение использовать протокол WebSocket
+	 * 4. Устанавливаем разрешение использовать протокол Websocket
 	 * 5. Устанавливаем флаг поддержания активным подключение
 	 */
 	awh.mode({
@@ -404,11 +404,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	callback.set <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
-	callback.set <void (const u_int, const string &)> ("error", std::bind(&WebClient::error, &executor, _1, _2));
+	callback.set <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
 	callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&WebClient::status, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
-	callback.set <void (const vector <char> &, const bool)> ("message", std::bind(&WebClient::message, &executor, _1, _2));
+	callback.set <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2));
 	// Устанавливаем метод получения сообщения сервера
 	callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Подписываемся на событие рукопожатия

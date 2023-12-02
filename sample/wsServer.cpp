@@ -27,7 +27,7 @@ class Executor {
 		// Создаём объект работы с логами
 		const log_t * _log;
 	private:
-		// Объект WebSocket-сервера
+		// Объект Websocket-сервера
 		server::websocket_t * _ws;
 	public:
 		/**
@@ -93,7 +93,7 @@ class Executor {
 			}
 		}
 		/**
-		 * error Метод вывода ошибок WebSocket сервера
+		 * error Метод вывода ошибок Websocket сервера
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
@@ -148,7 +148,7 @@ class Executor {
 		 * Executor Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param ws  объект WebSocket-сервера
+		 * @param ws  объект Websocket-сервера
 		 */
 		Executor(const fmk_t * fmk, const log_t * log, server::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
 };
@@ -171,7 +171,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log, &ws);
 	// Устанавливаем название сервиса
-	log.name("WebSocket Server");
+	log.name("Websocket Server");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
@@ -215,7 +215,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
-	// Выполняем инициализацию WebSocket сервера
+	// Выполняем инициализацию Websocket сервера
 	// ws.init(2222, "127.0.0.1", {awh::http_t::compress_t::DEFLATE});
 	ws.init(2222, "", {awh::http_t::compress_t::DEFLATE});
 	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
@@ -240,18 +240,18 @@ int main(int argc, char * argv[]){
 	// Устанавливаем функцию проверки авторизации
 	callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	callback.set <void (const uint64_t, const u_int, const string &)> ("error", std::bind(&Executor::error, &executor, _1, _2, _3));
+	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие получения сообщений
-	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	callback.set <void (const int32_t, const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие получения сообщений
+	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
 	callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем установку функций обратного вызова
 	ws.callback(std::move(callback));
-	// Выполняем запуск WebSocket сервер
+	// Выполняем запуск Websocket сервер
 	ws.start();
 	// Выводим результат
 	return 0;

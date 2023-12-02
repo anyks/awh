@@ -18,7 +18,7 @@
 /**
  * sendTimeout Метод отправки сигнала таймаута
  */
-void awh::client::WebSocket::sendTimeout() noexcept {
+void awh::client::Websocket::sendTimeout() noexcept {
 	// Выполняем отправку сигнала таймаута
 	this->_ws.sendTimeout();
 }
@@ -26,7 +26,7 @@ void awh::client::WebSocket::sendTimeout() noexcept {
  * sendError Метод отправки сообщения об ошибке на сервер
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::client::WebSocket::sendError(const ws::mess_t & mess) noexcept {
+void awh::client::Websocket::sendError(const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообщения об ошибке
 	this->_ws.sendError(mess);
 }
@@ -35,14 +35,14 @@ void awh::client::WebSocket::sendError(const ws::mess_t & mess) noexcept {
  * @param message передаваемое сообщения в бинарном виде
  * @param utf8    данные передаются в текстовом виде
  */
-void awh::client::WebSocket::sendMessage(const vector <char> & message, const bool utf8) noexcept {
+void awh::client::Websocket::sendMessage(const vector <char> & message, const bool utf8) noexcept {
 	// Выполняем отправку сообщения на сервер
 	this->_ws.sendMessage(message, utf8);
 }
 /**
  * pause Метод установки на паузу клиента
  */
-void awh::client::WebSocket::pause() noexcept {
+void awh::client::Websocket::pause() noexcept {
 	// Выполняем постановку клиента на паузу
 	this->_ws.pause();
 }
@@ -51,28 +51,28 @@ void awh::client::WebSocket::pause() noexcept {
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::WebSocket::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Websocket::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
 	// Выполняем инициализацию клиента
 	this->_ws.init(dest, compressors);
 }
 /**
  * open Метод открытия подключения
  */
-void awh::client::WebSocket::open() noexcept {
+void awh::client::Websocket::open() noexcept {
 	// Выполняем открытие подключения
 	this->_ws.open();
 }
 /**
  * stop Метод остановки клиента
  */
-void awh::client::WebSocket::stop() noexcept {
+void awh::client::Websocket::stop() noexcept {
 	// Выполняем остановку работы модуля
 	this->_ws.stop();
 }
 /**
  * start Метод запуска клиента
  */
-void awh::client::WebSocket::start() noexcept {
+void awh::client::Websocket::start() noexcept {
 	// Выполняем запуск работы модуля
 	this->_ws.start();
 }
@@ -80,7 +80,7 @@ void awh::client::WebSocket::start() noexcept {
  * callback Метод установки функций обратного вызова
  * @param callback функции обратного вызова
  */
-void awh::client::WebSocket::callback(const fn_t & callback) noexcept {
+void awh::client::Websocket::callback(const fn_t & callback) noexcept {
 	// Выполняем установку функций обратного вызова
 	this->_ws.callback(callback);
 }
@@ -88,7 +88,7 @@ void awh::client::WebSocket::callback(const fn_t & callback) noexcept {
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
-void awh::client::WebSocket::subprotocol(const string & subprotocol) noexcept {
+void awh::client::Websocket::subprotocol(const string & subprotocol) noexcept {
 	// Выполняем установку поддерживаемого сабпротокола
 	this->_ws.subprotocol(subprotocol);
 }
@@ -96,7 +96,7 @@ void awh::client::WebSocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::WebSocket::subprotocols() const noexcept {
+const set <string> & awh::client::Websocket::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols();
 }
@@ -104,23 +104,23 @@ const set <string> & awh::client::WebSocket::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::WebSocket::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::client::Websocket::subprotocols(const set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_ws.subprotocols(subprotocols);
 }
 /**
- * extensions Метод извлечения списка расширений WebSocket
+ * extensions Метод извлечения списка расширений Websocket
  * @return список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::client::WebSocket::extensions() const noexcept {
+const vector <vector <string>> & awh::client::Websocket::extensions() const noexcept {
 	// Выполняем извлечение списка расширений
 	return this->_ws.extensions();
 }
 /**
- * extensions Метод установки списка расширений WebSocket
+ * extensions Метод установки списка расширений Websocket
  * @param extensions список поддерживаемых расширений
  */
-void awh::client::WebSocket::extensions(const vector <vector <string>> & extensions) noexcept {
+void awh::client::Websocket::extensions(const vector <vector <string>> & extensions) noexcept {
 	// Выполняем установку списка расширений
 	this->_ws.extensions(extensions);
 }
@@ -128,23 +128,23 @@ void awh::client::WebSocket::extensions(const vector <vector <string>> & extensi
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
-void awh::client::WebSocket::chunk(const size_t size) noexcept {
+void awh::client::Websocket::chunk(const size_t size) noexcept {
 	// Выполняем установку размера чанка
 	this->_ws.chunk(size);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма WebSocket
+ * segmentSize Метод установки размеров сегментов фрейма Websocket
  * @param size минимальный размер сегмента
  */
-void awh::client::WebSocket::segmentSize(const size_t size) noexcept {
-	// Выполняем установку размера сегмента фрейма WebSocket
+void awh::client::Websocket::segmentSize(const size_t size) noexcept {
+	// Выполняем установку размера сегмента фрейма Websocket
 	this->_ws.segmentSize(size);
 }
 /**
  * attempts Метод установки общего количества попыток
  * @param attempts общее количество попыток
  */
-void awh::client::WebSocket::attempts(const uint8_t attempts) noexcept {
+void awh::client::Websocket::attempts(const uint8_t attempts) noexcept {
 	// Выполняем установку количества попыток редиректа
 	this->_ws.attempts(attempts);
 }
@@ -152,7 +152,7 @@ void awh::client::WebSocket::attempts(const uint8_t attempts) noexcept {
  * hosts Метод загрузки файла со списком хостов
  * @param filename адрес файла для загрузки
  */
-void awh::client::WebSocket::hosts(const string & filename) noexcept {
+void awh::client::Websocket::hosts(const string & filename) noexcept {
 	// Если адрес файла с хостами в операционной системе передан
 	if(!filename.empty())
 		// Выполняем установку адреса файла хостов в операционной системе
@@ -162,7 +162,7 @@ void awh::client::WebSocket::hosts(const string & filename) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::WebSocket::mode(const set <web_t::flag_t> & flags) noexcept {
+void awh::client::Websocket::mode(const set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_ws.mode(flags);
 }
@@ -171,7 +171,7 @@ void awh::client::WebSocket::mode(const set <web_t::flag_t> & flags) noexcept {
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
-void awh::client::WebSocket::user(const string & login, const string & password) noexcept {
+void awh::client::Websocket::user(const string & login, const string & password) noexcept {
 	// Выполняем установку логина и пароля пользователя
 	this->_ws.user(login, password);
 }
@@ -181,7 +181,7 @@ void awh::client::WebSocket::user(const string & login, const string & password)
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::client::Websocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку жизни подключения
 	this->_ws.keepAlive(cnt, idle, intvl);
 }
@@ -189,24 +189,24 @@ void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int 
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::WebSocket::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Websocket::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_ws.compressors(compressors);
 }
 /**
- * multiThreads Метод активации многопоточности в WebSocket
+ * multiThreads Метод активации многопоточности в Websocket
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
-void awh::client::WebSocket::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Выполняем активацию многопоточности при получения данных в WebSocket
+void awh::client::Websocket::multiThreads(const uint16_t count, const bool mode) noexcept {
+	// Выполняем активацию многопоточности при получения данных в Websocket
 	this->_ws.multiThreads(count, mode);
 }
 /**
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::client::WebSocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков необходимых при передаче на сервер во время рукопожатия
 	this->_ws.setHeaders(headers);
 }
@@ -214,7 +214,7 @@ void awh::client::WebSocket::setHeaders(const unordered_multimap <string, string
  * userAgent Метод установки User-Agent для HTTP-запроса
  * @param userAgent агент пользователя для HTTP-запроса
  */
-void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
+void awh::client::Websocket::userAgent(const string & userAgent) noexcept {
 	// Выполняем установку User-Agent для HTTP-запроса
 	this->_ws.userAgent(userAgent);
 }
@@ -224,7 +224,7 @@ void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::WebSocket::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Websocket::ident(const string & id, const string & name, const string & ver) noexcept {
 	// Выполняем установку данных сервиса
 	this->_ws.ident(id, name, ver);
 }
@@ -233,7 +233,7 @@ void awh::client::WebSocket::ident(const string & id, const string & name, const
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
  */
-void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t family) noexcept {
+void awh::client::Websocket::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Выполняем установку прокси-сервера
 	this->_ws.proxy(uri, family);
 }
@@ -241,7 +241,7 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
  * flushDNS Метод сброса кэша DNS-резолвера
  * @return результат работы функции
  */
-bool awh::client::WebSocket::flushDNS() noexcept {
+bool awh::client::Websocket::flushDNS() noexcept {
 	// Выполняем сброс кэша DNS-резолвера
 	return this->_dns.flush();
 }
@@ -249,7 +249,7 @@ bool awh::client::WebSocket::flushDNS() noexcept {
  * timeoutDNS Метод установки времени ожидания выполнения запроса
  * @param sec интервал времени выполнения запроса в секундах
  */
-void awh::client::WebSocket::timeoutDNS(const uint8_t sec) noexcept {
+void awh::client::Websocket::timeoutDNS(const uint8_t sec) noexcept {
 	// Если время ожидания выполнения DNS-запроса передано
 	if(sec > 0)
 		// Выполняем установку времени ожидания получения данных с DNS-сервера
@@ -259,7 +259,7 @@ void awh::client::WebSocket::timeoutDNS(const uint8_t sec) noexcept {
  * timeToLiveDNS Метод установки времени жизни DNS-кэша
  * @param ttl время жизни DNS-кэша в миллисекундах
  */
-void awh::client::WebSocket::timeToLiveDNS(const time_t ttl) noexcept {
+void awh::client::Websocket::timeToLiveDNS(const time_t ttl) noexcept {
 	// Если значение времени жизни DNS-кэша передано
 	if(ttl > 0)
 		// Выполняем установку времени жизни DNS-кэша
@@ -269,7 +269,7 @@ void awh::client::WebSocket::timeToLiveDNS(const time_t ttl) noexcept {
  * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
  * @param prefix префикс переменной окружения для установки
  */
-void awh::client::WebSocket::prefixDNS(const string & prefix) noexcept {
+void awh::client::Websocket::prefixDNS(const string & prefix) noexcept {
 	// Если префикс переменной окружения для извлечения серверов имён передан
 	if(!prefix.empty())
 		// Выполняем установку префикса переменной окружения
@@ -279,7 +279,7 @@ void awh::client::WebSocket::prefixDNS(const string & prefix) noexcept {
  * clearDNSBlackList Метод очистки чёрного списка
  * @param domain доменное имя для которого очищается чёрный список
  */
-void awh::client::WebSocket::clearDNSBlackList(const string & domain) noexcept {
+void awh::client::Websocket::clearDNSBlackList(const string & domain) noexcept {
 	// Если доменное имя для удаления из чёрного списока передано
 	if(!domain.empty())
 		// Выполняем удаление доменного имени из чёрного списока
@@ -290,7 +290,7 @@ void awh::client::WebSocket::clearDNSBlackList(const string & domain) noexcept {
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
-void awh::client::WebSocket::delInDNSBlackList(const string & domain, const string & ip) noexcept {
+void awh::client::Websocket::delInDNSBlackList(const string & domain, const string & ip) noexcept {
 	// Если доменное имя для удаления из чёрного списока и соответствующий ему IP-адрес переданы
 	if(!domain.empty() && !ip.empty())
 		// Выполняем удаление доменного имени из чёрного списока
@@ -301,7 +301,7 @@ void awh::client::WebSocket::delInDNSBlackList(const string & domain, const stri
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
-void awh::client::WebSocket::setToDNSBlackList(const string & domain, const string & ip) noexcept {
+void awh::client::Websocket::setToDNSBlackList(const string & domain, const string & ip) noexcept {
 	// Если доменное имя для добавление в чёрный список и соответствующий ему IP-адрес переданы
 	if(!domain.empty() && !ip.empty())
 		// Выполняем установку доменного имени в чёрный список
@@ -311,7 +311,7 @@ void awh::client::WebSocket::setToDNSBlackList(const string & domain, const stri
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
-void awh::client::WebSocket::encryption(const bool mode) noexcept {
+void awh::client::Websocket::encryption(const bool mode) noexcept {
 	// Выполняем установку флага шифрования
 	this->_ws.encryption(mode);
 }
@@ -321,7 +321,7 @@ void awh::client::WebSocket::encryption(const bool mode) noexcept {
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::WebSocket::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::Websocket::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Выполняем установку параметров шифрования
 	this->_ws.encryption(pass, salt, cipher);
 }
@@ -330,7 +330,7 @@ void awh::client::WebSocket::encryption(const string & pass, const string & salt
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
-void awh::client::WebSocket::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::Websocket::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Выполняем установку типа авторизации
 	this->_ws.authType(type, hash);
 }
@@ -339,7 +339,7 @@ void awh::client::WebSocket::authType(const auth_t::type_t type, const auth_t::h
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
-void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::Websocket::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Выполняем установку типа авторизации на прокси-сервере
 	this->_ws.authTypeProxy(type, hash);
 }
@@ -348,7 +348,7 @@ void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::client::WebSocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
+void awh::client::Websocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Выполняем установку детекции сообщений по количеству байт
 	this->_ws.bytesDetect(read, write);
 }
@@ -358,7 +358,7 @@ void awh::client::WebSocket::bytesDetect(const scheme_t::mark_t read, const sche
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::WebSocket::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::Websocket::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
 	// Выполняем установку детекции сообщений по количеству секунд
 	this->_ws.waitTimeDetect(read, write, connect);
 }
@@ -368,7 +368,7 @@ void awh::client::WebSocket::waitTimeDetect(const time_t read, const time_t writ
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  */
-void awh::client::WebSocket::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family) noexcept {
+void awh::client::Websocket::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family) noexcept {
 	// Если список IP-адресов передан
 	if(!ips.empty()){
 		// Определяем тип протокола интернета
@@ -405,12 +405,12 @@ void awh::client::WebSocket::network(const vector <string> & ips, const vector <
 	}
 }
 /**
- * WebSocket Конструктор
+ * Websocket Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Websocket::Websocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _dns(fmk, log), _ws(core, fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем установку DNS-резолвера
 	const_cast <client::core_t *> (core)->resolver(&this->_dns);
