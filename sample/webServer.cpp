@@ -342,7 +342,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("message", std::bind(&WebServer::message, &executor, _1, _2, _3));
+	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
 	callback.set <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения запроса

@@ -239,12 +239,12 @@ int main(int argc, char * argv[]){
 	callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие получения ошибок
-	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	callback.set <void (const int32_t, const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие получения ошибок
+	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
