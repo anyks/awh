@@ -339,6 +339,135 @@ namespace awh {
 			}
 		public:
 			/**
+			 * swap Метод обмена функциями
+			 * @param idw1 идентификатор первой функции
+			 * @param idw2 идентификатор второй функции
+			 */
+			void swap(const uint64_t idw1, const uint64_t idw2) noexcept {
+				// Если идентификаторы переданы
+				if((idw1 > 0) && (idw2 > 0)){
+					{
+						// Выполняем поиск первого возвращаемого значения
+						auto i = this->_types.find(idw1);
+						// Если возвращаемое значение получено
+						if(i != this->_types.end()){
+							// Получаем значение первого возвращаемого значения
+							const type_t type = i->second;
+							// Выполняем поиск первого возвращаемого значения
+							auto j = this->_types.find(idw2);
+							// Если возвращаемое значение получено
+							if(j != this->_types.end()){
+								// Выполняем замену первого возвращаемого значения
+								i->second = j->second;
+								// Выполняем замену второго возвращаемого значения
+								j->second = type;
+							}
+						}	
+					}{
+						// Выполняем поиск первой функции
+						auto i = this->_functions.find(idw1);
+						// Если функция получена
+						if(i != this->_functions.end()){
+							// Получаем первую функцию обратного вызова
+							auto fn = i->second;
+							// Выполняем поиск второй функции
+							auto j = this->_functions.find(idw2);
+							// Если функция получена
+							if(j != this->_functions.end()){
+								// Выполняем замену первой функции
+								i->second = j->second;
+								// Выполняем замену второй функции
+								j->second = fn;
+							}
+						}
+					}
+				}
+			}
+			/**
+			 * swap Метод обмена функциями
+			 * @param name1 название первой функции
+			 * @param name2 название второй функции
+			 */
+			void swap(const string & name1, const string & name2) noexcept {
+				// Если названия переданы
+				if(!name1.empty() && !name2.empty()){
+					// Получаем идентификатор названия первой функции
+					const uint64_t idw1 = this->_idw.id(name1);
+					// Получаем идентификатор названия второй функции
+					const uint64_t idw2 = this->_idw.id(name2);
+					// Если идентификаторы переданы
+					if((idw1 > 0) && (idw2 > 0))
+						// Выполняем функцию обратного вызова
+						this->swap(idw1, idw2);
+				}
+			}
+			/**
+			 * swap Метод обмена функциями
+			 * @param idw1    идентификатор первой функции
+			 * @param idw2    идентификатор второй функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void swap(const uint64_t idw1, const uint64_t idw2, FN & storage) noexcept {
+				// Если идентификаторы переданы
+				if((idw1 > 0) && (idw2 > 0) && !storage.empty()){
+					{
+						// Выполняем поиск первого возвращаемого значения
+						auto i = this->_types.find(idw1);
+						// Если возвращаемое значение получено
+						if(i != this->_types.end()){
+							// Получаем значение первого возвращаемого значения
+							const type_t type = i->second;
+							// Выполняем поиск первого возвращаемого значения
+							auto j = storage._types.find(idw2);
+							// Если возвращаемое значение получено
+							if(j != storage._types.end()){
+								// Выполняем замену первого возвращаемого значения
+								i->second = j->second;
+								// Выполняем замену второго возвращаемого значения
+								j->second = type;
+							}
+						}	
+					}{
+						// Выполняем поиск первой функции
+						auto i = this->_functions.find(idw1);
+						// Если функция получена
+						if(i != this->_functions.end()){
+							// Получаем первую функцию обратного вызова
+							auto fn = i->second;
+							// Выполняем поиск второй функции
+							auto j = storage._functions.find(idw2);
+							// Если функция получена
+							if(j != storage._functions.end()){
+								// Выполняем замену первой функции
+								i->second = j->second;
+								// Выполняем замену второй функции
+								j->second = fn;
+							}
+						}
+					}
+				}
+			}
+			/**
+			 * swap Метод обмена функциями
+			 * @param name1   название первой функции
+			 * @param name2   название второй функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void swap(const string & name1, const string & name2, FN & storage) noexcept {
+				// Если названия переданы
+				if(!name1.empty() && !name2.empty() && !storage.empty()){
+					// Получаем идентификатор названия первой функции
+					const uint64_t idw1 = this->_idw.id(name1);
+					// Получаем идентификатор названия второй функции
+					const uint64_t idw2 = this->_idw.id(name2);
+					// Если идентификаторы переданы
+					if((idw1 > 0) && (idw2 > 0))
+						// Выполняем функцию обратного вызова
+						this->swap(idw1, idw2, storage);
+				}
+			}
+		public:
+			/**
 			 * set Метод установки функции из одного хранилища в текущее
 			 * @param idw     идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
@@ -390,55 +519,55 @@ namespace awh {
 			}
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
-			 * @param idw     идентификатор копируемой функции
-			 * @param dest    новый идентификатор полученной функции
+			 * @param idw1    идентификатор копируемой функции
+			 * @param idw2    новый идентификатор полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void set(const uint64_t idw, const uint64_t dest, const FN & storage) noexcept {
+			void set(const uint64_t idw1, const uint64_t idw2, const FN & storage) noexcept {
 				// Если указанная функция существует
-				if((idw > 0) && !storage._functions.empty() && storage.is(idw)){
+				if((idw1 > 0) && !storage._functions.empty() && storage.is(idw1)){
 					{
 						// Выполняем поиск указанного возвращаемого значения в переданном хранилище
-						auto i = storage._types.find(idw);
+						auto i = storage._types.find(idw1);
 						// Если возвращаемое значение в хранилище получено
 						if(i != storage._types.end()){
 							// Выполняем поиск типа возвращаемого значения
-							auto j = this->_types.find(dest);
+							auto j = this->_types.find(idw2);
 							// Если возвращаемое значение получено
 							if(j != this->_types.end())
 								// Устанавливаем новое значение типа возвращаемого значения
 								j->second = i->second;
 							// Если возращаемое значение ещё не установлено
-							else this->_types.emplace(dest, i->second);
+							else this->_types.emplace(idw2, i->second);
 						}	
 					}{
 						// Выполняем поиск указанной функции в переданном хранилище
-						auto i = storage._functions.find(idw);
+						auto i = storage._functions.find(idw1);
 						// Если функция в хранилище получена
 						if(i != storage._functions.end()){
 							// Выполняем поиск существующей функции обратного вызова
-							auto j = this->_functions.find(dest);
+							auto j = this->_functions.find(idw2);
 							// Если функция такая уже существует
 							if(j != this->_functions.end())
 								// Устанавливаем новую функцию обратного вызова
 								j->second = i->second;
 							// Если функция ещё не существует, создаём новую функцию
-							else this->_functions.emplace(dest, i->second);
+							else this->_functions.emplace(idw2, i->second);
 						}
 					}
 				}
 			}
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
-			 * @param name    название копируемой функции
-			 * @param dest    новое название полученной функции
+			 * @param name1   название копируемой функции
+			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void set(const string & name, const string & dest, const FN & storage) noexcept {
+			void set(const string & name1, const string & name2, const FN & storage) noexcept {
 				// Если данные переданы правильно
-				if(!name.empty() && !dest.empty() && !storage._functions.empty())
+				if(!name1.empty() && !name2.empty() && !storage._functions.empty())
 					// Выполняем установку функции обратного вызова
-					this->set(this->_idw.id(name), this->_idw.id(dest), storage);
+					this->set(this->_idw.id(name1), this->_idw.id(name2), storage);
 			}
 		public:
 			/**
