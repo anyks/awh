@@ -225,12 +225,12 @@ int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vec
 	return this->_http.push2(sid, bid, headers, flag);
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::server::AWH::callback(const fn_t & callback) noexcept {
+void awh::server::AWH::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_http.callback(callback);
+	this->_http.callbacks(callbacks);
 }
 /**
  * port Метод получения порта подключения брокера

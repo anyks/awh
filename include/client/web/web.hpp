@@ -168,7 +168,7 @@ namespace awh {
 				// Объект параметров работы с прокси-сервером
 				proxy_t _proxy;
 				// Хранилище функций обратного вызова
-				fn_t _callback;
+				fn_t _callbacks;
 				// Объект рабочего
 				scheme_t _scheme;
 				// Объект параметров шифрования
@@ -338,10 +338,52 @@ namespace awh {
 				virtual void start() noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * callbacks Метод установки функций обратного вызова
 				 * @param callback функции обратного вызова
 				 */
-				virtual void callback(const fn_t & callback) noexcept;
+				virtual void callbacks(const fn_t & callbacks) noexcept;
+			private:
+				/**
+				 * transferСallback Метод передачи функции обратного вызова дальше
+				 * @param name название функции обратного вызова
+				 */
+				virtual void transferСallback(const string & name) noexcept;
+			public:
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param idw идентификатор функции обратного вызова
+				 * @param fn  функция обратного вызова для установки
+				 */
+				void callback(const uint64_t idw, function <A> fn) noexcept {
+					// Если функция обратного вызова передана
+					if((idw > 0) && (fn != nullptr))
+						// Выполняем установку функции обратного вызова
+						this->_callbacks.set <A> (idw, fn);
+				}
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param name название функции обратного вызова
+				 * @param fn   функция обратного вызова для установки
+				 */
+				void callback(const string & name, function <A> fn) noexcept {
+					// Если функция обратного вызова передана
+					if(!name.empty() && (fn != nullptr)){
+						// Выполняем установку функции обратного вызова
+						this->_callbacks.set <A> (name, fn);
+						// Выполняем установку функции дальше
+						this->transferСallback(name);
+					}
+				}
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт

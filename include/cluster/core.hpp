@@ -129,10 +129,10 @@ namespace awh {
 				void close() noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
 			public:
 				/**
 				 * async Метод установки флага асинхронного режима работы

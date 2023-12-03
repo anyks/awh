@@ -354,17 +354,14 @@ int main(int argc, char * argv[]){
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
 	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(&log);
 	// Подписываемся на событие получения ошибки работы клиента
-	callback.set <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
+	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
-	callback.set <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2));
+	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
-	callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
+	ws.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
 	// Подписываемся на событие рукопожатия
-	callback.set <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3));
-	// Выполняем установку функций обратного вызова
-	ws.callback(std::move(callback));
+	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3));
 	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат

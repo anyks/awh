@@ -77,12 +77,12 @@ void awh::client::Websocket::start() noexcept {
 	this->_ws.start();
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::client::Websocket::callback(const fn_t & callback) noexcept {
+void awh::client::Websocket::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_ws.callback(callback);
+	this->_ws.callbacks(callbacks);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

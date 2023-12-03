@@ -399,26 +399,22 @@ int main(int argc, char * argv[]){
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::BASIC);
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(&log);
 	// Устанавливаем метод активации подключения
-	callback.set <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
+	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
-	callback.set <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
+	awh.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
-	callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&WebClient::status, &executor, _1, _2));
+	awh.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&WebClient::status, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
-	callback.set <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2));
+	awh.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2));
 	// Устанавливаем метод получения сообщения сервера
-	callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Подписываемся на событие рукопожатия
-	callback.set <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&WebClient::handshake, &executor, _1, _2, _3));
+	awh.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&WebClient::handshake, &executor, _1, _2, _3));
 	// Устанавливаем метод получения тела ответа
-	callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения заголовков
-	callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
-	// Выполняем установку функций обратного вызова
-	awh.callback(std::move(callback));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем инициализацию подключения	
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");

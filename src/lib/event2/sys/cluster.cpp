@@ -25,9 +25,9 @@
 	 */
 	void awh::Cluster::Worker::callback(const data_t & data) noexcept {
 		// Если функция обратного вызова установлена
-		if(this->cluster->_callback.is("message"))
+		if(this->cluster->_callbacks.is("message"))
 			// Выполняем функцию обратного вызова
-			this->cluster->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
+			this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
 	}
 	/**
 	 * child Функция обратного вызова при завершении работы процесса
@@ -93,9 +93,9 @@
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
 					// Если функция обратного вызова установлена
-					if(this->cluster->_callback.is("process"))
+					if(this->cluster->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->cluster->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", jt->first, pid, event_t::STOP);
+						this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", jt->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto it = this->cluster->_workers.find(jt->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
@@ -540,9 +540,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
 								// Если функция обратного вызова установлена
-								if(this->_callback.is("process"))
+								if(this->_callbacks.is("process"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, pid, event_t::START);
+									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, pid, event_t::START);
 							}
 							// Выполняем активацию базы событий
 							event_reinit(this->_base);
@@ -615,9 +615,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						jack->mess.start();
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("process"))
+					if(this->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, this->_pid, event_t::START);
+						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, this->_pid, event_t::START);
 				}
 			}
 		}
@@ -1114,18 +1114,12 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	this->count(wid, count);
 }
 /**
- * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
- * @param callback функция обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::Cluster::on(function <void (const uint16_t, const pid_t, const event_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint16_t, const pid_t, const event_t)> ("process", callback);
-}
-/**
- * on Метод установки функции обратного вызова при получении сообщения
- * @param callback функция обратного вызова
- */
-void awh::Cluster::on(function <void (const uint16_t, const pid_t, const char *, const size_t)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.set <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", callback);
+void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
+	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
+	this->_callbacks.set("process", callbacks);
+	// Выполняем установку функции обратного вызова при получении сообщения
+	this->_callbacks.set("message", callbacks);
 }

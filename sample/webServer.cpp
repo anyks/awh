@@ -329,30 +329,26 @@ int main(int argc, char * argv[]){
 	awh.addAltSvc("example.com", "h2=\":8000\"");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(&log);
 	// Устанавливаем функцию извлечения пароля
-	callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
+	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
-	callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
+	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	callback.set <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
+	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	callback.set <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
+	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	callback.set <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3));
+	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	callback.set <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
+	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения запроса
-	callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
 	// Установливаем функцию обратного вызова на событие получения тела сообщения
-	callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
 	// Установливаем функцию обратного вызова на событие получения заголовки сообщения
-	callback.set <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
-	// Выполняем установку функций обратного вызова
-	awh.callback(std::move(callback));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат

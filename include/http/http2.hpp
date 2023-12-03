@@ -181,7 +181,7 @@ namespace awh {
 			event_t _event;
 		private:
 			// Хранилище функций обратного вызова
-			fn_t _callback;
+			fn_t _callbacks;
 		private:
 			// Список доступных источников для подключения
 			vector <string> _origins;
@@ -420,10 +420,54 @@ namespace awh {
 			bool is() const noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
-			 * @param callback функции обратного вызова
+			 * callbacks Метод установки функций обратного вызова
+			 * @param callbacks функции обратного вызова
 			 */
-			void callback(const fn_t & callback) noexcept;
+			void callbacks(const fn_t & callbacks) noexcept;
+		public:
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param idw идентификатор функции обратного вызова
+			 * @param fn  функция обратного вызова для установки
+			 */
+			void callback(const uint64_t idw, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if((idw > 0) && (fn != nullptr)){
+					// Если установлена триггерная функция
+					if(idw == 1){
+						// Если активное событие не установлено
+						if(this->_event == event_t::NONE){
+							// Выполняем функцию обратного вызова
+							fn();
+							// Выходим из функции
+							return;
+						}
+					}
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (idw, fn);
+				}
+			}
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param name название функции обратного вызова
+			 * @param fn   функция обратного вызова для установки
+			 */
+			void callback(const string & name, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if(!name.empty() && (fn != nullptr))
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (name, fn);
+			}
 		public:
 			/**
 			 * origin Метод установки списка разрешённых источников
@@ -464,7 +508,7 @@ namespace awh {
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			 _callbacks(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Http2 Деструктор
 			 */

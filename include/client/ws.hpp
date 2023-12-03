@@ -88,10 +88,39 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
+			public:
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param idw идентификатор функции обратного вызова
+				 * @param fn  функция обратного вызова для установки
+				 */
+				void callback(const uint64_t idw, function <A> fn) noexcept {
+					// Выполняем установку функции обратного вызова
+					this->_ws.callback(idw, fn);
+				}
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param name название функции обратного вызова
+				 * @param fn   функция обратного вызова для установки
+				 */
+				void callback(const string & name, function <A> fn) noexcept {
+					// Выполняем установку функции обратного вызова
+					this->_ws.callback(name, fn);
+				}
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

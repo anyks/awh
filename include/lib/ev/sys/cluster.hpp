@@ -214,7 +214,7 @@ namespace awh {
 			bool _trackCrash;
 		private:
 			// Хранилище функций обратного вызова
-			fn_t _callback;
+			fn_t _callbacks;
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
@@ -343,15 +343,43 @@ namespace awh {
 			void init(const uint16_t wid, const uint16_t count = 1) noexcept;
 		public:
 			/**
-			 * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-			 * @param callback функция обратного вызова
+			 * callbacks Метод установки функций обратного вызова
+			 * @param callbacks функции обратного вызова
 			 */
-			void on(function <void (const uint16_t, const pid_t, const event_t)> callback) noexcept;
+			void callbacks(const fn_t & callbacks) noexcept;
+		public:
 			/**
-			 * on Метод установки функции обратного вызова при получении сообщения
-			 * @param callback функция обратного вызова
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
 			 */
-			void on(function <void (const uint16_t, const pid_t, const char *, const size_t)> callback) noexcept;
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param idw идентификатор функции обратного вызова
+			 * @param fn  функция обратного вызова для установки
+			 */
+			void callback(const uint64_t idw, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if((idw > 0) && (fn != nullptr))
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (idw, fn);
+			}
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param name название функции обратного вызова
+			 * @param fn   функция обратного вызова для установки
+			 */
+			void callback(const string & name, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if(!name.empty() && (fn != nullptr))
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (name, fn);
+			}
 		public:
 			/**
 			 * Cluster Конструктор
@@ -359,7 +387,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callback(log), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callbacks(log), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -367,7 +395,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callback(log), _base(base), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callbacks(log), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 

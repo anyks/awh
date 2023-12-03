@@ -124,16 +124,12 @@ int main(int argc, char * argv[]){
 	// proxy.init("anyks");
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(&log);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	callback.set <void (const size_t, const proxy_socks5_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2));
+	proxy.callback <void (const size_t, const proxy_socks5_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	proxy.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
 	// Устанавливаем функцию проверки авторизации
-	// callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
-	// Выполняем установку функций обратного вызова
-	proxy.callback(std::move(callback));
+	// proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
 	// Выполняем запуск Socks5 сервер
 	proxy.start();
 	// Выводим результат

@@ -70,13 +70,13 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Если функция обратного вызова установлена, выводим сообщение
-					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
-						this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
+						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
 					// Если установлена функция отлова завершения запроса
-					if(this->_callback.is("end"))
+					if(this->_callbacks.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
+						this->_callbacks.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -99,13 +99,13 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-					if(this->_callback.is("response"))
+					if(this->_callbacks.is("response"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", sid, 0, response.code, response.message);
+						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", sid, 0, response.code, response.message);
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-					if(this->_callback.is("headers"))
+					if(this->_callbacks.is("headers"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
 					if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 						// Выполняем коммит полученного результата
@@ -124,9 +124,9 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 				// Если мы получили флаг завершения потока
 				if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
 					// Если установлена функция отлова завершения запроса
-					if(this->_callback.is("end"))
+					if(this->_callbacks.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
+						this->_callbacks.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
 				}
 			}
 		}
@@ -274,9 +274,9 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 								// Выводим сообщение об ошибке подключения к прокси-серверу
 								this->_log->print("Proxy server does not support the HTTP/2 protocol", log_t::flag_t::CRITICAL);
 								// Если функция обратного вызова на на вывод ошибок установлена
-								if(this->_callback.is("error"))
+								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::PROXY_HTTP2_NO_INIT, "Proxy server does not support the HTTP/2 protocol");
+									this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::PROXY_HTTP2_NO_INIT, "Proxy server does not support the HTTP/2 protocol");
 								// Выполняем закрытие подключения
 								dynamic_cast <client::core_t *> (core)->close(bid);
 								// Выполняем завершение работы приложения
@@ -345,9 +345,9 @@ void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, c
  */
 void awh::client::Web2::originCallback(const vector <string> & origin) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("origin"))
+	if(this->_callbacks.is("origin"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const vector <string> &)> ("origin", origin);
+		this->_callbacks.call <void (const vector <string> &)> ("origin", origin);
 }
 /**
  * altsvcCallback Метод вывода полученного альтернативного сервиса от сервера
@@ -356,9 +356,9 @@ void awh::client::Web2::originCallback(const vector <string> & origin) noexcept 
  */
 void awh::client::Web2::altsvcCallback(const string & origin, const string & field) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("altsvc"))
+	if(this->_callbacks.is("altsvc"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const string &, const string &)> ("altsvc", origin, field);
+		this->_callbacks.call <void (const string &, const string &)> ("altsvc", origin, field);
 }
 /**
  * implementation Метод выполнения активации сессии HTTP/2
@@ -371,27 +371,27 @@ void awh::client::Web2::implementation(const uint64_t bid, client::core_t * core
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём локальный контейнер функций обратного вызова
-			fn_t callback(this->_log);
+			fn_t callbacks(this->_log);
 			// Устанавливаем функцию обработки вызова на событие получения ошибок
-			callback.set("error", this->_callback);
+			callbacks.set("error", this->_callbacks);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			callback.set <int (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1));
+			callbacks.set <int (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1));
 			// Выполняем установку функции обратного вызова получения списка разрешённых ресурсов для подключения
-			callback.set <void (const vector <string> &)> ("origin", std::bind(&web2_t::originCallback, this, _1));
+			callbacks.set <void (const vector <string> &)> ("origin", std::bind(&web2_t::originCallback, this, _1));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			callback.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, _1, _2));
+			callbacks.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова получения альтернативного сервиса от сервера
-			callback.set <void (const string &, const string &)> ("altsvc", std::bind(&web2_t::altsvcCallback, this, _1, _2));
+			callbacks.set <void (const string &, const string &)> ("altsvc", std::bind(&web2_t::altsvcCallback, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			callback.set <int (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, _2));
+			callbacks.set <int (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callback.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
+			callbacks.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callback.set <int (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, _2, _3));
+			callbacks.set <int (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			callback.set <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			callbacks.set <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Выполняем установку функции обратного вызова
-			this->_http2.callback(std::move(callback));
+			this->_http2.callbacks(std::move(callbacks));
 			// Выполняем инициализацию модуля NgHttp2
 			this->_http2.init(http2_t::mode_t::CLIENT, this->_settings);
 		}
@@ -423,9 +423,9 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 		// Если нужно попытаться ещё раз
 		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 			// Если функция обратного вызова на на вывод ошибок установлена
-			if((response.code == 407) && this->_callback.is("error"))
+			if((response.code == 407) && this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
+				this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_RECV, "authorization failed");
 			// Если попытки повторить переадресацию ещё не закончились
 			if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 				// Если адрес запроса получен
@@ -483,12 +483,8 @@ bool awh::client::Web2::ping() noexcept {
  * @param core объект сетевого ядра
  */
 void awh::client::Web2::close(const uint64_t bid, client::core_t * core) noexcept {
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(this->_log);
 	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-	callback.set <void (void)> (1, std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
-	// Выполняем установку функции обратного вызова
-	this->_http2.callback(std::move(callback));
+	this->_http2.callback <void (void)> (1, std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), core, bid));
 }
 /**
  * windowUpdate Метод обновления размера окна фрейма

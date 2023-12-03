@@ -57,9 +57,9 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status, awh::cor
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callback.is("events"))
+		if(this->_callbacks.is("events"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
+			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
 	}
 }
 /**
@@ -77,9 +77,9 @@ bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("accept"))
+		if(this->_callbacks.is("accept"))
 			// Выполняем функцию обратного вызова
-			return this->_callback.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+			return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
 	return result;
@@ -96,9 +96,9 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callback.is("chunks"))
+		if(this->_callbacks.is("chunks"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", 1, bid, chunk);
+			this->_callbacks.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", 1, bid, chunk);
 	}
 }
 /**
@@ -197,48 +197,56 @@ void awh::server::Web::init(const u_int port, const string & host, const vector 
 	#endif
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::server::Web::callback(const fn_t & callback) noexcept {
+void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова для вывода бинарных данных в сыром виде полученных с клиента
-	this->_callback.set("raw", callback);
+	this->_callbacks.set("raw", callbacks);
 	// Выполняем установку функции обратного вызова при завершении запроса
-	this->_callback.set("end", callback);
+	this->_callbacks.set("end", callbacks);
 	// Выполняем установку функции обратного вызова при удаление клиента из стека сервера
-	this->_callback.set("erase", callback);
+	this->_callbacks.set("erase", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения ошибки
-	this->_callback.set("error", callback);
+	this->_callbacks.set("error", callbacks);
 	// Выполняем установку функции обратного вызова для вывода полученного заголовка с клиента
-	this->_callback.set("header", callback);
+	this->_callbacks.set("header", callbacks);
 	// Выполняем установку функции обратного вызова для полученного тела данных с клиента
-	this->_callback.set("entity", callback);
+	this->_callbacks.set("entity", callbacks);
 	// Выполняем установку функции обратного вызова для вывода полученного чанка бинарных данных с клиента
-	this->_callback.set("chunks", callback);
+	this->_callbacks.set("chunks", callbacks);
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
-	this->_callback.set("active", callback);
+	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова получения событий запуска и остановки сетевого ядра
-	this->_callback.set("events", callback);
+	this->_callbacks.set("events", callbacks);
 	// Выполняем установку функции обратного вызова на событие активации брокера на сервере
-	this->_callback.set("accept", callback);
+	this->_callbacks.set("accept", callbacks);
 	// Выполняем установку функции обратного вызова активности потока
-	this->_callback.set("stream", callback);
+	this->_callbacks.set("stream", callbacks);
 	// Выполняем установку функции обратного вызова для вывода запроса клиента к серверу
-	this->_callback.set("request", callback);
+	this->_callbacks.set("request", callbacks);
 	// Выполняем установку функции обратного вызова для вывода полученных заголовков с клиента
-	this->_callback.set("headers", callback);
+	this->_callbacks.set("headers", callbacks);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
-	this->_callback.set("chunking", callback);
+	this->_callbacks.set("chunking", callbacks);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
-	this->_callback.set("handshake", callback);
+	this->_callbacks.set("handshake", callbacks);
 	// Выполняем установку функции обратного вызова для обработки авторизации
-	this->_callback.set("checkPassword", callback);
+	this->_callbacks.set("checkPassword", callbacks);
 	// Выполняем установку функции обратного вызова для извлечения пароля
-	this->_callback.set("extractPassword", callback);
+	this->_callbacks.set("extractPassword", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
-	this->_callback.set("errorWebsocket", callback);
+	this->_callbacks.set("errorWebsocket", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
-	this->_callback.set("messageWebsocket", callback);
+	this->_callbacks.set("messageWebsocket", callbacks);
+}
+/**
+ * transferСallback Метод передачи функции обратного вызова дальше
+ * @param name название функции обратного вызова
+ */
+void awh::server::Web::transferСallback(const string & name) noexcept {
+	// Отключаем неиспользуемую переменную
+	(void) name;
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -265,14 +273,8 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
-		{
-			// Создаём локальный контейнер функций обратного вызова
-			fn_t callback(this->_log);
-			// Устанавливаем функцию активации ядра сервера
-			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvents, this, _1, _2));
-			// Выполняем установку функций обратного вызова для сервера
-			const_cast <server::core_t *> (this->_core)->callback(std::move(callback));
-		}
+		// Устанавливаем функцию активации ядра сервера
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvents, this, _1, _2));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr)
 		// Выполняем установку объекта сетевого ядра
@@ -386,7 +388,7 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
@@ -398,16 +400,10 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callback(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
-	{
-		// Создаём локальный контейнер функций обратного вызова
-		fn_t callback(this->_log);
-		// Устанавливаем функцию активации ядра сервера
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
-		// Выполняем установку функций обратного вызова для сервера
-		const_cast <server::core_t *> (this->_core)->callback(std::move(callback));
-	}
+	// Устанавливаем функцию активации ядра сервера
+	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
 }

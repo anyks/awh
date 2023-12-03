@@ -105,7 +105,7 @@ namespace awh {
 				// Объект для работы с сетью
 				net_t _net;
 				// Хранилище функций обратного вызова
-				fn_t _callback;
+				fn_t _callbacks;
 				// Объект параметров клиента
 				settings_t _settings;
 			private:
@@ -214,10 +214,43 @@ namespace awh {
 				void init(const u_int port = 1080, const string & host = "") noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
+			public:
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param idw идентификатор функции обратного вызова
+				 * @param fn  функция обратного вызова для установки
+				 */
+				void callback(const uint64_t idw, function <A> fn) noexcept {
+					// Если функция обратного вызова передана
+					if((idw > 0) && (fn != nullptr))
+						// Выполняем установку функции обратного вызова
+						this->_callbacks.set <A> (idw, fn);
+				}
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param name название функции обратного вызова
+				 * @param fn   функция обратного вызова для установки
+				 */
+				void callback(const string & name, function <A> fn) noexcept {
+					// Если функция обратного вызова передана
+					if(!name.empty() && (fn != nullptr))
+						// Выполняем установку функции обратного вызова
+						this->_callbacks.set <A> (name, fn);
+				}
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

@@ -53,9 +53,9 @@ void awh::server::ProxySocks5::statusEvents(const awh::core_t::status_t status, 
 			break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callback.is("status"))
+		if(this->_callbacks.is("status"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
+			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
 	}
 }
 /**
@@ -71,9 +71,9 @@ bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & ma
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("accept"))
+		if(this->_callbacks.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callback.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+			return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение клиенту
 	return false;
@@ -134,15 +134,15 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					// Выполняем установку интервала времени в секундах между попытками
 					options->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
 					// Устанавливаем событие подключения
-					options->scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::CLIENT, bid1, _1, _2, _3));
+					options->scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::CLIENT, bid1, _1, _2, _3));
 					// Устанавливаем событие отключения
-					options->scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::CLIENT, bid1, _1, _2, _3));
+					options->scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::CLIENT, bid1, _1, _2, _3));
 					// Устанавливаем функцию чтения данных
-					options->scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::CLIENT, _1, _2, bid1, _4, _5));
+					options->scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::CLIENT, _1, _2, bid1, _4, _5));
 					// Если функция обратного вызова при выполнении авторизации установлена
-					if(this->_callback.is("checkPassword"))
+					if(this->_callbacks.is("checkPassword"))
 						// Устанавливаем функцию проверки авторизации
-						options->socks5.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid1, _1, _2));
+						options->socks5.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid1, _1, _2));
 					// Если unix-сокет установлен
 					if(!this->_socket.empty()){
 						// Устанавливаем тип сети
@@ -181,9 +181,9 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					// Устанавливаем URL адрес запроса
 					options->socks5.url(options->scheme.url);
 					// Если функция обратного вызова при подключении/отключении установлена
-					if(this->_callback.is("active"))
+					if(this->_callbacks.is("active"))
 						// Выводим функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid1, mode_t::CONNECT);
+						this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid1, mode_t::CONNECT);
 					// Выполняем создание нового подключённого клиента
 					auto ret = this->_clients.emplace(bid1, unique_ptr <client::core_t> (new client::core_t(&this->_dns, this->_fmk, this->_log)));
 					// Выполняем отключение информационных сообщений сетевого ядра клиента
@@ -269,9 +269,9 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 				// Если подключение выполнено, отправляем ответ клиенту
 				if((options != nullptr) && options->connect){
 					// Если функция обратного вызова при получении входящих сообщений установлена
-					if(this->_callback.is("message")){
+					if(this->_callbacks.is("message")){
 						// Выводим данные полученного сообщения
-						if(this->_callback.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::RESPONSE, buffer, size))
+						if(this->_callbacks.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::RESPONSE, buffer, size))
 							// Отправляем ответ клиенту
 							this->_core.write(buffer, size, bid);
 					// Отправляем ответ клиенту
@@ -355,9 +355,9 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 						// Если сетевое ядро клиента найдено
 						if(it != this->_clients.end()){
 							// Если функция обратного вызова при получении входящих сообщений установлена
-							if(this->_callback.is("message")){
+							if(this->_callbacks.is("message")){
 								// Выводим данные полученного сообщения
-								if(this->_callback.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::REQUEST, buffer, size))
+								if(this->_callbacks.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::REQUEST, buffer, size))
 									// Отправляем запрос на внешний сервер
 									it->second->write(buffer, size, options->id);
 							// Отправляем запрос на внешний сервер
@@ -411,9 +411,9 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, awh::core_t * core) noe
 				// Выполняем удаление параметров брокера
 				this->_scheme.rm(it->first);
 				// Если функция обратного вызова при подключении/отключении установлена
-				if(this->_callback.is("active"))
+				if(this->_callbacks.is("active"))
 					// Выводим функцию обратного вызова
-					this->_callback.call <void (const uint64_t, const mode_t)> ("active", it->first, mode_t::DISCONNECT);
+					this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", it->first, mode_t::DISCONNECT);
 				// Выполняем удаление объекта брокеров из списка мусора
 				it = this->_disconnected.erase(it);
 			// Выполняем пропуск брокера
@@ -459,20 +459,20 @@ void awh::server::ProxySocks5::init(const u_int port, const string & host) noexc
 	#endif
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::server::ProxySocks5::callback(const fn_t & callback) noexcept {
+void awh::server::ProxySocks5::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
-	this->_callback.set("active", callback);
+	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова на получения событий запуска и остановки сетевого ядра
-	this->_callback.set("status", callback);
+	this->_callbacks.set("status", callbacks);
 	// Выполняем установку функции обратного вызова на событие активации клиента на сервере
-	this->_callback.set("accept", callback);
+	this->_callbacks.set("accept", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения сообщений в бинарном виде
-	this->_callback.set("message", callback);
+	this->_callbacks.set("message", callbacks);
 	// Выполняем установку функции обратного вызова для обработки авторизации
-	this->_callback.set("checkPassword", callback);
+	this->_callbacks.set("checkPassword", callbacks);
 }
 /**
  * port Метод получения порта подключения брокера
@@ -698,32 +698,26 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  * @param log объект для работы с логами
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _callback(log),
+ _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _callbacks(log),
  _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.sonet(scheme_t::sonet_t::TCP);
-	{
-		// Создаём локальный контейнер функций обратного вызова
-		fn_t callback(this->_log);
-		// Устанавливаем функцию активации ядра сервера
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&proxy_socks5_t::statusEvents, this, _1, _2));
-		// Выполняем установку функций обратного вызова для Socks5-сервера
-		this->_core.callback(std::move(callback));
-	}
+	// Устанавливаем функцию активации ядра сервера
+	this->_core.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&proxy_socks5_t::statusEvents, this, _1, _2));
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1, _2));
+	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::SERVER, _1, 0, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::SERVER, _1, 0, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::SERVER, _1, 0, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::SERVER, _1, 0, _2, _3));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::SERVER, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::SERVER, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&proxy_socks5_t::writeEvents, this, broker_t::SERVER, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&proxy_socks5_t::writeEvents, this, broker_t::SERVER, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	this->_core.add(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов

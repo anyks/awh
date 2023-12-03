@@ -417,13 +417,11 @@ unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t
 void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
-		// Создаём локальный контейнер функций обратного вызова
-		fn_t callback(this->_log);
 		/**
 		 * Подписываемся на событие коннекта и дисконнекта клиента
 		 * @param mode событие модуля HTTP
 		 */
-		callback.set <void (const web_t::mode_t)> ("active", [method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
+		this->callback <void (const web_t::mode_t)> ("active", [method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект запроса
@@ -447,7 +445,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param rid    идентификатор запроса
 		 * @param direct направление передачи данных
 		 */
-		callback.set <void (const int32_t, const uint64_t, const web_t::direct_t)> ("end", [this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const web_t::direct_t)> ("end", [this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -463,7 +461,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		callback.set <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
 			// Блокируем пустые переменные
 			(void) sid;
 			(void) rid;
@@ -480,7 +478,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученного тела сообщения
 		 */
-		callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", [&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", [&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -501,7 +499,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param message сообщение ответа сервера
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		callback.set <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", [&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", [&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -516,8 +514,6 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			awh::http_t::compress_t::GZIP,
 			awh::http_t::compress_t::DEFLATE
 		});
-		// Устанавливаем функции обратного вызова
-		this->_http.callback(std::move(callback));
 		// Выполняем запуск работы
 		this->start();
 	}
@@ -544,12 +540,12 @@ void awh::client::AWH::start() noexcept {
 	this->_http.start();
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::client::AWH::callback(const fn_t & callback) noexcept {
+void awh::client::AWH::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_http.callback(callback);
+	this->_http.callbacks(callbacks);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

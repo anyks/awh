@@ -201,10 +201,10 @@ namespace awh {
 				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

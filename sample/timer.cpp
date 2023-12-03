@@ -117,12 +117,8 @@ int main(int argc, char * argv[]){
 	log.name("Timer");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callback(&log);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	callback.set <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
-	// Выполняем установку функций обратного вызова
-	core.callback(std::move(callback));
+	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

@@ -23,9 +23,9 @@
  */
 void awh::Http::chunking(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept {
 	// Если функция обратного вызова на вывод полученного чанка установлена
-	if(this->_callback.is("chunking"))
+	if(this->_callbacks.is("chunking"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", id, buffer, this);
+		this->_callbacks.call <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", id, buffer, this);
 }
 /**
  * encrypt Метод выполнения шифрования полезной нагрузки
@@ -50,9 +50,9 @@ void awh::Http::encrypt() noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("Encryption module has failed", log_t::flag_t::WARNING);
 				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Encryption module has failed");
+					this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Encryption module has failed");
 			}
 		}
 	}
@@ -80,9 +80,9 @@ void awh::Http::decrypt() noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("Decryption module has failed", log_t::flag_t::WARNING);
 				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Decryption module has failed");
+					this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Decryption module has failed");
 			}
 		}
 	}
@@ -116,9 +116,9 @@ void awh::Http::compress() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("BROTLI compression module has failed", log_t::flag_t::WARNING);
 						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI compression module has failed");
+							this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI compression module has failed");
 					}
 				} break;
 				// Если полезную нагрузку необходимо сжать методом GZIP
@@ -138,9 +138,9 @@ void awh::Http::compress() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("GZIP compression module has failed", log_t::flag_t::WARNING);
 						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP compression module has failed");
+							this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP compression module has failed");
 					}
 				} break;
 				// Если полезную нагрузку необходимо сжать методом DEFLATE
@@ -162,9 +162,9 @@ void awh::Http::compress() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("DEFLATE compression module has failed", log_t::flag_t::WARNING);
 						// Если функция обратного вызова на на вывод ошибок установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE compression module has failed");
+							this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE compression module has failed");
 					}
 				} break;
 			}
@@ -237,27 +237,27 @@ void awh::Http::decompress() noexcept {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("BROTLI decompression module has failed", log_t::flag_t::WARNING);
 					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
+					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI decompression module has failed");
+						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BROTLI decompression module has failed");
 				} break;
 				// Если метод компрессии не изменился и остался GZIP
 				case static_cast <uint8_t> (compress_t::GZIP): {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("GZIP decompression module has failed", log_t::flag_t::WARNING);
 					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
+					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP decompression module has failed");
+						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZIP decompression module has failed");
 				} break;
 				// Если метод компрессии не изменился и остался DEFLATE
 				case static_cast <uint8_t> (compress_t::DEFLATE): {
 					// Сообщаем, что переданное тело содержит ошибки
 					this->_log->print("DEFLATE decompression module has failed", log_t::flag_t::WARNING);
 					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
+					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE decompression module has failed");
+						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "DEFLATE decompression module has failed");
 				} break;
 			}
 		}
@@ -495,18 +495,18 @@ void awh::Http::commit() noexcept {
 														// Выводим сообщение об ошибке
 														this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, compressor.substr(0, pos).c_str(), second.c_str());
 														// Если функция обратного вызова на на вывод ошибок установлена
-														if(this->_callback.is("error"))
+														if(this->_callbacks.is("error"))
 															// Выполняем функцию обратного вызова
-															this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
+															this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
 													}
 												// Если мы получили данные в неверном формате
 												} else {
 													// Выводим сообщение об ошибке
 													this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, compressor.c_str());
 													// Если функция обратного вызова на на вывод ошибок установлена
-													if(this->_callback.is("error"))
+													if(this->_callbacks.is("error"))
 														// Выполняем функцию обратного вызова
-														this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
+														this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
 												}
 											// Если вес компрессора не установлен
 											} else {
@@ -612,18 +612,18 @@ void awh::Http::commit() noexcept {
 													// Выводим сообщение об ошибке
 													this->_log->print("Weight of the requested %s compressor is not a number [%s]", log_t::flag_t::WARNING, param.substr(0, pos).c_str(), second.c_str());
 													// Если функция обратного вызова на на вывод ошибок установлена
-													if(this->_callback.is("error"))
+													if(this->_callbacks.is("error"))
 														// Выполняем функцию обратного вызова
-														this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", param.substr(0, pos).c_str(), second.c_str()));
+														this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", param.substr(0, pos).c_str(), second.c_str()));
 												}
 											// Если мы получили данные в неверном формате
 											} else {
 												// Выводим сообщение об ошибке
 												this->_log->print("We received data in the wrong format [%s]", log_t::flag_t::WARNING, param.c_str());
 												// Если функция обратного вызова на на вывод ошибок установлена
-												if(this->_callback.is("error"))
+												if(this->_callbacks.is("error"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", param.c_str()));
+													this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", param.c_str()));
 											}
 										// Если вес компрессора не установлен
 										} else {
@@ -1009,9 +1009,9 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 				// Выводим сообщение, что клиент не может отправлять трейлеры
 				this->_log->print("Add trailer [%s=%s] failed because the client cannot send trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
 				// Если функция обратного вызова на на вывод ошибок установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Add trailer [%s=%s] failed because the client cannot send trailers", key.c_str(), val.c_str()));
+					this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Add trailer [%s=%s] failed because the client cannot send trailers", key.c_str(), val.c_str()));
 			} break;
 			// Если мы работаем с сервером
 			case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -1026,9 +1026,9 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 					// Выводим сообщение о невозможности установки трейлера
 					this->_log->print("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", log_t::flag_t::WARNING, key.c_str(), val.c_str());
 					// Если функция обратного вызова на на вывод ошибок установлена
-					if(this->_callback.is("error"))
+					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", key.c_str(), val.c_str()));
+						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", key.c_str(), val.c_str()));
 				}
 			} break;
 		}	
@@ -3709,20 +3709,14 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 	return result;
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::Http::callback(const fn_t & callback) noexcept {
+void awh::Http::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова на событие получения ошибки
-	this->_callback.set("error", callback);
-	// Выполняем установку функции обратного вызова для получения чанков
-	this->_callback.set("chunking", callback);
-	// Если функция обратного вызова на вывод полученного чанка установлена
-	if(this->_callback.is("chunking"))
-		// Устанавливаем функцию обратного вызова для получения чанков
-		const_cast <fn_t &> (callback).set <void (const uint64_t, const vector <char> &, const web_t *)> ("chunking", std::bind(&awh::Http::chunking, this, _1, _2, _3));
+	this->_callbacks.set("error", callbacks);
 	// Устанавливаем функции обратного вызова
-	this->_web.callback(callback);
+	this->_web.callbacks(callbacks);
 }
 /**
  * id Метод получения идентификатора объекта
@@ -3877,10 +3871,12 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  * @param log объект для работы с логами
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _callback(log), _web(fmk, log), _auth(fmk, log), _hash(log),
+ _uri(fmk), _callbacks(log), _web(fmk, log), _auth(fmk, log), _hash(log),
  _crypted(false), _encryption(false), _precise(false), _chunk(BUFFER_CHUNK),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта
 	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
+	// Устанавливаем функцию обратного вызова для получения чанков
+	this->_web.callback <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", std::bind(&awh::Http::chunking, this, _1, _2, _3));
 }

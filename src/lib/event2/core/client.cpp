@@ -201,9 +201,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если хост сервера получен правильно
 						if(host != nullptr){
 							// Если функция обратного вызова активации шифрованного SSL канала установлена
-							if((shm->callback.is("ssl")))
+							if((shm->callbacks.is("ssl")))
 								// Выполняем активацию шифрованного SSL канала
-								this->_engine.encrypted(shm->callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
+								this->_engine.encrypted(shm->callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
 							// Выполняем активацию контекста подключения
 							this->_engine.wrap(adj->_ectx, &adj->_addr, host);
 						// Если хост сервера не получен
@@ -219,13 +219,13 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
 							// Если функция обратного вызова установлена
-							if(shm->callback.is("disconnect"))
+							if(shm->callbacks.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
+								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -245,13 +245,13 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Encryption mode cannot be activated");
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Encryption mode cannot be activated");
 							// Если функция обратного вызова установлена
-							if(shm->callback.is("disconnect"))
+							if(shm->callbacks.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
+								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -271,9 +271,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
+							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
 						// Выполняем переподключение
 						this->reconnect(sid);
 						// Выходим из функции
@@ -302,17 +302,17 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Выводим ионформацию об обрыве подключении по unix-сокету
 							this->_log->print("Connecting to socket = %s", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to socket = %s", this->_settings.filename.c_str()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to socket = %s", this->_settings.filename.c_str()));
 						// Если используется хост и порт
 						} else {
 							// Выводим ионформацию об обрыве подключении по хосту и порту
 							this->_log->print("Connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
 						}
 						// Если объект DNS-резолвера установлен
 						if(this->_dns != nullptr){
@@ -378,17 +378,17 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
 						this->_log->print("Client cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s]", this->_settings.filename.c_str()));
+							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s]", this->_settings.filename.c_str()));
 					// Если используется хост и порт
 					} else {
 						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
 						this->_log->print("Client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
+							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
 					}
 				}
 				// Если нужно выполнить автоматическое переподключение
@@ -432,9 +432,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 					// Если функция обратного вызова установлена
-					if(shm->callback.is("disconnect"))
+					if(shm->callbacks.is("disconnect"))
 						// Выполняем функцию обратного вызова
-						shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
+						shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
 				}
 			}
 		}
@@ -672,9 +672,9 @@ void awh::client::Core::close() noexcept {
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(it->first);
 						// Если функция обратного вызова установлена
-						if(shm->callback.is("disconnect"))
+						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (it->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (it->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
 						// Удаляем блокировку брокера
 						this->_locking.erase(it->first);
 						// Удаляем брокера из списка
@@ -735,9 +735,9 @@ void awh::client::Core::remove() noexcept {
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(jt->first);
 						// Если функция обратного вызова установлена
-						if(shm->callback.is("disconnect"))
+						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку брокера
 						this->_locking.erase(jt->first);
 						// Удаляем брокера из списка
@@ -868,9 +868,9 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(jt->first);
 						// Если функция обратного вызова установлена
-						if(shm->callback.is("disconnect"))
+						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку брокера
 						this->_locking.erase(jt->first);
 						// Удаляем брокера из списка
@@ -939,9 +939,9 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 			// Устанавливаем статус сетевого ядра
 			shm->status.real = scheme_t::mode_t::DISCONNECT;
 			// Если функция обратного вызова установлена
-			if(shm->callback.is("disconnect"))
+			if(shm->callbacks.is("disconnect"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", shm->callback.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), bid, shm->sid, this);
+				callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), bid, shm->sid, this);
 			// Если активированно постоянное подключение
 			if(shm->alive)
 				// Устанавливаем функцию обратного вызова
@@ -1007,9 +1007,9 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 				// Выполняем установку желаемого протокола подключения
 				adj->_ectx.proto(this->_settings.proto);
 				// Если функция обратного вызова активации шифрованного SSL канала установлена
-				if((shm->callback.is("ssl")))
+				if((shm->callbacks.is("ssl")))
 					// Выполняем активацию шифрованного SSL канала
-					this->_engine.encrypted(shm->callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", shm->url, bid, shm->sid, this), adj->_ectx);
+					this->_engine.encrypted(shm->callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", shm->url, bid, shm->sid, this), adj->_ectx);
 				// Выполняем получение контекста сертификата
 				this->_engine.wrap(adj->_ectx, adj->_ectx, host);
 				// Если подключение не обёрнуто
@@ -1017,9 +1017,9 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("error"))
+					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
+						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
 					// Выходим из функции
 					return;
 				}
@@ -1028,9 +1028,9 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
+					this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
 				// Выходим из функции
 				return;
 			}
@@ -1085,18 +1085,18 @@ void awh::client::Core::timeout(const uint64_t bid) noexcept {
 				// Выводим сообщение в лог, о таймауте подключения
 				this->_log->print("Timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
+					this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
 			} break;
 			// Если тип протокола подключения unix-сокет
 			case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 				// Выводим сообщение в лог, о таймауте подключения
 				this->_log->print("Timeout host %s", log_t::flag_t::WARNING, this->_settings.filename.c_str());
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
+					this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout host %s", this->_settings.filename.c_str()));
 			} break;
 		}
 		// Останавливаем чтение данных
@@ -1181,13 +1181,13 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 			// Если подключение производится через, прокси-сервер
 			if(shm->isProxy()){
 				// Если функция обратного вызова для прокси-сервера установлена
-				if(shm->callback.is("connectProxy"))
+				if(shm->callbacks.is("connectProxy"))
 					// Выполняем функцию обратного вызова
-					shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->_core));
+					shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->_core));
 			// Если функция обратного вызова установлена
-			} else if(shm->callback.is("connect"))
+			} else if(shm->callbacks.is("connect"))
 				// Выполняем функцию обратного вызова
-				shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", it->first, shm->sid, const_cast <awh::core_t *> (shm->_core));
+				shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", it->first, shm->sid, const_cast <awh::core_t *> (shm->_core));
 			// Выходим из функции
 			return;
 		}
@@ -1257,13 +1257,13 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											// Если подключение производится через, прокси-сервер
 											if(shm->isProxy()){
 												// Если функция обратного вызова для вывода записи существует
-												if(shm->callback.is("readProxy"))
+												if(shm->callbacks.is("readProxy"))
 													// Выводим функцию обратного вызова
-													shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+													shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 											// Если прокси-сервер не используется
-											} else if(shm->callback.is("read"))
+											} else if(shm->callbacks.is("read"))
 												// Выводим функцию обратного вызова
-												shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 											// Увеличиваем смещение в буфере
 											offset += actual;
 										}
@@ -1272,13 +1272,13 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 										// Если подключение производится через, прокси-сервер
 										if(shm->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
-											if(shm->callback.is("readProxy"))
+											if(shm->callbacks.is("readProxy"))
 												// Выводим функцию обратного вызова
-												shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 										// Если прокси-сервер не используется
-										} else if(shm->callback.is("read"))
+										} else if(shm->callbacks.is("read"))
 											// Выводим функцию обратного вызова
-											shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 									}
 									// Если флаг ожидания входящих сообщений, активирован
 									if(adj->_timeouts.read > 0){
@@ -1423,17 +1423,17 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 						// Останавливаем ожидание записи данных
 						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
-						if(shm->callback.is("write"))
+						if(shm->callbacks.is("write"))
 							// Выводим функцию обратного вызова
-							shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", buffer, offset, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+							shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", buffer, offset, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем ожидание записи данных
 						this->events(mode_t::DISABLED, engine_t::method_t::WRITE, bid);
 						// Если функция обратного вызова на запись данных установлена
-						if(shm->callback.is("write"))
+						if(shm->callbacks.is("write"))
 							// Выводим функцию обратного вызова
-							shm->callback.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", nullptr, 0, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+							shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", nullptr, 0, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 					if((this->_settings.sonet == scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
@@ -1506,9 +1506,9 @@ void awh::client::Core::activation(const uint16_t sid, const string & ip, const 
 				return;
 			}
 			// Если функция обратного вызова установлена
-			if(shm->callback.is("disconnect"))
+			if(shm->callbacks.is("disconnect"))
 				// Выполняем функцию обратного вызова
-				shm->callback.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
+				shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, shm->sid, this);
 		}
 	}
 }

@@ -226,10 +226,16 @@ namespace awh {
 				void pause() noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
+			private:
+				/**
+				 * transferСallback Метод передачи функции обратного вызова дальше
+				 * @param name название функции обратного вызова
+				 */
+				void transferСallback(const string & name) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

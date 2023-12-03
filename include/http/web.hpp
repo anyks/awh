@@ -270,10 +270,10 @@ namespace awh {
 		private:
 			// Создаём объект работы с URI
 			uri_t _uri;
-			// Хранилище функций обратного вызова
-			fn_t _callback;
 			// Объект собираемого чанка
 			chunk_t _chunk;
+			// Хранилище функций обратного вызова
+			fn_t _callbacks;
 		private:
 			// Тип используемого HTTP-модуля
 			hid_t _hid;
@@ -485,10 +485,43 @@ namespace awh {
 			void state(const state_t state) noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
-			 * @param callback функции обратного вызова
+			 * callbacks Метод установки функций обратного вызова
+			 * @param callbacks функции обратного вызова
 			 */
-			void callback(const fn_t & callback) noexcept;
+			void callbacks(const fn_t & callbacks) noexcept;
+		public:
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param idw идентификатор функции обратного вызова
+			 * @param fn  функция обратного вызова для установки
+			 */
+			void callback(const uint64_t idw, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if((idw > 0) && (fn != nullptr))
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (idw, fn);
+			}
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * callback Метод установки функции обратного вызова
+			 * @param name название функции обратного вызова
+			 * @param fn   функция обратного вызова для установки
+			 */
+			void callback(const string & name, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if(!name.empty() && (fn != nullptr))
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (name, fn);
+			}
 		public:
 			/**
 			 * Web Конструктор

@@ -166,9 +166,9 @@ void awh::Core::Dispatch::start() noexcept {
 						// Выводим сообщение об ошибке
 						this->_core->_log->print("%s", log_t::flag_t::WARNING, error.what());
 						// Если функция обратного вызова установлена
-						if(this->_core->_callback.is("error"))
+						if(this->_core->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_core->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, error.what());
+							this->_core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, error.what());
 					#endif
 				}
 			}
@@ -364,17 +364,17 @@ void awh::Core::launching() noexcept {
 		// Переходим по всему списку схем сети
 		for(auto & scheme : this->_schemes){
 			// Если функция обратного вызова установлена
-			if(scheme.second->callback.is("open"))
+			if(scheme.second->callbacks.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
+				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callbacks.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind();
 	}
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("status"))
+	if(this->_callbacks.is("status"))
 		// Выполняем запуск функции в основном потоке
-		this->_callback.call <void (const status_t, core_t *)> ("status", this->_status, this);
+		this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
 	if(!this->_noinfo)
 		// Выводим в консоль информацию
@@ -391,9 +391,9 @@ void awh::Core::closedown() noexcept {
 	// Выполняем отключение всех брокеров
 	this->close();
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("status"))
+	if(this->_callbacks.is("status"))
 		// Выполняем запуск функции в основном потоке
-		this->_callback.call <void (const status_t, core_t *)> ("status", this->_status, this);
+		this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
 	// Если разрешено выводить информацию в лог
 	if(!this->_noinfo)
 		// Выводим в консоль информацию
@@ -445,9 +445,9 @@ void awh::Core::signal(const int signal) noexcept {
 	// Если процесс является родительским
 	} else {
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("crash"))
+		if(this->_callbacks.is("crash"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const int)> ("crash", signal);
+			this->_callbacks.call <void (const int)> ("crash", signal);
 		// Выходим из приложения
 		else exit(signal);
 	}
@@ -1165,18 +1165,18 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 	return result;
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::Core::callback(const fn_t & callback) noexcept {
+void awh::Core::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку функции обратного вызова при краше приложения
-	this->_callback.set("crash", callback);
+	this->_callbacks.set("crash", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения ошибки
-	this->_callback.set("error", callback);
+	this->_callbacks.set("error", callbacks);
 	// Выполняем установку функции обратного вызова при запуске/остановки работы модуля
-	this->_callback.set("status", callback);
+	this->_callbacks.set("status", callbacks);
 }
 /**
  * easily Метод активации простого режима чтения базы событий
@@ -1254,9 +1254,9 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 		// Выводим в лог сообщение
 		this->_log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("error"))
+		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
 		// Выходим принудительно из приложения
 		exit(EXIT_FAILURE);
 	#endif
@@ -1325,9 +1325,9 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 			// Выводим в лог сообщение
 			this->_log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("error"))
+			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
 			// Выходим принудительно из приложения
 			exit(EXIT_FAILURE);
 		}
@@ -1557,7 +1557,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callback(log),
+ _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
  _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base),
  _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _dns(nullptr), _fmk(fmk), _log(log) {
@@ -1579,7 +1579,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
  * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
  */
 awh::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callback(log),
+ _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
  _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base),
  _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _dns(const_cast <dns_t *> (dns)), _fmk(fmk), _log(log) {

@@ -355,10 +355,16 @@ namespace awh {
 				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
+			private:
+				/**
+				 * transferСallback Метод передачи функции обратного вызова дальше
+				 * @param name название функции обратного вызова
+				 */
+				void transferСallback(const string & name) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

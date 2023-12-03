@@ -274,7 +274,7 @@ namespace awh {
 			bool alive;
 		public:
 			// Хранилище функций обратного вызова
-			fn_t callback;
+			fn_t callbacks;
 		public:
 			// Маркер размера детектируемых байт
 			marker_t marker;
@@ -339,7 +339,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-			 sid(0), wait(false), alive(false), callback(log), _fmk(fmk), _log(log), _core(nullptr) {}
+			 sid(0), wait(false), alive(false), callbacks(log), _fmk(fmk), _log(log), _core(nullptr) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

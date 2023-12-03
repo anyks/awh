@@ -58,7 +58,7 @@ namespace awh {
 				string _pass;
 			private:
 				// Хранилище функций обратного вызова
-				fn_t _callback;
+				fn_t _callbacks;
 				// Параметры Digest авторизации пользователя
 				digest_t _locale;
 			public:
@@ -120,7 +120,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Auth(const fmk_t * fmk, const log_t * log) noexcept :
-				 auth_t(fmk, log), _user{""}, _pass{""}, _callback(log) {}
+				 auth_t(fmk, log), _user{""}, _pass{""}, _callbacks(log) {}
 		} auth_t;
 	};
 };

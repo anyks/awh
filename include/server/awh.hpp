@@ -211,10 +211,39 @@ namespace awh {
 				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
-				 * @param callback функции обратного вызова
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
 				 */
-				void callback(const fn_t & callback) noexcept;
+				void callbacks(const fn_t & callbacks) noexcept;
+			public:
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param idw идентификатор функции обратного вызова
+				 * @param fn  функция обратного вызова для установки
+				 */
+				void callback(const uint64_t idw, function <A> fn) noexcept {
+					// Устанавливаем функцию обратного вызова
+					this->_http.callback(idw, fn);
+				}
+				/**
+				 * callback Шаблон метода установки финкции обратного вызова
+				 * @tparam A тип функции обратного вызова
+				 */
+				template <typename A>
+				/**
+				 * callback Метод установки функции обратного вызова
+				 * @param name название функции обратного вызова
+				 * @param fn   функция обратного вызова для установки
+				 */
+				void callback(const string & name, function <A> fn) noexcept {
+					// Устанавливаем функцию обратного вызова
+					this->_http.callback(name, fn);
+				}
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

@@ -54,12 +54,12 @@ void awh::server::Websocket::sendMessage(const uint64_t bid, const vector <char>
 	this->_ws.sendMessage(bid, message, text);
 }
 /**
- * callback Метод установки функций обратного вызова
- * @param callback функции обратного вызова
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
  */
-void awh::server::Websocket::callback(const fn_t & callback) noexcept {
+void awh::server::Websocket::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_ws.callback(callback);
+	this->_ws.callbacks(callbacks);
 }
 /**
  * port Метод получения порта подключения брокера
