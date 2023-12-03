@@ -29,25 +29,14 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 		// Если требуется авторизация
 		case 401:
 		case 407: {
-			// Определяем тип авторизации
-			switch(static_cast <uint8_t> (this->_auth.client.type())){
-				// Если производится авторизация DIGEST
-				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
-					// Получаем параметры авторизации
-					const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
-					// Если параметры авторизации найдены
-					if(!auth.empty()){
-						// Устанавливаем заголовок HTTP в параметры авторизации
-						this->_auth.client.header(auth);
-						// Просим повторить авторизацию ещё раз
-						result = status_t::RETRY;
-					}
-				} break;
-				// Если производится авторизация BASIC
-				case static_cast <uint8_t> (awh::auth_t::type_t::BASIC):
-					// Просим повторить авторизацию ещё раз
-					result = status_t::RETRY;
-				break;
+			// Получаем параметры авторизации
+			const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
+			// Если параметры авторизации найдены
+			if(!auth.empty()){
+				// Устанавливаем заголовок HTTP в параметры авторизации
+				this->_auth.client.header(auth);
+				// Просим повторить авторизацию ещё раз
+				result = status_t::RETRY;
 			}
 		} break;
 		// Если нужно произвести редирект

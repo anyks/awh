@@ -85,12 +85,14 @@ void awh::client::Auth::header(const string & header) noexcept {
 	if(!header.empty() && (this->_fmk != nullptr)){
 		// Выполняем поиск авторизации
 		size_t pos = string::npos;
+		// Переводим заголовок в нижний регистр
+		this->_fmk->transform(header, fmk_t::transform_t::LOWER);
 		// Если тип авторизации Basic получен
-		if((pos = header.find("Basic")) != string::npos)
+		if((pos = header.find("basic")) != string::npos)
 			// Устанавливаем тип авторизации
 			this->_type = type_t::BASIC;
 		// Если тип авторизации Digest получен
-		else if((pos = header.find("Digest")) != string::npos) {
+		else if((pos = header.find("digest")) != string::npos) {
 			// Устанавливаем тип авторизации
 			this->_type = type_t::DIGEST;
 			// Получаем параметры авторизации

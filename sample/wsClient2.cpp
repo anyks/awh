@@ -394,10 +394,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип компрессии
 	// awh.compress({http_t::compress_t::DEFLATE});
 	// Устанавливаем тип авторизации прокси-сервера
-	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
-	// awh.authType(auth_t::type_t::BASIC);
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем метод активации подключения
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
