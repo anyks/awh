@@ -138,22 +138,20 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// proxy.family(server::proxy_t::broker_t::SERVER, awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип авторизации
-	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
+	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
-	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
 	proxy.init(2222, "", http_t::compress_t::GZIP);
 	// proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-	/*
 	// Устанавливаем SSL сертификаты сервера
 	proxy.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	*/
 	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
