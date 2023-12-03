@@ -545,10 +545,10 @@ namespace awh {
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
 				/**
-				 * clusterSize Метод установки количества процессов кластера
+				 * cluster Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const uint16_t size = 0) noexcept;
+				void cluster(const uint16_t size = 0) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

@@ -1360,10 +1360,10 @@ void awh::server::Core::bandWidth(const uint64_t bid, const string & read, const
 	}
 }
 /**
- * clusterSize Метод установки количества процессов кластера
+ * cluster Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
-void awh::server::Core::clusterSize(const uint16_t size) noexcept {
+void awh::server::Core::cluster(const uint16_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -1567,7 +1567,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
-	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
+	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3));
 }
 /**
  * Core Конструктор
@@ -1582,7 +1582,7 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log,
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
-	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
+	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3));
 }
 /**
  * ~Core Деструктор

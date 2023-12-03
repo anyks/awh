@@ -206,10 +206,10 @@ namespace awh {
 				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
 			public:
 				/**
-				 * clusterSize Метод установки количества процессов кластера
+				 * cluster Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void clusterSize(const uint16_t size = 0) noexcept;
+				void cluster(const uint16_t size = 0) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param sid  идентификатор схемы сети

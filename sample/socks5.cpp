@@ -115,7 +115,7 @@ int main(int argc, char * argv[]){
 	// Отключаем валидацию сертификата
 	// proxy.verifySSL(true);
 	// Активируем максимальное количество рабочих процессов
-	proxy.clusterSize();
+	proxy.cluster();
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(10, 1);
 	// Выполняем инициализацию Websocket сервера

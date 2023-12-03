@@ -574,12 +574,12 @@ void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 	this->_core.clusterAutoRestart(this->_scheme.sid, mode);
 }
 /**
- * clusterSize Метод установки количества процессов кластера
+ * cluster Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
-void awh::server::ProxySocks5::clusterSize(const uint16_t size) noexcept {
+void awh::server::ProxySocks5::cluster(const uint16_t size) noexcept {
 	// Устанавливаем количество процессов кластера
-	this->_core.clusterSize(size);
+	this->_core.cluster(size);
 }
 /**
  * mode Метод установки флагов модуля

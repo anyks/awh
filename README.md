@@ -426,7 +426,7 @@ int main(int argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	
-	core.clusterSize();
+	core.cluster();
 
 	awh.clusterAutoRestart(true);
 
@@ -695,7 +695,7 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::TAKEOVER_SERVER
 	});
 
-	core.clusterSize();
+	core.cluster();
 
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
@@ -863,7 +863,7 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.clusterSize();
+	core.cluster();
 
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
@@ -971,7 +971,7 @@ int main(int argc, char * argv[]){
 	log.name("Proxy Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.clusterSize();
+	proxy.cluster();
 
 	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
 
@@ -1051,7 +1051,7 @@ int main(int argc, char * argv[]){
 	log.name("Proxy Socks5 Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.clusterSize();
+	proxy.cluster();
 
 	proxy.ca("./ca/cert.pem");
 
