@@ -16,12 +16,12 @@
 #include <client/web/http2.hpp>
 
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvent Метод обратного вызова при подключении к серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -31,7 +31,7 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 		// Выполняем установку идентификатора объекта
 		this->_http.id(bid);
 		// Выполняем инициализацию сессии HTTP/2
-		web2_t::connectCallback(bid, sid, core);
+		web2_t::connectEvent(bid, sid, core);
 		// Если флаг инициализации сессии HTTP/2 не установлен
 		if(!this->_http2.is()){
 			// Запоминаем идентификатор брокера
@@ -62,12 +62,12 @@ void awh::client::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 	}
 }
 /**
- * disconnectCallback Метод обратного вызова при отключении от сервера
+ * disconnectEvent Метод обратного вызова при отключении от сервера
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем удаление подключения
 	this->_http2.close();
 	// Выполняем установку сессии HTTP/2
@@ -81,9 +81,9 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 	// Выполняем очистку списка запросов
 	this->_requests.clear();
 	// Выполняем передачу сигнала отключения от сервера на Websocket-клиент
-	this->_ws2.disconnectCallback(bid, sid, core);
+	this->_ws2.disconnectEvent(bid, sid, core);
 	// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-	this->_http1.disconnectCallback(bid, sid, core);
+	this->_http1.disconnectEvent(bid, sid, core);
 	// Если подключение не является постоянным
 	if(!this->_scheme.alive){
 		// Выполняем сброс параметров запроса
@@ -103,14 +103,14 @@ void awh::client::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 		this->_callback.call <void (const mode_t)> ("active", mode_t::DISCONNECT);
 }
 /**
- * readCallback Метод обратного вызова при чтении сообщения с сервера
+ * readEvent Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -135,9 +135,9 @@ void awh::client::Http2::readCallback(const char * buffer, const size_t size, co
 				// Если активирован Websocket-клиент
 				if(this->_ws2._bid > 0)
 					// Выполняем переброс вызова чтения на клиент Websocket
-					this->_ws2.readCallback(buffer, size, bid, sid, core);
+					this->_ws2.readEvent(buffer, size, bid, sid, core);
 				// Выполняем переброс вызова чтения на клиент HTTP/1.1
-				else this->_http1.readCallback(buffer, size, bid, sid, core);
+				else this->_http1.readEvent(buffer, size, bid, sid, core);
 			}
 		}
 	}
@@ -735,7 +735,7 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 					// Если активирован режим работы с HTTP/1.1 протоколом
 					} else {
 						// Выполняем передачу сигнала отключения от сервера на HTTP/1.1 клиент
-						this->_http1.disconnectCallback(bid, sid, core);
+						this->_http1.disconnectEvent(bid, sid, core);
 						// Если список ответов получен
 						if((result = it->second->update = !this->_http1._stopped)){
 							// Получаем параметры запроса
@@ -806,7 +806,7 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 				// Если протоколом агента является Websocket-клиент
 				case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 					// Выполняем переброс вызова дисконнекта на клиент Websocket
-					this->_ws2.disconnectCallback(bid, sid, core);
+					this->_ws2.disconnectEvent(bid, sid, core);
 					// Если список ответов получен
 					if((result = it->second->update = !this->_ws2._stopped)){
 						// Получаем параметры запроса
@@ -1394,7 +1394,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Устанавливаем новый адрес запроса
 					this->_uri.combine(this->_ws2._scheme.url, request.url);
 					// Выполняем установку подключения с Websocket-сервером
-					this->_ws2.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+					this->_ws2.connectEvent(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 					// Выводим идентификатор подключения
 					result = this->_ws2._sid;
 				} break;

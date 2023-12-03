@@ -16,12 +16,12 @@
 #include <server/proxy.hpp>
 
 /**
- * passwordCallback Метод извлечения пароля (для авторизации методом Digest)
+ * passwordEvents Метод извлечения пароля (для авторизации методом Digest)
  * @param bid   идентификатор брокера (клиента)
  * @param login логин пользователя
  * @return      пароль пользователя хранящийся в базе данных
  */
-string awh::server::Proxy::passwordCallback(const uint64_t bid, const string & login) noexcept {
+string awh::server::Proxy::passwordEvents(const uint64_t bid, const string & login) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("extractPassword"))
 		// Выполняем функцию обратного вызова
@@ -30,13 +30,13 @@ string awh::server::Proxy::passwordCallback(const uint64_t bid, const string & l
 	return "";
 }
 /**
- * authCallback Метод проверки авторизации пользователя (для авторизации методом Basic)
+ * authEvents Метод проверки авторизации пользователя (для авторизации методом Basic)
  * @param bid      идентификатор брокера (клиента)
  * @param login    логин пользователя (от клиента)
  * @param password пароль пользователя (от клиента)
  * @return         результат авторизации
  */
-bool awh::server::Proxy::authCallback(const uint64_t bid, const string & login, const string & password) noexcept {
+bool awh::server::Proxy::authEvents(const uint64_t bid, const string & login, const string & password) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("checkPassword"))
 		// Выполняем функцию обратного вызова
@@ -45,13 +45,13 @@ bool awh::server::Proxy::authCallback(const uint64_t bid, const string & login, 
 	return false;
 }
 /**
- * acceptServer Метод активации клиента на сервере
+ * acceptEvents Метод активации клиента на сервере
  * @param ip   адрес интернет подключения
  * @param mac  аппаратный адрес подключения
  * @param port порт подключения
  * @return     результат проверки
  */
-bool awh::server::Proxy::acceptServer(const string & ip, const string & mac, const u_int port) noexcept {
+bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, const u_int port) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("accept"))
 		// Выполняем функцию обратного вызова
@@ -2001,13 +2001,13 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 		// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 		callback.set <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&server::proxy_t::activeServer, this, _1, _2));
 		// Устанавливаем функцию извлечения пароля пользователя
-		callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&server::proxy_t::passwordCallback, this, _1, _2));
+		callback.set <string (const uint64_t, const string &)> ("extractPassword", std::bind(&server::proxy_t::passwordEvents, this, _1, _2));
 		// Установливаем функцию обратного вызова на событие активации клиента на сервере
-		callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&server::proxy_t::acceptServer, this, _1, _2, _3));
+		callback.set <bool (const string &, const string &, const u_int)> ("accept", std::bind(&server::proxy_t::acceptEvents, this, _1, _2, _3));
 		// Устанавливаем функцию получения сырых данных полученных сервером с клиента
 		callback.set <bool (const uint64_t, const char *, const size_t)> ("raw", std::bind(&server::proxy_t::raw, this, _1, broker_t::SERVER, _2, _3));
 		// Устанавливаем функцию проверки ввода логина и пароля пользователя
-		callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&server::proxy_t::authCallback, this, _1, _2, _3));
+		callback.set <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&server::proxy_t::authEvents, this, _1, _2, _3));
 		// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
 		callback.set <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&server::proxy_t::handshake, this, _1, _2, _3));
 		// Устанавливаем функцию обратного вызова при получении тела запроса с клиента

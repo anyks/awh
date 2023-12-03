@@ -167,7 +167,7 @@ namespace awh {
 				uri_t _uri;
 				// Объект параметров работы с прокси-сервером
 				proxy_t _proxy;
-				// Объект функций обратного вызова
+				// Хранилище функций обратного вызова
 				fn_t _callback;
 				// Объект рабочего
 				scheme_t _scheme;
@@ -210,68 +210,68 @@ namespace awh {
 				const client::core_t * _core;
 			protected:
 				/**
-				 * openCallback Метод обратного вызова при запуске работы
+				 * openEvent Метод обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvent(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				virtual void statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 			protected:
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvent Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении от сервера
+				 * disconnectEvent Метод обратного вызова при отключении от сервера
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с сервера
+				 * readEvent Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
-				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * enableSSLCallback Метод активации зашифрованного канала SSL
+				 * enableSSLEvent Метод активации зашифрованного канала SSL
 				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала SSL
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 * @return     результат активации зашифрованного канала SSL
 				 */
-				bool enableSSLCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -581,35 +581,35 @@ namespace awh {
 				virtual int headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvent Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
-				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * originCallback Метод вывода полученного списка разрешённых ресурсов для подключения

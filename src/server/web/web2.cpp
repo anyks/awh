@@ -16,11 +16,11 @@
 #include <server/web/web.hpp>
 
 /**
- * eventsCallback Функция обратного вызова при активации ядра сервера
+ * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
  */
-void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::server::Web2::statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
 		// Если система была остановлена
@@ -31,16 +31,16 @@ void awh::server::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 				this->_sessions.clear();
 		}
 		// Выполняем переадресацию выполняемого события в родительский модуль
-		web_t::eventsCallback(status, core);
+		web_t::statusEvents(status, core);
 	}
 }
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvents Метод обратного вызова при подключении к серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован
 	if(this->_sessions.find(bid) == this->_sessions.end()){
 		// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером

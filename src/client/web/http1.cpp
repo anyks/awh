@@ -16,12 +16,12 @@
 #include <client/web/http1.hpp>
 
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvent Метод обратного вызова при подключении к серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -47,12 +47,12 @@ void awh::client::Http1::connectCallback(const uint64_t bid, const uint16_t sid,
 	}
 }
 /**
- * disconnectCallback Метод обратного вызова при отключении от сервера
+ * disconnectEvent Метод обратного вызова при отключении от сервера
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect(bid, sid, core))
 		// Выходим из функции
@@ -60,7 +60,7 @@ void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 	// Если агент является Websocket-ом
 	if(this->_agent == agent_t::WEBSOCKET)
 		// Выполняем передачу сигнала отключения от сервера на Websocket-клиент
-		this->_ws1.disconnectCallback(bid, sid, core);
+		this->_ws1.disconnectEvent(bid, sid, core);
 	// Выполняем очистку списка запросов
 	this->_requests.clear();
 	// Выполняем установку агента воркера HTTP/1.1
@@ -88,14 +88,14 @@ void awh::client::Http1::disconnectCallback(const uint64_t bid, const uint16_t s
 		this->_callback.call <void (const mode_t)> ("active", mode_t::DISCONNECT);
 }
 /**
- * readCallback Метод обратного вызова при чтении сообщения с сервера
+ * readEvent Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Http1::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Http1::readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -225,7 +225,7 @@ void awh::client::Http1::readCallback(const char * buffer, const size_t size, co
 					// Если протоколом агента является Websocket-клиент
 					case static_cast <uint8_t> (agent_t::WEBSOCKET):
 						// Выполняем переброс вызова чтения на клиент Websocket
-						this->_ws1.readCallback(buffer, size, bid, sid, core);
+						this->_ws1.readEvent(buffer, size, bid, sid, core);
 					break;
 				}
 			}
@@ -345,7 +345,7 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid, awh::c
 			// Если протоколом агента является Websocket-клиент
 			case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 				// Выполняем переброс вызова дисконнекта на клиент Websocket
-				this->_ws1.disconnectCallback(bid, sid, core);
+				this->_ws1.disconnectEvent(bid, sid, core);
 				// Если список ответов получен
 				if((result = !this->_ws1._stopped)){
 					// Получаем параметры запроса
@@ -887,7 +887,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 								// Выполняем сброс заголовков прокси-сервера
 								this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 							// Выполняем установку подключения с Websocket-сервером
-							this->_ws1.connectCallback(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+							this->_ws1.connectEvent(this->_bid, this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 						} break;
 					}
 					// Выводим результат

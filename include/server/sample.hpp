@@ -76,7 +76,7 @@ namespace awh {
 				// Ядро локальных таймеров
 				core_t _timer;
 			private:
-				// Объявляем функции обратного вызова
+				// Хранилище функций обратного вызова
 				fn_t _callback;
 				// Объект рабочего
 				scheme::sample_t _scheme;

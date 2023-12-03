@@ -16,18 +16,18 @@
 #include <server/web/http2.hpp>
 
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvents Метод обратного вызова при подключении к серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Http2::connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем активацию HTTP/2 протокола
-		web2_t::connectCallback(bid, sid, core);
+		web2_t::connectEvents(bid, sid, core);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(bid);
 		// Если протокол HTTP/2 для клиента не инициализирован
@@ -37,7 +37,7 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			this->_http1._scheme.compressors = this->_scheme.compressors;
 			// Выполняем переброс вызова коннекта на клиент Websocket
-			this->_http1.connectCallback(bid, sid, core);
+			this->_http1.connectEvents(bid, sid, core);
 		}
 		// Выполняем добавление агнета
 		this->_agents.emplace(bid, agent_t::HTTP);
@@ -48,12 +48,12 @@ void awh::server::Http2::connectCallback(const uint64_t bid, const uint16_t sid,
 	}
 }
 /**
- * disconnectCallback Метод обратного вызова при отключении клиента
+ * disconnectEvents Метод обратного вызова при отключении клиента
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Выполняем поиск брокера в списке активных сессий
@@ -78,14 +78,14 @@ void awh::server::Http2::disconnectCallback(const uint64_t bid, const uint16_t s
 	}
 }
 /**
- * readCallback Метод обратного вызова при чтении сообщения с клиента
+ * readEvents Метод обратного вызова при чтении сообщения с клиента
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Http2::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Http2::readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -124,7 +124,7 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 								// Если протокол соответствует протоколу Websocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
 									// Выполняем переброс вызова чтения клиенту HTTP
-									this->_http1.readCallback(buffer, size, bid, sid, core);
+									this->_http1.readEvents(buffer, size, bid, sid, core);
 								break;
 							}
 						}
@@ -155,7 +155,7 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 								// Если протокол соответствует протоколу Websocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET):
 									// Выполняем переброс вызова чтения клиенту Websocket
-									this->_ws2.readCallback(buffer, size, bid, sid, core);
+									this->_ws2.readEvents(buffer, size, bid, sid, core);
 								break;
 							}
 						}
@@ -166,14 +166,14 @@ void awh::server::Http2::readCallback(const char * buffer, const size_t size, co
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщение брокеру
+ * writeEvents Метод обратного вызова при записи сообщение брокеру
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Http2::writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -195,7 +195,7 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем переброс вызова записи клиенту HTTP
-								this->_http1.writeCallback(buffer, size, bid, sid, core);
+								this->_http1.writeEvents(buffer, size, bid, sid, core);
 							break;
 						}
 					}
@@ -221,7 +221,7 @@ void awh::server::Http2::writeCallback(const char * buffer, const size_t size, c
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем переброс вызова записи клиенту Websocket
-								this->_ws2.writeCallback(buffer, size, bid, sid, core);
+								this->_ws2.writeEvents(buffer, size, bid, sid, core);
 							break;
 						}
 					}
@@ -2500,7 +2500,7 @@ void awh::server::Http2::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <server::core_t *> (this->_core)->start();
 		// Если биндинг уже запущен, выполняем запуск
-		else this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+		else this->openEvents(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
 	}
 }
 /**
@@ -2865,7 +2865,7 @@ void awh::server::Http2::core(const server::core_t * core) noexcept {
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callback(this->_log);
 			// Устанавливаем функцию активации ядра сервера
-			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&http2_t::eventsCallback, this, _1, _2));
+			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&http2_t::statusEvents, this, _1, _2));
 			// Выполняем установку функций обратного вызова для сервера
 			const_cast <server::core_t *> (this->_core)->callback(std::move(callback));
 		}
@@ -3162,17 +3162,17 @@ void awh::server::Http2::encryption(const string & pass, const string & salt, co
 awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http2_t::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http2_t::openEvents, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http2_t::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http2_t::connectEvents, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&http2_t::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&http2_t::disconnectEvents, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&http2_t::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&http2_t::readEvents, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeEvents, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&http2_t::acceptCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&http2_t::acceptEvents, this, _1, _2, _3, _4, _5));
 }
 /**
  * Http2 Конструктор
@@ -3185,17 +3185,17 @@ awh::server::Http2::Http2(const server::core_t * core, const fmk_t * fmk, const 
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http2_t::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&http2_t::openEvents, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http2_t::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&http2_t::connectEvents, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&http2_t::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&http2_t::disconnectEvents, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&http2_t::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&http2_t::readEvents, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&http2_t::writeEvents, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&http2_t::acceptCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&http2_t::acceptEvents, this, _1, _2, _3, _4, _5));
 }
 /**
  * ~Http2 Деструктор

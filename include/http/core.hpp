@@ -212,7 +212,7 @@ namespace awh {
 		protected:
 			// Создаём объект работы с URI
 			uri_t _uri;
-			// Объявляем функции обратного вызова
+			// Хранилище функций обратного вызова
 			fn_t _callback;
 		private:
 			// Объект для работы с Transfer-Encoding

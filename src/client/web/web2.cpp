@@ -178,11 +178,11 @@ int awh::client::Web2::headerProxySignal(const int32_t sid, const string & key, 
 	return 0;
 }
 /**
- * eventsCallback Функция обратного вызова при активации ядра сервера
+ * statusEvent Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
  */
-void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::client::Web2::statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
 		// Если система была остановлена
@@ -190,16 +190,16 @@ void awh::client::Web2::eventsCallback(const awh::core_t::status_t status, awh::
 			// Выполняем удаление сессии
 			this->_http2.close();
 		// Выполняем передачу события в родительский объект
-		web_t::eventsCallback(status, core);
+		web_t::statusEvent(status, core);
 	}
 }
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvent Метод обратного вызова при подключении к серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -208,12 +208,12 @@ void awh::client::Web2::connectCallback(const uint64_t bid, const uint16_t sid, 
 		this->implementation(bid, dynamic_cast <client::core_t *> (core));
 }
 /**
- * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+ * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
@@ -227,7 +227,7 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5):
 					// Выполняем передачу сигнала родительскому модулю
-					web_t::proxyConnectCallback(bid, sid, core);
+					web_t::proxyConnectEvent(bid, sid, core);
 				break;
 				// Если прокси-сервер является HTTP/2
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
@@ -287,10 +287,10 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
-							this->connectCallback(bid, sid, core);
+							this->connectEvent(bid, sid, core);
 						}
 					// Выполняем передачу сигнала родительскому модулю
-					} else web_t::proxyConnectCallback(bid, sid, core);
+					} else web_t::proxyConnectEvent(bid, sid, core);
 				} break;
 				// Иначе завершаем работу
 				default: dynamic_cast <client::core_t *> (core)->close(bid);
@@ -299,14 +299,14 @@ void awh::client::Web2::proxyConnectCallback(const uint64_t bid, const uint16_t 
 	}
 }
 /**
- * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
+ * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -320,7 +320,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5):
 					// Выполняем передачу сигнала родительскому модулю
-					web_t::proxyReadCallback(buffer, size, bid, sid, core);
+					web_t::proxyReadEvent(buffer, size, bid, sid, core);
 				break;
 				// Если прокси-сервер является HTTP/2
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
@@ -331,7 +331,7 @@ void awh::client::Web2::proxyReadCallback(const char * buffer, const size_t size
 							// Выходим из функции
 							return;
 					// Если активирован режим работы с HTTP/1.1 протоколом
-					} else web_t::proxyReadCallback(buffer, size, bid, sid, core);
+					} else web_t::proxyReadEvent(buffer, size, bid, sid, core);
 				} break;
 				// Иначе завершаем работу
 				default: dynamic_cast <client::core_t *> (core)->close(bid);
@@ -435,7 +435,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 						// Увеличиваем количество попыток
 						this->_attempt++;
 						// Устанавливаем новый экшен выполнения
-						this->proxyConnectCallback(bid, this->_scheme.sid, core);
+						this->proxyConnectEvent(bid, this->_scheme.sid, core);
 					// Если соединение не является постоянным, выполняем закрытие подключения
 					} else this->close(bid, core);
 					// Завершаем работу
@@ -448,7 +448,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 			// Выполняем переключение на работу с сервером
 			this->_scheme.switchConnect();
 			// Выполняем запуск работы основного модуля
-			this->connectCallback(bid, this->_scheme.sid, core);
+			this->connectEvent(bid, this->_scheme.sid, core);
 			// Переходим к следующему этапу
 			return status_t::NEXT;
 		} break;

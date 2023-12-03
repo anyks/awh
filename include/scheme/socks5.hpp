@@ -76,6 +76,7 @@ namespace awh {
 					 * Options Структура параметров активного клиента
 					 */
 					typedef struct Options {
+						uint64_t id;             // Идентификатор активного клиента
 						bool locked;             // Флаг блокировки обработки запроса
 						bool connect;            // Флаг выполненного подключения
 						bool stopped;            // Флаг принудительной остановки
@@ -89,15 +90,12 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						locked(false), connect(false), stopped(false), scheme(fmk, log), socks5(log) {}
+						id(0), locked(false), connect(false), stopped(false), scheme(fmk, log), socks5(log) {}
 						/**
 						 * ~Options Деструктор
 						 */
 						~Options() noexcept {}
 					} options_t;
-				public:
-					// Список пар клиентов
-					map <uint64_t, uint64_t> pairs;
 				private:
 					// Список параметров активных клиентов
 					map <uint64_t, unique_ptr <options_t>> _options;

@@ -21,8 +21,6 @@
 void awh::server::scheme::Socks5::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
-	// Очищаем список пар клиентов
-	this->pairs.clear();
 	// Очищаем список параметров активных клиентов
 	this->_options.clear();
 	// Освобождаем выделенную память

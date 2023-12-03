@@ -143,7 +143,7 @@ namespace awh {
 				uri_t _uri;
 				// Объект идентификации сервиса
 				ident_t _ident;
-				// Объявляем функции обратного вызова
+				// Хранилище функций обратного вызова
 				fn_t _callback;
 				// Объект параметров сервиса
 				service_t _service;
@@ -174,53 +174,54 @@ namespace awh {
 				const server::core_t * _core;
 			protected:
 				/**
-				 * openCallback Метод обратного вызова при запуске работы
+				 * openEvents Метод обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvents(const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvents Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				virtual void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 			protected:
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvents Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении клиента
+				 * disconnectEvents Метод обратного вызова при отключении клиента
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+			protected:
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с клиента
+				 * readEvents Метод обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщение брокеру
+				 * writeEvents Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				virtual void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
 			protected:
 				/**
-				 * acceptCallback Функция обратного вызова при проверке подключения брокера
+				 * acceptEvents Метод обратного вызова при проверке подключения брокера
 				 * @param ip   адрес интернет подключения брокера
 				 * @param mac  мак-адрес подключившегося брокера
 				 * @param port порт подключившегося брокера
@@ -228,7 +229,7 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -467,18 +468,18 @@ namespace awh {
 				map <uint64_t, unique_ptr <http2_t>> _sessions;
 			protected:
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvents Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvents Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				virtual void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2

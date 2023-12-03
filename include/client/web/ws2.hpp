@@ -134,7 +134,7 @@ namespace awh {
 				// Активный прототип интернета
 				engine_t::proto_t _proto;
 			private:
-				// Объект функций обратного вызова для вывода результата
+				// Хранилище функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:
 				// Метод компрессии данных
@@ -153,28 +153,28 @@ namespace awh {
 				void send(const uint64_t bid, client::core_t * core) noexcept;
 			private:
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvent Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении от сервера
+				 * disconnectEvent Метод обратного вызова при отключении от сервера
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с сервера
+				 * readEvent Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение

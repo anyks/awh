@@ -16,11 +16,11 @@
 #include <client/web/web.hpp>
 
 /**
- * openCallback Метод обратного вызова при запуске работы
+ * openEvent Метод обратного вызова при запуске работы
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web::openCallback(const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web::openEvent(const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
@@ -32,20 +32,20 @@ void awh::client::Web::openCallback(const uint16_t sid, awh::core_t * core) noex
 				// Если подключение производится через, прокси-сервер
 				if(this->_scheme.isProxy())
 					// Выполняем запуск функции подключения для прокси-сервера
-					this->proxyConnectCallback(this->_bid, sid, core);
+					this->proxyConnectEvent(this->_bid, sid, core);
 				// Выполняем запуск функции подключения
-				else this->connectCallback(this->_bid, sid, core);
+				else this->connectEvent(this->_bid, sid, core);
 			// Если биндинг уже запущен, выполняем запрос на сервер
 			} else dynamic_cast <client::core_t *> (core)->open(sid);
 		}
 	}
 }
 /**
- * eventsCallback Функция обратного вызова при активации ядра сервера
+ * statusEvent Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
  */
-void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::client::Web::statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
 		// Определяем статус активности сетевого ядра
@@ -72,12 +72,12 @@ void awh::client::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 	}
 }
 /**
- * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+ * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём объект холдирования
@@ -140,7 +140,7 @@ void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t s
 							// Выполняем переключение на работу с сервером
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
-							this->connectCallback(bid, sid, core);
+							this->connectEvent(bid, sid, core);
 						// Выполняем переключение на работу с сервером
 						} else dynamic_cast <client::core_t *> (core)->switchProxy(bid);
 					}
@@ -152,14 +152,14 @@ void awh::client::Web::proxyConnectCallback(const uint64_t bid, const uint16_t s
 	}
 }
 /**
- * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
+ * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -286,7 +286,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 												// Увеличиваем количество попыток
 												this->_attempt++;
 												// Устанавливаем новый экшен выполнения
-												this->proxyConnectCallback(bid, sid, core);
+												this->proxyConnectEvent(bid, sid, core);
 											// Если соединение должно быть закрыто
 											} else dynamic_cast <client::core_t *> (core)->close(bid);
 											// Завершаем работу
@@ -301,7 +301,7 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 										// Выполняем переключение на работу с сервером
 										this->_scheme.switchConnect();
 										// Выполняем запуск работы основного модуля
-										this->connectCallback(bid, sid, core);
+										this->connectEvent(bid, sid, core);
 									// Выполняем переключение на работу с сервером
 									} else dynamic_cast <client::core_t *> (core)->switchProxy(bid);
 									// Завершаем работу
@@ -353,14 +353,14 @@ void awh::client::Web::proxyReadCallback(const char * buffer, const size_t size,
 	}
 }
 /**
- * enableSSLCallback Метод активации зашифрованного канала SSL
+ * enableSSLEvent Метод активации зашифрованного канала SSL
  * @param url  адрес сервера для которого выполняется активация зашифрованного канала SSL
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  * @return     результат активации зашифрованного канала SSL
  */
-bool awh::client::Web::enableSSLCallback(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+bool awh::client::Web::enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
 	// Блокируем переменные которые не используем
 	(void) bid;
 	(void) sid;
@@ -457,7 +457,7 @@ void awh::client::Web::open() noexcept {
 	// Если сетевое ядро инициализировано
 	if(this->_core != nullptr)
 		// Выполняем открытие подключения на удалённом сервере
-		this->openCallback(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
+		this->openEvent(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <client::core_t *> (this->_core)));
 }
 /**
  * stop Метод остановки клиента
@@ -648,7 +648,7 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callback(this->_log);
 			// Устанавливаем функцию активации ядра клиента
-			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::eventsCallback, this, _1, _2));
+			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvent, this, _1, _2));
 			// Выполняем установку функций обратного вызова для HTTP-клиента
 			const_cast <client::core_t *> (this->_core)->callback(std::move(callback));
 		}
@@ -757,19 +757,19 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 		this->_scheme.proxy.http.callback(std::move(callback));
 	}
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openEvent, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&web_t::connectEvent, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectEvent, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectEvent, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readEvent, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadEvent, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на активацию шифрованного SSL канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLCallback, this, _1, _2, _3, _4));
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLEvent, this, _1, _2, _3, _4));
 }
 /**
  * Web Конструктор
@@ -794,24 +794,24 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(this->_log);
 		// Устанавливаем функцию активации ядра клиента
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::eventsCallback, this, _1, _2));
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvent, this, _1, _2));
 		// Выполняем установку функций обратного вызова для HTTP-клиента
 		const_cast <client::core_t *> (this->_core)->callback(std::move(callback));
 	}
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openEvent, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&web_t::connectEvent, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectEvent, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectEvent, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&web_t::readEvent, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadEvent, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на активацию шифрованного SSL канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLCallback, this, _1, _2, _3, _4));
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", std::bind(&web_t::enableSSLEvent, this, _1, _2, _3, _4));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }

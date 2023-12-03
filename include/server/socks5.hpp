@@ -38,6 +38,14 @@ namespace awh {
 		 * ProxySocks5 Класс работы с SOCKS5 сервером
 		 */
 		typedef class ProxySocks5 {
+			private:
+				/**
+				 * Брокеры учавствующие в передаче данных
+				 */
+				enum class broker_t : uint8_t {
+					CLIENT = 0x01, // Агент является клиентом
+					SERVER = 0x02  // Агент является сервером
+				};
 			public:
 				/**
 				 * Режим работы клиента
@@ -62,21 +70,28 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Core Объект биндинга TCP/IP
+				 * CA Структура параметров CA-файла
 				 */
-				typedef struct Core {
-					dns_t          dns;    // Объект DNS-резолвера
-					server::core_t server; // Объект биндинга TCP/IP для сервера
-					client::core_t client; // Объект биндинга TCP/IP для клиента
-					core_t         timer;  // Объект биндинга TCP/IP для таймера
+				typedef struct CA {
+					string path;    // Адрес каталога где находится сертификат (CA-файл)
+					string trusted; // Адрес доверенного сертификата (CA-файла)
 					/**
-					 * Core Конструктор
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
+					 * CA Конструктор
 					 */
-					Core(const fmk_t * fmk, const log_t * log) noexcept :
-					 dns(fmk, log), server(&dns, fmk, log), client(&dns, fmk, log), timer(fmk, log) {}
-				} core_t;
+					CA() noexcept : path{""}, trusted{""} {}
+				} ca_t;
+				/**
+				 * Структура параметров клиента
+				 */
+				typedef struct Settings {
+					bool verify;         // Флаг выполнение верификации доменного имени
+					ca_t cacert;         // Параметры CA-файла (центра сертификации)
+					vector <string> ips; // Список IP-адресов компьютера с которых разрешено выходить в интернет
+					/**
+					 * Settings Конструктор
+					 */
+					Settings() noexcept : verify(false) {}
+				} settings_t;
 			private:
 				// Порт сервера
 				u_int _port;
@@ -85,17 +100,29 @@ namespace awh {
 				// unix-сокет сервера
 				string _socket;
 			private:
+				// Объект DNS-резолвера
+				dns_t _dns;
 				// Объект для работы с сетью
 				net_t _net;
-				// Объект биндинга TCP/IP
-				core_t _core;
-				// Объявляем функции обратного вызова
+				// Хранилище функций обратного вызова
 				fn_t _callback;
+				// Объект параметров клиента
+				settings_t _settings;
+			private:
+				// Объект биндинга TCP/IP для сервера
+				server::core_t _core;
+			private:
+				// Таймер обработки подключения
+				awh::core_t _timer;
+			private:
 				// Объект рабочего для сервера
 				scheme::socks5_t _scheme;
 			private:
 				// Список отключившихся клиентов
 				map <uint64_t, time_t> _disconnected;
+			private:
+				// Список активных клиентов
+				map <uint64_t, unique_ptr <client::core_t>> _clients;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -103,47 +130,21 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
-				 * openServerCallback Функция обратного вызова при запуске работы
+				 * openEvents Метод обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void openServerCallback(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvents(const uint16_t sid, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvents Метод обратного вызова при активации ядра
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * connectClientCallback Функция обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void connectClientCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * connectServerCallback Функция обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void connectServerCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * disconnectClientCallback Функция обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void disconnectClientCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * disconnectServerCallback Функция обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 */
-				void disconnectServerCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * acceptServerCallback Функция обратного вызова при проверке подключения клиента
+				 * acceptEvents Метод обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
 				 * @param mac  мак-адрес подключившегося клиента
 				 * @param port порт подключившегося брокера
@@ -151,34 +152,47 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению клиента
 				 */
-				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * readClientCallback Функция обратного вызова при чтении сообщения с сервера
+				 * connectClientEvents Метод обратного вызова при подключении
+				 * @param broker брокер вызвавший событие
+				 * @param bid1   идентификатор брокера сервера
+				 * @param bid2   идентификатор брокера клиента
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
+				 */
+				void connectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid, awh::core_t * core) noexcept;
+				/**
+				 * disconnectClientEvents Метод обратного вызова при отключении
+				 * @param broker брокер вызвавший событие
+				 * @param bid1   идентификатор брокера сервера
+				 * @param bid2   идентификатор брокера клиента
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
+				 */
+				void disconnectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * readClientEvents Метод обратного вызова при чтении сообщения
+				 * @param broker брокер вызвавший событие
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readClientCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * readServerCallback Функция обратного вызова при чтении сообщения с клиента
-				 * @param buffer бинарный буфер содержащий сообщение
-				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param bid    идентификатор брокера
-				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
-				 */
-				void readServerCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
-				/**
-				 * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
+				 * writeServerEvents Метод обратного вызова при записи сообщения на клиенте
+				 * @param broker брокер вызвавший событие
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeServerCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключённых клиентов
@@ -274,11 +288,6 @@ namespace awh {
 				 * @param flags список флагов модуля для установки
 				 */
 				void mode(const set <flag_t> & flags) noexcept;
-				/**
-				 * ciphers Метод установки алгоритмов шифрования
-				 * @param ciphers список алгоритмов шифрования для установки
-				 */
-				void ciphers(const vector <string> & ciphers) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
@@ -311,7 +320,7 @@ namespace awh {
 				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
 				/**
 				 * network Метод установки параметров сети
-				 * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
+				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
 				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 * @param sonet  тип сокета подключения (TCP / UDP)

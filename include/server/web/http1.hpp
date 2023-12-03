@@ -65,37 +65,38 @@ namespace awh {
 				map <uint64_t, agent_t> _agents;
 			private:
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvents Метод обратного вызова при подключении к серверу
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении клиента
+				 * disconnectEvents Метод обратного вызова при отключении клиента
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с клиента
+				 * readEvents Метод обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщение брокеру
+				 * writeEvents Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * websocket Метод инициализации Websocket протокола

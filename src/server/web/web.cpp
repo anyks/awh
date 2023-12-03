@@ -16,11 +16,11 @@
 #include <server/web/web.hpp>
 
 /**
- * openCallback Метод обратного вызова при запуске работы
+ * openEvents Метод обратного вызова при запуске работы
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Web::openCallback(const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Web::openEvents(const uint16_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем хост сервера
@@ -30,11 +30,11 @@ void awh::server::Web::openCallback(const uint16_t sid, awh::core_t * core) noex
 	}
 }
 /**
- * eventsCallback Функция обратного вызова при активации ядра сервера
+ * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
  */
-void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::server::Web::statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
 		// Определяем статус активности сетевого ядра
@@ -63,7 +63,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения брокера
+ * acceptEvents Метод обратного вызова при проверке подключения брокера
  * @param ip   адрес интернет подключения брокера
  * @param mac  мак-адрес подключившегося брокера
  * @param port порт подключившегося брокера
@@ -71,7 +71,7 @@ void awh::server::Web::eventsCallback(const awh::core_t::status_t status, awh::c
  * @param core объект сетевого ядра
  * @return     результат разрешения к подключению брокера
  */
-bool awh::server::Web::acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept {
+bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
@@ -269,7 +269,7 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callback(this->_log);
 			// Устанавливаем функцию активации ядра сервера
-			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::eventsCallback, this, _1, _2));
+			callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvents, this, _1, _2));
 			// Выполняем установку функций обратного вызова для сервера
 			const_cast <server::core_t *> (this->_core)->callback(std::move(callback));
 		}
@@ -406,7 +406,7 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callback(this->_log);
 		// Устанавливаем функцию активации ядра сервера
-		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::eventsCallback, this, _1, _2));
+		callback.set <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
 		// Выполняем установку функций обратного вызова для сервера
 		const_cast <server::core_t *> (this->_core)->callback(std::move(callback));
 	}

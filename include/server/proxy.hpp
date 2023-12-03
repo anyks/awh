@@ -261,7 +261,7 @@ namespace awh {
 				awh_t _server;
 				// Объект идентификации сервиса
 				ident_t _ident;
-				// Объявляем функции обратного вызова
+				// Хранилище функций обратного вызова
 				fn_t _callback;
 				// Объект параметров клиента
 				settings_t _settings;
@@ -281,29 +281,29 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
-				 * passwordCallback Метод извлечения пароля (для авторизации методом Digest)
+				 * passwordEvents Метод извлечения пароля (для авторизации методом Digest)
 				 * @param bid   идентификатор брокера (клиента)
 				 * @param login логин пользователя
 				 * @return      пароль пользователя хранящийся в базе данных
 				 */
-				string passwordCallback(const uint64_t bid, const string & login) noexcept;
+				string passwordEvents(const uint64_t bid, const string & login) noexcept;
 				/**
-				 * authCallback Метод проверки авторизации пользователя (для авторизации методом Basic)
+				 * authEvents Метод проверки авторизации пользователя (для авторизации методом Basic)
 				 * @param bid      идентификатор брокера (клиента)
 				 * @param login    логин пользователя (от клиента)
 				 * @param password пароль пользователя (от клиента)
 				 * @return         результат авторизации
 				 */
-				bool authCallback(const uint64_t bid, const string & login, const string & password) noexcept;
+				bool authEvents(const uint64_t bid, const string & login, const string & password) noexcept;
 			private:
 				/**
-				 * acceptServer Метод активации клиента на сервере
+				 * acceptEvents Метод активации клиента на сервере
 				 * @param ip   адрес интернет подключения
 				 * @param mac  аппаратный адрес подключения
 				 * @param port порт подключения
 				 * @return     результат проверки
 				 */
-				bool acceptServer(const string & ip, const string & mac, const u_int port) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const u_int port) noexcept;
 			private:
 				/** 
 				 * eraseClient Метод удаления подключённого клиента
