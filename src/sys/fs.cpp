@@ -126,7 +126,7 @@ awh::FS::type_t awh::FS::type(const string & name) const noexcept {
 			// Если это устройство ввода-вывода
 			else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
 			/**
-			 * Если - это не Windows
+			 * Выполняем работу для Unix
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Если это символьная ссылка
@@ -181,7 +181,9 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 					// Выполняем чтение содержимого каталога
 					while((ptr = ::readdir(dir))){
 						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
+						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+							// Выполняем пропуск каталога
+							continue;
 						// Получаем адрес в виде строки
 						const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 						// Если статистика извлечена
@@ -235,7 +237,9 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 			// Выполняем чтение содержимого каталога
 			while((ptr = ::readdir(dir))){
 				// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
+				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+					// Выполняем пропуск каталога
+					continue;
 				// Получаем адрес в виде строки
 				const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
@@ -291,7 +295,9 @@ int awh::FS::delPath(const string & path) const noexcept {
 				// Создаем структуру буфера статистики
 				struct stat buffer;
 				// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
+				if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+					// Выполняем пропуск каталога
+					continue;
 				// Получаем адрес каталога
 				const string & dirname = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
@@ -370,79 +376,88 @@ string awh::FS::realPath(const string & path) const noexcept {
 void awh::FS::makePath(const string & path) const noexcept {
 	// Если путь передан
 	if(!path.empty()){
-		// Буфер с названием каталога
-		char buffer[256];
 		// Указатель на сепаратор
 		char * p = nullptr;
 		// Получаем сепаратор
 		const char sep = FS_SEPARATOR[0];
+		// Создаём буфер входящих данных
+		unique_ptr <char []> buffer(new char [path.size() + 1]);
 		// Копируем переданный адрес в буфер
-		snprintf(buffer, sizeof(buffer), "%s", path.c_str());
-		// Определяем размер адреса
-		const size_t length = strlen(buffer);
+		snprintf(buffer.get(), path.size() + 1, "%s", path.c_str());
 		// Если последний символ является сепаратором тогда удаляем его
-		if(buffer[length - 1] == sep)
+		if(buffer.get()[path.size() - 1] == sep)
 			// Устанавливаем конец строки
-			buffer[length - 1] = 0;
-		// Если - это не Windows
+			buffer.get()[path.size() - 1] = 0;
+		// Переходим по всем символам
+		for(p = buffer.get() + 1; * p; p++){
+			// Если найден сепаратор
+			if(* p == sep){
+				// Сбрасываем указатель
+				(* p) = 0;
+				/**
+				 * Выполняем работу для Unix
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Создаем каталог
+					::mkdir(buffer.get(), S_IRWXU);
+				/**
+				 * Выполняем работу для MS Windows
+				 */
+				#else
+					// Создаем каталог
+					_mkdir(buffer.get());
+				#endif
+				// Запоминаем сепаратор
+				(* p) = sep;
+			}
+		}
+		/**
+		 * Выполняем работу для Unix
+		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Переходим по всем символам
-			for(p = buffer + 1; * p; p++){
-				// Если найден сепаратор
-				if(* p == sep){
-					// Сбрасываем указатель
-					(* p) = 0;
-					// Создаем каталог
-					::mkdir(buffer, S_IRWXU);
-					// Запоминаем сепаратор
-					(* p) = sep;
-				}
-			}
 			// Создаем последний каталог
-			::mkdir(buffer, S_IRWXU);
+			::mkdir(buffer.get(), S_IRWXU);
+		/**
+		 * Выполняем работу для MS Windows
+		 */
 		#else
-			// Переходим по всем символам
-			for(p = buffer + 1; * p; p++){
-				// Если найден сепаратор
-				if(* p == sep){
-					// Сбрасываем указатель
-					(* p) = 0;
-					// Создаем каталог
-					_mkdir(buffer);
-					// Запоминаем сепаратор
-					(* p) = sep;
-				}
-			}
 			// Создаем последний каталог
-			_mkdir(buffer);
+			_mkdir(buffer.get());
 		#endif
 	}
 }
 /**
- * Выполняем работу для Unix
+ * makeDir Метод создания каталога для хранения логов
+ * @param path  адрес для каталога
+ * @param user  данные пользователя
+ * @param group идентификатор группы
+ * @return      результат создания каталога
  */
-#if !defined(_WIN32) && !defined(_WIN64)
-	/**
-	 * makeDir Метод создания каталога для хранения логов
-	 * @param path  адрес для каталога
-	 * @param user  данные пользователя
-	 * @param group идентификатор группы
-	 * @return      результат создания каталога
-	 */
-	bool awh::FS::makeDir(const string & path, const string & user, const string & group) const noexcept {
-		// Результат работы функции
-		bool result = false;
-		// Проверяем существует ли нужный нам каталог
-		if((result = (this->type(path) == type_t::NONE))){
-			// Создаем каталог
-			this->makePath(path);
+bool awh::FS::makeDir(const string & path, const string & user, const string & group) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Проверяем существует ли нужный нам каталог
+	if((result = (this->type(path) == type_t::NONE))){
+		// Создаем каталог
+		this->makePath(path);
+		/**
+		 * Выполняем работу для Unix
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Устанавливаем права на каталог
 			this->chown(path, user, group);
-		}
-		// Сообщаем что каталог и так существует
-		return result;
+		/**
+		 * Выполняем работу для MS Windows
+		 */
+		#else
+			// Зануляем неиспользуемые переменные
+			(void) user;
+			(void) group;
+		#endif
 	}
-#endif
+	// Сообщаем что каталог и так существует
+	return result;
+}
 /**
  * fileComponents Метод извлечения названия и расширения файла
  * @param filename адрес файла для извлечения его параметров
@@ -620,7 +635,9 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 							// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 							length = ((old == '\r' ? i - 1 : i) - offset);
 							// Если это конец файла, корректируем размер последнего байта
-							if(length == 0) length = 1;
+							if(length == 0)
+								// Устанавливаем размер символа в 1 байт
+								length = 1;
 							// Если мы получили последний символ и он не является переносом строки
 							if((i == (size - 1)) && (letter != '\n'))
 								// Выполняем компенсацию размера строки
@@ -751,7 +768,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 				// Выполняем чтение содержимого каталога
 				while((ptr = ::readdir(dir))){
 					// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-					if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, "..")) continue;
+					if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+						// Выполняем пропуск каталога
+						continue;
 					// Получаем адрес в виде строки
 					const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
 					// Если статистика извлечена
@@ -759,7 +778,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 						// Если дочерний элемент является дирректорией
 						if(S_ISDIR(info.st_mode)){
 							// Продолжаем обработку следующих каталогов
-							if(rec) readFn(address, ext, rec);
+							if(rec)
+								// Выполняем функцию обратного вызова
+								readFn(address, ext, rec);
 							// Выводим данные каталога как он есть
 							else callback(this->realPath(address));
 						// Если дочерний элемент является файлом и расширение файла указано то выводим его

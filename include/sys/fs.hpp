@@ -162,18 +162,13 @@ namespace awh {
 			 */
 			void makePath(const string & path) const noexcept;
 			/**
-			 * Выполняем работу для Unix
+			 * makeDir Метод создания каталога для хранения логов
+			 * @param path  адрес для каталога
+			 * @param user  данные пользователя
+			 * @param group идентификатор группы
+			 * @return      результат создания каталога
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				/**
-				 * makeDir Метод создания каталога для хранения логов
-				 * @param path  адрес для каталога
-				 * @param user  данные пользователя
-				 * @param group идентификатор группы
-				 * @return      результат создания каталога
-				 */
-				bool makeDir(const string & path, const string & user, const string & group) const noexcept;
-			#endif
+			bool makeDir(const string & path, const string & user, const string & group) const noexcept;
 		public:
 			/**
 			 * fileComponents Метод извлечения названия и расширения файла
