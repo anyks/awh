@@ -733,8 +733,8 @@ void awh::client::Websocket2::eventCallback(const fn_t::event_t event, const uin
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (fn_t::event_t::SET): {
-			// Если переменная не является редиректом
-			if((dump != nullptr) && !this->_fmk->compare(name, "redirect")){
+			// Если переменная не является редиректом и не является событием подключения
+			if((dump != nullptr) && !this->_fmk->compare(name, "redirect") && !this->_fmk->compare(name, "active")){
 				// Создаём локальный контейнер функций обратного вызова
 				fn_t callbacks(this->_log);
 				// Выполняем установку функции обратного вызова

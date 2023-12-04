@@ -57,9 +57,9 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status, awh::cor
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callbacks.is("events"))
+		if(this->_callbacks.is("status"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
+			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
 	}
 }
 /**
@@ -232,7 +232,7 @@ void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
 	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("events", callbacks);
+	this->_callbacks.set("status", callbacks);
 	// Выполняем установку функции обратного вызова на событие активации брокера на сервере
 	this->_callbacks.set("accept", callbacks);
 	// Выполняем установку функции обратного вызова активности потока
@@ -280,7 +280,7 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 		// Выполняем установку объекта сетевого ядра
 		this->_core = core;
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr)
 		// Выполняем установку объекта сетевого ядра

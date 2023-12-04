@@ -57,9 +57,9 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callbacks.is("events"))
+		if(this->_callbacks.is("status"))
 			// Выводим функцию обратного вызова
-			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
+			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
 	}
 }
 /**
@@ -258,7 +258,7 @@ void awh::server::Sample::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
 	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("events", callbacks);
+	this->_callbacks.set("status", callbacks);
 	// Выполняем установку функции обратного вызова на событие активации брокера на сервере
 	this->_callbacks.set("accept", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения сообщений

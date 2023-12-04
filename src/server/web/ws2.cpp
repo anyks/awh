@@ -254,8 +254,8 @@ void awh::server::Websocket2::eventCallback(const fn_t::event_t event, const uin
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (fn_t::event_t::SET): {
-			// Если дамп функции обратного вызова передан
-			if(dump != nullptr){
+			// Если дамп функции обратного вызова передан и событие не является событием подключения
+			if((dump != nullptr) && !this->_fmk->compare(name, "active")){
 				// Создаём локальный контейнер функций обратного вызова
 				fn_t callbacks(this->_log);
 				// Выполняем установку функции обратного вызова
@@ -1707,7 +1707,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&ws2_t::statusEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&ws2_t::statusEvents, this, _1, _2));
 		// Если многопоточность активированна
 		if(this->_thr.is() || this->_ws1._thr.is())
 			// Устанавливаем простое чтение базы событий

@@ -66,9 +66,9 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status, awh::core
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callbacks.is("events"))
+		if(this->_callbacks.is("status"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
+			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
 	}
 }
 /**
@@ -520,7 +520,7 @@ void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
 	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("events", callbacks);
+	this->_callbacks.set("status", callbacks);
 	// Выполняем установку функции обратного вызова завершения запроса
 	this->_callbacks.set("result", callbacks);
 	// Выполняем установку функции обратного вызова активности потока
@@ -645,7 +645,7 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 		// Выполняем установку функций обратного вызова для HTTP-клиента
-		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&web_t::statusEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvent, this, _1, _2));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Удаляем схему сети из сетевого ядра

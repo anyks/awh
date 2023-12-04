@@ -75,9 +75,9 @@ void awh::server::Proxy::eventCallback(const fn_t::event_t event, const uint64_t
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (fn_t::event_t::SET): {
 			// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
-			if(this->_fmk->compare(name, "events"))
+			if(this->_fmk->compare(name, "status"))
 				// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-				this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", this->_callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("events"));
+				this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", this->_callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("status"));
 			// Если функция установки обратного вызова на событие получении ошибки передана
 			else if(this->_fmk->compare(name, "error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
@@ -1203,9 +1203,9 @@ void awh::server::Proxy::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова для извлечения пароля
 	this->_callbacks.set("extractPassword", callbacks);
 	// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
-	if(callbacks.is("events"))
+	if(callbacks.is("status"))
 		// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-		this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("events"));
+		this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("status"));
 	// Если функция установки обратного вызова на событие получении ошибки передана
 	if(this->_callbacks.is("error"))
 		// Выполняем установку функции обратного вызова на событие получения ошибки

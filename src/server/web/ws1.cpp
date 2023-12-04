@@ -1352,7 +1352,7 @@ void awh::server::Websocket1::core(const server::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 		// Выполняем установку функций обратного вызова для сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", std::bind(&ws1_t::statusEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&ws1_t::statusEvents, this, _1, _2));
 		// Если многопоточность активированна
 		if(this->_thr.is())
 			// Устанавливаем простое чтение базы событий

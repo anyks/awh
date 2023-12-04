@@ -38,9 +38,9 @@ void awh::client::Sample::openCallback(const uint16_t sid, awh::core_t * core) n
  */
 void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если функция получения событий запуска и остановки сетевого ядра установлена
-	if((core != nullptr) && this->_callbacks.is("events"))
+	if((core != nullptr) && this->_callbacks.is("status"))
 		// Выводим функцию обратного вызова
-		this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("events", status, core);
+		this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
@@ -211,7 +211,7 @@ void awh::client::Sample::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем установку функции обратного вызова при подключении/отключении
 	this->_callbacks.set("active", callbacks);
 	// Выполняем установку функции обратного вызова при получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("events", callbacks);
+	this->_callbacks.set("status", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения
 	this->_callbacks.set("message", callbacks);
 }
