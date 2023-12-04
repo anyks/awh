@@ -59,6 +59,32 @@ bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, con
 	// Запрещаем выполнение подключения
 	return false;
 }
+/**
+ * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param idw   идентификатор функции обратного вызова
+ * @param name  название функции обратного вызова
+ * @param dump  дамп данных функции обратного вызова
+ */
+void awh::server::Proxy::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+	// Блокируем пустые переменные
+	(void) idw;
+	(void) dump;
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (fn_t::event_t::SET): {
+			// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
+			if(this->_fmk->compare(name, "events"))
+				// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
+				this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", this->_callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("events"));
+			// Если функция установки обратного вызова на событие получении ошибки передана
+			else if(this->_fmk->compare(name, "error"))
+				// Выполняем установку функции обратного вызова на событие получения ошибки
+				this->_server.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callbacks.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4));
+		} break;
+	}
+}
 /** 
  * eraseClient Метод удаления подключённого клиента
  * @param bid идентификатор брокера
@@ -1186,20 +1212,6 @@ void awh::server::Proxy::callbacks(const fn_t & callbacks) noexcept {
 		this->_server.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callbacks.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4));
 }
 /**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::server::Proxy::transferСallback(const string & name) noexcept {
-	// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
-	if(this->_fmk->compare(name, "events"))
-		// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-		this->_server.callback <void (const awh::core_t::status_t, awh::core_t *)> ("events", this->_callbacks.get <void (const awh::core_t::status_t, awh::core_t *)> ("events"));
-	// Если функция установки обратного вызова на событие получении ошибки передана
-	else if(this->_fmk->compare(name, "error"))
-		// Выполняем установку функции обратного вызова на событие получения ошибки
-		this->_server.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callbacks.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4));
-}
-/**
  * port Метод получения порта подключения брокера
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
@@ -1968,6 +1980,8 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Выполняем установку идентичности протокола модуля
 	this->_server.identity(awh::http_t::identity_t::PROXY);
+	// Выполняем активацию ловушки событий контейнера функций обратного вызова
+	this->_callbacks.callback(std::bind(&server::proxy_t::eventCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию удаления клиента из стека подключений сервера
 	this->_server.callback <void (const uint64_t)> ("erase", std::bind(&server::proxy_t::eraseClient, this, _1));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
