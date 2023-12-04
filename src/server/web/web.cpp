@@ -102,6 +102,20 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 	}
 }
 /**
+ * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param idw   идентификатор функции обратного вызова
+ * @param name  название функции обратного вызова
+ * @param dump  дамп данных функции обратного вызова
+ */
+void awh::server::Web::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+	// Выполняем зануление неиспользуемых переменных
+	(void) idw;
+	(void) name;
+	(void) dump;
+	(void) event;
+}
+/**
  * erase Метод удаления отключившихся брокеров
  * @param bid идентификатор брокера
  */
@@ -239,14 +253,6 @@ void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("errorWebsocket", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
 	this->_callbacks.set("messageWebsocket", callbacks);
-}
-/**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::server::Web::transferСallback(const string & name) noexcept {
-	// Отключаем неиспользуемую переменную
-	(void) name;
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -392,6 +398,8 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
+	// Выполняем активацию ловушки событий контейнера функций обратного вызова
+	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
 }
 /**
  * Web Конструктор
@@ -404,6 +412,8 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
+	// Выполняем активацию ловушки событий контейнера функций обратного вызова
+	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера
 	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
 }

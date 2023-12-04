@@ -479,6 +479,36 @@ void awh::client::Http1::chunking(const uint64_t bid, const vector <char> & chun
 	}
 }
 /**
+ * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param idw   идентификатор функции обратного вызова
+ * @param name  название функции обратного вызова
+ * @param dump  дамп данных функции обратного вызова
+ */
+void awh::client::Http1::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (fn_t::event_t::SET): {
+			// Если дамп функции обратного вызова передан
+			if(dump != nullptr){
+				// Создаём локальный контейнер функций обратного вызова
+				fn_t callbacks(this->_log);
+				// Выполняем установку функции обратного вызова
+				callbacks.dump(idw, * dump);
+				// Если функции обратного вызова установлены
+				if(!callbacks.empty())
+					// Выполняем установку функций обратного вызова для Websocket-клиента
+					this->_ws1.callbacks(std::move(callbacks));
+				// Если функция обратного вызова на перехват полученных чанков установлена
+				if(this->_fmk->compare(name, "chunking"))
+					// Устанавливаем внешнюю функцию обратного вызова
+					this->_http.callback <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", this->_callbacks.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
+			}
+		} break;
+	}
+}
+/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::Http1::flush() noexcept {
@@ -1100,24 +1130,6 @@ void awh::client::Http1::callbacks(const fn_t & callbacks) noexcept {
 		this->_http.callback <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", this->_callbacks.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	else this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
-}
-/**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::client::Http1::transferСallback(const string & name) noexcept {
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callbacks(this->_log);
-	// Выполняем установку функции обратного вызова
-	callbacks.set(name, this->_callbacks);
-	// Если функции обратного вызова установлены
-	if(!callbacks.empty())
-		// Выполняем установку функций обратного вызова для Websocket-клиента
-		this->_ws1.callbacks(std::move(callbacks));
-	// Если функция обратного вызова на перехват полученных чанков установлена
-	if(this->_fmk->compare(name, "chunking"))
-		// Устанавливаем внешнюю функцию обратного вызова
-		this->_http.callback <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", this->_callbacks.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

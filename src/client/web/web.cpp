@@ -507,14 +507,6 @@ void awh::client::Web::start() noexcept {
 	}
 }
 /**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::client::Web::transferСallback(const string & name) noexcept {
-	// Блокируем неиспользуемую переменную
-	(void) name;
-}
-/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */
@@ -750,6 +742,8 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
+	// Выполняем активацию ловушки событий контейнера функций обратного вызова
+	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openEvent, this, _1, _2));
 	// Устанавливаем событие подключения
@@ -779,6 +773,8 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
  _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.noInfo(true);
+	// Выполняем активацию ловушки событий контейнера функций обратного вызова
+	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&web_t::openEvent, this, _1, _2));
 	// Устанавливаем событие подключения

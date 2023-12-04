@@ -224,6 +224,15 @@ namespace awh {
 				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
+				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event событие контейнера функций обратного вызова
+				 * @param idw   идентификатор функции обратного вызова
+				 * @param name  название функции обратного вызова
+				 * @param dump  дамп данных функции обратного вызова
+				 */
+				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+			private:
+				/**
 				 * flush Метод сброса параметров запроса
 				 */
 				void flush() noexcept;
@@ -304,12 +313,6 @@ namespace awh {
 				 * @param callbacks функции обратного вызова
 				 */
 				void callbacks(const fn_t & callbacks) noexcept;
-			private:
-				/**
-				 * transferСallback Метод передачи функции обратного вызова дальше
-				 * @param name название функции обратного вызова
-				 */
-				void transferСallback(const string & name) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

@@ -18,7 +18,6 @@
  * Стандартная библиотека
  */
 #include <map>
-#include <set>
 #include <tuple>
 #include <string>
 #include <vector>
@@ -49,6 +48,16 @@ namespace awh {
 	 * FN Класс работы с функциями
 	 */
 	typedef class FN {
+		public:
+			/**
+			 * Основные события для функций обратного вызова
+			 */
+			enum class event_t : uint8_t {
+				NONE = 0x00, // Событие не установленно
+				SET  = 0x01, // Событие установки функции
+				DEL  = 0x02, // Событие удаления функции
+				RUN  = 0x03  // Событие запуска функции
+			};
 		private:
 			// Объект генерации идентификаторов
 			idw_t _idw;
@@ -98,11 +107,16 @@ namespace awh {
 			typedef map <uint64_t, type_t> types_t;
 			// Создаём тип данных функций обратного вызова
 			typedef map <uint64_t, std::shared_ptr <Function>> fns_t;
+			// Структура дампа данных конкретной функции
+			typedef std::pair <std::shared_ptr <Function>, type_t> dump_t;
 		private:
 			// Поддерживаемые типы данных
 			types_t _types;
 			// Список функций обратного вызова
 			fns_t _functions;
+		private:
+			// Функция обратного вызова при получении события установки или удаления функции
+			function <void (const event_t, const uint64_t, const string &, const dump_t *)> _callback;
 		private:
 			// Создаём объект работы с логами
 			const log_t * _log;
@@ -182,9 +196,9 @@ namespace awh {
 			 * @param idw идентификатор функции обратного вызова
 			 * @return    дамп функции обратного вызова
 			 */
-			std::pair <std::shared_ptr <Function>, type_t> dump(const uint64_t idw) const noexcept {
+			dump_t dump(const uint64_t idw) const noexcept {
 				// Результат работы функции
-				std::pair <std::shared_ptr <Function>, type_t> result = std::make_pair(nullptr, type_t::NONE);
+				dump_t result = std::make_pair(nullptr, type_t::NONE);
 				// Если название функции обратного вызова передано
 				if(idw > 0){
 					{
@@ -211,7 +225,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     дамп функции обратного вызова
 			 */
-			std::pair <std::shared_ptr <Function>, type_t> dump(const string & name) const noexcept {
+			dump_t dump(const string & name) const noexcept {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выводим получение дампа функции обратного вызова
@@ -225,7 +239,7 @@ namespace awh {
 			 * @param idw  идентификатор функции обратного вызова
 			 * @param data дамп функции обратного вызова
 			 */
-			void dump(const uint64_t idw, const std::pair <std::shared_ptr <Function>, type_t> & data) noexcept {
+			void dump(const uint64_t idw, const dump_t & data) noexcept {
 				// Если название функции обратного вызова передано
 				if((idw > 0) && (data.first != nullptr)){
 					{
@@ -254,7 +268,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param data дамп функции обратного вызова
 			 */
-			void dump(const string & name, const std::pair <std::shared_ptr <Function>, type_t> & data) noexcept {
+			void dump(const string & name, const dump_t & data) noexcept {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выполняем установку данных функции обратного вызова
@@ -287,6 +301,16 @@ namespace awh {
 			bool is(const string & name) const noexcept {
 				// Выводим результат проверки
 				return this->is(this->_idw.id(name));
+			}
+		public:
+			/**
+			 * idw Метод генерации идентификатора функции
+			 * @param name название функции для генерации идентификатора
+			 * @return     сгенерированный идентификатор функции
+			 */
+			uint64_t idw(const string & name) const noexcept {
+				// Получаем идентификатор обратного вызова
+				return this->_idw.id(name);
 			}
 		public:
 			/**
@@ -325,6 +349,10 @@ namespace awh {
 							// Удаляем функцию обратного вызова
 							this->_functions.erase(it);
 					}
+					// Если функция обратного вызова установлена
+					if(this->_callback != nullptr)
+						// Выполняем функцию обратного вызова
+						this->_callback(event_t::DEL, idw, "", nullptr);
 				}
 			}
 			/**
@@ -333,9 +361,32 @@ namespace awh {
 			 */
 			void erase(const string & name) noexcept {
 				// Если название функции обратного вызова передано
-				if(!name.empty())
-					// Выполняем удаление функции обратного вызова
-					this->erase(this->_idw.id(name));
+				if(!name.empty()){
+					// Получаем идентификатор обратного вызова
+					const uint64_t idw = this->_idw.id(name);
+					// Если название функции обратного вызова передано
+					if(idw > 0){
+						{
+							// Выполняем поиск типа возвращаемого значения
+							auto it = this->_types.find(idw);
+							// Если возвращаемое значение получено
+							if(it != this->_types.end())
+								// Удаляем возвращаемое значение функцией
+								this->_types.erase(it);
+						}{
+							// Выполняем поиск существующей функции обратного вызова
+							auto it = this->_functions.find(idw);
+							// Если функция существует
+							if(it != this->_functions.end())
+								// Удаляем функцию обратного вызова
+								this->_functions.erase(it);
+						}
+						// Если функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем функцию обратного вызова
+							this->_callback(event_t::DEL, idw, name, nullptr);
+					}
+				}
 			}
 		public:
 			/**
@@ -502,6 +553,13 @@ namespace awh {
 								j->second = i->second;
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw, i->second);
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::SET, idw, "", &result);
+							}
 						}
 					}
 				}
@@ -513,9 +571,49 @@ namespace awh {
 			 */
 			void set(const string & name, const FN & storage) noexcept {
 				// Если данные переданы правильно
-				if(!name.empty() && !storage._functions.empty())
-					// Выполняем установку функции обратного вызова
-					this->set(this->_idw.id(name), storage);
+				if(!name.empty() && !storage._functions.empty()){
+					// Получаем идентификатор обратного вызова
+					const uint64_t idw = this->_idw.id(name);
+					// Если указанная функция существует
+					if((idw > 0) && storage.is(idw)){
+						{
+							// Выполняем поиск указанного возвращаемого значения в переданном хранилище
+							auto i = storage._types.find(idw);
+							// Если возвращаемое значение в хранилище получено
+							if(i != storage._types.end()){
+								// Выполняем поиск типа возвращаемого значения
+								auto j = this->_types.find(idw);
+								// Если возвращаемое значение получено
+								if(j != this->_types.end())
+									// Устанавливаем новое значение типа возвращаемого значения
+									j->second = i->second;
+								// Если возращаемое значение ещё не установлено
+								else this->_types.emplace(idw, i->second);
+							}	
+						}{
+							// Выполняем поиск указанной функции в переданном хранилище
+							auto i = storage._functions.find(idw);
+							// Если функция в хранилище получена
+							if(i != storage._functions.end()){
+								// Выполняем поиск существующей функции обратного вызова
+								auto j = this->_functions.find(idw);
+								// Если функция такая уже существует
+								if(j != this->_functions.end())
+									// Устанавливаем новую функцию обратного вызова
+									j->second = i->second;
+								// Если функция ещё не существует, создаём новую функцию
+								else this->_functions.emplace(idw, i->second);
+								// Если функция обратного вызова установлена
+								if(this->_callback != nullptr){
+									// Результат работы функции
+									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									// Выполняем функцию обратного вызова
+									this->_callback(event_t::SET, idw, name, &result);
+								}
+							}
+						}
+					}
+				}
 			}
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
@@ -553,6 +651,13 @@ namespace awh {
 								j->second = i->second;
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw2, i->second);
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw2), this->_types.at(idw2));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::SET, idw2, "", &result);
+							}
 						}
 					}
 				}
@@ -565,9 +670,51 @@ namespace awh {
 			 */
 			void set(const string & name1, const string & name2, const FN & storage) noexcept {
 				// Если данные переданы правильно
-				if(!name1.empty() && !name2.empty() && !storage._functions.empty())
-					// Выполняем установку функции обратного вызова
-					this->set(this->_idw.id(name1), this->_idw.id(name2), storage);
+				if(!name1.empty() && !name2.empty() && !storage._functions.empty()){
+					// Получаем идентификатор названия первой функции
+					const uint64_t idw1 = this->_idw.id(name1);
+					// Получаем идентификатор названия второй функции
+					const uint64_t idw2 = this->_idw.id(name2);
+					// Если указанная функция существует
+					if((idw1 > 0) && (idw2 > 0) && storage.is(idw1)){
+						{
+							// Выполняем поиск указанного возвращаемого значения в переданном хранилище
+							auto i = storage._types.find(idw1);
+							// Если возвращаемое значение в хранилище получено
+							if(i != storage._types.end()){
+								// Выполняем поиск типа возвращаемого значения
+								auto j = this->_types.find(idw2);
+								// Если возвращаемое значение получено
+								if(j != this->_types.end())
+									// Устанавливаем новое значение типа возвращаемого значения
+									j->second = i->second;
+								// Если возращаемое значение ещё не установлено
+								else this->_types.emplace(idw2, i->second);
+							}	
+						}{
+							// Выполняем поиск указанной функции в переданном хранилище
+							auto i = storage._functions.find(idw1);
+							// Если функция в хранилище получена
+							if(i != storage._functions.end()){
+								// Выполняем поиск существующей функции обратного вызова
+								auto j = this->_functions.find(idw2);
+								// Если функция такая уже существует
+								if(j != this->_functions.end())
+									// Устанавливаем новую функцию обратного вызова
+									j->second = i->second;
+								// Если функция ещё не существует, создаём новую функцию
+								else this->_functions.emplace(idw2, i->second);
+								// Если функция обратного вызова установлена
+								if(this->_callback != nullptr){
+									// Результат работы функции
+									const dump_t result = std::make_pair(this->_functions.at(idw2), this->_types.at(idw2));
+									// Выполняем функцию обратного вызова
+									this->_callback(event_t::SET, idw2, name2, &result);
+								}
+							}
+						}
+					}
+				}
 			}
 		public:
 			/**
@@ -605,6 +752,13 @@ namespace awh {
 								it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::SET, idw, "", &result);
+							}
 						}
 					/**
 					 * Если возникает ошибка
@@ -654,6 +808,13 @@ namespace awh {
 									it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
 								// Если функция ещё не существует, создаём новую функцию
 								else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+								// Если функция обратного вызова установлена
+								if(this->_callback != nullptr){
+									// Результат работы функции
+									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									// Выполняем функцию обратного вызова
+									this->_callback(event_t::SET, idw, name, &result);
+								}
 							}
 						}
 					/**
@@ -702,6 +863,13 @@ namespace awh {
 								it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::SET, idw, "", &result);
+							}
 						}
 					/**
 					 * Если возникает ошибка
@@ -753,6 +921,13 @@ namespace awh {
 									it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 								// Если функция ещё не существует, создаём новую функцию
 								else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+								// Если функция обратного вызова установлена
+								if(this->_callback != nullptr){
+									// Результат работы функции
+									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									// Выполняем функцию обратного вызова
+									this->_callback(event_t::SET, idw, name, &result);
+								}
 							}
 						}
 					/**
@@ -847,6 +1022,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, "", &result);
+							}
 							// Выполняем функцию обратного вызова
 							return (typename function <A>::result_type) std::apply(fn, std::make_tuple());
 						/**
@@ -883,6 +1065,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, name, &result);
+							}
 							// Выполняем функцию обратного вызова
 							return (typename function <A>::result_type) std::apply(fn, std::make_tuple());
 						/**
@@ -919,6 +1108,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, "", &result);
+							}
 							// Выполняем функцию обратного вызова
 							return (typename function <A>::result_type) std::apply(fn, std::make_tuple(args...));
 						/**
@@ -957,6 +1153,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, name, &result);
+							}
 							// Выполняем функцию обратного вызова
 							return (typename function <A>::result_type) std::apply(fn, std::make_tuple(args...));
 						/**
@@ -989,9 +1192,17 @@ namespace awh {
 							// Если тип данных получен
 							if(it != this->_types.end()){
 								// Если функция не возвращает значение
-								if(it->second == type_t::TYPE_VOID)
+								if(it->second == type_t::TYPE_VOID){
+									// Если функция обратного вызова установлена
+									if(this->_callback != nullptr){
+										// Результат работы функции
+										const dump_t result = std::make_pair(this->_functions.at(item.first), this->_types.at(item.first));
+										// Выполняем функцию обратного вызова
+										this->_callback(event_t::RUN, item.first, "", &result);
+									}
 									// Выполняем функцию обратного вызова
 									static_cast <const BasicFunction <void (void)> &> (* item.second).fn();
+								}
 							// Выводим сообщение, что функция не найдена в хранилище
 							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
@@ -1028,9 +1239,17 @@ namespace awh {
 							// Если тип данных получен
 							if(it != this->_types.end()){
 								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
-								if((it->second == this->type <A> ()) && (it->second != type_t::TYPE_VOID))
+								if((it->second == this->type <A> ()) && (it->second != type_t::TYPE_VOID)){
+									// Если функция обратного вызова установлена
+									if(this->_callback != nullptr){
+										// Результат работы функции
+										const dump_t result = std::make_pair(this->_functions.at(item.first), this->_types.at(item.first));
+										// Выполняем функцию обратного вызова
+										this->_callback(event_t::RUN, item.first, "", &result);
+									}
 									// Выполняем функцию обратного вызова
 									result.push_back(static_cast <const BasicFunction <A (void)> &> (* item.second).fn());
+								}
 							// Выводим сообщение, что функция не найдена в хранилище
 							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
@@ -1060,6 +1279,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, "", &result);
+							}
 							// Выполняем функцию обратного вызова
 							static_cast <const BasicFunction <void (void)> &> (* it->second).fn();
 						/**
@@ -1089,6 +1315,13 @@ namespace awh {
 						 * Выполняем отлов ошибок
 						 */
 						try {
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr){
+								// Результат работы функции
+								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								// Выполняем функцию обратного вызова
+								this->_callback(event_t::RUN, idw, name, &result);
+							}
 							// Выполняем функцию обратного вызова
 							static_cast <const BasicFunction <void (void)> &> (* it->second).fn();
 						/**
@@ -1126,11 +1359,18 @@ namespace awh {
 							// Если тип данных получен
 							if(j != this->_types.end()){
 								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
-								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID))
+								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID)){
+									// Если функция обратного вызова установлена
+									if(this->_callback != nullptr){
+										// Результат работы функции
+										const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+										// Выполняем функцию обратного вызова
+										this->_callback(event_t::RUN, idw, "", &result);
+									}
 									// Выполняем функцию обратного вызова
 									return static_cast <const BasicFunction <A (void)> &> (* i->second).fn();
 								// Выводим сообщение об ошибке
-								else this->_log->print("Function does not match the specified call parameters", log_t::flag_t::WARNING);
+								} else this->_log->print("Function does not match the specified call parameters", log_t::flag_t::WARNING);
 							// Выводим сообщение, что функция не найдена в хранилище
 							} else this->_log->print("Requested function was not found in the storage", log_t::flag_t::CRITICAL);
 						/**
@@ -1172,11 +1412,18 @@ namespace awh {
 							// Если тип данных получен
 							if(j != this->_types.end()){
 								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
-								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID))
+								if((j->second == this->type <A> ()) && (j->second != type_t::TYPE_VOID)){
+									// Если функция обратного вызова установлена
+									if(this->_callback != nullptr){
+										// Результат работы функции
+										const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+										// Выполняем функцию обратного вызова
+										this->_callback(event_t::RUN, idw, name, &result);
+									}
 									// Выполняем функцию обратного вызова
 									return static_cast <const BasicFunction <A (void)> &> (* i->second).fn();
 								// Выводим сообщение об ошибке
-								else this->_log->print("\"%s\" function does not match the specified call parameters", log_t::flag_t::WARNING, name.c_str());
+								} else this->_log->print("\"%s\" function does not match the specified call parameters", log_t::flag_t::WARNING, name.c_str());
 							// Выводим сообщение, что функция не найдена в хранилище
 							} else this->_log->print("Requested \"%s\" function was not found in the storage", log_t::flag_t::CRITICAL, name.c_str());
 						/**
@@ -1190,6 +1437,15 @@ namespace awh {
 				}
 				// Выводим значение по умолчанию
 				return A();
+			}
+		public:
+			/**
+			 * callback Метод установки функции обратного события на получения событий модуля
+			 * @param callback 
+			 */
+			void callback(function <void (const event_t, const uint64_t, const string &, const dump_t *)> callback) noexcept {
+				// Выполняем установку функции обратного вызова
+				this->_callback = callback;
 			}
 		public:
 			/**
@@ -1219,7 +1475,7 @@ namespace awh {
 			 * FN Конструктор
 			 * @param log объект для работы с логами
 			 */
-			FN(const log_t * log) noexcept : _log(log) {}
+			FN(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
 	} fn_t;
 };
 

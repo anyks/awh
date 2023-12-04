@@ -113,6 +113,15 @@ namespace awh {
 				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
+				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event событие контейнера функций обратного вызова
+				 * @param idw   идентификатор функции обратного вызова
+				 * @param name  название функции обратного вызова
+				 * @param dump  дамп данных функции обратного вызова
+				 */
+				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+			private:
+				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
 				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
@@ -244,12 +253,6 @@ namespace awh {
 				 * @param callbacks функции обратного вызова
 				 */
 				void callbacks(const fn_t & callbacks) noexcept;
-			private:
-				/**
-				 * transferСallback Метод передачи функции обратного вызова дальше
-				 * @param name название функции обратного вызова
-				 */
-				void transferСallback(const string & name) noexcept;
 			public:
 				/**
 				 * port Метод получения порта подключения брокера

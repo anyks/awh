@@ -864,6 +864,35 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid, awh::c
 	return result;
 }
 /**
+ * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param idw   идентификатор функции обратного вызова
+ * @param name  название функции обратного вызова
+ * @param dump  дамп данных функции обратного вызова
+ */
+void awh::client::Http2::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (fn_t::event_t::SET): {
+			// Если переменная не является закрытием потока и редиректом
+			if((dump != nullptr) && !this->_fmk->compare(name, "end") && !this->_fmk->compare(name, "redirect")){
+				// Создаём локальный контейнер функций обратного вызова
+				fn_t callbacks(this->_log);
+				// Выполняем установку функции обратного вызова
+				callbacks.dump(idw, * dump);
+				// Если функции обратного вызова установлены
+				if(!callbacks.empty()){
+					// Выполняем установку функций обратного вызова для Websocket-клиента
+					this->_ws2.callbacks(callbacks);
+					// Выполняем установку функции обратного вызова для HTTP-клиента
+					this->_http1.callbacks(std::move(callbacks));
+				}
+			}
+		} break;
+	}
+}
+/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::Http2::flush() noexcept {
@@ -1765,26 +1794,6 @@ void awh::client::Http2::callbacks(const fn_t & callbacks) noexcept {
 		if(!callbacks.empty())
 			// Выполняем установку функции обратного вызова для HTTP-клиента
 			this->_http1.callbacks(std::move(callbacks));
-	}
-}
-/**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::client::Http2::transferСallback(const string & name) noexcept {
-	// Если переменная не является закрытием потока и редиректом
-	if(!this->_fmk->compare(name, "end") && !this->_fmk->compare(name, "redirect")){
-		// Создаём локальный контейнер функций обратного вызова
-		fn_t callbacks(this->_log);
-		// Выполняем установку функции обратного вызова
-		callbacks.set(name, this->_callbacks);
-		// Если функции обратного вызова установлены
-		if(!callbacks.empty()){
-			// Выполняем установку функций обратного вызова для Websocket-клиента
-			this->_ws2.callbacks(callbacks);
-			// Выполняем установку функции обратного вызова для HTTP-клиента
-			this->_http1.callbacks(std::move(callbacks));
-		}
 	}
 }
 /**

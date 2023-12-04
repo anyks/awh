@@ -282,6 +282,15 @@ namespace awh {
 				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
+				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event событие контейнера функций обратного вызова
+				 * @param idw   идентификатор функции обратного вызова
+				 * @param name  название функции обратного вызова
+				 * @param dump  дамп данных функции обратного вызова
+				 */
+				virtual void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept = 0;
+			protected:
+				/**
 				 * errors Метод вывода полученных ошибок протокола
 				 * @param bid     идентификатор брокера
 				 * @param flag    флаг типа сообщения
@@ -342,12 +351,6 @@ namespace awh {
 				 * @param callback функции обратного вызова
 				 */
 				virtual void callbacks(const fn_t & callbacks) noexcept;
-			private:
-				/**
-				 * transferСallback Метод передачи функции обратного вызова дальше
-				 * @param name название функции обратного вызова
-				 */
-				virtual void transferСallback(const string & name) noexcept;
 			public:
 				/**
 				 * callback Шаблон метода установки финкции обратного вызова
@@ -377,12 +380,9 @@ namespace awh {
 				 */
 				void callback(const string & name, function <A> fn) noexcept {
 					// Если функция обратного вызова передана
-					if(!name.empty() && (fn != nullptr)){
+					if(!name.empty() && (fn != nullptr))
 						// Выполняем установку функции обратного вызова
 						this->_callbacks.set <A> (name, fn);
-						// Выполняем установку функции дальше
-						this->transferСallback(name);
-					}
 				}
 			public:
 				/**

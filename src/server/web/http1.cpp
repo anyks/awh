@@ -474,6 +474,32 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
 	}
 }
 /**
+ * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param idw   идентификатор функции обратного вызова
+ * @param name  название функции обратного вызова
+ * @param dump  дамп данных функции обратного вызова
+ */
+void awh::server::Http1::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (fn_t::event_t::SET): {
+			// Если дамп функции обратного вызова передан
+			if(dump != nullptr){
+				// Создаём локальный контейнер функций обратного вызова
+				fn_t callbacks(this->_log);
+				// Выполняем установку функции обратного вызова
+				callbacks.dump(idw, * dump);
+				// Если функции обратного вызова установлены
+				if(!callbacks.empty())
+					// Выполняем установку функций обратного вызова для Websocket-сервера
+					this->_ws1.callbacks(std::move(callbacks));
+			}
+		} break;
+	}
+}
+/**
  * websocket Метод инициализации Websocket протокола
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
@@ -1300,20 +1326,6 @@ void awh::server::Http1::callbacks(const fn_t & callbacks) noexcept {
 			// Выполняем установку функций обратного вызова для Websocket-сервера
 			this->_ws1.callbacks(std::move(callbacks));
 	}
-}
-/**
- * transferСallback Метод передачи функции обратного вызова дальше
- * @param name название функции обратного вызова
- */
-void awh::server::Http1::transferСallback(const string & name) noexcept {
-	// Создаём локальный контейнер функций обратного вызова
-	fn_t callbacks(this->_log);
-	// Выполняем установку функции обратного вызова
-	callbacks.set(name, this->_callbacks);
-	// Если функции обратного вызова установлены
-	if(!callbacks.empty())
-		// Выполняем установку функций обратного вызова для Websocket-сервера
-		this->_ws1.callbacks(std::move(callbacks));
 }
 /**
  * port Метод получения порта подключения брокера
