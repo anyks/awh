@@ -1573,7 +1573,7 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
+ awh::core_t(fmk, log, family, sonet), _pid(getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
@@ -1588,7 +1588,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(dns, fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
+ awh::core_t(dns, fmk, log, family, sonet), _pid(getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
