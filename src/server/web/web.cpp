@@ -102,18 +102,32 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 	}
 }
 /**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * callbacksEvents Метод отлавливания событий контейнера функций обратного вызова
  * @param event событие контейнера функций обратного вызова
  * @param idw   идентификатор функции обратного вызова
  * @param name  название функции обратного вызова
  * @param dump  дамп данных функции обратного вызова
  */
-void awh::server::Web::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+void awh::server::Web::callbacksEvents(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
 	// Выполняем зануление неиспользуемых переменных
 	(void) idw;
 	(void) name;
 	(void) dump;
 	(void) event;
+}
+/**
+ * clusterEvents Метод вывода статуса кластера
+ * @param family флаг семейства кластера
+ * @param sid    идентификатор схемы сети
+ * @param pid    идентификатор процесса
+ * @param event  идентификатор события
+ * @param core   объект сетевого ядра
+ */
+void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event, awh::core_t * core) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("cluster"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", family, sid, pid, event, core);
 }
 /**
  * erase Метод удаления отключившихся брокеров
@@ -275,16 +289,15 @@ void awh::server::Web::alive(const time_t time) noexcept {
  * @param core объект сетевого ядра
  */
 void awh::server::Web::core(const server::core_t * core) noexcept {
+	// Выполняем установку объекта сетевого ядра
+	this->_core = core;
 	// Если объект сетевого ядра передан
-	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+	if(this->_core != nullptr){
 		// Устанавливаем функцию активации ядра сервера
 		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
-	// Если объект сетевого ядра не передан но ранее оно было добавлено
-	} else if(this->_core != nullptr)
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Устанавливаем функцию обратного вызова на перехват событий кластера
+		const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4, _5));
+	}
 }
 /**
  * stop Метод остановки сервера
@@ -399,7 +412,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
+	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 }
 /**
  * Web Конструктор
@@ -413,7 +426,9 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.noInfo(true);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
+	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера
 	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
+	// Устанавливаем функцию обратного вызова на перехват событий кластера
+	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4, _5));
 }

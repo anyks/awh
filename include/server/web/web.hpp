@@ -240,13 +240,23 @@ namespace awh {
 				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
-				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+				 * callbacksEvents Метод отлавливания событий контейнера функций обратного вызова
 				 * @param event событие контейнера функций обратного вызова
 				 * @param idw   идентификатор функции обратного вызова
 				 * @param name  название функции обратного вызова
 				 * @param dump  дамп данных функции обратного вызова
 				 */
-				virtual void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+				virtual void callbacksEvents(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+			private:
+				/**
+				 * clusterEvents Метод вывода статуса кластера
+				 * @param family флаг семейства кластера
+				 * @param sid    идентификатор схемы сети
+				 * @param pid    идентификатор процесса
+				 * @param event  идентификатор события
+				 * @param core   объект сетевого ядра
+				 */
+				void clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event, awh::core_t * core) noexcept;
 			protected:
 				/**
 				 * erase Метод удаления отключившихся брокеров

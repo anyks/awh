@@ -474,13 +474,13 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
 	}
 }
 /**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
+ * callbacksEvents Метод отлавливания событий контейнера функций обратного вызова
  * @param event событие контейнера функций обратного вызова
  * @param idw   идентификатор функции обратного вызова
  * @param name  название функции обратного вызова
  * @param dump  дамп данных функции обратного вызова
  */
-void awh::server::Http1::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
+void awh::server::Http1::callbacksEvents(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
 	// Определяем входящее событие контейнера функций обратного вызова
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
@@ -1593,12 +1593,10 @@ void awh::server::Http1::alive(const uint64_t bid, const bool mode) noexcept {
 void awh::server::Http1::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(core != nullptr){
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем установку сетевого ядра
+		web_t::core(core);
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
-		// Выполняем установку функций обратного вызова для сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&http1_t::statusEvents, this, _1, _2));
 		// Если многопоточность активированна
 		if(this->_ws1._thr.is())
 			// Устанавливаем простое чтение базы событий
@@ -1614,8 +1612,8 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		}
 		// Удаляем схему сети из сетевого ядра
 		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.sid);
-		// Выполняем установку объекта сетевого ядра
-		this->_core = core;
+		// Выполняем удаление объекта сетевого ядра
+		web_t::core(core);
 	}
 }
 /**
