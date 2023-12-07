@@ -44,7 +44,7 @@ namespace awh {
 				// Мютекс для блокировки потока
 				mutex mtx;
 				// Задержка времени таймера
-				size_t delay;
+				uint32_t delay;
 				// Условная переменная, ожидания получения сигналов
 				condition_variable cv;
 				// Функция обратного вызова
@@ -59,14 +59,14 @@ namespace awh {
 			mutex _mtx;
 		private:
 			// Список активных воркеров таймера
-			map <size_t, unique_ptr <wrk_t>> _timers;
+			map <uint32_t, unique_ptr <wrk_t>> _timers;
 		private:
 			/**
 			 * checkInputData Метод проверки на существование данных
 			 * @param tid идентификатор таймера
 			 * @return    результат проверки
 			 */
-			bool checkInputData(const size_t tid) const noexcept {
+			bool checkInputData(const uint32_t tid) const noexcept {
 				// Результат работы функции
 				bool result = true;
 				// Выполняем поиск идентификатор таймера
@@ -85,9 +85,9 @@ namespace awh {
 			 * @param delay    интервал задержки времени
 			 * @return         идентификатор таймаута
 			 */
-			size_t setTimeout(function <void (void)> callback, const size_t delay) noexcept {
+			uint32_t setTimeout(function <void (void)> callback, const uint32_t delay) noexcept {
 				// Выполняем получение идентификатора таймаута
-				const size_t tid = (this->_timers.size() + 1);
+				const uint32_t tid = (this->_timers.size() + 1);
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
@@ -160,9 +160,9 @@ namespace awh {
 			 * @param interval интервал времени выполнения функции
 			 * @return         идентификатор таймаута
 			 */
-			size_t setInterval(function <void (void)> callback, const size_t interval) noexcept {
+			uint32_t setInterval(function <void (void)> callback, const uint32_t interval) noexcept {
 				// Выполняем получение идентификатора таймаута
-				const size_t tid = (this->_timers.size() + 1);
+				const uint32_t tid = (this->_timers.size() + 1);
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
@@ -228,7 +228,7 @@ namespace awh {
 			 * stop Метод остановки работы таймера
 			 * @param tid идентификатор таймера
 			 */
-			void stop(const size_t tid) noexcept {
+			void stop(const uint32_t tid) noexcept {
 				// Выполняем блокировку потока
 				const lock_guard <mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
