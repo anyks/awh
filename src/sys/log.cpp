@@ -96,7 +96,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если файл для вывода лога указан
-	if(this->_fileMode && !this->_filename.empty()){
+	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
 		// Открываем файл на запись
 		ofstream file(this->_filename, ios::out | ios::app);
 		// Если файл открыт
@@ -131,7 +131,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		}
 	}
 	// Если вывод сообщения в консоль разрешён
-	if(this->_consoleMode){
+	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
 		// Если тип сообщение не является пустым
 		if(payload.flag != flag_t::NONE)
 			// Выводим обозначение начала вывода лога
@@ -165,7 +165,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			cout << "---------------- END ----------------" << endl << endl;
 	}
 	// Если функция подписки на логи установлена, выводим результат
-	if(this->_fn != nullptr)
+	if((this->_mode.find(mode_t::CALLBACK) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
 		this->_fn(payload.flag, payload.data);
 }
@@ -328,20 +328,12 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 	}
 }
 /**
- * allowFile Метод установки разрешения на вывод лога в файл
- * @param mode флаг разрешения на вывод лога в файл
+ * mode Метод добавления режимов вывода логов
+ * @param mode список режимов вывода логов
  */
-void awh::Log::allowFile(const bool mode) noexcept {
-	// Устанавливаем разрешение на вывод лога в файл
-	this->_fileMode = mode;
-}
-/**
- * allowConsole Метод установки разрешения на вывод лога в консоль
- * @param mode флаг разрешения на вывод лога в консоль
- */
-void awh::Log::allowConsole(const bool mode) noexcept {
-	// Устанавливаем разрешение на вывод лога в консоль
-	this->_consoleMode = mode;
+void awh::Log::mode(const set <mode_t> & mode) noexcept {
+	// Выполняем установку списка режимов вывода логов
+	this->_mode = mode;
 }
 /**
  * async Метод установки флага асинхронного режима работы
@@ -405,12 +397,13 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param filename адрес файла для сохранения логов
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _pid(0), _async(false), _fileMode(true), _consoleMode(true),
- _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
- _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
+ _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE),
+ _level(level_t::ALL), _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
  _filename(filename), _child(nullptr), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = getpid();
+	// Выполняем разрешение на вывод всех видов логов
+	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::CALLBACK};
 }
 /**
  * ~Log Деструктор

@@ -59,6 +59,15 @@ namespace awh {
 				CRITICAL = 0x03  // Критическое сообщение
 			};
 			/**
+			 * mode_t Флаги работы логов
+			 */
+			enum class mode_t : uint8_t {
+				NONE     = 0x00, // Вывод логов запрещён
+				FILE     = 0x01, // Разерешно выводить логи в файлы
+				CONSOLE  = 0x02, // Разрешено выводить логи в консоль
+				CALLBACK = 0x03  // Разрешено выводить логи в функцию обратного вызова
+			};
+			/**
 			 * level_t Уровни логирования
 			 */
 			enum class level_t : uint8_t {
@@ -89,10 +98,6 @@ namespace awh {
 		private:
 			// Флаг асинхронного режима работы
 			bool _async;
-			// Флаг разрешения вывода логов в файл
-			bool _fileMode;
-			// Флаг разрешения вывода логов в консоль
-			bool _consoleMode;
 		private:
 			// Максимальный размер файла лога
 			size_t _maxSize;
@@ -109,6 +114,9 @@ namespace awh {
 		private:
 			// Мютекс для блокировки потока
 			mutable mutex _mtx;
+		private:
+			// Список доступных флагов
+			set <mode_t> _mode;
 		private:
 			// Список проинициализированных процессов
 			mutable set <pid_t> _initialized;
@@ -148,15 +156,10 @@ namespace awh {
 			void print(const string & format, flag_t flag, const vector <string> & items) const noexcept;
 		public:
 			/**
-			 * allowFile Метод установки разрешения на вывод лога в файл
-			 * @param mode флаг разрешения на вывод лога в файл
+			 * mode Метод добавления режимов вывода логов
+			 * @param mode список режимов вывода логов
 			 */
-			void allowFile(const bool mode) noexcept;
-			/**
-			 * allowConsole Метод установки разрешения на вывод лога в консоль
-			 * @param mode флаг разрешения на вывод лога в консоль
-			 */
-			void allowConsole(const bool mode) noexcept;
+			void mode(const set <mode_t> & mode) noexcept;
 		public:
 			/**
 			 * async Метод установки флага асинхронного режима работы
