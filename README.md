@@ -50,8 +50,8 @@ $ sudo kldload sctp
 
 ```bash
 $ sudo apt install libsctp-dev
-$ modprobe sctp
-$ sysctl -w net.sctp.auth_enable=1
+$ sudo modprobe sctp
+$ sudo sysctl -w net.sctp.auth_enable=1
 ```
 
 ```bash
