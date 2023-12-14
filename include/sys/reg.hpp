@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstring>
 #include <cstdint>
 #include <iostream>
 #include <sys/types.h>
