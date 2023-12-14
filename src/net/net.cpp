@@ -520,7 +520,7 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		// Если результат получен
 		if(!match.empty()){
 			// Выполняем перебор всех полученных вариантов
-			for(size_t i = 0; i < match.size(); i++){
+			for(uint8_t i = 0; i < static_cast <uint8_t> (match.size()); i++){
 				// Если данные получены
 				if(!match[i].empty()){
 					// Определяем тип хоста
@@ -1847,11 +1847,7 @@ awh::Net::Net() noexcept : _type(type_t::NONE) {
 		// Определение HTTP адреса
 		"(https?\\:\\/\\/[^\\r\\n\\t\\s]+(?:\\/(?:[^\\r\\n\\t\\s]+)?)?)|"
 		// Определение адреса файловой системы
-		"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*))$", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::CASELESS,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
+		"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*))$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 	);
 }
 /**

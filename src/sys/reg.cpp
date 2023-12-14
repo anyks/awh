@@ -1,6 +1,6 @@
 /**
  * @file: re.cpp
- * @date: 2023-05-20
+ * @date: 2023-12-14
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -16,101 +16,25 @@
 #include <sys/reg.hpp>
 
 /**
- * Методы только для OS Windows
+ * error Метод извлечения текста ошибки регулярного выражения
+ * @return текст ошибки регулярного выражения
  */
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * convert Метод конвертирования строки utf-8 в строку
-	 * @param str строка utf-8 для конвертирования
-	 * @return    обычная строка
-	 */
-	string awh::RegExp::convert(const wstring & str) const noexcept {
-		// Результат работы функции
-		string result = "";
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если строка передана
-			if(!str.empty()){
-				// Если используется BOOST
-				#ifdef USE_BOOST_CONVERT
-					// Объявляем конвертер
-					using boost::locale::conv::utf_to_utf;
-					// Выполняем конвертирование в utf-8 строку
-					result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
-				// Если нужно использовать стандартную библиотеку
-				#else
-					// Устанавливаем тип для конвертера UTF-8
-					using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-					// Объявляем конвертер
-					wstring_convert <convert_type, wchar_t> conv;
-					// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-					// Выполняем конвертирование в utf-8 строку
-					result = conv.to_bytes(str);
-				#endif
-			}
-		// Если возникает ошибка
-		} catch(const range_error & error) {
-			/* Пропускаем возникшую ошибку */
-		}
-		// Выводим результат
-		return result;
-	}
-	/**
-	 * convert Метод конвертирования строки в строку utf-8
-	 * @param str строка для конвертирования
-	 * @return    строка в utf-8
-	 */
-	wstring awh::RegExp::convert(const string & str) const noexcept {
-		// Результат работы функции
-		wstring result = L"";
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если строка передана
-			if(!str.empty()){
-				// Если используется BOOST
-				#ifdef USE_BOOST_CONVERT
-					// Объявляем конвертер
-					using boost::locale::conv::utf_to_utf;
-					// Выполняем конвертирование в utf-8 строку
-					result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
-				// Если нужно использовать стандартную библиотеку
-				#else
-					// Объявляем конвертер
-					// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-					wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-					// Выполняем конвертирование в utf-8 строку
-					result = conv.from_bytes(str);
-				#endif
-			}
-		// Если возникает ошибка
-		} catch(const range_error & error) {
-			/* Пропускаем возникшую ошибку */
-		}
-		// Выводим результат
-		return result;
-	}
-#endif
+const string & awh::RegExp::error() const noexcept {
+	// Выполняем извлечение текста ошибки регулярного выражения
+	return this->_error;
+}
 /**
  * free Метод очистки объекта регулярного выражения
  * @param exp объект регулярного выражения
  */
 void awh::RegExp::free(const exp_t & exp) const noexcept {
-	/**
-	 * Для операционных систем кроме OS Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если резулярное выражение собранно
-		if(exp.ctx != nullptr){
-			// Выполняем удаление контекста регулярного выражения
-			pcre_free(exp.ctx);
-			// Выполняем обнуление контекста регулярного выражения
-			const_cast <exp_t *> (&exp)->ctx = nullptr;
-		}
-	#endif
+	// Если объект регулярного выражения ещё не очищен
+	if(exp.mode){
+		// Зануляем объект регулярного выражения
+		const_cast <exp_t &> (exp).mode = !exp.mode;
+		// Выполняем удаление скомпилированного регулярного выражения
+		pcre2_regfree(&const_cast <exp_t &> (exp).reg);
+	}
 }
 /**
  * test Метод проверки регулярного выражения
@@ -121,48 +45,27 @@ void awh::RegExp::free(const exp_t & exp) const noexcept {
 bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если данные переданы верные
-		if(!text.empty()){
-			/**
-			 * Выполняем обработку ошибки
-			 */
-			try {
-				// Если мы выполняем работу с UTF-8
-				if(exp.utf8){
-					// Результат работы регулярного выражения
-					wsmatch match;
-					// Выполняем конвертирования текста
-					const wstring & enter = this->convert(text);
-					// Выполняем разбор регулярного выражения
-					result = regex_match(enter, match, exp.wreg, regex_constants::match_default);
-				// Если мы выполняем работу без поддержки UTF-8
-				} else {
-					// Результат работы регулярного выражения
-					smatch match;
-					// Выполняем разбор регулярного выражения
-					result = regex_match(text, match, exp.reg, regex_constants::match_default);
-				}
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {}
-		}
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Если данные переданы верные
-		if(!text.empty() && (exp.ctx != nullptr)){
-			// Массив позиций в тексте
-			int ovector[30];
-			// Выполняем разбор регулярного выражения не более 30-ти вариантов
-			result = (pcre_exec(exp.ctx, nullptr, text.c_str(), text.length(), 0, 0, ovector, 30) > 0);
-		}
-	#endif
+	// Если данные переданы верные
+	if(!text.empty() && exp.mode){
+		// Создаём объект матчинга
+		regmatch_t match[1];
+		// Выполняем разбор регулярного выражения
+		const int error = pcre2_regexec(&exp.reg, text.c_str(), 1, match, REG_NOTEMPTY);
+		// Если возникла ошибка
+		if(!(result = (error == 0))){
+			// Создаём буфер данных для извлечения данных ошибки
+			char buffer[256];
+			// Выполняем заполнение нулями буфер данных
+			::memset(buffer, '\0', sizeof(buffer));
+			// Выполняем извлечение текста ошибки
+			const size_t size = pcre2_regerror(error, &exp.reg, buffer, sizeof(buffer) - 1);
+			// Если текст ошибки получен
+			if(size > 0)
+				// Выполняем установку кода ошибки
+				const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+		// Если ошибок не получено
+		} else result = (match[0].rm_eo > 0);
+	}
 	// Выводим результат
 	return result;
 }
@@ -175,229 +78,127 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <string> result;
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если данные переданы верные
-		if(!text.empty()){
-			/**
-			 * Выполняем обработку ошибки
-			 */
-			try {
-				// Если мы выполняем работу с UTF-8
-				if(exp.utf8){
-					// Результат работы регулярного выражения
-					wsmatch match;
-					// Выполняем конвертирования текста
-					const wstring & enter = this->convert(text);
-					// Выполняем поиск в тексте по регулярному выражению
-					if(regex_match(enter, match, exp.wreg, regex_constants::match_default)){
-						// Выполняем перебор всех полученных результатов
-						for(auto & item : match)
-							// Добавляем полученный результат в список результатов
-							result.push_back(this->convert(item));
-					}
-				// Если мы выполняем работу без поддержки UTF-8
-				} else {
-					// Результат работы регулярного выражения
-					smatch match;
-					// Выполняем поиск в тексте по регулярному выражению
-					if(regex_match(text, match, exp.reg, regex_constants::match_default)){
-						// Выполняем перебор всех полученных результатов
-						for(auto & item : match)
-							// Добавляем полученный результат в список результатов
-							result.push_back(item);
-					}
+	// Если данные переданы верные
+	if(!text.empty() && exp.mode){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Получаем строку текста для поиска
+			const char * str = text.c_str();
+			// Создаём объект матчинга
+			unique_ptr <regmatch_t []> match(new regmatch_t [exp.reg.re_nsub + 1]);
+			// Выполняем разбор регулярного выражения
+			const int error = pcre2_regexec(&exp.reg, str, exp.reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			// Если возникла ошибка
+			if(error > 0){
+				// Создаём буфер данных для извлечения данных ошибки
+				char buffer[256];
+				// Выполняем заполнение нулями буфер данных
+				::memset(buffer, '\0', sizeof(buffer));
+				// Выполняем извлечение текста ошибки
+				const size_t size = pcre2_regerror(error, &exp.reg, buffer, sizeof(buffer) - 1);
+				// Если текст ошибки получен
+				if(size > 0)
+					// Выполняем установку кода ошибки
+					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+			// Если ошибок не получено
+			} else {
+				// Выполняем создание результата
+				result.resize(exp.reg.re_nsub + 1);
+				// Выполняем перебор всех полученных вариантов
+				for(uint8_t i = 0; i < static_cast <uint8_t> (exp.reg.re_nsub + 1); i++){
+					// Если результат получен
+					if(match[i].rm_eo > 0)
+						// Добавляем полученный результат в список результатов
+						result.at(i).assign(str + match[i].rm_so, match[i].rm_eo - match[i].rm_so);
 				}
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {}
-		}
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Если данные переданы верные
-		if(!text.empty() && (exp.ctx != nullptr)){
-			// Массив позиций в тексте
-			int ovector[30];
-			// Выполняем разбор регулярного выражения не более 30-ти вариантов
-			const int count = pcre_exec(exp.ctx, nullptr, text.c_str(), text.length(), 0, 0, ovector, 30);
-			// Если в текст не соответствует регулярному выражению
-			if(count > 0){
-				// Индекс полученной записи
-				uint8_t index = 0;
-				// Выполняем выделение памяти для списка результатов
-				result.resize(count);
-				// Выполняем перебор всех полученных результатов
-				for(uint8_t i = 0; i < (2 * count); i += 2)
-					// Получаем название переменной
-					result[index++] = (ovector[i] < 0 ? "" : text.substr(ovector[i], ovector[i + 1] - ovector[i]));
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
-	#endif
+	}
 	// Выводим результат
 	return result;
 }
 /**
  * build Метод сборки регулярного выражения
- * @param expression регулярное выражение для сборки
- * @param options    список опций для сборки регулярного выражения
- * @return           результат собранного регулярного выражения
+ * @param pattern регулярное выражение для сборки
+ * @param options список опций для сборки регулярного выражения
+ * @return        результат собранного регулярного выражения
  */
-awh::RegExp::exp_t awh::RegExp::build(const string & expression, const vector <option_t> & options) const noexcept {
+awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <option_t> & options) const noexcept {
 	// Результат работы функции
 	exp_t result;
 	// Если регулярное выражение передано
-	if(!expression.empty()){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Результат работы функции
-			wregex::flag_type option = static_cast <wregex::flag_type> (0);
-			// Если опции переданы
-			if(!options.empty()){
-				// Выполняем перебор всех переданных опций
-				for(auto & item : options){
-					// Определяем тип переданной опции
-					switch(static_cast <uint8_t> (item)){
-						// Если передан флаг запуска в режиме UTF-8
-						case static_cast <uint8_t> (option_t::UTF8):
-							// Выполняем установку флага работы с UTF-8
-							result.utf8 = true;
-						break;
-						// Если передан флаг дополнительных функций
-						case static_cast <uint8_t> (option_t::EXTRA):
-							// Устанавливаем флаг
-							option |= wregex::optimize;
-						break;
-						// Если передан флаг инвертирования жадности кванторов
-						case static_cast <uint8_t> (option_t::UNGREEDY):
-							// Устанавливаем флаг
-							option |= wregex::nosubs;
-						break;
-						// Если передан флаг работы без учёта регистра
-						case static_cast <uint8_t> (option_t::CASELESS):
-							// Выполняем установку флага
-							option |= wregex::icase;
-						break;
-						// Если передан флаг игнорирования пробелов и # комментариев
-						case static_cast <uint8_t> (option_t::EXTENDED):
-							// Устанавливаем флаг
-							option |= wregex::collate;
-						break;
-					}
+	if(!pattern.empty()){
+		// Список основных опций
+		int option = 0;
+		// Если опции переданы
+		if(!options.empty()){
+			// Выполняем перебор всех переданных опций
+			for(auto & item : options){
+				// Определяем тип переданной опции
+				switch(static_cast <uint8_t> (item)){
+					// Если передан флаг запуска в режиме UTF-8
+					case static_cast <uint8_t> (option_t::UTF8):
+						// Выполняем установку флага
+						option |= REG_UTF;
+					break;
+					// Если передан флаг запреда вывода сопоставления
+					case static_cast <uint8_t> (option_t::NOSUB):
+						// Выполняем установку флага
+						option |= REG_NOSUB;
+					break;
+					// Если передан флаг точки соответствующей чему угодно, включая NL
+					case static_cast <uint8_t> (option_t::DOTALL):
+						// Выполняем установку флага
+						option |= REG_DOTALL;
+					break;
+					// Если передан флаг инвертирования жадности кванторов
+					case static_cast <uint8_t> (option_t::UNGREEDY):
+						// Выполняем установку флага
+						option |= REG_UNGREEDY;
+					break;
+					// Если нужно блокировать пустые строки
+					case static_cast <uint8_t> (option_t::NOTEMPTY):
+						// Выполняем установку флага
+						option |= REG_NOTEMPTY;
+					break;
+					// Если передан флаг работы без учёта регистра
+					case static_cast <uint8_t> (option_t::CASELESS):
+						// Выполняем установку флага
+						option |= REG_ICASE;
+					break;
+					// Если передан флаг то (^ и $) будут соответствовать новым строкам в тексте
+					case static_cast <uint8_t> (option_t::MULTILINE):
+						// Выполняем установку флага
+						option |= REG_NEWLINE;
+					break;
 				}
 			}
-			// Устанавливаем флаг
-			option |= wregex::ECMAScript;
-			// Если мы выполняем работу с UTF-8
-			if(result.utf8)
-				// Выполняем сборку регулярного выражения
-				result.wreg = wregex(this->convert(expression), option);
-			// Иначе выполняем сборку регулярных выражений без поддержки UTF-8
-			else result.reg = regex(expression, option);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Список основных опций
-			int option = 0;
-			// Если опции переданы
-			if(!options.empty()){
-				// Выполняем перебор всех переданных опций
-				for(auto & item : options){
-					// Определяем тип переданной опции
-					switch(static_cast <uint8_t> (item)){
-						// Если передан флаг запуска в режиме UTF-8
-						case static_cast <uint8_t> (option_t::UTF8):
-							// Выполняем установку флага
-							option |= PCRE_UTF8;
-						break;
-						// Если передан флаг дополнительных функций
-						case static_cast <uint8_t> (option_t::EXTRA):
-							// Выполняем установку флага
-							option |= PCRE_EXTRA;
-						break;
-						// Если передан флаг точки соответствующей чему угодно, включая NL
-						case static_cast <uint8_t> (option_t::DOTALL):
-							// Выполняем установку флага
-							option |= PCRE_DOTALL;
-						break;
-						// Если передан флаг инвертирования жадности кванторов
-						case static_cast <uint8_t> (option_t::UNGREEDY):
-							// Выполняем установку флага
-							option |= PCRE_UNGREEDY;
-						break;
-						// Если передан флаг привязки шаблона якоря
-						case static_cast <uint8_t> (option_t::ANCHORED):
-							// Выполняем установку флага
-							option |= PCRE_ANCHORED;
-						break;
-						// Если передан флаг работы без учёта регистра
-						case static_cast <uint8_t> (option_t::CASELESS):
-							// Выполняем установку флага
-							option |= PCRE_CASELESS;
-						break;
-						// Если передан флаг игнорирования пробелов и # комментариев
-						case static_cast <uint8_t> (option_t::EXTENDED):
-							// Выполняем установку флага
-							option |= PCRE_EXTENDED;
-						break;
-						// Если передан флаг то (^ и $) будут соответствовать новым строкам в тексте
-						case static_cast <uint8_t> (option_t::MULTILINE):
-							// Выполняем установку флага
-							option |= PCRE_MULTILINE;
-						break;
-						// Если передан флаг то (\R) будет соответствовать всем окончаниям строк Unicode
-						case static_cast <uint8_t> (option_t::BSR_UNICODE):
-							// Выполняем установку флага
-							option |= PCRE_BSR_UNICODE;
-						break;
-						// Если передан флаг то будет установлен CR в качестве последовательности новой строки
-						case static_cast <uint8_t> (option_t::NEWLINE_CR):
-							// Выполняем установку флага
-							option |= PCRE_NEWLINE_CR;
-						break;
-						// Если передан флаг то будет установлен LF в качестве последовательности новой строки
-						case static_cast <uint8_t> (option_t::NEWLINE_LF):
-							// Выполняем установку флага
-							option |= PCRE_NEWLINE_LF;
-						break;
-						// Если передан флаг то будет установлен CRLF в качестве последовательности новой строки
-						case static_cast <uint8_t> (option_t::NEWLINE_CRLF):
-							// Выполняем установку флага
-							option |= PCRE_NEWLINE_CRLF;
-						break;
-						// Если передан флаг то (\R) будет соответствовать только CR, LF или CRLF
-						case static_cast <uint8_t> (option_t::BSR_ANYCRLF):
-							// Выполняем установку флага
-							option |= PCRE_BSR_ANYCRLF;
-						break;
-						// Если передан флаг то будет скомпилированны автоматические выноски
-						case static_cast <uint8_t> (option_t::AUTO_CALLOUT):
-							// Выполняем установку флага
-							option |= PCRE_AUTO_CALLOUT;
-						break;
-						// Если передан флаг не проверять шаблон на допустимость UTF-8
-						case static_cast <uint8_t> (option_t::NO_UTF8_CHECK):
-							// Выполняем установку флага
-							option |= PCRE_NO_UTF8_CHECK;
-						break;
-						// Если передан флаг отключения пронумерованных скобок захвата (доступны именованные)
-						case static_cast <uint8_t> (option_t::NO_AUTO_CAPTURE):
-							// Выполняем установку флага
-							option |= PCRE_NO_AUTO_CAPTURE;
-						break;
-					}
-				}
-			}
-			// Выполняем компиляцию регулярного выражения
-			result.ctx = pcre_compile(expression.c_str(), option, &result.error, &result.offset, nullptr);
-		#endif
+		}
+		// Выполняем компиляцию регулярного выражения
+		const int error = pcre2_regcomp(&result.reg, pattern.c_str(), option);
+		// Если возникла ошибка компиляции
+		if(!(result.mode = (error == 0))){
+			// Создаём буфер данных для извлечения данных ошибки
+			char buffer[256];
+			// Выполняем заполнение нулями буфер данных
+			::memset(buffer, '\0', sizeof(buffer));
+			// Выполняем извлечение текста ошибки
+			const size_t size = pcre2_regerror(error, &result.reg, buffer, sizeof(buffer) - 1);
+			// Если текст ошибки получен
+			if(size > 0)
+				// Выполняем установку кода ошибки
+				const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+			// Выполняем удаление скомпилированного регулярного выражения
+			pcre2_regfree(&result.reg);
+		}
 	}
 	// Выводим результат
 	return result;

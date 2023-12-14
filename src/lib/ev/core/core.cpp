@@ -1095,30 +1095,41 @@ uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_
 	uint16_t result = 0;
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr)){
-		// Выполняем блокировку потока
-		this->_mtx.timer.lock();
-		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
-		// Выполняем разблокировку потока
-		this->_mtx.timer.unlock();
-		// Получаем идентификатор таймера
-		result = ret.first->first;
-		// Устанавливаем приоритет выполнения
-		ev_set_priority(&ret.first->second->io, 1);
-		// Устанавливаем родительский объект
-		ret.first->second->core = this;
-		// Устанавливаем идентификатор таймера
-		ret.first->second->id = result;
-		// Устанавливаем функцию обратного вызова
-		ret.first->second->fn = callback;
-		// Устанавливаем задержку времени в миллисекундах
-		ret.first->second->delay = (delay / static_cast <float> (1000));
-		// Устанавливаем базу событий
-		ret.first->second->io.set(this->_dispatch.base);
-		// Устанавливаем функцию обратного вызова
-		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
-		// Запускаем работу таймера
-		ret.first->second->io.start(ret.first->second->delay);
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			this->_mtx.timer.lock();
+			// Создаём объект таймера
+			auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
+			// Выполняем разблокировку потока
+			this->_mtx.timer.unlock();
+			// Получаем идентификатор таймера
+			result = ret.first->first;
+			// Устанавливаем приоритет выполнения
+			ev_set_priority(&ret.first->second->io, 1);
+			// Устанавливаем родительский объект
+			ret.first->second->core = this;
+			// Устанавливаем идентификатор таймера
+			ret.first->second->id = result;
+			// Устанавливаем функцию обратного вызова
+			ret.first->second->fn = callback;
+			// Устанавливаем задержку времени в миллисекундах
+			ret.first->second->delay = (delay / static_cast <float> (1000));
+			// Устанавливаем базу событий
+			ret.first->second->io.set(this->_dispatch.base);
+			// Устанавливаем функцию обратного вызова
+			ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
+			// Запускаем работу таймера
+			ret.first->second->io.start(ret.first->second->delay);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -1134,32 +1145,43 @@ uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16
 	uint16_t result = 0;
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr)){
-		// Выполняем блокировку потока
-		this->_mtx.timer.lock();
-		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
-		// Выполняем разблокировку потока
-		this->_mtx.timer.unlock();
-		// Получаем идентификатор таймера
-		result = ret.first->first;
-		// Устанавливаем приоритет выполнения
-		ev_set_priority(&ret.first->second->io, 1);
-		// Устанавливаем родительский объект
-		ret.first->second->core = this;
-		// Устанавливаем идентификатор таймера
-		ret.first->second->id = result;
-		// Устанавливаем функцию обратного вызова
-		ret.first->second->fn = callback;
-		// Устанавливаем флаг персистентной работы
-		ret.first->second->persist = true;
-		// Устанавливаем задержку времени в миллисекундах
-		ret.first->second->delay = (delay / static_cast <float> (1000));
-		// Устанавливаем базу событий
-		ret.first->second->io.set(this->_dispatch.base);
-		// Устанавливаем функцию обратного вызова
-		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
-		// Запускаем работу таймера
-		ret.first->second->io.start(ret.first->second->delay);
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			this->_mtx.timer.lock();
+			// Создаём объект таймера
+			auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
+			// Выполняем разблокировку потока
+			this->_mtx.timer.unlock();
+			// Получаем идентификатор таймера
+			result = ret.first->first;
+			// Устанавливаем приоритет выполнения
+			ev_set_priority(&ret.first->second->io, 1);
+			// Устанавливаем родительский объект
+			ret.first->second->core = this;
+			// Устанавливаем идентификатор таймера
+			ret.first->second->id = result;
+			// Устанавливаем функцию обратного вызова
+			ret.first->second->fn = callback;
+			// Устанавливаем флаг персистентной работы
+			ret.first->second->persist = true;
+			// Устанавливаем задержку времени в миллисекундах
+			ret.first->second->delay = (delay / static_cast <float> (1000));
+			// Устанавливаем базу событий
+			ret.first->second->io.set(this->_dispatch.base);
+			// Устанавливаем функцию обратного вызова
+			ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
+			// Запускаем работу таймера
+			ret.first->second->io.start(ret.first->second->delay);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	}
 	// Выводим результат
 	return result;

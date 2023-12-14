@@ -45,6 +45,7 @@ if [ -n "$1" ]; then
 		# Очищаем подпроекты
 		clean_submodule "zlib"
 		clean_submodule "pcre"
+		clean_submodule "pcre2"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
 		clean_submodule "ngtcp2"
@@ -724,6 +725,84 @@ if [[ ! $OS = "Windows" ]]; then
 		touch "$src/.stamp_done"
 		cd "$ROOT" || exit 1
 	fi
+fi
+
+# Сборка PCRE2
+src="$ROOT/submodules/pcre2"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** PCRE2 ******\n"
+	cd "$src" || exit 1
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		-DCMAKE_SYSTEM_NAME=Windows \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DPCRE2_STATIC_PIC="ON" \
+		-DBUILD_STATIC_LIBS="ON" \
+		-DPCRE2_BUILD_TESTS="OFF" \
+		-DPCRE2_SUPPORT_UNICODE="ON" \
+		-DPCRE2_BUILD_PCRE2_8="ON" \
+		-DPCRE2_BUILD_PCRE2_16="ON" \
+		-DPCRE2_BUILD_PCRE2_32="ON" \
+		-DPCRE2_SUPPORT_JIT="OFF" \
+		-DPCRE2_SUPPORT_LIBZ="OFF" \
+		-DPCRE2_SUPPORT_LIBBZ2="OFF" \
+		-DPCRE2_SUPPORT_LIBEDIT="OFF" \
+		-DPCRE2_SUPPORT_LIBREADLINE="OFF" \
+		-DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		-G "MSYS Makefiles" \
+		.. || exit 1
+	else
+		cmake \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DPCRE2_STATIC_PIC="ON" \
+		-DBUILD_STATIC_LIBS="ON" \
+		-DPCRE2_BUILD_TESTS="OFF" \
+		-DPCRE2_SUPPORT_UNICODE="ON" \
+		-DPCRE2_BUILD_PCRE2_8="ON" \
+		-DPCRE2_BUILD_PCRE2_16="ON" \
+		-DPCRE2_BUILD_PCRE2_32="ON" \
+		-DPCRE2_SUPPORT_JIT="OFF" \
+		-DPCRE2_SUPPORT_LIBZ="OFF" \
+		-DPCRE2_SUPPORT_LIBBZ2="OFF" \
+		-DPCRE2_SUPPORT_LIBEDIT="OFF" \
+		-DPCRE2_SUPPORT_LIBREADLINE="OFF" \
+		-DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		.. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог PCRE
+	mkdir "$PREFIX/include/pcre2"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep "pcre2.*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/pcre2/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/pcre2/$i" || exit 1
+	done
+
+	# Получаем название файла для замены
+	lib=$(ls "$PREFIX/lib" | grep "^libpcre2\-\d\.a")
+	# Выполняем переименование библиотеки
+	mv "$PREFIX/lib/$lib" "$PREFIX/lib/${lib/\-*/}.a"
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
 fi
 
 # Сборка LibXML2

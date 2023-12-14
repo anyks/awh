@@ -261,278 +261,57 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 			switch(static_cast <uint8_t> (this->_settings.sonet)){
 				// Если тип сокета установлен как UDP
 				case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
-					// Создаём бъект брокера
-					unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
-					// Определяем тип протокола подключения
-					switch(static_cast <uint8_t> (this->_settings.family)){
-						// Если тип протокола подключения IPv4
-						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-							// Выполняем перебор всего списка адресов
-							for(auto & host : this->_settings.network){
-								// Если хост соответствует адресу IPv4
-								if(this->_net.host(host) == net_t::type_t::IPV4)
-									// Выполняем установку полученного хоста
-									adj->_addr.network.push_back(host);
-							}
-						} break;
-						// Если тип протокола подключения IPv6
-						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-							// Выполняем перебор всего списка адресов
-							for(auto & host : this->_settings.network){
-								// Если хост соответствует адресу IPv4
-								if(this->_net.host(host) == net_t::type_t::IPV6)
-									// Выполняем установку полученного хоста
-									adj->_addr.network.push_back(host);
-							}
-						} break;
-					}
-					// Устанавливаем параметры сокета
-					adj->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
-					// Если unix-сокет используется
-					if(this->_settings.family == scheme_t::family_t::NIX)
-						// Выполняем инициализацию сокета
-						adj->_addr.init(this->_settings.filename, engine_t::type_t::SERVER);
-					// Если unix-сокет не используется, выполняем инициализацию сокета
-					else adj->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
-					// Выполняем разрешение подключения
-					if(adj->_addr.accept(adj->_addr.fd, 0)){
-						// Получаем адрес подключения клиента
-						adj->_ip = adj->_addr.ip;
-						// Получаем аппаратный адрес клиента
-						adj->_mac = adj->_addr.mac;
-						// Получаем порт подключения клиента
-						adj->_port = adj->_addr.port;
-						// Выполняем установку желаемого протокола подключения
-						adj->_ectx.proto(this->_settings.proto);
-						// Устанавливаем идентификатор брокера
-						adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-						// Выполняем получение контекста сертификата
-						this->_engine.wrap(adj->_ectx, &adj->_addr);
-						// Если подключение не обёрнуто
-						if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
-							// Выводим сообщение об ошибке
-							this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
-							// Выходим из функции
-							return;
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Создаём бъект брокера
+						unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
+						// Определяем тип протокола подключения
+						switch(static_cast <uint8_t> (this->_settings.family)){
+							// Если тип протокола подключения IPv4
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+								// Выполняем перебор всего списка адресов
+								for(auto & host : this->_settings.network){
+									// Если хост соответствует адресу IPv4
+									if(this->_net.host(host) == net_t::type_t::IPV4)
+										// Выполняем установку полученного хоста
+										adj->_addr.network.push_back(host);
+								}
+							} break;
+							// Если тип протокола подключения IPv6
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+								// Выполняем перебор всего списка адресов
+								for(auto & host : this->_settings.network){
+									// Если хост соответствует адресу IPv4
+									if(this->_net.host(host) == net_t::type_t::IPV6)
+										// Выполняем установку полученного хоста
+										adj->_addr.network.push_back(host);
+								}
+							} break;
 						}
-						// Выполняем блокировку потока
-						this->_mtx.accept.lock();
-						// Добавляем созданного брокера в список брокеров
-						auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
-						// Добавляем брокера в список подключений
-						this->_brokers.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->_mtx.accept.unlock();
-						// Переводим сокет в неблокирующий режим
-						ret.first->second->_ectx.block();
-						// Запускаем чтение данных
-						this->events(mode_t::ENABLED, engine_t::method_t::READ, ret.first->first);
-						// Если функция обратного вызова установлена
-						if(shm->callbacks.is("connect"))
-							// Выполняем функцию обратного вызова
-							shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
-					// Подключение не установлено
-					} else {
-						// Выводим сообщение об ошибке
-						this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
-					}
-				} break;
-				// Если подключение зашифрованно
-				case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
-					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
-					if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
-						// Выводим в консоль информацию
-						this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
-						// Выходим
-						break;
-					}
-					// Создаём объект для работы с DTLS
-					unique_ptr <dtls_t> dtls(new dtls_t(this->_log));
-					// Создаём бъект брокера
-					unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
-					// Устанавливаем идентификатор брокера
-					adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-					// Устанавливаем объект сетевого ядра
-					dtls->core = this;
-					// Устанавливаем идентификатор брокера
-					dtls->bid = adj->_bid;
-					// Устанавливаем тип таймера
-					dtls->event.set(-1, EV_TIMEOUT);
-					// Устанавливаем базу данных событий
-					dtls->event.set(this->_dispatch.base);
-					// Устанавливаем функцию обратного вызова
-					dtls->event.set(std::bind(&dtls_t::callback, dtls.get(), _1, _2));
-					// Выполняем установку желаемого протокола подключения
-					adj->_ectx.proto(this->_settings.proto);
-					// Выполняем получение контекста сертификата
-					this->_engine.wrap(adj->_ectx, &shm->_addr, engine_t::type_t::SERVER);
-					// Выполняем блокировку потока
-					this->_mtx.accept.lock();
-					// Добавляем созданного брокера в список брокеров
-					auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
-					// Добавляем брокера в список подключений
-					this->_brokers.emplace(ret.first->first, ret.first->second.get());
-					// Добавляем объект для работы с DTLS в список
-					this->_dtls.emplace(ret.first->first, std::forward <unique_ptr <dtls_t>> (dtls)).first->second->event.start(100);
-					// Выполняем блокировку потока
-					this->_mtx.accept.unlock();
-					// Останавливаем работу сервера
-					shm->_event.stop();
-				} break;
-				// Если тип сокета установлен как TCP/IP
-				case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-				// Если тип сокета установлен как TCP/IP TLS
-				case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-				// Если тип сокета установлен как SCTP DTLS
-				case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
-					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
-					if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
-						// Выводим в консоль информацию
-						this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
-						// Выходим
-						break;
-					}
-					// Создаём бъект брокера
-					unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
-					// Устанавливаем время жизни подключения
-					adj->_addr.alive = shm->keepAlive;
-					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						/**
-						 * Если операционной системой является Linux или FreeBSD
-						 */
-						#if defined(__linux__) || defined(__FreeBSD__)
-							// Если тип сокета установлен как SCTP
-							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-								// Устанавливаем параметры сокета
-								adj->_addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
-							break;
-						#endif
-						// Для всех остальных типов сокетов
-						default:
-							// Устанавливаем параметры сокета
-							adj->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
-					}
-					// Выполняем разрешение подключения
-					if(adj->_addr.accept(shm->_addr)){
-						// Если MAC или IP-адрес не получен, тогда выходим
-						if(adj->_addr.mac.empty() || adj->_addr.ip.empty()){
-							// Выполняем очистку контекста двигателя
-							adj->_ectx.clear();
-							// Если подключение не установлено, выводим сообщение об ошибке
-							this->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
-						// Если все данные получены
-						} else {
+						// Устанавливаем параметры сокета
+						adj->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+						// Если unix-сокет используется
+						if(this->_settings.family == scheme_t::family_t::NIX)
+							// Выполняем инициализацию сокета
+							adj->_addr.init(this->_settings.filename, engine_t::type_t::SERVER);
+						// Если unix-сокет не используется, выполняем инициализацию сокета
+						else adj->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
+						// Выполняем разрешение подключения
+						if(adj->_addr.accept(adj->_addr.fd, 0)){
 							// Получаем адрес подключения клиента
 							adj->_ip = adj->_addr.ip;
 							// Получаем аппаратный адрес клиента
 							adj->_mac = adj->_addr.mac;
 							// Получаем порт подключения клиента
 							adj->_port = adj->_addr.port;
-							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
-								// Если порт установлен
-								if(adj->_port > 0){
-									// Выводим сообщение об ошибке
-									this->_log->print(
-										"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-										log_t::flag_t::WARNING,
-										adj->_ip.c_str(),
-										adj->_port,
-										adj->_mac.c_str(),
-										adj->_addr.fd,
-										getpid()
-									);
-									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-											"error",
-											log_t::flag_t::WARNING,
-											error_t::ACCEPT,
-											this->_fmk->format(
-												"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-												adj->_ip.c_str(),
-												adj->_port,
-												adj->_mac.c_str(),
-												adj->_addr.fd,
-												getpid()
-											)
-										);
-								// Если порт не установлен
-								} else {
-									// Выводим сообщение об ошибке
-									this->_log->print(
-										"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-										log_t::flag_t::WARNING,
-										adj->_ip.c_str(),
-										adj->_mac.c_str(),
-										adj->_addr.fd,
-										getpid()
-									);
-									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-											"error",
-											log_t::flag_t::WARNING,
-											error_t::ACCEPT,
-											this->_fmk->format(
-												"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-												adj->_ip.c_str(),
-												adj->_mac.c_str(),
-												adj->_addr.fd,
-												getpid()
-											)
-										);
-								}
-								// Выполняем очистку контекста двигателя
-								adj->_ectx.clear();
-								// Выходим
-								break;
-							}
 							// Выполняем установку желаемого протокола подключения
 							adj->_ectx.proto(this->_settings.proto);
 							// Устанавливаем идентификатор брокера
 							adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата
 							this->_engine.wrap(adj->_ectx, &adj->_addr);
-							// Если мы хотим работать в зашифрованном режиме
-							if(this->_settings.sonet == scheme_t::sonet_t::TLS){
-								// Если сертификаты не приняты, выходим
-								if(!this->_engine.encrypted(adj->_ectx)){
-									// Выполняем очистку контекста двигателя
-									adj->_ectx.clear();
-									// Выводим сообщение об ошибке
-									this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
-									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Encryption mode cannot be activated");
-									// Выходим
-									break;
-								}
-							}
 							// Если подключение не обёрнуто
 							if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
 								// Выводим сообщение об ошибке
@@ -541,8 +320,8 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
-								// Выходим
-								break;
+								// Выходим из функции
+								return;
 							}
 							// Выполняем блокировку потока
 							this->_mtx.accept.lock();
@@ -553,47 +332,301 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Выполняем блокировку потока
 							this->_mtx.accept.unlock();
 							// Переводим сокет в неблокирующий режим
-							ret.first->second->_ectx.noblock();
-							// Если вывод информационных данных не запрещён
-							if(!this->_noinfo){
-								// Если порт установлен
-								if(ret.first->second->_port > 0){
-									// Выводим в консоль информацию
-									this->_log->print(
-										"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
-										log_t::flag_t::INFO,
-										ret.first->second->_ip.c_str(),
-										ret.first->second->_port,
-										ret.first->second->_mac.c_str(),
-										ret.first->second->_addr.fd, getpid()
-									);
-								// Если порт не установлен
-								} else {
-									// Выводим в консоль информацию
-									this->_log->print(
-										"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
-										log_t::flag_t::INFO,
-										ret.first->second->_ip.c_str(),
-										ret.first->second->_mac.c_str(),
-										ret.first->second->_addr.fd, getpid()
-									);
-								}
-							}
+							ret.first->second->_ectx.block();
 							// Запускаем чтение данных
 							this->events(mode_t::ENABLED, engine_t::method_t::READ, ret.first->first);
 							// Если функция обратного вызова установлена
 							if(shm->callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
 								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
+						// Подключение не установлено
+						} else {
+							// Выводим сообщение об ошибке
+							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
 						}
-					// Если подключение не установлено
-					} else {
-						// Выводим сообщение об ошибке
-						this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc &) {
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+				} break;
+				// Если подключение зашифрованно
+				case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
+						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
+							// Выводим в консоль информацию
+							this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+							// Выходим
+							break;
+						}
+						// Создаём объект для работы с DTLS
+						unique_ptr <dtls_t> dtls(new dtls_t(this->_log));
+						// Создаём бъект брокера
+						unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
+						// Устанавливаем идентификатор брокера
+						adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+						// Устанавливаем объект сетевого ядра
+						dtls->core = this;
+						// Устанавливаем идентификатор брокера
+						dtls->bid = adj->_bid;
+						// Устанавливаем тип таймера
+						dtls->event.set(-1, EV_TIMEOUT);
+						// Устанавливаем базу данных событий
+						dtls->event.set(this->_dispatch.base);
+						// Устанавливаем функцию обратного вызова
+						dtls->event.set(std::bind(&dtls_t::callback, dtls.get(), _1, _2));
+						// Выполняем установку желаемого протокола подключения
+						adj->_ectx.proto(this->_settings.proto);
+						// Выполняем получение контекста сертификата
+						this->_engine.wrap(adj->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+						// Выполняем блокировку потока
+						this->_mtx.accept.lock();
+						// Добавляем созданного брокера в список брокеров
+						auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
+						// Добавляем брокера в список подключений
+						this->_brokers.emplace(ret.first->first, ret.first->second.get());
+						// Добавляем объект для работы с DTLS в список
+						this->_dtls.emplace(ret.first->first, std::forward <unique_ptr <dtls_t>> (dtls)).first->second->event.start(100);
+						// Выполняем блокировку потока
+						this->_mtx.accept.unlock();
+						// Останавливаем работу сервера
+						shm->_event.stop();
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc &) {
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+				} break;
+				// Если тип сокета установлен как TCP/IP
+				case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+				// Если тип сокета установлен как TCP/IP TLS
+				case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+				// Если тип сокета установлен как SCTP DTLS
+				case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
+						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
+							// Выводим в консоль информацию
+							this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+							// Выходим
+							break;
+						}
+						// Создаём бъект брокера
+						unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
+						// Устанавливаем время жизни подключения
+						adj->_addr.alive = shm->keepAlive;
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							/**
+							 * Если операционной системой является Linux или FreeBSD
+							 */
+							#if defined(__linux__) || defined(__FreeBSD__)
+								// Если тип сокета установлен как SCTP
+								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+									// Устанавливаем параметры сокета
+									adj->_addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+								break;
+							#endif
+							// Для всех остальных типов сокетов
+							default:
+								// Устанавливаем параметры сокета
+								adj->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+						}
+						// Выполняем разрешение подключения
+						if(adj->_addr.accept(shm->_addr)){
+							// Если MAC или IP-адрес не получен, тогда выходим
+							if(adj->_addr.mac.empty() || adj->_addr.ip.empty()){
+								// Выполняем очистку контекста двигателя
+								adj->_ectx.clear();
+								// Если подключение не установлено, выводим сообщение об ошибке
+								this->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
+							// Если все данные получены
+							} else {
+								// Получаем адрес подключения клиента
+								adj->_ip = adj->_addr.ip;
+								// Получаем аппаратный адрес клиента
+								adj->_mac = adj->_addr.mac;
+								// Получаем порт подключения клиента
+								adj->_port = adj->_addr.port;
+								// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+								if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
+									// Если порт установлен
+									if(adj->_port > 0){
+										// Выводим сообщение об ошибке
+										this->_log->print(
+											"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+											log_t::flag_t::WARNING,
+											adj->_ip.c_str(),
+											adj->_port,
+											adj->_mac.c_str(),
+											adj->_addr.fd,
+											getpid()
+										);
+										// Если функция обратного вызова установлена
+										if(this->_callbacks.is("error"))
+											// Выполняем функцию обратного вызова
+											this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+												"error",
+												log_t::flag_t::WARNING,
+												error_t::ACCEPT,
+												this->_fmk->format(
+													"Access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+													adj->_ip.c_str(),
+													adj->_port,
+													adj->_mac.c_str(),
+													adj->_addr.fd,
+													getpid()
+												)
+											);
+									// Если порт не установлен
+									} else {
+										// Выводим сообщение об ошибке
+										this->_log->print(
+											"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+											log_t::flag_t::WARNING,
+											adj->_ip.c_str(),
+											adj->_mac.c_str(),
+											adj->_addr.fd,
+											getpid()
+										);
+										// Если функция обратного вызова установлена
+										if(this->_callbacks.is("error"))
+											// Выполняем функцию обратного вызова
+											this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+												"error",
+												log_t::flag_t::WARNING,
+												error_t::ACCEPT,
+												this->_fmk->format(
+													"Access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+													adj->_ip.c_str(),
+													adj->_mac.c_str(),
+													adj->_addr.fd,
+													getpid()
+												)
+											);
+									}
+									// Выполняем очистку контекста двигателя
+									adj->_ectx.clear();
+									// Выходим
+									break;
+								}
+								// Выполняем установку желаемого протокола подключения
+								adj->_ectx.proto(this->_settings.proto);
+								// Устанавливаем идентификатор брокера
+								adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								// Выполняем получение контекста сертификата
+								this->_engine.wrap(adj->_ectx, &adj->_addr);
+								// Если мы хотим работать в зашифрованном режиме
+								if(this->_settings.sonet == scheme_t::sonet_t::TLS){
+									// Если сертификаты не приняты, выходим
+									if(!this->_engine.encrypted(adj->_ectx)){
+										// Выполняем очистку контекста двигателя
+										adj->_ectx.clear();
+										// Выводим сообщение об ошибке
+										this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+										// Если функция обратного вызова установлена
+										if(this->_callbacks.is("error"))
+											// Выполняем функцию обратного вызова
+											this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Encryption mode cannot be activated");
+										// Выходим
+										break;
+									}
+								}
+								// Если подключение не обёрнуто
+								if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
+									// Выводим сообщение об ошибке
+									this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+									// Если функция обратного вызова установлена
+									if(this->_callbacks.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
+									// Выходим
+									break;
+								}
+								// Выполняем блокировку потока
+								this->_mtx.accept.lock();
+								// Добавляем созданного брокера в список брокеров
+								auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
+								// Добавляем брокера в список подключений
+								this->_brokers.emplace(ret.first->first, ret.first->second.get());
+								// Выполняем блокировку потока
+								this->_mtx.accept.unlock();
+								// Переводим сокет в неблокирующий режим
+								ret.first->second->_ectx.noblock();
+								// Если вывод информационных данных не запрещён
+								if(!this->_noinfo){
+									// Если порт установлен
+									if(ret.first->second->_port > 0){
+										// Выводим в консоль информацию
+										this->_log->print(
+											"Connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+											log_t::flag_t::INFO,
+											ret.first->second->_ip.c_str(),
+											ret.first->second->_port,
+											ret.first->second->_mac.c_str(),
+											ret.first->second->_addr.fd, getpid()
+										);
+									// Если порт не установлен
+									} else {
+										// Выводим в консоль информацию
+										this->_log->print(
+											"Connect to server client [%s], mac = %s, socket = %d, pid = %d",
+											log_t::flag_t::INFO,
+											ret.first->second->_ip.c_str(),
+											ret.first->second->_mac.c_str(),
+											ret.first->second->_addr.fd, getpid()
+										);
+									}
+								}
+								// Запускаем чтение данных
+								this->events(mode_t::ENABLED, engine_t::method_t::READ, ret.first->first);
+								// Если функция обратного вызова установлена
+								if(shm->callbacks.is("connect"))
+									// Выполняем функцию обратного вызова
+									shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
+							}
+						// Если подключение не установлено
+						} else {
+							// Выводим сообщение об ошибке
+							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+						}
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc &) {
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
 					}
 				} break;
 			}
@@ -943,88 +976,99 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				const int64_t size = adj->_ectx.buffer(engine_t::method_t::READ);
 				// Если размер буфера получен
 				if(size > 0){
-					// Количество полученных байт
-					int64_t bytes = -1;
-					// Создаём буфер входящих данных
-					unique_ptr <char []> buffer(new char [size]);
-					// Выполняем чтение данных с сокета
-					do {
-						// Если подключение выполнено и чтение данных разрешено
-						if(!adj->_bev.locked.read){
-							// Выполняем обнуление буфера данных
-							::memset(buffer.get(), 0, size);
-							// Выполняем получение сообщения от клиента
-							bytes = adj->_ectx.read(buffer.get(), size);
-							// Если данные получены
-							if(bytes > 0){
-								// Если флаг ожидания входящих сообщений, активирован
-								if(adj->_timeouts.read > 0){
-									// Определяем тип активного сокета
-									switch(static_cast <uint8_t> (this->_settings.sonet)){
-										// Если тип сокета установлен как UDP
-										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-										// Если тип сокета установлен как DTLS
-										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
-										// Останавливаем таймаут ожидания на чтение из сокета
-										default: adj->_bev.timers.read.stop();
-									}
-								}
-								// Если данные считанные из буфера, больше размера ожидающего буфера
-								if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
-									// Смещение в буфере и отправляемый размер данных
-									size_t offset = 0, actual = 0;
-									// Выполняем пересылку всех полученных данных
-									while((bytes - offset) > 0){
-										// Определяем размер отправляемых данных
-										actual = ((bytes - offset) >= adj->_marker.read.max ? adj->_marker.read.max : (bytes - offset));
-										// Если функция обратного вызова на получение данных установлена
-										if(shm->callbacks.is("read"))
-											// Выводим функцию обратного вызова
-											shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-										// Увеличиваем смещение в буфере
-										offset += actual;
-									}
-								// Если данных достаточно и функция обратного вызова на получение данных установлена
-								} else if(shm->callbacks.is("read"))
-									// Выводим функцию обратного вызова
-									shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-								// Если флаг ожидания входящих сообщений, активирован
-								if(adj->_timeouts.read > 0){
-									// Определяем тип активного сокета
-									switch(static_cast <uint8_t> (this->_settings.sonet)){
-										// Если тип сокета установлен как UDP
-										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-										// Если тип сокета установлен как DTLS
-										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-											// Выполняем установку таймаута ожидания
-											adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-										break;
-										// Для всех остальных протоколов
-										default: {
-											// Если время ожидания чтения данных установлено
-											if(shm->wait)
-												// Запускаем работу таймера
-												adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Количество полученных байт
+						int64_t bytes = -1;
+						// Создаём буфер входящих данных
+						unique_ptr <char []> buffer(new char [size]);
+						// Выполняем чтение данных с сокета
+						do {
+							// Если подключение выполнено и чтение данных разрешено
+							if(!adj->_bev.locked.read){
+								// Выполняем обнуление буфера данных
+								::memset(buffer.get(), 0, size);
+								// Выполняем получение сообщения от клиента
+								bytes = adj->_ectx.read(buffer.get(), size);
+								// Если данные получены
+								if(bytes > 0){
+									// Если флаг ожидания входящих сообщений, активирован
+									if(adj->_timeouts.read > 0){
+										// Определяем тип активного сокета
+										switch(static_cast <uint8_t> (this->_settings.sonet)){
+											// Если тип сокета установлен как UDP
+											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+											// Если тип сокета установлен как DTLS
+											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
+											// Останавливаем таймаут ожидания на чтение из сокета
+											default: adj->_bev.timers.read.stop();
 										}
 									}
+									// Если данные считанные из буфера, больше размера ожидающего буфера
+									if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
+										// Смещение в буфере и отправляемый размер данных
+										size_t offset = 0, actual = 0;
+										// Выполняем пересылку всех полученных данных
+										while((bytes - offset) > 0){
+											// Определяем размер отправляемых данных
+											actual = ((bytes - offset) >= adj->_marker.read.max ? adj->_marker.read.max : (bytes - offset));
+											// Если функция обратного вызова на получение данных установлена
+											if(shm->callbacks.is("read"))
+												// Выводим функцию обратного вызова
+												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											// Увеличиваем смещение в буфере
+											offset += actual;
+										}
+									// Если данных достаточно и функция обратного вызова на получение данных установлена
+									} else if(shm->callbacks.is("read"))
+										// Выводим функцию обратного вызова
+										shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+									// Если флаг ожидания входящих сообщений, активирован
+									if(adj->_timeouts.read > 0){
+										// Определяем тип активного сокета
+										switch(static_cast <uint8_t> (this->_settings.sonet)){
+											// Если тип сокета установлен как UDP
+											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+											// Если тип сокета установлен как DTLS
+											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+												// Выполняем установку таймаута ожидания
+												adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+											break;
+											// Для всех остальных протоколов
+											default: {
+												// Если время ожидания чтения данных установлено
+												if(shm->wait)
+													// Запускаем работу таймера
+													adj->_bev.timers.read.start(adj->_timeouts.read * 1000);
+											}
+										}
+									}
+								// Если данные небыли получены
+								} else if(bytes <= 0) {
+									// Если чтение не выполнена, закрываем подключение
+									if(bytes == 0)
+										// Выполняем закрытие подключения
+										this->close(bid);
+									// Выходим из цикла
+									break;
 								}
-							// Если данные небыли получены
-							} else if(bytes <= 0) {
-								// Если чтение не выполнена, закрываем подключение
-								if(bytes == 0)
-									// Выполняем закрытие подключения
-									this->close(bid);
-								// Выходим из цикла
-								break;
-							}
-						// Выходим из цикла
-						} else break;
-					// Выполняем чтение до тех пор, пока всё не прочитаем
-					} while(this->_brokers.count(bid) > 0);
-					// Если тип сокета не установлен как UDP, запускаем чтение дальше
-					if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
-						// Запускаем событие на чтение базы событий
-						adj->_bev.events.read.start();
+							// Выходим из цикла
+							} else break;
+						// Выполняем чтение до тех пор, пока всё не прочитаем
+						} while(this->_brokers.count(bid) > 0);
+						// Если тип сокета не установлен как UDP, запускаем чтение дальше
+						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
+							// Запускаем событие на чтение базы событий
+							adj->_bev.events.read.start();
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc &) {
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
 				// Выполняем отключение клиента
 				} else this->close(bid);
 			}

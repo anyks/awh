@@ -2689,26 +2689,11 @@ awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеё
 	// Устанавливаем локализацию системы
 	this->setLocale();
 	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга времени
-	this->_seconds = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {regexp_t::option_t::UTF8});
 }
 /**
  * Framework Конструктор
@@ -2718,26 +2703,11 @@ awh::Framework::Framework(const string & locale) noexcept : _nwt("абвгдеё
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
 	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга секунд
-	this->_seconds = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build(
-		"([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
-	);
+	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {regexp_t::option_t::UTF8});
 }
 /**
  * ~Framework Деструктор

@@ -76,243 +76,344 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если подключение ещё не выполнено и выполнение работ разрешено
 			if((shm->status.real == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
-				// Запрещаем выполнение работы
-				shm->status.work = scheme_t::work_t::DISALLOW;
-				// Устанавливаем флаг ожидания статуса
-				shm->status.wait = scheme_t::mode_t::DISCONNECT;
-				// Устанавливаем статус подключения
-				shm->status.real = scheme_t::mode_t::PRECONNECT;
-				// Получаем URL параметры запроса
-				const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
-				// Получаем семейство интернет-протоколов
-				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
-				// Если в схеме сети есть подключённые клиенты
-				if(!shm->_brokers.empty()){
-					// Переходим по всему списку брокера
-					for(auto it = shm->_brokers.begin(); it != shm->_brokers.end();){
-						// Если блокировка брокера не установлена
-						if(this->_locking.count(it->first) < 1){
-							// Получаем объект брокера
-							awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second.get());
-							// Выполняем очистку буфера событий
-							this->clean(it->first);
-							// Выполняем очистку контекста двигателя
-							adj->_ectx.clear();
-							// Удаляем брокера из списка подключений
-							this->_brokers.erase(it->first);
-							// Удаляем брокера из списка
-							it = shm->_brokers.erase(it);
-						// Если есть хотябы один заблокированный элемент, выходим
-						} else {
-							// Устанавливаем статус подключения
-							shm->status.real = scheme_t::mode_t::DISCONNECT;
-							// Выходим из функции
-							return;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Запрещаем выполнение работы
+					shm->status.work = scheme_t::work_t::DISALLOW;
+					// Устанавливаем флаг ожидания статуса
+					shm->status.wait = scheme_t::mode_t::DISCONNECT;
+					// Устанавливаем статус подключения
+					shm->status.real = scheme_t::mode_t::PRECONNECT;
+					// Получаем URL параметры запроса
+					const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
+					// Получаем семейство интернет-протоколов
+					const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
+					// Если в схеме сети есть подключённые клиенты
+					if(!shm->_brokers.empty()){
+						// Переходим по всему списку брокера
+						for(auto it = shm->_brokers.begin(); it != shm->_brokers.end();){
+							// Если блокировка брокера не установлена
+							if(this->_locking.count(it->first) < 1){
+								// Получаем объект брокера
+								awh::scheme_t::broker_t * adj = const_cast <awh::scheme_t::broker_t *> (it->second.get());
+								// Выполняем очистку буфера событий
+								this->clean(it->first);
+								// Выполняем очистку контекста двигателя
+								adj->_ectx.clear();
+								// Удаляем брокера из списка подключений
+								this->_brokers.erase(it->first);
+								// Удаляем брокера из списка
+								it = shm->_brokers.erase(it);
+							// Если есть хотябы один заблокированный элемент, выходим
+							} else {
+								// Устанавливаем статус подключения
+								shm->status.real = scheme_t::mode_t::DISCONNECT;
+								// Выходим из функции
+								return;
+							}
 						}
 					}
-				}
-				// Создаём бъект брокера
-				unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
-				// Устанавливаем время жизни подключения
-				adj->_addr.alive = shm->keepAlive;
-				// Определяем тип протокола подключения
-				switch(static_cast <uint8_t> (family)){
-					// Если тип протокола подключения IPv4
-					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-						// Выполняем перебор всего списка адресов
-						for(auto & host : this->_settings.network){
-							// Если хост соответствует адресу IPv4
-							if(this->_net.host(host) == net_t::type_t::IPV4)
-								// Выполняем установку полученного хоста
-								adj->_addr.network.push_back(host);
-						}
-					} break;
-					// Если тип протокола подключения IPv6
-					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-						// Выполняем перебор всего списка адресов
-						for(auto & host : this->_settings.network){
-							// Если хост соответствует адресу IPv4
-							if(this->_net.host(host) == net_t::type_t::IPV6)
-								// Выполняем установку полученного хоста
-								adj->_addr.network.push_back(host);
-						}
-					} break;
-				}
-				// Определяем тип сокета
-				switch(static_cast <uint8_t> (this->_settings.sonet)){
-					// Если тип сокета UDP
-					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-					// Если тип сокета UDP TLS
-					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-						// Устанавливаем параметры сокета
-						adj->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
-					break;
-					/**
-					 * Если операционной системой является Linux или FreeBSD
-					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
-						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+					// Создаём бъект брокера
+					unique_ptr <awh::scheme_t::broker_t> adj(new awh::scheme_t::broker_t(shm, this->_fmk, this->_log));
+					// Устанавливаем время жизни подключения
+					adj->_addr.alive = shm->keepAlive;
+					// Определяем тип протокола подключения
+					switch(static_cast <uint8_t> (family)){
+						// Если тип протокола подключения IPv4
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+							// Выполняем перебор всего списка адресов
+							for(auto & host : this->_settings.network){
+								// Если хост соответствует адресу IPv4
+								if(this->_net.host(host) == net_t::type_t::IPV4)
+									// Выполняем установку полученного хоста
+									adj->_addr.network.push_back(host);
+							}
+						} break;
+						// Если тип протокола подключения IPv6
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+							// Выполняем перебор всего списка адресов
+							for(auto & host : this->_settings.network){
+								// Если хост соответствует адресу IPv4
+								if(this->_net.host(host) == net_t::type_t::IPV6)
+									// Выполняем установку полученного хоста
+									adj->_addr.network.push_back(host);
+							}
+						} break;
+					}
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета UDP
+						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+						// Если тип сокета UDP TLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 							// Устанавливаем параметры сокета
-							adj->_addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+							adj->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 						break;
-					#endif
-					// Если тип сокета TCP
-					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-					// Если тип сокета TCP TLS
-					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-						// Устанавливаем параметры сокета
-						adj->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
-					break;
-				}
-				// Если unix-сокет используется
-				if(family == scheme_t::family_t::NIX)
-					// Выполняем инициализацию сокета
-					adj->_addr.init(this->_settings.filename, engine_t::type_t::CLIENT);
-				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else adj->_addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
-				// Если сокет подключения получен
-				if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
-					// Выполняем установку желаемого протокола подключения
-					adj->_ectx.proto(this->_settings.proto);
-					// Устанавливаем идентификатор брокера
-					adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-					// Если подключение выполняется по защищённому каналу DTLS
-					if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
-						// Выполняем получение контекста сертификата
-						this->_engine.wrap(adj->_ectx, &adj->_addr, engine_t::type_t::CLIENT);
-					// Если подключение выполняется не по защищённому каналу DTLS
-					else {
-						// Хост сервера для подклчюения
-						const char * host = nullptr;
-						// Если unix-сокет используется
-						if(family == scheme_t::family_t::NIX)
-							// Выполняем получение хост сервера
-							host = url.host.c_str();
-						// Если подключение производится по хосту и порту
-						else host = (!url.domain.empty() ? url.domain.c_str() : (!url.ip.empty() ? url.ip.c_str() : nullptr));
-						// Если хост сервера получен правильно
-						if(host != nullptr){
-							// Если функция обратного вызова активации шифрованного SSL канала установлена
-							if((shm->callbacks.is("ssl")))
-								// Выполняем активацию шифрованного SSL канала
-								this->_engine.encrypted(shm->callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
-							// Выполняем активацию контекста подключения
-							this->_engine.wrap(adj->_ectx, &adj->_addr, host);
-						// Если хост сервера не получен
+						/**
+						 * Если операционной системой является Linux или FreeBSD
+						 */
+						#if defined(__linux__) || defined(__FreeBSD__)
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Устанавливаем параметры сокета
+								adj->_addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+							break;
+						#endif
+						// Если тип сокета TCP
+						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+						// Если тип сокета TCP TLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Устанавливаем параметры сокета
+							adj->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+						break;
+					}
+					// Если unix-сокет используется
+					if(family == scheme_t::family_t::NIX)
+						// Выполняем инициализацию сокета
+						adj->_addr.init(this->_settings.filename, engine_t::type_t::CLIENT);
+					// Если unix-сокет не используется, выполняем инициализацию сокета
+					else adj->_addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
+					// Если сокет подключения получен
+					if((adj->_addr.fd != INVALID_SOCKET) && (adj->_addr.fd < MAX_SOCKETS)){
+						// Выполняем установку желаемого протокола подключения
+						adj->_ectx.proto(this->_settings.proto);
+						// Устанавливаем идентификатор брокера
+						adj->_bid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+						// Если подключение выполняется по защищённому каналу DTLS
+						if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
+							// Выполняем получение контекста сертификата
+							this->_engine.wrap(adj->_ectx, &adj->_addr, engine_t::type_t::CLIENT);
+						// Если подключение выполняется не по защищённому каналу DTLS
+						else {
+							// Хост сервера для подклчюения
+							const char * host = nullptr;
+							// Если unix-сокет используется
+							if(family == scheme_t::family_t::NIX)
+								// Выполняем получение хост сервера
+								host = url.host.c_str();
+							// Если подключение производится по хосту и порту
+							else host = (!url.domain.empty() ? url.domain.c_str() : (!url.ip.empty() ? url.ip.c_str() : nullptr));
+							// Если хост сервера получен правильно
+							if(host != nullptr){
+								// Если функция обратного вызова активации шифрованного SSL канала установлена
+								if((shm->callbacks.is("ssl")))
+									// Выполняем активацию шифрованного SSL канала
+									this->_engine.encrypted(shm->callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t, awh::core_t *)> ("ssl", url, adj->_bid, shm->sid, this), adj->_ectx);
+								// Выполняем активацию контекста подключения
+								this->_engine.wrap(adj->_ectx, &adj->_addr, host);
+							// Если хост сервера не получен
+							} else {
+								// Разрешаем выполнение работы
+								shm->status.work = scheme_t::work_t::ALLOW;
+								// Устанавливаем статус подключения
+								shm->status.real = scheme_t::mode_t::DISCONNECT;
+								// Устанавливаем флаг ожидания статуса
+								shm->status.wait = scheme_t::mode_t::DISCONNECT;
+								// Выводим сообщение об ошибке
+								this->_log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
+								// Если разрешено выводить информационные сообщения
+								if(!this->_noinfo)
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
+								// Если функция обратного вызова установлена
+								if(shm->callbacks.is("disconnect"))
+									// Выполняем функцию обратного вызова
+									shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
+								// Выходим из функции
+								return;
+							}
+						}
+						// Если мы хотим работать в зашифрованном режиме
+						if(!shm->isProxy() && (this->_settings.sonet == scheme_t::sonet_t::TLS)){
+							// Если сертификаты не приняты, выходим
+							if(!this->_engine.encrypted(adj->_ectx)){
+								// Разрешаем выполнение работы
+								shm->status.work = scheme_t::work_t::ALLOW;
+								// Устанавливаем статус подключения
+								shm->status.real = scheme_t::mode_t::DISCONNECT;
+								// Устанавливаем флаг ожидания статуса
+								shm->status.wait = scheme_t::mode_t::DISCONNECT;
+								// Выводим сообщение об ошибке
+								this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+								// Если разрешено выводить информационные сообщения
+								if(!this->_noinfo)
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Encryption mode cannot be activated");
+								// Если функция обратного вызова установлена
+								if(shm->callbacks.is("disconnect"))
+									// Выполняем функцию обратного вызова
+									shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
+								// Выходим из функции
+								return;
+							}
+						}
+						// Если подключение не обёрнуто
+						if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
+							// Запрещаем чтение данных с сервера
+							adj->_bev.locked.read = true;
+							// Запрещаем запись данных на сервер
+							adj->_bev.locked.write = true;
+							// Разрешаем выполнение работы
+							shm->status.work = scheme_t::work_t::ALLOW;
+							// Устанавливаем статус подключения
+							shm->status.real = scheme_t::mode_t::DISCONNECT;
+							// Устанавливаем флаг ожидания статуса
+							shm->status.wait = scheme_t::mode_t::DISCONNECT;
+							// Выводим сообщение об ошибке
+							this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
+							// Выполняем переподключение
+							this->reconnect(sid);
+							// Выходим из функции
+							return;
+						}
+						// Выполняем блокировку потока
+						this->_mtx.connect.lock();
+						// Добавляем созданного брокера в список брокеров
+						auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
+						// Добавляем брокера в список подключений
+						this->_brokers.emplace(ret.first->first, ret.first->second.get());
+						// Выполняем блокировку потока
+						this->_mtx.connect.unlock();
+						// Если подключение к серверу не выполнено
+						if(!ret.first->second->_addr.connect()){
+							// Запрещаем чтение данных с сервера
+							ret.first->second->_bev.locked.read = true;
+							// Запрещаем запись данных на сервер
+							ret.first->second->_bev.locked.write = true;
+							// Разрешаем выполнение работы
+							shm->status.work = scheme_t::work_t::ALLOW;
+							// Устанавливаем статус подключения
+							shm->status.real = scheme_t::mode_t::DISCONNECT;
+							// Устанавливаем флаг ожидания статуса
+							shm->status.wait = scheme_t::mode_t::DISCONNECT;
+							// Если unix-сокет используется
+							if(family == scheme_t::family_t::NIX){
+								// Выводим ионформацию об обрыве подключении по unix-сокету
+								this->_log->print("Connecting to socket = %s", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to socket = %s", this->_settings.filename.c_str()));
+							// Если используется хост и порт
+							} else {
+								// Выводим ионформацию об обрыве подключении по хосту и порту
+								this->_log->print("Connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
+							}
+							// Если объект DNS-резовлера установлен
+							if(this->_dns != nullptr){
+								// Выполняем сброс кэша резолвера
+								this->_dns->flush();
+								// Определяем тип подключения
+								switch(static_cast <uint8_t> (family)){
+									// Если тип протокола подключения IPv4
+									case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+										// Добавляем бракованный IPv4 адрес в список адресов
+										this->_dns->setToBlackList(AF_INET, url.domain, url.ip); 
+									break;
+									// Если тип протокола подключения IPv6
+									case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+										// Добавляем бракованный IPv6 адрес в список адресов
+										this->_dns->setToBlackList(AF_INET6, url.domain, url.ip);
+									break;
+								}
+							}
+							// Если доменный адрес установлен
+							if(!url.domain.empty())
+								// Выполняем очистку IP-адреса
+								(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
+							// Выполняем отключение от сервера
+							this->close(ret.first->first);
+							// Выходим из функции
+							return;
+						}
+						// Получаем адрес подключения клиента
+						ret.first->second->_ip = url.ip;
+						// Получаем порт подключения клиента
+						ret.first->second->_port = url.port;
+						// Получаем аппаратный адрес клиента
+						ret.first->second->_mac = ret.first->second->_addr.mac;
+						// Разрешаем выполнение работы
+						shm->status.work = scheme_t::work_t::ALLOW;
+						// Если статус подключения изменился
+						if(shm->status.real != scheme_t::mode_t::PRECONNECT){
+							// Запрещаем чтение данных с сервера
+							ret.first->second->_bev.locked.read = true;
+							// Запрещаем запись данных на сервер
+							ret.first->second->_bev.locked.write = true;
+						// Если статус подключения не изменился
 						} else {
-							// Разрешаем выполнение работы
-							shm->status.work = scheme_t::work_t::ALLOW;
-							// Устанавливаем статус подключения
-							shm->status.real = scheme_t::mode_t::DISCONNECT;
-							// Устанавливаем флаг ожидания статуса
-							shm->status.wait = scheme_t::mode_t::DISCONNECT;
-							// Выводим сообщение об ошибке
-							this->_log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
+							// Активируем ожидание подключения
+							this->events(mode_t::ENABLED, engine_t::method_t::CONNECT, ret.first->first);
 							// Если разрешено выводить информационные сообщения
-							if(!this->_noinfo)
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+							if(!this->_noinfo){
+								// Если unix-сокет используется
+								if(family == scheme_t::family_t::NIX)
+									// Выводим ионформацию об удачном подключении к серверу по unix-сокету
+									this->_log->print("Good host %s, socket = %d", log_t::flag_t::INFO, this->_settings.filename.c_str(), ret.first->second->_addr.fd);
+								// Выводим ионформацию об удачном подключении к серверу по хосту и порту
+								else this->_log->print("Good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->_addr.fd);
+							}
+						}
+						// Выходим из функции
+						return;
+					// Если сокет не создан, выводим в консоль информацию
+					} else {
+						// Если unix-сокет используется
+						if(family == scheme_t::family_t::NIX){
+							// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
+							this->_log->print("Client cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Connection server host is not set");
-							// Если функция обратного вызова установлена
-							if(shm->callbacks.is("disconnect"))
-								// Выполняем функцию обратного вызова
-								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
-							// Выходим из функции
-							return;
-						}
-					}
-					// Если мы хотим работать в зашифрованном режиме
-					if(!shm->isProxy() && (this->_settings.sonet == scheme_t::sonet_t::TLS)){
-						// Если сертификаты не приняты, выходим
-						if(!this->_engine.encrypted(adj->_ectx)){
-							// Разрешаем выполнение работы
-							shm->status.work = scheme_t::work_t::ALLOW;
-							// Устанавливаем статус подключения
-							shm->status.real = scheme_t::mode_t::DISCONNECT;
-							// Устанавливаем флаг ожидания статуса
-							shm->status.wait = scheme_t::mode_t::DISCONNECT;
-							// Выводим сообщение об ошибке
-							this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
-							// Если разрешено выводить информационные сообщения
-							if(!this->_noinfo)
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s]", this->_settings.filename.c_str()));
+						// Если используется хост и порт
+						} else {
+							// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
+							this->_log->print("Client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Encryption mode cannot be activated");
-							// Если функция обратного вызова установлена
-							if(shm->callbacks.is("disconnect"))
-								// Выполняем функцию обратного вызова
-								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
-							// Выходим из функции
-							return;
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
 						}
 					}
-					// Если подключение не обёрнуто
-					if((adj->_addr.fd == INVALID_SOCKET) || (adj->_addr.fd >= MAX_SOCKETS)){
-						// Запрещаем чтение данных с сервера
-						adj->_bev.locked.read = true;
-						// Запрещаем запись данных на сервер
-						adj->_bev.locked.write = true;
+					// Если нужно выполнить автоматическое переподключение
+					if(shm->alive){
 						// Разрешаем выполнение работы
 						shm->status.work = scheme_t::work_t::ALLOW;
 						// Устанавливаем статус подключения
 						shm->status.real = scheme_t::mode_t::DISCONNECT;
 						// Устанавливаем флаг ожидания статуса
 						shm->status.wait = scheme_t::mode_t::DISCONNECT;
-						// Выводим сообщение об ошибке
-						this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, "Wrap engine context is failed");
 						// Выполняем переподключение
 						this->reconnect(sid);
 						// Выходим из функции
 						return;
-					}
-					// Выполняем блокировку потока
-					this->_mtx.connect.lock();
-					// Добавляем созданного брокера в список брокеров
-					auto ret = shm->_brokers.emplace(adj->_bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (adj));
-					// Добавляем брокера в список подключений
-					this->_brokers.emplace(ret.first->first, ret.first->second.get());
-					// Выполняем блокировку потока
-					this->_mtx.connect.unlock();
-					// Если подключение к серверу не выполнено
-					if(!ret.first->second->_addr.connect()){
-						// Запрещаем чтение данных с сервера
-						ret.first->second->_bev.locked.read = true;
-						// Запрещаем запись данных на сервер
-						ret.first->second->_bev.locked.write = true;
+					// Если все попытки исчерпаны
+					} else {
 						// Разрешаем выполнение работы
 						shm->status.work = scheme_t::work_t::ALLOW;
 						// Устанавливаем статус подключения
 						shm->status.real = scheme_t::mode_t::DISCONNECT;
 						// Устанавливаем флаг ожидания статуса
 						shm->status.wait = scheme_t::mode_t::DISCONNECT;
-						// Если unix-сокет используется
-						if(family == scheme_t::family_t::NIX){
-							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->_log->print("Connecting to socket = %s", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to socket = %s", this->_settings.filename.c_str()));
-						// Если используется хост и порт
-						} else {
-							// Выводим ионформацию об обрыве подключении по хосту и порту
-							this->_log->print("Connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
-						}
 						// Если объект DNS-резовлера установлен
 						if(this->_dns != nullptr){
 							// Выполняем сброс кэша резолвера
@@ -331,111 +432,21 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 								break;
 							}
 						}
-						// Если доменный адрес установлен
-						if(!url.domain.empty())
-							// Выполняем очистку IP-адреса
-							(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
-						// Выполняем отключение от сервера
-						this->close(ret.first->first);
-						// Выходим из функции
-						return;
-					}
-					// Получаем адрес подключения клиента
-					ret.first->second->_ip = url.ip;
-					// Получаем порт подключения клиента
-					ret.first->second->_port = url.port;
-					// Получаем аппаратный адрес клиента
-					ret.first->second->_mac = ret.first->second->_addr.mac;
-					// Разрешаем выполнение работы
-					shm->status.work = scheme_t::work_t::ALLOW;
-					// Если статус подключения изменился
-					if(shm->status.real != scheme_t::mode_t::PRECONNECT){
-						// Запрещаем чтение данных с сервера
-						ret.first->second->_bev.locked.read = true;
-						// Запрещаем запись данных на сервер
-						ret.first->second->_bev.locked.write = true;
-					// Если статус подключения не изменился
-					} else {
-						// Активируем ожидание подключения
-						this->events(mode_t::ENABLED, engine_t::method_t::CONNECT, ret.first->first);
 						// Если разрешено выводить информационные сообщения
-						if(!this->_noinfo){
-							// Если unix-сокет используется
-							if(family == scheme_t::family_t::NIX)
-								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->_log->print("Good host %s, socket = %d", log_t::flag_t::INFO, this->_settings.filename.c_str(), ret.first->second->_addr.fd);
-							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->_log->print("Good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->_addr.fd);
-						}
-					}
-					// Выходим из функции
-					return;
-				// Если сокет не создан, выводим в консоль информацию
-				} else {
-					// Если unix-сокет используется
-					if(family == scheme_t::family_t::NIX){
-						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
-						this->_log->print("Client cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.filename.c_str());
+						if(!this->_noinfo)
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
 						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
+						if(shm->callbacks.is("disconnect"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s]", this->_settings.filename.c_str()));
-					// Если используется хост и порт
-					} else {
-						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
-						this->_log->print("Client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
+							shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
 					}
-				}
-				// Если нужно выполнить автоматическое переподключение
-				if(shm->alive){
-					// Разрешаем выполнение работы
-					shm->status.work = scheme_t::work_t::ALLOW;
-					// Устанавливаем статус подключения
-					shm->status.real = scheme_t::mode_t::DISCONNECT;
-					// Устанавливаем флаг ожидания статуса
-					shm->status.wait = scheme_t::mode_t::DISCONNECT;
-					// Выполняем переподключение
-					this->reconnect(sid);
-					// Выходим из функции
-					return;
-				// Если все попытки исчерпаны
-				} else {
-					// Разрешаем выполнение работы
-					shm->status.work = scheme_t::work_t::ALLOW;
-					// Устанавливаем статус подключения
-					shm->status.real = scheme_t::mode_t::DISCONNECT;
-					// Устанавливаем флаг ожидания статуса
-					shm->status.wait = scheme_t::mode_t::DISCONNECT;
-					// Если объект DNS-резовлера установлен
-					if(this->_dns != nullptr){
-						// Выполняем сброс кэша резолвера
-						this->_dns->flush();
-						// Определяем тип подключения
-						switch(static_cast <uint8_t> (family)){
-							// Если тип протокола подключения IPv4
-							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-								// Добавляем бракованный IPv4 адрес в список адресов
-								this->_dns->setToBlackList(AF_INET, url.domain, url.ip); 
-							break;
-							// Если тип протокола подключения IPv6
-							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-								// Добавляем бракованный IPv6 адрес в список адресов
-								this->_dns->setToBlackList(AF_INET6, url.domain, url.ip);
-							break;
-						}
-					}
-					// Если разрешено выводить информационные сообщения
-					if(!this->_noinfo)
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
-					// Если функция обратного вызова установлена
-					if(shm->callbacks.is("disconnect"))
-						// Выполняем функцию обратного вызова
-						shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", 0, sid, this);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const bad_alloc &) {
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
 			}
 		}
@@ -521,35 +532,46 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 	auto it = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
 	if(it != this->_schemes.end()){
-		// Объект таймаута
-		timeout_t * timeout = nullptr;
-		// Выполняем поиск существующего таймаута
-		auto it = this->_timeouts.find(sid);
-		// Если таймаут найден
-		if(it != this->_timeouts.end())
-			// Получаем объект таймаута
-			timeout = it->second.get();
-		// Если таймаут ещё не существует
-		else {
-			// Выполняем блокировку потока
-			this->_mtx.timeout.lock();
-			// Получаем объект таймаута
-			timeout = this->_timeouts.emplace(sid, unique_ptr <timeout_t> (new timeout_t)).first->second.get();
-			// Выполняем разблокировку потока
-			this->_mtx.timeout.unlock();
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Объект таймаута
+			timeout_t * timeout = nullptr;
+			// Выполняем поиск существующего таймаута
+			auto it = this->_timeouts.find(sid);
+			// Если таймаут найден
+			if(it != this->_timeouts.end())
+				// Получаем объект таймаута
+				timeout = it->second.get();
+			// Если таймаут ещё не существует
+			else {
+				// Выполняем блокировку потока
+				this->_mtx.timeout.lock();
+				// Получаем объект таймаута
+				timeout = this->_timeouts.emplace(sid, unique_ptr <timeout_t> (new timeout_t)).first->second.get();
+				// Выполняем разблокировку потока
+				this->_mtx.timeout.unlock();
+			}
+			// Устанавливаем идентификатор таймаута
+			timeout->sid = sid;
+			// Устанавливаем режим работы клиента
+			timeout->mode = mode;
+			// Устанавливаем ядро клиента
+			timeout->core = this;
+			// Устанавливаем базу событий
+			timeout->timer.set(this->_dispatch.base);
+			// Устанавливаем функцию обратного вызова
+			timeout->timer.set <timeout_t, &timeout_t::callback> (timeout);
+			// Запускаем работу таймера
+			timeout->timer.start(5.);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
-		// Устанавливаем идентификатор таймаута
-		timeout->sid = sid;
-		// Устанавливаем режим работы клиента
-		timeout->mode = mode;
-		// Устанавливаем ядро клиента
-		timeout->core = this;
-		// Устанавливаем базу событий
-		timeout->timer.set(this->_dispatch.base);
-		// Устанавливаем функцию обратного вызова
-		timeout->timer.set <timeout_t, &timeout_t::callback> (timeout);
-		// Запускаем работу таймера
-		timeout->timer.start(5.);
 	}
 }
 /**
@@ -1223,103 +1245,114 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					const int64_t size = adj->_ectx.buffer(engine_t::method_t::READ);
 					// Если размер буфера получен
 					if(size > 0){
-						// Количество полученных байт
-						int64_t bytes = -1;
-						// Создаём буфер входящих данных
-						unique_ptr <char []> buffer(new char [size]);
-						// Выполняем чтение данных с сокета
-						do {
-							// Если подключение выполнено
-							if(!adj->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
-								// Выполняем обнуление буфера данных
-								::memset(buffer.get(), 0, size);
-								// Выполняем получение сообщения от клиента
-								bytes = adj->_ectx.read(buffer.get(), size);
-								// Если данные получены
-								if(bytes > 0){
-									// Если флаг ожидания входящих сообщений, активирован
-									if(adj->_timeouts.read > 0){
-										// Определяем тип активного сокета
-										switch(static_cast <uint8_t> (this->_settings.sonet)){
-											// Если тип сокета установлен как UDP
-											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Если тип сокета установлен как DTLS
-											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
-											// Останавливаем таймаут ожидания на чтение из сокета
-											default: adj->_bev.timer.read.stop();
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Количество полученных байт
+							int64_t bytes = -1;
+							// Создаём буфер входящих данных
+							unique_ptr <char []> buffer(new char [size]);
+							// Выполняем чтение данных с сокета
+							do {
+								// Если подключение выполнено
+								if(!adj->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
+									// Выполняем обнуление буфера данных
+									::memset(buffer.get(), 0, size);
+									// Выполняем получение сообщения от клиента
+									bytes = adj->_ectx.read(buffer.get(), size);
+									// Если данные получены
+									if(bytes > 0){
+										// Если флаг ожидания входящих сообщений, активирован
+										if(adj->_timeouts.read > 0){
+											// Определяем тип активного сокета
+											switch(static_cast <uint8_t> (this->_settings.sonet)){
+												// Если тип сокета установлен как UDP
+												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+												// Если тип сокета установлен как DTLS
+												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
+												// Останавливаем таймаут ожидания на чтение из сокета
+												default: adj->_bev.timer.read.stop();
+											}
 										}
-									}
-									// Если данные считанные из буфера, больше размера ожидающего буфера
-									if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
-										// Смещение в буфере и отправляемый размер данных
-										size_t offset = 0, actual = 0;
-										// Выполняем пересылку всех полученных данных
-										while((bytes - offset) > 0){
-											// Определяем размер отправляемых данных
-											actual = ((bytes - offset) >= adj->_marker.read.max ? adj->_marker.read.max : (bytes - offset));
+										// Если данные считанные из буфера, больше размера ожидающего буфера
+										if((adj->_marker.read.max > 0) && (bytes >= adj->_marker.read.max)){
+											// Смещение в буфере и отправляемый размер данных
+											size_t offset = 0, actual = 0;
+											// Выполняем пересылку всех полученных данных
+											while((bytes - offset) > 0){
+												// Определяем размер отправляемых данных
+												actual = ((bytes - offset) >= adj->_marker.read.max ? adj->_marker.read.max : (bytes - offset));
+												// Если подключение производится через, прокси-сервер
+												if(shm->isProxy()){
+													// Если функция обратного вызова для вывода записи существует
+													if(shm->callbacks.is("readProxy"))
+														// Выводим функцию обратного вызова
+														shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												// Если прокси-сервер не используется
+												} else if(shm->callbacks.is("read"))
+													// Выводим функцию обратного вызова
+													shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												// Увеличиваем смещение в буфере
+												offset += actual;
+											}
+										// Если данных достаточно
+										} else {
 											// Если подключение производится через, прокси-сервер
 											if(shm->isProxy()){
 												// Если функция обратного вызова для вывода записи существует
 												if(shm->callbacks.is("readProxy"))
 													// Выводим функцию обратного вызова
-													shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+													shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 											// Если прокси-сервер не используется
 											} else if(shm->callbacks.is("read"))
 												// Выводим функцию обратного вызова
-												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-											// Увеличиваем смещение в буфере
-											offset += actual;
+												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 										}
-									// Если данных достаточно
-									} else {
-										// Если подключение производится через, прокси-сервер
-										if(shm->isProxy()){
-											// Если функция обратного вызова для вывода записи существует
-											if(shm->callbacks.is("readProxy"))
-												// Выводим функцию обратного вызова
-												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("readProxy", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-										// Если прокси-сервер не используется
-										} else if(shm->callbacks.is("read"))
-											// Выводим функцию обратного вызова
-											shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-									}
-									// Если флаг ожидания входящих сообщений, активирован
-									if(adj->_timeouts.read > 0){
-										// Определяем тип активного сокета
-										switch(static_cast <uint8_t> (this->_settings.sonet)){
-											// Если тип сокета установлен как UDP
-											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Если тип сокета установлен как DTLS
-											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-												// Выполняем установку таймаута ожидания
-												adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
-											break;
-											// Для всех остальных протоколов
-											default: {
-												// Если время ожидания чтения данных установлено
-												if(shm->wait)
-													// Запускаем работу таймера
-													adj->_bev.timer.read.start(adj->_timeouts.read);
+										// Если флаг ожидания входящих сообщений, активирован
+										if(adj->_timeouts.read > 0){
+											// Определяем тип активного сокета
+											switch(static_cast <uint8_t> (this->_settings.sonet)){
+												// Если тип сокета установлен как UDP
+												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+												// Если тип сокета установлен как DTLS
+												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+													// Выполняем установку таймаута ожидания
+													adj->_ectx.timeout(adj->_timeouts.read * 1000, engine_t::method_t::READ);
+												break;
+												// Для всех остальных протоколов
+												default: {
+													// Если время ожидания чтения данных установлено
+													if(shm->wait)
+														// Запускаем работу таймера
+														adj->_bev.timer.read.start(adj->_timeouts.read);
+												}
 											}
 										}
+									// Если данные небыли получены
+									} else if(bytes <= 0) {
+										// Если чтение не выполнена, закрываем подключение
+										if(bytes == 0)
+											// Выполняем закрытие подключения
+											this->close(bid);
+										// Выходим из цикла
+										break;
 									}
-								// Если данные небыли получены
-								} else if(bytes <= 0) {
-									// Если чтение не выполнена, закрываем подключение
-									if(bytes == 0)
-										// Выполняем закрытие подключения
-										this->close(bid);
-									// Выходим из цикла
-									break;
-								}
-							// Если запись не выполнена, входим
-							} else break;
-						// Выполняем чтение до тех пор, пока всё не прочитаем
-						} while(this->_brokers.count(bid) > 0);
-						// Если тип сокета не установлен как UDP, запускаем чтение дальше
-						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
-							// Запускаем чтение данных с клиента
-							adj->_bev.event.read.start();
+								// Если запись не выполнена, входим
+								} else break;
+							// Выполняем чтение до тех пор, пока всё не прочитаем
+							} while(this->_brokers.count(bid) > 0);
+							// Если тип сокета не установлен как UDP, запускаем чтение дальше
+							if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
+								// Запускаем чтение данных с клиента
+								adj->_bev.event.read.start();
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const bad_alloc &) {
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						}
 					// Выполняем отключение клиента
 					} else this->close(bid);
 				// Если подключение завершено

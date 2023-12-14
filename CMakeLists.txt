@@ -210,7 +210,7 @@ endif(JeMalloc_FOUND)
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Провекра PCRE
     if (PCRE_FOUND)
-        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY} " " ${PCRE_CPP_LIBRARY} " " ${PCRE_POSIX_LIBRARY})
+        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY} " " ${PCRE_POSIX_LIBRARY})
         message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
     else(PCRE_FOUND)
         message(FATAL_ERROR "PCRE not found")
@@ -478,6 +478,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -828,6 +829,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -845,6 +847,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -862,6 +865,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -879,6 +883,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -896,6 +901,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -913,6 +919,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -930,6 +937,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -947,6 +955,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -964,6 +973,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -981,6 +991,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -998,6 +1009,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -1015,6 +1027,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -1032,6 +1045,7 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
@@ -1718,18 +1732,13 @@ endif()
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${XML_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGTCP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGHTTP3_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${JEMALLOC_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Устанавливаем хидеры сторонних библиотек
-    install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-endif()
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
@@ -1750,18 +1759,13 @@ if(NOT CMAKE_SHARED_BUILD_LIB)
     # Устанавливаем стороние библиотеки
     install(FILES ${XML_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${NGTCP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${NGHTTP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${NGHTTP3_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${JEMALLOC_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-
-    # Если операционной системой не является Windows
-    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        # Устанавливаем стороние библиотеки
-        install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-    endif()
 
     # Сборка модуля AWH_EVENT2
     if(CMAKE_BUILD_EVENT2)

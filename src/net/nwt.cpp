@@ -230,11 +230,7 @@ void awh::NWT::letters(const string & letters) noexcept {
 		+ this->_letters
 		+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
 		+ this->_letters
-		+ "]+)))", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::CASELESS,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
+		+ "]+)))", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 	);
 	// Устанавливаем правило регулярного выражения для проверки URL адресов
 	this->_url = this->_regexp.build(
@@ -244,11 +240,7 @@ void awh::NWT::letters(const string & letters) noexcept {
 		+ this->_letters
 		+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
 		+ this->_letters
-		+ "]+))(?:\\:(\\d+))?((?:\\/[\\w\\-]+){0,100}(?:$|\\/|\\w+)|\\/)?(?:\\?([\\w\\-\\.\\~\\:\\[\\]\\@\\!\\$\\&\\'\\(\\)\\*\\+\\,\\;\\=]+))?(?:\\#([\\w\\-\\_]+))?", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::CASELESS,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
+		+ "]+))(?:\\:(\\d+))?((?:\\/[\\w\\-]+){0,100}(?:$|\\/|\\w+)|\\/)?(?:\\?([\\w\\-\\.\\~\\:\\[\\]\\@\\!\\$\\&\\'\\(\\)\\*\\+\\,\\;\\=]+))?(?:\\#([\\w\\-\\_]+))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 	);
 	// Устанавливаем правило регулярного выражения для проверки IP адресов
 	this->_ip = this->_regexp.build(
@@ -259,11 +251,7 @@ void awh::NWT::letters(const string & letters) noexcept {
 		// Определение IPv6 адреса
 		"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:\\:\\:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){1,7})?)|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)|"
 		// Определение IPv4 адреса
-		"(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+)?\\/?)", {
-			regexp_t::option_t::UTF8,
-			regexp_t::option_t::CASELESS,
-			regexp_t::option_t::NO_UTF8_CHECK
-		}
+		"(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+)?\\/?)", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 	);
 }
 /**

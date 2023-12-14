@@ -71,9 +71,9 @@ namespace awh {
 				 * Uri Конструктор
 				 */
 				Uri() noexcept :
-				 port(0), type(types_t::NONE), uri(""),
-				 host(""), path(""), user(""), pass(""),
-				 anchor(""), domain(""), params(""), schema("") {}
+				 port(0), type(types_t::NONE), uri{""},
+				 host{""}, path{""}, user{""}, pass{""},
+				 anchor{""}, domain{""}, params{""}, schema{""} {}
 			} uri_t;
 		private:
 			// Список букв разрешенных в последовательности
@@ -82,19 +82,19 @@ namespace awh {
 			// Объект регулярного выражения
 			regexp_t _regexp;
 		private:
-			// Список пользовательских доменных зон интернета
-			set <string> _user;
-			// Список основных доменных зон интернета
-			set <string> _general;
-			// Список интернациональных доменных зон интернета
-			set <string> _national;
-		private:
 			// Регулярное выражение IP адресов
 			regexp_t::exp_t _ip;
 			// Регулярное выражение URL адресов
 			regexp_t::exp_t _url;
 			// Регулярное выражение E-MAIL адресов
 			regexp_t::exp_t _email;
+		private:
+			// Список пользовательских доменных зон интернета
+			set <string> _user;
+			// Список основных доменных зон интернета
+			set <string> _general;
+			// Список интернациональных доменных зон интернета
+			set <string> _national;
 		public:
 			/**
 			 * zone Метод установки пользовательской зоны
