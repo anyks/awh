@@ -165,7 +165,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			cout << "---------------- END ----------------" << endl << endl;
 	}
 	// Если функция подписки на логи установлена, выводим результат
-	if((this->_mode.find(mode_t::CALLBACK) != this->_mode.end()) && (this->_fn != nullptr))
+	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
 		this->_fn(payload.flag, payload.data);
 }
@@ -403,7 +403,7 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = getpid();
 	// Выполняем разрешение на вывод всех видов логов
-	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::CALLBACK};
+	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
 }
 /**
  * ~Log Деструктор

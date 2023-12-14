@@ -201,16 +201,13 @@ else(JeMalloc_FOUND)
     message(FATAL_ERROR "JeMalloc not found")
 endif(JeMalloc_FOUND)
 
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Провекра PCRE
-    if (PCRE_FOUND)
-        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY_8} " " ${PCRE_LIBRARY_16} " " ${PCRE_LIBRARY_32} " " ${PCRE_POSIX_LIBRARY})
-        message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
-    else(PCRE_FOUND)
-        message(FATAL_ERROR "PCRE not found")
-    endif(PCRE_FOUND)
-endif()
+# Провекра PCRE
+if (PCRE_FOUND)
+    message(STATUS "PCRE lib found: " ${PCRE_LIBRARY_8} " " ${PCRE_LIBRARY_16} " " ${PCRE_LIBRARY_32} " " ${PCRE_POSIX_LIBRARY})
+    message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
+else(PCRE_FOUND)
+    message(FATAL_ERROR "PCRE not found")
+endif(PCRE_FOUND)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
