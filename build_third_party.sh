@@ -44,7 +44,6 @@ if [ -n "$1" ]; then
 
 		# Очищаем подпроекты
 		clean_submodule "zlib"
-		clean_submodule "pcre"
 		clean_submodule "pcre2"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
