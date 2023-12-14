@@ -1851,13 +1851,6 @@ awh::Net::Net() noexcept : _type(type_t::NONE) {
 	);
 }
 /**
- * ~Net деструктор
- */
-awh::Net::~Net() noexcept {
-	// Выполняем очистку регулярного выражения
-	this->_regexp.free(this->_exp);
-}
-/**
  * Оператор [>>] чтения из потока IP адреса
  * @param is   поток для чтения
  * @param addr адрес для присвоения

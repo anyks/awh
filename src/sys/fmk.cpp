@@ -2709,14 +2709,3 @@ awh::Framework::Framework(const string & locale) noexcept : _nwt("абвгдеё
 	// Устанавливаем регулярное выражение для парсинга буферов данных
 	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {regexp_t::option_t::UTF8});
 }
-/**
- * ~Framework Деструктор
- */
-awh::Framework::~Framework() noexcept {
-	// Выполняем очистку регулярного выражения для парсинга байт
-	this->_regexp.free(this->_bytes);
-	// Выполняем очистку регулярного выражения для парсинга секунд
-	this->_regexp.free(this->_seconds);
-	// Выполняем очистку регулярного выражения для парсинга буферов данных
-	this->_regexp.free(this->_buffers);
-}

@@ -423,7 +423,7 @@ namespace awh {
 			/**
 			 * ~Net деструктор
 			 */
-			~Net() noexcept;
+			~Net() noexcept {}
 	} net_t;
 	/**
 	 * Оператор [>>] чтения из потока IP адреса

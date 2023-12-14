@@ -35,12 +35,13 @@ using namespace std;
  */
 namespace awh {
 	/**
+	 * RegExp Прототип класса работы с регулярными выражениями
+	 */
+	class RegExp;
+	/**
 	 * RegExp Класс объекта регулярных выражения
 	 */
 	typedef class RegExp {
-		private:
-			// Текст ошибки
-			string _error;
 		public:
 			/**
 			 * option_t Опции работы с регулярными выражениями
@@ -58,30 +59,56 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Expression Структура регулярного выражения
+			 * Expression Класс регулярного выражения
 			 */
-			typedef struct Expression {
-				// Флаг инициализации
-				bool mode;
-				// Объект контекста регулярного выражения
-				regex_t reg;
-				/**
-				 * Expression Конструктор
-				 */
-				Expression() noexcept : mode(false) {}
+			typedef class Expression {
+				private:
+					/**
+					 * RegExp Устанавливаем дружбу с классом регулярных выражений
+					 */
+					friend class RegExp;
+				private:
+					// Флаг инициализации
+					bool _mode;
+					// Объект контекста регулярного выражения
+					regex_t _reg;
+				public:
+					/**
+					 * clear Метод очистки созданного объекта
+					 */
+					void clear() noexcept;
+				public:
+					/**
+					 * Оператор проверки на инициализацию регулярного выражения
+					 * @return результат проверки
+					 */
+					operator bool() const noexcept;
+				public:
+					/**
+					 * Оператор [=] присвоения собранного регулярного выражения
+					 * @param exp объект регулярного выражения
+					 * @return    текущий объект регулярного выражения
+					 */
+					Expression & operator = (const Expression & exp) noexcept;
+				public:
+					/**
+					 * Expression Конструктор
+					 */
+					Expression() noexcept : _mode(false) {}
+					/**
+					 * ~Expression Деструктор
+					 */
+					~Expression() noexcept;
 			} exp_t;
+		private:
+			// Текст ошибки
+			string _error;
 		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
 			 * @return текст ошибки регулярного выражения
 			 */
 			const string & error() const noexcept;
-		public:
-			/**
-			 * free Метод очистки объекта регулярного выражения
-			 * @param exp объект регулярного выражения
-			 */
-			void free(const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * test Метод проверки регулярного выражения

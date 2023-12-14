@@ -291,7 +291,7 @@ namespace awh {
 			/**
 			 * ~URI Деструктор
 			 */
-			~URI() noexcept;
+			~URI() noexcept {}
 	} uri_t;
 	/**
 	 * Оператор [<<] вывода в поток IP адреса

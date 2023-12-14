@@ -137,7 +137,7 @@ namespace awh {
 			/**
 			 * ~NWT Деструктор
 			 */
-			~NWT() noexcept;
+			~NWT() noexcept {}
 	} nwt_t;
 };
 

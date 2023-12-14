@@ -782,7 +782,7 @@ namespace awh {
 			/**
 			 * ~Framework Деструктор
 			 */
-			~Framework() noexcept;
+			~Framework() noexcept {}
 	} fmk_t;
 };
 
