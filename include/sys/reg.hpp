@@ -18,17 +18,13 @@
 /**
  * Стандартная библиотека
  */
+#include <memory>
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <iostream>
 #include <sys/types.h>
 #include <pcre2/pcre2posix.h>
-
-/**
- * Наши модули
- */
-#include <sys/win.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
