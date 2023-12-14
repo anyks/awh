@@ -114,18 +114,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Выполняем поиск нужных библиотек
 find_package(XML REQUIRED)
 find_package(Zlib REQUIRED)
+find_package(PCRE REQUIRED)
 find_package(Brotli REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(NgTCP2 REQUIRED)
 find_package(NgHttp2 REQUIRED)
 find_package(NgHttp3 REQUIRED)
 find_package(JeMalloc REQUIRED)
-
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Выполняем поиск нужных библиотек
-    find_package(PCRE REQUIRED)
-endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -210,7 +205,7 @@ endif(JeMalloc_FOUND)
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Провекра PCRE
     if (PCRE_FOUND)
-        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY} " " ${PCRE_POSIX_LIBRARY})
+        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY_8} " " ${PCRE_LIBRARY_16} " " ${PCRE_LIBRARY_32} " " ${PCRE_POSIX_LIBRARY})
         message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
     else(PCRE_FOUND)
         message(FATAL_ERROR "PCRE not found")
@@ -260,6 +255,7 @@ endif()
 # Выполняем подключение хидеров
 include_directories(SYSTEM ${XML_INCLUDE_DIR})
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
+include_directories(SYSTEM ${PCRE_INCLUDE_DIR})
 include_directories(SYSTEM ${NGTCP2_INCLUDE_DIR})
 include_directories(SYSTEM ${NGHTTP2_INCLUDE_DIR})
 include_directories(SYSTEM ${NGHTTP3_INCLUDE_DIR})
@@ -269,12 +265,6 @@ include_directories(SYSTEM ${JEMALLOC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
-
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Выполняем подключение хидеров
-    include_directories(${PCRE_INCLUDE_DIR})
-endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
