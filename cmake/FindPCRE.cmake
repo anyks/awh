@@ -18,18 +18,18 @@ find_library(PCRE_POSIX_LIBRARY NAMES pcre2-posix PATHS ${CMAKE_SOURCE_DIR}/thir
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(PCRE REQUIRED_VARS
+    PCRE_POSIX_LIBRARY
     PCRE_LIBRARY_8
     PCRE_LIBRARY_16
     PCRE_LIBRARY_32
-    PCRE_POSIX_LIBRARY
     PCRE_INCLUDE_DIR
 
     FAIL_MESSAGE "Missing PCRE. Run ./build_third_party.sh first"
 )
 
 set(PCRE_LIBRARIES
+    ${PCRE_POSIX_LIBRARY}
     ${PCRE_LIBRARY_8}
     ${PCRE_LIBRARY_16}
     ${PCRE_LIBRARY_32}
-    ${PCRE_POSIX_LIBRARY}
 )
