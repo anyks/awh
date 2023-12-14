@@ -16,9 +16,6 @@
 [submodule "submodules/libevent"]
 	path = submodules/libevent
 	url = https://github.com/libevent/libevent.git
-[submodule "submodules/pcre"]
-	path = submodules/pcre
-	url = https://github.com/luvit/pcre.git
 [submodule "submodules/nghttp2"]
 	path = submodules/nghttp2
 	url = https://github.com/nghttp2/nghttp2.git
