@@ -172,8 +172,6 @@ if [ $OS = "Darwin" ]; then # MacOS
 	INSTALL_CMD="ditto -v"
 elif [ $OS = "FreeBSD" ]; then # FreeBSD
 	INSTALL_CMD="install -m 0644"
-	# Создаём каталон назначения заголовочных файлов
-	mkdir -p "$PREFIX/include/brotli"
 elif [ $OS = "Windows" ]; then # Windows
 	INSTALL_CMD="install -D -m 0644"
 else # Linux
@@ -351,6 +349,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
+
+	# Создаём каталон назначения заголовочных файлов
+	mkdir -p "$PREFIX/include/brotli"
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
