@@ -73,17 +73,21 @@ bool awh::Hash::init() const {
 	// Очищаем контекст
 	EVP_CIPHER_CTX_free(ctx);
 	// Если инициализация не произошла
-	if(ok == 0) return false;
+	if(ok == 0)
+		// Выходим из функции
+		return false;
 	// Устанавливаем ключ шифрования
 	const int res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->_key);
 	// Если установка ключа не произошло
-	if(res != 0) return false;
+	if(res != 0)
+		// Выходим из функции
+		return false;
 	// Обнуляем номер
 	this->_state.num = 0;
 	// Заполняем половину структуры нулями
-	memset(this->_state.ivec, 0, sizeof(this->_state.ivec));
+	::memset(this->_state.ivec, 0, sizeof(this->_state.ivec));
 	// Копируем данные шифрования
-	memcpy(this->_state.ivec, iv.data(), iv.size());
+	::memcpy(this->_state.ivec, iv.data(), iv.size());
 	// Выполняем шифрование
 	// AES_encrypt(this->_state.ivec, this->_state.count, &this->_key);
 	// Сообщаем что всё удачно
@@ -252,21 +256,21 @@ vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) co
 		// Создаем поток zip
 		z_stream zs;
 		// Заполняем его нулями
-		memset(&zs, 0, sizeof(zs));
+		::memset(&zs, 0, sizeof(zs));
 		// Если поток инициализировать не удалось, выходим
 		if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
 			// Указываем размер входного буфера
-			zs.avail_in = size;
+			zs.avail_in = static_cast <u_int> (size);
 			// Заполняем входные данные буфера
-			zs.next_in = (u_char *) const_cast <char *> (buffer);
+			zs.next_in = reinterpret_cast <u_char *> (const_cast <char *> (buffer));
 			// Создаем буфер с сжатыми данными
 			vector <u_char> output(zs.avail_in, 0);
 			// Выполняем сжатие данных
 			do {
-				// Устанавливаем максимальный размер буфера
-				zs.avail_out = zs.avail_in;
 				// Устанавливаем буфер для получения результата
 				zs.next_out = output.data();
+				// Устанавливаем максимальный размер буфера
+				zs.avail_out = static_cast <u_int> (zs.avail_in);
 				// Выполняем сжатие
 				ret = deflate(&zs, Z_FINISH);
 				// Если данные добавлены не полностью
@@ -278,7 +282,9 @@ vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) co
 		// Завершаем сжатие
 		deflateEnd(&zs);
 		// Если сжатие не удалось то очищаем выходные данные
-		if(ret != Z_STREAM_END) result.clear();
+		if(ret != Z_STREAM_END)
+			// Выполняем очистку буфера данных
+			result.clear();
 	}
 	// Выводим результат
 	return result;
@@ -299,15 +305,15 @@ vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t size) 
 		// Создаем поток zip
 		z_stream zs;
 		// Заполняем его нулями
-		memset(&zs, 0, sizeof(zs));
+		::memset(&zs, 0, sizeof(zs));
 		// Если поток инициализировать не удалось, выходим
 		if(inflateInit2(&zs, this->_wbit | 16) == Z_OK){
 			// Указываем размер входного буфера
-			zs.avail_in = size;
+			zs.avail_in = static_cast <u_int> (size);
 			// Заполняем входные данные буфера
-			zs.next_in = (u_char *) const_cast <char *> (buffer);
+			zs.next_in = reinterpret_cast <u_char *> (const_cast <char *> (buffer));
 			// Получаем размер выходных данных
-			const size_t length = (zs.avail_in * 10);
+			const size_t length = static_cast <size_t> (zs.avail_in * 10);
 			// Создаем буфер с сжатыми данными
 			vector <u_char> output(length, 0);
 			// Выполняем расжатие данных
@@ -327,7 +333,9 @@ vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t size) 
 		// Завершаем расжатие
 		inflateEnd(&zs);
 		// Если сжатие не удалось то очищаем выходные данные
-		if(ret != Z_STREAM_END) result.clear();
+		if(ret != Z_STREAM_END)
+			// Выполняем очистку буфера данных
+			result.clear();
 	}
 	// Выводим результат
 	return result;
@@ -358,15 +366,15 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 			// Если поток декомпрессора не создан ранее
 			if(!this->_takeOverCompress){
 				// Устанавливаем количество доступных данных
-				zs.avail_in = size;
+				zs.avail_in = static_cast <u_int> (size);
 				// Устанавливаем буфер с данными для шифрования
-				zs.next_in = (Bytef *) buffer;
+				zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 			// Если нужно переиспользовать поток декомпрессора
 			} else {
 				// Устанавливаем количество доступных данных
-				this->_zdef.avail_in = size;
+				this->_zdef.avail_in = static_cast <u_int> (size);
 				// Устанавливаем буфер с данными для шифрования
-				this->_zdef.next_in = (Bytef *) buffer;
+				this->_zdef.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 			}
 			/**
 			 * Выполняем компрессию всех данных
@@ -400,7 +408,9 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 			// Если все данные уже сжаты
 			} while(ret != Z_STREAM_END);
 			// Закрываем поток
-			if(!this->_takeOverCompress) deflateEnd(&zs);
+			if(!this->_takeOverCompress)
+				// Завершаем работу
+				deflateEnd(&zs);
 		}
 	}
 	// Выводим результат
@@ -432,15 +442,15 @@ vector <char> awh::Hash::decompressDeflate(const char * buffer, const size_t siz
 			// Если поток декомпрессора не создан ранее
 			if(!this->_takeOverDecompress){
 				// Устанавливаем количество доступных данных
-				zs.avail_in = size;
+				zs.avail_in = static_cast <u_int> (size);
 				// Копируем входящий буфер для дешифровки
-				zs.next_in = (Bytef *) buffer;
+				zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 			// Если нужно переиспользовать поток декомпрессора
 			} else {
 				// Устанавливаем количество доступных данных
-				this->_zinf.avail_in = size;
+				this->_zinf.avail_in = static_cast <u_int> (size);
 				// Копируем входящий буфер для дешифровки
-				this->_zinf.next_in = (Bytef *) buffer;
+				this->_zinf.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 			}
 			/**
 			 * Выполняем декомпрессию всех данных
@@ -474,7 +484,9 @@ vector <char> awh::Hash::decompressDeflate(const char * buffer, const size_t siz
 			// Если все данные уже дешифрованы
 			} while(ret != Z_STREAM_END);
 			// Очищаем выделенную память для декомпрессора
-			if(!this->_takeOverDecompress) inflateEnd(&zs);
+			if(!this->_takeOverDecompress)
+				// Завершаем работу
+				inflateEnd(&zs);
 		}
 	}
 	// Выводим результат
@@ -504,7 +516,7 @@ vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const n
 				// Выделяем память для буфера данных
 				vector <u_char> output(len, 0);
 				// Входные данные
-				const u_char * input = (u_char *) buffer;
+				const u_char * input = reinterpret_cast <const u_char *> (buffer);
 				// Выполняем извлечение оставшихся данных
 				do {
 					// Максимальный размер считываемых данных
@@ -554,7 +566,7 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
 				// Выделяем память для буфера данных
 				vector <u_char> output(len, 0);
 				// Входные данные
-				const u_char * input = (u_char *) buffer;
+				const u_char * input = reinterpret_cast <const u_char *> (buffer);
 				// Выполняем извлечение оставшихся данных
 				do {
 					// Максимальный размер считываемых данных
@@ -690,7 +702,7 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 	// Если флаг установлен
 	if(this->_takeOverCompress){
 		// Заполняем его нулями потока для компрессора
-		memset(&this->_zdef, 0, sizeof(this->_zdef));
+		::memset(&this->_zdef, 0, sizeof(this->_zdef));
 		// Обнуляем структуру потока для компрессора
 		this->_zdef.zalloc = Z_NULL;
 		this->_zdef.zfree  = Z_NULL;
@@ -729,7 +741,7 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 	// Если флаг установлен
 	if(this->_takeOverDecompress){
 		// Заполняем его нулями потока для декомпрессора
-		memset(&this->_zinf, 0, sizeof(this->_zinf));
+		::memset(&this->_zinf, 0, sizeof(this->_zinf));
 		// Обнуляем структуру потока для декомпрессора
 		this->_zinf.avail_in = 0;
 		this->_zinf.zalloc   = Z_NULL;
@@ -761,7 +773,11 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
  */
 awh::Hash::~Hash() noexcept {
 	// Очищаем выделенную память для компрессора
-	if(this->_takeOverCompress) deflateEnd(&this->_zdef);
+	if(this->_takeOverCompress)
+		// Завершаем работу
+		deflateEnd(&this->_zdef);
 	// Очищаем выделенную память для декомпрессора
-	if(this->_takeOverDecompress) inflateEnd(&this->_zinf);
+	if(this->_takeOverDecompress)
+		// Завершаем работу
+		inflateEnd(&this->_zinf);
 }
