@@ -116,23 +116,37 @@ awh::FS::type_t awh::FS::type(const string & name) const noexcept {
 		// Если тип определён
 		if(stat(name.c_str(), &info) == 0){
 			// Если это каталог
-			if(S_ISDIR(info.st_mode)) result = type_t::DIR;
+			if(S_ISDIR(info.st_mode))
+				// Получаем тип файловой системы
+				result = type_t::DIR;
 			// Если это устройство
-			else if(S_ISCHR(info.st_mode)) result = type_t::CHR;
+			else if(S_ISCHR(info.st_mode))
+				// Получаем тип файловой системы
+				result = type_t::CHR;
 			// Если это блок устройства
-			else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
+			else if(S_ISBLK(info.st_mode))
+				// Получаем тип файловой системы
+				result = type_t::BLK;
 			// Если это файл
-			else if(S_ISREG(info.st_mode)) result = type_t::FILE;
+			else if(S_ISREG(info.st_mode))
+				// Получаем тип файловой системы
+				result = type_t::FILE;
 			// Если это устройство ввода-вывода
-			else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
+			else if(S_ISFIFO(info.st_mode))
+				// Получаем тип файловой системы
+				result = type_t::FIFO;
 			/**
 			 * Выполняем работу для Unix
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Если это символьная ссылка
-				else if(S_ISLNK(info.st_mode)) result = type_t::LNK;
+				else if(S_ISLNK(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::LNK;
 				// Если это сокет
-				else if(S_ISSOCK(info.st_mode)) result = type_t::SOCK;
+				else if(S_ISSOCK(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::SOCK;
 			#endif
 		}
 	}
