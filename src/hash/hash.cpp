@@ -258,7 +258,7 @@ vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) co
 		// Заполняем его нулями
 		::memset(&zs, 0, sizeof(zs));
 		// Если поток инициализировать не удалось, выходим
-		if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
+		if(deflateInit2(&zs, this->_levelGzip, Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
 			// Указываем размер входного буфера
 			zs.avail_in = static_cast <u_int> (size);
 			// Заполняем входные данные буфера
@@ -360,7 +360,7 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 		// Буфер выходных данных		
 		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
-		if(this->_takeOverCompress || (deflateInit2(&zs, this->levelGzip, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
+		if(this->_takeOverCompress || (deflateInit2(&zs, this->_levelGzip, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
 			// Результат проверки декомпрессии
 			int ret = Z_OK;
 			// Если поток декомпрессора не создан ранее
@@ -687,6 +687,30 @@ void awh::Hash::salt(const string & salt) noexcept {
 void awh::Hash::pass(const string & pass) noexcept {
 	// Если пароль передан
 	this->_pass = pass;
+}
+/**
+ * level Метод установки уровня компрессии
+ * @param level уровень компрессии
+ */
+void awh::Hash::level(const level_t level) noexcept {
+	// Определяем переданный уровень компрессии
+	switch(static_cast <uint8_t> (level)){
+		// Выполняем установку максимального уровня компрессии
+		case static_cast <uint8_t> (level_t::BEST):
+			// Выполняем установку уровня компрессии
+			this->_levelGzip = Z_BEST_COMPRESSION;
+		break;
+		// Выполняем установку уровень компрессии на максимальную производительность
+		case static_cast <uint8_t> (level_t::SPEED):
+			// Выполняем установку уровня компрессии
+			this->_levelGzip = Z_BEST_SPEED;
+		break;
+		// Выполняем установку нормального уровня компрессии
+		case static_cast <uint8_t> (level_t::NORMAL):
+			// Выполняем установку уровня компрессии
+			this->_levelGzip = Z_DEFAULT_COMPRESSION;
+		break;
+	}
 }
 /**
  * takeoverCompress Метод установки флага переиспользования контекста компрессии

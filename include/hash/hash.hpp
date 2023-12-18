@@ -93,14 +93,23 @@ namespace awh {
 				BROTLI  = 0x02, // Метод сжатия BROTLI
 				DEFLATE = 0x03  // Метод сжатия DEFLATE
 			};
+			/**
+			 * Уровень компрессии
+			 */
+			enum class level_t : uint8_t {
+				NONE   = 0x00, // Уровень сжатия не установлен
+				BEST   = 0x01, // Максимальный уровень компрессии
+				SPEED  = 0x02, // Максимальная скорость компрессии
+				NORMAL = 0x03  // Нормальный уровень компрессии
+			};
 		private:
 			// Размер скользящего окна
 			short _wbit;
 			// Устанавливаем количество раундов
 			int _rounds;
-		public:
+		private:
 			// Уровень сжатия
-			u_int levelGzip;
+			u_int _levelGzip;
 		private:
 			// Соль и пароль для шифрования
 			string _salt, _pass;
@@ -257,6 +266,11 @@ namespace awh {
 			 * @param pass пароль шифрования
 			 */
 			void pass(const string & pass) noexcept;
+			/**
+			 * level Метод установки уровня компрессии
+			 * @param level уровень компрессии
+			 */
+			void level(const level_t level) noexcept;
 		public:
 			/**
 			 * takeoverCompress Метод установки флага переиспользования контекста компрессии
@@ -274,8 +288,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Hash(const log_t * log) noexcept :
-			 _wbit(MAX_WBITS), _rounds(5), levelGzip(Z_DEFAULT_COMPRESSION),
-			 _salt(""), _pass(""), _takeOverCompress(false), _takeOverDecompress(false),
+			 _wbit(MAX_WBITS), _rounds(5), _levelGzip(Z_DEFAULT_COMPRESSION),
+			 _salt{""}, _pass{""}, _takeOverCompress(false), _takeOverDecompress(false),
 			 _btype{0x00, 0x00, 0xFF, 0xFF}, _cipher(cipher_t::AES128), _key{}, _zinf{0}, _zdef{0}, _log(log) {}
 			/**
 			 * ~Hash Деструктор
