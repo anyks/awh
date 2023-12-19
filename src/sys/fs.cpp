@@ -627,7 +627,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 				// Получаем размер данных в файле
 				const size_t length = (info.st_size - offset);
 				// Выполняем отображение файла в памяти
-				void * buffer = ::mmap(0, (length + offset - paOffset), PROT_READ, MAP_PRIVATE, fd, paOffset);
+				void * buffer = ::mmap(nullptr, (length + offset - paOffset), PROT_READ, MAP_PRIVATE, fd, paOffset);
 				// Если произошла ошибка чтения данных файла
 				if(buffer == MAP_FAILED)
 					// Выводим сообщение что прочитать файл не удалось
