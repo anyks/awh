@@ -30,8 +30,8 @@
 /**
  * Наши модули
  */
-#include <sys/idw.hpp>
 #include <sys/log.hpp>
+#include <cityhash/city.h>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -58,9 +58,6 @@ namespace awh {
 				DEL  = 0x02, // Событие удаления функции
 				RUN  = 0x03  // Событие запуска функции
 			};
-		private:
-			// Объект генерации идентификаторов
-			idw_t _idw;
 		private:
 			/**
 			 * Основные типы данных возвращаемые функциями
@@ -229,7 +226,7 @@ namespace awh {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выводим получение дампа функции обратного вызова
-					return this->dump(this->_idw.id(name));
+					return this->dump(this->idw(name));
 				// Выводим результат работы функции
 				return std::make_pair(nullptr, type_t::NONE);
 			}
@@ -272,7 +269,7 @@ namespace awh {
 				// Если название функции обратного вызова передано
 				if(!name.empty())
 					// Выполняем установку данных функции обратного вызова
-					this->dump(this->_idw.id(name), data);
+					this->dump(this->idw(name), data);
 			}
 		public:
 			/**
@@ -300,7 +297,7 @@ namespace awh {
 			 */
 			bool is(const string & name) const noexcept {
 				// Выводим результат проверки
-				return this->is(this->_idw.id(name));
+				return this->is(this->idw(name));
 			}
 		public:
 			/**
@@ -310,7 +307,7 @@ namespace awh {
 			 */
 			uint64_t idw(const string & name) const noexcept {
 				// Получаем идентификатор обратного вызова
-				return this->_idw.id(name);
+				return CityHash64(name.c_str(), name.size());
 			}
 		public:
 			/**
@@ -363,7 +360,7 @@ namespace awh {
 				// Если название функции обратного вызова передано
 				if(!name.empty()){
 					// Получаем идентификатор обратного вызова
-					const uint64_t idw = this->_idw.id(name);
+					const uint64_t idw = this->idw(name);
 					// Если название функции обратного вызова передано
 					if(idw > 0){
 						{
@@ -443,9 +440,9 @@ namespace awh {
 				// Если названия переданы
 				if(!name1.empty() && !name2.empty()){
 					// Получаем идентификатор названия первой функции
-					const uint64_t idw1 = this->_idw.id(name1);
+					const uint64_t idw1 = this->idw(name1);
 					// Получаем идентификатор названия второй функции
-					const uint64_t idw2 = this->_idw.id(name2);
+					const uint64_t idw2 = this->idw(name2);
 					// Если идентификаторы переданы
 					if((idw1 > 0) && (idw2 > 0))
 						// Выполняем функцию обратного вызова
@@ -508,9 +505,9 @@ namespace awh {
 				// Если названия переданы
 				if(!name1.empty() && !name2.empty() && !storage.empty()){
 					// Получаем идентификатор названия первой функции
-					const uint64_t idw1 = this->_idw.id(name1);
+					const uint64_t idw1 = this->idw(name1);
 					// Получаем идентификатор названия второй функции
-					const uint64_t idw2 = this->_idw.id(name2);
+					const uint64_t idw2 = this->idw(name2);
 					// Если идентификаторы переданы
 					if((idw1 > 0) && (idw2 > 0))
 						// Выполняем функцию обратного вызова
@@ -573,7 +570,7 @@ namespace awh {
 				// Если данные переданы правильно
 				if(!name.empty() && !storage._functions.empty()){
 					// Получаем идентификатор обратного вызова
-					const uint64_t idw = this->_idw.id(name);
+					const uint64_t idw = this->idw(name);
 					// Если указанная функция существует
 					if((idw > 0) && storage.is(idw)){
 						{
@@ -672,9 +669,9 @@ namespace awh {
 				// Если данные переданы правильно
 				if(!name1.empty() && !name2.empty() && !storage._functions.empty()){
 					// Получаем идентификатор названия первой функции
-					const uint64_t idw1 = this->_idw.id(name1);
+					const uint64_t idw1 = this->idw(name1);
 					// Получаем идентификатор названия второй функции
-					const uint64_t idw2 = this->_idw.id(name2);
+					const uint64_t idw2 = this->idw(name2);
 					// Если указанная функция существует
 					if((idw1 > 0) && (idw2 > 0) && storage.is(idw1)){
 						{
@@ -787,7 +784,7 @@ namespace awh {
 					 */
 					try {
 						// Получаем идентификатор обратного вызова
-						const uint64_t idw = this->_idw.id(name);
+						const uint64_t idw = this->idw(name);
 						// Если идентификатор получен
 						if(idw > 0){
 							{
@@ -900,7 +897,7 @@ namespace awh {
 					 */
 					try {
 						// Получаем идентификатор обратного вызова
-						const uint64_t idw = this->_idw.id(name);
+						const uint64_t idw = this->idw(name);
 						// Если идентификатор получен
 						if(idw > 0){
 							{
@@ -984,7 +981,7 @@ namespace awh {
 				// Если название функции передано
 				if(!name.empty()){
 					// Получаем идентификатор обратного вызова
-					const uint64_t idw = this->_idw.id(name);
+					const uint64_t idw = this->idw(name);
 					// Если идентификатор получен
 					if(idw > 0){
 						// Выполняем поиск функции обратного вызова
@@ -1054,7 +1051,7 @@ namespace awh {
 			 */
 			auto call(const string & name) const noexcept -> typename function <A>::result_type {
 				// Получаем идентификатор обратного вызова
-				const uint64_t idw = this->_idw.id(name);
+				const uint64_t idw = this->idw(name);
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
@@ -1142,7 +1139,7 @@ namespace awh {
 			 */
 			auto call(const string & name, Args... args) const noexcept -> typename function <A>::result_type {
 				// Получаем идентификатор обратного вызова
-				const uint64_t idw = this->_idw.id(name);
+				const uint64_t idw = this->idw(name);
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Получаем функцию обратного вызова
@@ -1304,7 +1301,7 @@ namespace awh {
 			 */
 			void bind(const string & name) const noexcept {
 				// Получаем идентификатор обратного вызова
-				const uint64_t idw = this->_idw.id(name);
+				const uint64_t idw = this->idw(name);
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
@@ -1396,7 +1393,7 @@ namespace awh {
 			 */
 			auto bind(const string & name) const noexcept -> A {
 				// Получаем идентификатор обратного вызова
-				const uint64_t idw = this->_idw.id(name);
+				const uint64_t idw = this->idw(name);
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
