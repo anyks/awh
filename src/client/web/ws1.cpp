@@ -1325,7 +1325,7 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_thr.is()){
 			// Выполняем завершение всех активных потоков
-			this->_thr.wait();
+			this->_thr.stop();
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
@@ -1393,7 +1393,7 @@ void awh::client::Websocket1::multiThreads(const uint16_t count, const bool mode
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
-			this->_thr.wait();
+			this->_thr.stop();
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(count);
 		}
@@ -1402,7 +1402,7 @@ void awh::client::Websocket1::multiThreads(const uint16_t count, const bool mode
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
-	} else this->_thr.wait();
+	} else this->_thr.stop();
 }
 /**
  * proxy Метод установки прокси-сервера
@@ -1511,5 +1511,5 @@ awh::client::Websocket1::~Websocket1() noexcept {
 	// Если многопоточность активированна
 	if(this->_thr.is())
 		// Выполняем завершение всех активных потоков
-		this->_thr.wait();
+		this->_thr.stop();
 }

@@ -1894,9 +1894,9 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			// Если многопоточность активированна
 			if(this->_ws2._thr.is() || this->_ws2._ws1._thr.is()){
 				// Выполняем завершение всех активных потоков
-				this->_ws2._thr.wait();
+				this->_ws2._thr.stop();
 				// Выполняем завершение всех активных потоков
-				this->_ws2._ws1._thr.wait();
+				this->_ws2._ws1._thr.stop();
 			}
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
@@ -2122,5 +2122,5 @@ awh::client::Http2::~Http2() noexcept {
 	// Если многопоточность активированна
 	if(this->_ws2._thr.is())
 		// Выполняем завершение всех активных потоков
-		this->_ws2._thr.wait();
+		this->_ws2._thr.stop();
 }

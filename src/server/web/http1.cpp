@@ -1471,7 +1471,7 @@ void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noe
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.wait();
+			this->_ws1._thr.stop();
 			// Выполняем инициализацию нового тредпула
 			this->_ws1._thr.init(count);
 		}
@@ -1480,7 +1480,7 @@ void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noe
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
-	} else this->_ws1._thr.wait();
+	} else this->_ws1._thr.stop();
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -1606,7 +1606,7 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_ws1._thr.is()){
 			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.wait();
+			this->_ws1._thr.stop();
 			// Снимаем режим простого чтения базы событий
 			const_cast <server::core_t *> (this->_core)->easily(false);
 		}

@@ -1,7 +1,6 @@
 /**
  * @file: threadpool.hpp
- * @date: 2022-02-06
- * @license: GPL-3.0
+ * @date: 2023-12-22
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
@@ -9,7 +8,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2022
+ * @copyright: Copyright © 2023
  */
 
 #ifndef __AWH_THREAD_POOL__
@@ -40,14 +39,16 @@ namespace awh {
 	 */
 	typedef class ThreadPool {
 		private:
-			// Сингнал остановки работы пула потоков
+			// Тип очереди задач
+			typedef queue <function <void()>> task_t;
+		private:
+			// Флаг завершения работы пула потоков
 			bool _stop;
+			// Флаг ожидания завершения работы всех задачь
+			bool _wait;
 		private:
 			// Количество потоков
 			uint16_t _threads;
-		private:
-			// Тип очереди задач
-			typedef queue <function <void()>> task_t;
 		private:
 			// Очередь задач на исполнение
 			task_t _tasks;
@@ -74,7 +75,7 @@ namespace awh {
 			 */
 			void work() noexcept {
 				// Запускаем бесконечный цикл
-				for(;;){
+				while(!this->_stop){
 					// Создаём текущее задание
 					function <void (void)> task;
 					// Ожидаем своей задачи в очереди потоков
@@ -96,8 +97,12 @@ namespace awh {
 						// Иначе выполняем пропуск
 						} else continue;
 					}
-					// Задача появилась, исполняем ее и сообщаем о том, что задача выбрана из очереди
+					// Задача появилась, исполняем её и сообщаем о том, что задача выбрана из очереди
 					task();
+					// Если мы ожидаем завершения работы всех задач
+					if(this->_wait)
+						// Выполняем остановку работы цикла задач
+						this->_stop = this->_tasks.empty();	
 				}
 			}
 		public:
@@ -112,32 +117,49 @@ namespace awh {
 		public:
 			/**
 			 * wait Метод ожидания выполнения задач
-			 * @param stop флаг остановки пула потоков
 			 */
-			void wait(const bool stop = true) noexcept {
+			void wait() noexcept {
+				// Устанавливаем флаг ожидания выполнения всех зада
+				this->_wait = true;
+				// Ожидаем завершение работы каждого воркера
+				for(auto & worker: this->_workers)
+					// Выполняем ожидание завершения работы потоков
+					worker.join();
+				// Создаем пустой список задач
+				task_t empty;
+				// Сбрасываем флаг завершения работы пула потоков по умолчанию
+				this->_stop = false;
+				// Сбрасываем флаг ожидания выполнения всех зада
+				this->_wait = false;
+				// Очищаем список потоков
+				this->_workers.clear();
+				// Очищаем список задач
+				std::swap(this->_tasks, empty);
+			}
+			/**
+			 * stop Метод завершения выполнения задач
+			 */
+			void stop() noexcept {
 				{
 					// Останавливаем работу потоков
 					this->_stop = true;
 					// Создаем уникальный мютекс
 					unique_lock <mutex> lock(this->_queueMutex);
 				}
-				// Создаем пустой список задач
-				task_t empty;
 				// Сообщаем всем что мы завершаем работу
 				this->_cv.notify_all();
 				// Ожидаем завершение работы каждого воркера
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
-				// Если нужно завершить работу всех потоков
-				if(stop){
-					// Очищаем список потоков
-					this->_workers.clear();
-					// Очищаем список задач
-					std::swap(this->_tasks, empty);
-					// Восстанавливаем работу потоков
-					this->_stop = false;
-				}
+				// Создаем пустой список задач
+				task_t empty;
+				// Восстанавливаем работу потоков
+				this->_stop = false;
+				// Очищаем список потоков
+				this->_workers.clear();
+				// Очищаем список задач
+				std::swap(this->_tasks, empty);
 			}
 			/**
 			 * clean Метод очистки списка потоков
@@ -151,8 +173,10 @@ namespace awh {
 			 * @param count количество потоков
 			 */
 			void init(const uint16_t count = 0) noexcept {
-				// Устанавливаем количество потоков
-				this->_threads = count;
+				// Если количество потоков передано
+				if(count > 0)
+					// Устанавливаем количество потоков
+					this->_threads = count;
 				// Ели количество потоков передано
 				if(this->_threads > 0){
 					// Добавляем в список воркеров, новую задачу
@@ -177,20 +201,20 @@ namespace awh {
 			 * ThreadPool Конструктор
 			 * @param count количество потоков
 			 */
-			explicit ThreadPool(const uint16_t count = static_cast <uint16_t> (std::thread::hardware_concurrency())) noexcept : _stop(false), _threads(0) {
+			explicit ThreadPool(const uint16_t count = 0) noexcept : _stop(false), _wait(false), _threads(0) {
 				// Ели количество потоков передано
 				if(count > 0)
 					// Устанавливаем количество потоков
-					this->_threads = count;
-				// Иначе устанавливаем один поток
-				else this->_threads = 1;
+					this->_threads = count;	
+				// Если количество потоков не установлено
+				else this->_threads = static_cast <uint16_t> (thread::hardware_concurrency());
 			}
 			/**
 			 * ~ThreadPool Деструктор
 			 */
 			~ThreadPool() noexcept {
-				// Выполняем ожидание выполнения задач
-				this->wait();
+				// Выполняем ожидание завершения работы пула потоков
+				this->stop();
 			}
 		public:
 			/**

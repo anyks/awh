@@ -1240,7 +1240,7 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 			// Если многопоточность активированна
 			if(this->_ws1._thr.is())
 				// Выполняем завершение всех активных потоков
-				this->_ws1._thr.wait();
+				this->_ws1._thr.stop();
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
@@ -1432,5 +1432,5 @@ awh::client::Http1::~Http1() noexcept {
 	// Если многопоточность активированна
 	if(this->_ws1._thr.is())
 		// Выполняем завершение всех активных потоков
-		this->_ws1._thr.wait();
+		this->_ws1._thr.stop();
 }

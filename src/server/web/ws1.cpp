@@ -1236,7 +1236,7 @@ void awh::server::Websocket1::multiThreads(const uint16_t count, const bool mode
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
-			this->_thr.wait();
+			this->_thr.stop();
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(count);
 		}
@@ -1245,7 +1245,7 @@ void awh::server::Websocket1::multiThreads(const uint16_t count, const bool mode
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
-	} else this->_thr.wait();
+	} else this->_thr.stop();
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -1360,7 +1360,7 @@ void awh::server::Websocket1::core(const server::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_thr.is()){
 			// Выполняем завершение всех активных потоков
-			this->_thr.wait();
+			this->_thr.stop();
 			// Снимаем режим простого чтения базы событий
 			const_cast <server::core_t *> (this->_core)->easily(false);
 		}
@@ -1508,5 +1508,5 @@ awh::server::Websocket1::~Websocket1() noexcept {
 	// Если многопоточность активированна
 	if(this->_thr.is())
 		// Выполняем завершение всех потоков
-		this->_thr.wait();
+		this->_thr.stop();
 }
