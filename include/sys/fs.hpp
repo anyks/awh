@@ -188,11 +188,11 @@ namespace awh {
 			string realPath(const string & path) const noexcept;
 		public:
 			/**
-			 * symlink Метод создания символьной ссылки
+			 * symLink Метод создания символьной ссылки
 			 * @param name1 адрес на который нужно сделать ссылку
 			 * @param name2 адрес где должна быть создана ссылка
 			 */
-			void symlink(const string & name1, const string & name2) const noexcept;
+			void symLink(const string & name1, const string & name2) const noexcept;
 		public:
 			/**
 			 * makePath Метод рекурсивного создания пути

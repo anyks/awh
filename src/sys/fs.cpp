@@ -561,11 +561,11 @@ string awh::FS::realPath(const string & path) const noexcept {
 	return result;
 }
 /**
- * symlink Метод создания символьной ссылки
+ * symLink Метод создания символьной ссылки
  * @param name1 адрес на который нужно сделать ссылку
  * @param name2 адрес где должна быть создана ссылка
  */
-void awh::FS::symlink(const string & name1, const string & name2) const noexcept {
+void awh::FS::symLink(const string & name1, const string & name2) const noexcept {
 	/**
 	 * Выполняем работу для Unix
 	 */
