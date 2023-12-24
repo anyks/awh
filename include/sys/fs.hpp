@@ -193,6 +193,12 @@ namespace awh {
 			 * @param name2 адрес где должна быть создана ссылка
 			 */
 			void symLink(const string & name1, const string & name2) const noexcept;
+			/**
+			 * hardLink Метод создания жёстких ссылок
+			 * @param name1 адрес на который нужно сделать ссылку
+			 * @param name2 адрес где должна быть создана ссылка
+			 */
+			void hardLink(const string & name1, const string & name2) const noexcept;
 		public:
 			/**
 			 * makePath Метод рекурсивного создания пути

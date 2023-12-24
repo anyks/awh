@@ -566,111 +566,140 @@ string awh::FS::realPath(const string & path) const noexcept {
  * @param name2 адрес где должна быть создана ссылка
  */
 void awh::FS::symLink(const string & name1, const string & name2) const noexcept {
-	/**
-	 * Выполняем работу для Unix
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если адрес на который нужно создать ссылку существует
-		if(this->type(name1) != type_t::NONE)			
-			// Выполняем создание символьной ссылки
-			::symlink(this->realPath(name1).c_str(), name2.c_str());
-	/**
-	 * Выполняем работу для Windows
-	 */
-	#else
-		// Получаем полный адрес пути
-		const string & filename = this->realPath(name1);
-		// Если файл передан
-		if(!filename.empty()){
-			// Выполняем инициализацию результата
-			HRESULT hres = CoInitialize(nullptr);
-			// Создаём объект проверки наличия ярлыка
-			IShellLink * psl = nullptr;
-			// Выполняем инициализацию объекта для проверки ярлыков
-			hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
-			// Если инициализация выполнена
-			if(SUCCEEDED(hres)){
-				// Позиция разделителя каталога
-				size_t pos = 0;
-				// Создаём объект проверки файла
-				IPersistFile * ppf = nullptr;
-				// Выполняем инициализацию объекта для проверки файла
-				hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
-				// Если объект для проверки файла инициализирован
+	// Если адреса переданы
+	if(!name1.empty() && !name2.empty()){
+		/**
+		 * Выполняем работу для Unix
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Если адрес на который нужно создать ссылку существует
+			if(this->type(name1) != type_t::NONE)			
+				// Выполняем создание символьной ссылки
+				::symlink(this->realPath(name1).c_str(), name2.c_str());
+		/**
+		 * Выполняем работу для Windows
+		 */
+		#else
+			// Получаем полный адрес пути
+			const string & filename = this->realPath(name1);
+			// Если файл передан
+			if(!filename.empty()){
+				// Выполняем инициализацию результата
+				HRESULT hres = CoInitialize(nullptr);
+				// Создаём объект проверки наличия ярлыка
+				IShellLink * psl = nullptr;
+				// Выполняем инициализацию объекта для проверки ярлыков
+				hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
+				// Если инициализация выполнена
 				if(SUCCEEDED(hres)){
-					// Выполняем поиск разделителя каталога
-					if((pos = filename.rfind("\\")) != string::npos){
-						// Получаем каталог где хранится указанный адрес
-						string workDir = "";
-						// Создаём адрес ярлыка
-						string linkName = "";
-						// Описание создаваемого ярлыка
-						string description = "";
-						// Если переданный адрес является каталогом
-						if(this->type(filename) == type_t::DIR){
-							// Выполняем вывод названия каталога
-							description = filename.substr(pos + 1);
-							// Выполняем поиск следующего разделителя
-							if((pos = filename.rfind("\\", pos)) != string::npos)
+					// Позиция разделителя каталога
+					size_t pos = 0;
+					// Создаём объект проверки файла
+					IPersistFile * ppf = nullptr;
+					// Выполняем инициализацию объекта для проверки файла
+					hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
+					// Если объект для проверки файла инициализирован
+					if(SUCCEEDED(hres)){
+						// Выполняем поиск разделителя каталога
+						if((pos = filename.rfind("\\")) != string::npos){
+							// Получаем каталог где хранится указанный адрес
+							string workDir = "";
+							// Создаём адрес ярлыка
+							string linkName = "";
+							// Описание создаваемого ярлыка
+							string description = "";
+							// Если переданный адрес является каталогом
+							if(this->type(filename) == type_t::DIR){
+								// Выполняем вывод названия каталога
+								description = filename.substr(pos + 1);
+								// Выполняем поиск следующего разделителя
+								if((pos = filename.rfind("\\", pos)) != string::npos)
+									// Получаем адрес каталога где хранится файл
+									workDir = filename.substr(0, pos + 1);
+							// Если переданный адрес не является каталогом
+							} else {
 								// Получаем адрес каталога где хранится файл
 								workDir = filename.substr(0, pos + 1);
-						// Если переданный адрес не является каталогом
-						} else {
-							// Получаем адрес каталога где хранится файл
-							workDir = filename.substr(0, pos + 1);
-							// Извлекаем имя файла
-							const string & name = filename.substr(pos + 1);
-							// Ищем расширение файла
-							if((pos = name.find('.')) != string::npos)
-								// Устанавливаем имя файла
-								description = name.substr(0, pos);
-							// Устанавливаем только имя файла
-							else description = name;
-						}
-						// Выполняем установку адреса ярлыка как он есть
-						psl->SetPath(reinterpret_cast <LPCTSTR> (filename.c_str()));
-						// Если рабочий каталог найден
-						if(!workDir.empty())
-							// Выполняем установку рабочего каталога
-							psl->SetWorkingDirectory(reinterpret_cast <LPCTSTR> (workDir.c_str()));
-						// Если название файла получено
-						if(!description.empty())
-							// Выполняем установку описания ярлыка
-							psl->SetDescription(reinterpret_cast <LPCTSTR> (description.c_str()));
-						// Если расширение ярлыка уже установлено
-						if((name2.length() > 4) && this->_fmk->compare(".lnk", name2.substr(name2.length() - 4)))
+								// Извлекаем имя файла
+								const string & name = filename.substr(pos + 1);
+								// Ищем расширение файла
+								if((pos = name.find('.')) != string::npos)
+									// Устанавливаем имя файла
+									description = name.substr(0, pos);
+								// Устанавливаем только имя файла
+								else description = name;
+							}
 							// Выполняем установку адреса ярлыка как он есть
-							linkName = this->realPath(name2);
-						// Выполняем установку полного пути адреса файла
-						else linkName = this->_fmk->format("%s.lnk", this->realPath(name2).c_str());
-						/**
-						 * Если мы работаем с юникодом
-						 */
-						#ifdef _UNICODE
-							// Выполняем создание ярлыка в файловой системе
-							hres = ppf->Save(reinterpret_cast <LPCTSTR> (linkName.c_str()), true); 
-						/**
-						 * Если мы работаем с кодировкой CP1251
-						 */
-						#else
-							// Создаём буфер для кодирования символов
-							WCHAR wsz[MAX_PATH] = {0};
-							// Выполняем перекодирование в UTF-8
-							MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (linkName.c_str()), -1, wsz, MAX_PATH);
-							// Выполняем создание ярлыка в файловой системе
-							hres = ppf->Save(wsz, true);
-						#endif
+							psl->SetPath(reinterpret_cast <LPCTSTR> (filename.c_str()));
+							// Если рабочий каталог найден
+							if(!workDir.empty())
+								// Выполняем установку рабочего каталога
+								psl->SetWorkingDirectory(reinterpret_cast <LPCTSTR> (workDir.c_str()));
+							// Если название файла получено
+							if(!description.empty())
+								// Выполняем установку описания ярлыка
+								psl->SetDescription(reinterpret_cast <LPCTSTR> (description.c_str()));
+							// Если расширение ярлыка уже установлено
+							if((name2.length() > 4) && this->_fmk->compare(".lnk", name2.substr(name2.length() - 4)))
+								// Выполняем установку адреса ярлыка как он есть
+								linkName = this->realPath(name2);
+							// Выполняем установку полного пути адреса файла
+							else linkName = this->_fmk->format("%s.lnk", this->realPath(name2).c_str());
+							/**
+							 * Если мы работаем с юникодом
+							 */
+							#ifdef _UNICODE
+								// Выполняем создание ярлыка в файловой системе
+								hres = ppf->Save(reinterpret_cast <LPCTSTR> (linkName.c_str()), true); 
+							/**
+							 * Если мы работаем с кодировкой CP1251
+							 */
+							#else
+								// Создаём буфер для кодирования символов
+								WCHAR wsz[MAX_PATH] = {0};
+								// Выполняем перекодирование в UTF-8
+								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (linkName.c_str()), -1, wsz, MAX_PATH);
+								// Выполняем создание ярлыка в файловой системе
+								hres = ppf->Save(wsz, true);
+							#endif
+						}
+						// Выполняем очистку объекта провверки файла
+						psl->Release();
 					}
 					// Выполняем очистку объекта провверки файла
 					psl->Release();
 				}
-				// Выполняем очистку объекта провверки файла
-				psl->Release();
+				// Выполняем очистку объекта результата
+				CoUninitialize();
 			}
-			// Выполняем очистку объекта результата
-			CoUninitialize();
-		}
-	#endif
+		#endif
+	}
+}
+/**
+ * hardLink Метод создания жёстких ссылок
+ * @param name1 адрес на который нужно сделать ссылку
+ * @param name2 адрес где должна быть создана ссылка
+ */
+void awh::FS::hardLink(const string & name1, const string & name2) const noexcept {
+	// Если адреса переданы
+	if(!name1.empty() && !name2.empty()){
+		/**
+		 * Выполняем работу для Unix
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Если адрес на который нужно создать ссылку существует
+			if(this->type(name1) != type_t::NONE)			
+				// Выполняем создание символьной ссылки
+				::link(this->realPath(name1).c_str(), name2.c_str());
+		/**
+		 * Выполняем работу для Windows
+		 */
+		#else
+			// Блокируем неиспользуемые переменные
+			(void) name1;
+			(void) name2;
+		#endif
+	}
 }
 /**
  * makePath Метод рекурсивного создания пути
