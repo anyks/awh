@@ -108,7 +108,7 @@ bool awh::FS::isSock(const string & name) const noexcept {
  */
 bool awh::FS::isLink(const string & name) const noexcept {
 	// Выводим результат
-	return (this->type(name, false) == type_t::LNK);
+	return (this->type(name, false) == type_t::LINK);
 }
 /**
  * istype Метод определяющая тип файловой системы по адресу
@@ -165,7 +165,7 @@ awh::FS::type_t awh::FS::type(const string & name, const bool actual) const noex
 						// Если это символьная ссылка
 						if(S_ISLNK(info.st_mode))
 							// Получаем тип файловой системы
-							result = type_t::LNK;
+							result = type_t::LINK;
 					}
 					/**
 					 * Если операционной системой является MacOS X
@@ -182,7 +182,7 @@ awh::FS::type_t awh::FS::type(const string & name, const bool actual) const noex
 								// Если адрес является ярлыком
 								if(static_cast <bool> (wasAliased))
 									// Получаем тип файловой системы
-									result = type_t::LNK;
+									result = type_t::LINK;
 							}
 						}
 					#endif
@@ -224,7 +224,7 @@ awh::FS::type_t awh::FS::type(const string & name, const bool actual) const noex
 							// Если переданный адрес является ярлыком
 							if(SUCCEEDED(hres))
 								// Получаем тип файловой системы
-								result = type_t::LNK;
+								result = type_t::LINK;
 							// Выполняем очистку объекта провверки файла
 							psl->Release();
 						}
