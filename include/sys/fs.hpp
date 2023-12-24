@@ -11,8 +11,17 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __FS_DANUBE__
-#define __FS_DANUBE__
+#ifndef __AWH_FS__
+#define __AWH_FS__
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <windows.h>
+	#include <objbase.h>
+	#include <shlobj.h>
+#endif
 
 /**
  * Стандартная библиотека
@@ -32,18 +41,18 @@
 /**
  * Если это clang v10 или выше
  */
-#if defined(__DANUBE_EXPERIMENTAL__)
+#if defined(__AWH_EXPERIMENTAL__)
 	#include <filesystem>
 #endif
 
 /**
- * Если мы работаем в ОС Windows
+ * Если мы работаем в MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <conio.h>
 	#include <direct.h>
 /**
- * Если мы работаем в ОС Unix
+ * Если мы работаем в Unix
  */
 #else
 	#include <grp.h>
@@ -52,10 +61,25 @@
 #endif
 
 /**
+ * Если операционной системой является MacOS X
+ */
+#if __APPLE__ || __MACH__
+	#include <Carbon/Carbon.h>
+#endif
+
+/**
  * Наши модули
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <tchar.h>
+	#include <strsafe.h>
+#endif
 
 // Устанавливаем область видимости
 using namespace std;
@@ -119,13 +143,20 @@ namespace awh {
 			 * @return     результат проверки
 			 */
 			bool isSock(const string & name) const noexcept;
+			/**
+			 * isLink Метод проверки существования сокета
+			 * @param name адрес сокета
+			 * @return     результат проверки
+			 */
+			bool isLink(const string & name) const noexcept;
 		public:
 			/**
 			 * istype Метод определяющая тип файловой системы по адресу
-			 * @param name адрес дирректории
-			 * @return     тип файловой системы
+			 * @param name   адрес дирректории
+			 * @param actual флаг проверки актуальных файлов
+			 * @return       тип файловой системы
 			 */
-			type_t type(const string & name) const noexcept;
+			type_t type(const string & name, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * size Метод подсчёта размера файла/каталога
@@ -155,6 +186,13 @@ namespace awh {
 			 * @return     полный путь
 			 */
 			string realPath(const string & path) const noexcept;
+		public:
+			/**
+			 * symlink Метод создания символьной ссылки
+			 * @param name1 адрес на который нужно сделать ссылку
+			 * @param name2 адрес где должна быть создана ссылка
+			 */
+			void symlink(const string & name1, const string & name2) const noexcept;
 		public:
 			/**
 			 * makePath Метод рекурсивного создания пути
@@ -247,4 +285,4 @@ namespace awh {
 	} fs_t;
 };
 
-#endif // __FS_DANUBE__
+#endif // __AWH_FS__
