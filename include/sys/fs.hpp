@@ -127,36 +127,36 @@ namespace awh {
 		public:
 			/**
 			 * isDir Метод проверяющий существование дирректории
-			 * @param name адрес дирректории
+			 * @param addr адрес дирректории
 			 * @return     результат проверки
 			 */
-			bool isDir(const string & name) const noexcept;
+			bool isDir(const string & addr) const noexcept;
 			/**
 			 * isFile Метод проверяющий существование файла
-			 * @param name адрес файла
+			 * @param addr адрес файла
 			 * @return     результат проверки
 			 */
-			bool isFile(const string & name) const noexcept;
+			bool isFile(const string & addr) const noexcept;
 			/**
 			 * isSock Метод проверки существования сокета
-			 * @param name адрес сокета
+			 * @param addr адрес сокета
 			 * @return     результат проверки
 			 */
-			bool isSock(const string & name) const noexcept;
+			bool isSock(const string & addr) const noexcept;
 			/**
 			 * isLink Метод проверки существования сокета
-			 * @param name адрес сокета
+			 * @param addr адрес сокета
 			 * @return     результат проверки
 			 */
-			bool isLink(const string & name) const noexcept;
+			bool isLink(const string & addr) const noexcept;
 		public:
 			/**
 			 * istype Метод определяющая тип файловой системы по адресу
-			 * @param name   адрес дирректории
+			 * @param addr   адрес дирректории
 			 * @param actual флаг проверки актуальных файлов
 			 * @return       тип файловой системы
 			 */
-			type_t type(const string & name, const bool actual = true) const noexcept;
+			type_t type(const string & addr, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * size Метод подсчёта размера файла/каталога
@@ -189,16 +189,16 @@ namespace awh {
 		public:
 			/**
 			 * symLink Метод создания символьной ссылки
-			 * @param name1 адрес на который нужно сделать ссылку
-			 * @param name2 адрес где должна быть создана ссылка
+			 * @param addr1 адрес на который нужно сделать ссылку
+			 * @param addr2 адрес где должна быть создана ссылка
 			 */
-			void symLink(const string & name1, const string & name2) const noexcept;
+			void symLink(const string & addr1, const string & addr2) const noexcept;
 			/**
 			 * hardLink Метод создания жёстких ссылок
-			 * @param name1 адрес на который нужно сделать ссылку
-			 * @param name2 адрес где должна быть создана ссылка
+			 * @param addr1 адрес на который нужно сделать ссылку
+			 * @param addr2 адрес где должна быть создана ссылка
 			 */
-			void hardLink(const string & name1, const string & name2) const noexcept;
+			void hardLink(const string & addr1, const string & addr2) const noexcept;
 		public:
 			/**
 			 * makePath Метод рекурсивного создания пути
@@ -215,11 +215,11 @@ namespace awh {
 			bool makeDir(const string & path, const string & user, const string & group) const noexcept;
 		public:
 			/**
-			 * fileComponents Метод извлечения названия и расширения файла
-			 * @param filename адрес файла для извлечения его параметров
-			 * @param before   флаг определения первой точки расширения слева
+			 * components Метод извлечения названия и расширения файла
+			 * @param addr   адрес файла для извлечения его параметров
+			 * @param before флаг определения первой точки расширения слева
 			 */
-			pair <string, string> fileComponents(const string & filename, const bool before = false) const noexcept;
+			pair <string, string> components(const string & addr, const bool before = false) const noexcept;
 		public:
 			/**
 			 * Выполняем работу для Unix

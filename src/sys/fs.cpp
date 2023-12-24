@@ -76,55 +76,55 @@ gid_t awh::FS::gid(const string & name) const noexcept {
 }
 /**
  * isDir Метод проверяющий существование дирректории
- * @param name адрес дирректории
+ * @param addr адрес дирректории
  * @return     результат проверки
  */
-bool awh::FS::isDir(const string & name) const noexcept {
+bool awh::FS::isDir(const string & addr) const noexcept {
 	// Выводим результат
-	return (this->type(name) == type_t::DIR);
+	return (this->type(addr) == type_t::DIR);
 }
 /**
  * isFile Метод проверяющий существование файла
- * @param name адрес файла
+ * @param addr адрес файла
  * @return     результат проверки
  */
-bool awh::FS::isFile(const string & name) const noexcept {
+bool awh::FS::isFile(const string & addr) const noexcept {
 	// Выводим результат
-	return (this->type(name) == type_t::FILE);
+	return (this->type(addr) == type_t::FILE);
 }
 /**
  * isSock Метод проверки существования сокета
- * @param name адрес сокета
+ * @param addr адрес сокета
  * @return     результат проверки
  */
-bool awh::FS::isSock(const string & name) const noexcept {
+bool awh::FS::isSock(const string & addr) const noexcept {
 	// Выводим результат
-	return (this->type(name) == type_t::SOCK);
+	return (this->type(addr) == type_t::SOCK);
 }
 /**
  * isLink Метод проверки существования сокета
- * @param name адрес сокета
+ * @param addr адрес сокета
  * @return     результат проверки
  */
-bool awh::FS::isLink(const string & name) const noexcept {
+bool awh::FS::isLink(const string & addr) const noexcept {
 	// Выводим результат
-	return (this->type(name, false) == type_t::LINK);
+	return (this->type(addr, false) == type_t::LINK);
 }
 /**
  * istype Метод определяющая тип файловой системы по адресу
- * @param name   адрес дирректории
+ * @param addr   адрес дирректории
  * @param actual флаг проверки актуальных файлов
  * @return       тип файловой системы
  */
-awh::FS::type_t awh::FS::type(const string & name, const bool actual) const noexcept {
+awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noexcept {
 	// Результат работы функции
 	type_t result = type_t::NONE;
 	// Если адрес дирректории передан
-	if(!name.empty()){
+	if(!addr.empty()){
 		// Структура проверка статистики
 		struct stat info;
 		// Если тип определён
-		if(stat(name.c_str(), &info) == 0){
+		if(::stat(addr.c_str(), &info) == 0){
 			// Если это каталог
 			if(S_ISDIR(info.st_mode))
 				// Получаем тип файловой системы
@@ -154,87 +154,90 @@ awh::FS::type_t awh::FS::type(const string & name, const bool actual) const noex
 					// Получаем тип файловой системы
 					result = type_t::SOCK;
 			#endif
-			// Если детектировать актуальные файлы не нужно
-			if(!actual && (result != type_t::NONE)){
-				/**
-				 * Выполняем работу для Unix
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Если тип определён
-					if(::lstat(name.c_str(), &info) == 0){
-						// Если это символьная ссылка
-						if(S_ISLNK(info.st_mode))
-							// Получаем тип файловой системы
-							result = type_t::LINK;
-					}
-					/**
-					 * Если операционной системой является MacOS X
-					 */
-					#if __APPLE__ || __MACH__
-						// Создаём объект файловой системы
-						FSRef link;
-						// Создаём флаги принадлежности адреса
-						Boolean isFolder = false, wasAliased = false;
-						// Выполняем чтение указанного каталога
-						if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (name.c_str()), &link, nullptr) == 0){
-							// Выполняем проверку является ли адрес ярлыком
-							if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
-								// Если адрес является ярлыком
-								if(static_cast <bool> (wasAliased))
-									// Получаем тип файловой системы
-									result = type_t::LINK;
-							}
-						}
-					#endif
-				/**
-				 * Выполняем работу для Windows
-				 */
-				#else
-					// Создаём объект проверки наличия ярлыка
-					IShellLink * psl = nullptr;
-					// Выполняем инициализацию результата
-					HRESULT hres = CoInitialize(nullptr);
-					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
-					// Если инициализация выполнена
-					if(SUCCEEDED(hres)){
-						// Создаём объект проверки файла
-						IPersistFile * ppf = nullptr;
-						// Выполняем инициализацию объекта для проверки файла
-						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
-						// Если объект для проверки файла инициализирован
-						if(SUCCEEDED(hres)){
-							/**
-							 * Если мы работаем с юникодом
-							 */
-							#ifdef _UNICODE
-								// Выполняем загрузку переданного адреса
-								hres = ppf->Load(reinterpret_cast <LPCTSTR> (name.c_str()), STGM_READ);
-							/**
-							 * Если мы работаем с кодировкой CP1251
-							 */
-							#else
-								// Создаём буфер для кодирования символов
-								WCHAR wsz[MAX_PATH] = {0};
-								// Выполняем перекодирование в UTF-8
-								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (name.c_str()), -1, wsz, MAX_PATH);
-								// Выполняем загрузку переданного адреса
-								hres = ppf->Load(wsz, STGM_READ);
-							#endif
-							// Если переданный адрес является ярлыком
-							if(SUCCEEDED(hres))
+			/**
+			 * Если операционной системой является MacOS X
+			 */
+			#if __APPLE__ || __MACH__
+				// Если детектировать актуальные файлы не нужно и его тип определённо установлен
+				if(!actual && (result != type_t::NONE)){
+					// Создаём объект файловой системы
+					FSRef link;
+					// Создаём флаги принадлежности адреса
+					Boolean isFolder = false, wasAliased = false;
+					// Выполняем чтение указанного каталога
+					if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (addr.c_str()), &link, nullptr) == 0){
+						// Выполняем проверку является ли адрес ярлыком
+						if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
+							// Если адрес является ярлыком
+							if(static_cast <bool> (wasAliased))
 								// Получаем тип файловой системы
 								result = type_t::LINK;
-							// Выполняем очистку объекта провверки файла
-							psl->Release();
 						}
+					}
+				}
+			#endif
+		}
+		// Если детектировать актуальные файлы не нужно и адрес не детектирован как ссылка
+		if(!actual && (result != type_t::LINK)){
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Если тип определён
+				if(::lstat(addr.c_str(), &info) == 0){
+					// Если это символьная ссылка
+					if(S_ISLNK(info.st_mode))
+						// Получаем тип файловой системы
+						result = type_t::LINK;
+				}
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#else
+				// Создаём объект проверки наличия ярлыка
+				IShellLink * psl = nullptr;
+				// Выполняем инициализацию результата
+				HRESULT hres = CoInitialize(nullptr);
+				// Выполняем инициализацию объекта для проверки ярлыков
+				hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
+				// Если инициализация выполнена
+				if(SUCCEEDED(hres)){
+					// Создаём объект проверки файла
+					IPersistFile * ppf = nullptr;
+					// Выполняем инициализацию объекта для проверки файла
+					hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
+					// Если объект для проверки файла инициализирован
+					if(SUCCEEDED(hres)){
+						/**
+						 * Если мы работаем с юникодом
+						 */
+						#ifdef _UNICODE
+							// Выполняем загрузку переданного адреса
+							hres = ppf->Load(reinterpret_cast <LPCTSTR> (addr.c_str()), STGM_READ);
+						/**
+						 * Если мы работаем с кодировкой CP1251
+						 */
+						#else
+							// Создаём буфер для кодирования символов
+							WCHAR wsz[MAX_PATH] = {0};
+							// Выполняем перекодирование в UTF-8
+							MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (addr.c_str()), -1, wsz, MAX_PATH);
+							// Выполняем загрузку переданного адреса
+							hres = ppf->Load(wsz, STGM_READ);
+						#endif
+						// Если переданный адрес является ярлыком
+						if(SUCCEEDED(hres))
+							// Получаем тип файловой системы
+							result = type_t::LINK;
 						// Выполняем очистку объекта провверки файла
 						psl->Release();
 					}
-					// Выполняем очистку объекта результата
-					CoUninitialize();
-				#endif
-			}
+					// Выполняем очистку объекта провверки файла
+					psl->Release();
+				}
+				// Выполняем очистку объекта результата
+				CoUninitialize();
+			#endif
 		}
 	}
 	// Выводим результат
@@ -432,9 +435,9 @@ int awh::FS::delPath(const string & path) const noexcept {
  */
 string awh::FS::realPath(const string & path) const noexcept {
 	// Результат работы функции
-	string result = "";
+	string result = path;
 	// Если путь передан
-	if(!path.empty()){
+	if(!result.empty()){
 		/**
 		 * Выполняем работу для Windows
 		 */
@@ -444,7 +447,7 @@ string awh::FS::realPath(const string & path) const noexcept {
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Выполняем извлечение адресов из переменных окружений
-			ExpandEnvironmentStrings(path.c_str(), buffer, ARRAYSIZE(buffer));
+			ExpandEnvironmentStrings(result.c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
 			result = buffer;
 			// Заполняем буфер нулями
@@ -474,7 +477,7 @@ string awh::FS::realPath(const string & path) const noexcept {
 							 */
 							#ifdef _UNICODE
 								// Выполняем загрузку переданного адреса
-								hres = ppf->Load(reinterpret_cast <LPCTSTR> (path.c_str()), STGM_READ);
+								hres = ppf->Load(reinterpret_cast <LPCTSTR> (result.c_str()), STGM_READ);
 							/**
 							 * Если мы работаем с кодировкой CP1251
 							 */
@@ -482,7 +485,7 @@ string awh::FS::realPath(const string & path) const noexcept {
 								// Создаём буфер для кодирования символов
 								WCHAR wsz[MAX_PATH] = {0};
 								// Выполняем перекодирование в UTF-8
-								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (path.c_str()), -1, wsz, MAX_PATH);
+								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (result.c_str()), -1, wsz, MAX_PATH);
 								// Выполняем загрузку переданного адреса
 								hres = ppf->Load(wsz, STGM_READ);
 							#endif
@@ -524,7 +527,7 @@ string awh::FS::realPath(const string & path) const noexcept {
 		 */
 		#else
 			// Получаем полный адрес
-			const char * realPath = realpath(path.c_str(), nullptr);
+			const char * realPath = realpath(result.c_str(), nullptr);
 			// Если адрес существует
 			if(realPath != nullptr){
 				// Получаем полный адрес пути
@@ -548,13 +551,25 @@ string awh::FS::realPath(const string & path) const noexcept {
 								// Выполняем извлечение полного адреса файла
 								if(FSRefMakePath(&link, buffer, 1024) == 0)
 									// Получаем полный адрес файла
-									result = this->_fmk->format("%s%s", buffer, (isFolder ? "/" : ""));
+									return this->_fmk->format("%s%s", buffer, (isFolder ? "/" : ""));
 							}
 						}
 					}
 				#endif
-			// Иначе выводим путь так, как он есть
-			} else result = std::forward <const string> (path);
+			// Если результат не получен
+			} else if(this->isLink(result)) {
+				// Создаём буфер данных для получения адреса
+				char buffer[PATH_MAX];
+				// Получаем длину полученного адреса
+				const ssize_t length = ::readlink(result.c_str(), buffer, sizeof(buffer) - 1);
+				// Если длина адреса получена
+				if(length != -1){
+					// Выполняем установку конца строки
+					buffer[length] = '\0';
+					// Выводим полученный результат
+					return buffer;
+				}
+			}
 		#endif
 	}
 	// Выводим результат
@@ -562,26 +577,24 @@ string awh::FS::realPath(const string & path) const noexcept {
 }
 /**
  * symLink Метод создания символьной ссылки
- * @param name1 адрес на который нужно сделать ссылку
- * @param name2 адрес где должна быть создана ссылка
+ * @param addr1 адрес на который нужно сделать ссылку
+ * @param addr2 адрес где должна быть создана ссылка
  */
-void awh::FS::symLink(const string & name1, const string & name2) const noexcept {
+void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept {
 	// Если адреса переданы
-	if(!name1.empty() && !name2.empty()){
+	if(!addr1.empty() && !addr2.empty()){
 		/**
 		 * Выполняем работу для Unix
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Если адрес на который нужно создать ссылку существует
-			if(this->type(name1) != type_t::NONE)			
-				// Выполняем создание символьной ссылки
-				::symlink(this->realPath(name1).c_str(), name2.c_str());
+		#if !defined(_WIN32) && !defined(_WIN64)			
+			// Выполняем создание символьной ссылки
+			::symlink(this->realPath(addr1).c_str(), addr2.c_str());
 		/**
 		 * Выполняем работу для Windows
 		 */
 		#else
 			// Получаем полный адрес пути
-			const string & filename = this->realPath(name1);
+			const string & filename = this->realPath(addr1);
 			// Если файл передан
 			if(!filename.empty()){
 				// Выполняем инициализацию результата
@@ -600,57 +613,46 @@ void awh::FS::symLink(const string & name1, const string & name2) const noexcept
 					hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
 					// Если объект для проверки файла инициализирован
 					if(SUCCEEDED(hres)){
+						// Определяем флаг обратного смещения
+						const uint8_t offset = (filename.back() == '\\' ? 2 : 1);
 						// Выполняем поиск разделителя каталога
-						if((pos = filename.rfind("\\")) != string::npos){
-							// Получаем каталог где хранится указанный адрес
-							string workDir = "";
+						if((pos = filename.rfind("\\", filename.length() - static_cast <size_t> (offset))) != string::npos){
 							// Создаём адрес ярлыка
-							string linkName = "";
+							string symlink = "";
 							// Описание создаваемого ярлыка
 							string description = "";
-							// Если переданный адрес является каталогом
-							if(this->type(filename) == type_t::DIR){
-								// Выполняем вывод названия каталога
-								description = filename.substr(pos + 1);
-								// Выполняем поиск следующего разделителя
-								if((pos = filename.rfind("\\", pos)) != string::npos)
-									// Получаем адрес каталога где хранится файл
-									workDir = filename.substr(0, pos + 1);
-							// Если переданный адрес не является каталогом
-							} else {
-								// Получаем адрес каталога где хранится файл
-								workDir = filename.substr(0, pos + 1);
-								// Извлекаем имя файла
-								const string & name = filename.substr(pos + 1);
-								// Ищем расширение файла
-								if((pos = name.find('.')) != string::npos)
-									// Устанавливаем имя файла
-									description = name.substr(0, pos);
-								// Устанавливаем только имя файла
-								else description = name;
-							}
+							// Получаем адрес каталога где хранится файл
+							const string & working = filename.substr(0, pos + 1);
+							// Извлекаем имя файла
+							const string & name = filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset)));
+							// Ищем расширение файла
+							if((pos = name.find('.')) != string::npos)
+								// Устанавливаем имя файла
+								description = name.substr(0, pos);
+							// Устанавливаем только имя файла
+							else description = name;
 							// Выполняем установку адреса ярлыка как он есть
 							psl->SetPath(reinterpret_cast <LPCTSTR> (filename.c_str()));
 							// Если рабочий каталог найден
-							if(!workDir.empty())
+							if(!working.empty())
 								// Выполняем установку рабочего каталога
-								psl->SetWorkingDirectory(reinterpret_cast <LPCTSTR> (workDir.c_str()));
+								psl->SetWorkingDirectory(reinterpret_cast <LPCTSTR> (working.c_str()));
 							// Если название файла получено
 							if(!description.empty())
 								// Выполняем установку описания ярлыка
 								psl->SetDescription(reinterpret_cast <LPCTSTR> (description.c_str()));
 							// Если расширение ярлыка уже установлено
-							if((name2.length() > 4) && this->_fmk->compare(".lnk", name2.substr(name2.length() - 4)))
+							if((addr2.length() > 4) && this->_fmk->compare(".lnk", addr2.substr(addr2.length() - 4)))
 								// Выполняем установку адреса ярлыка как он есть
-								linkName = this->realPath(name2);
+								symlink = this->realPath(addr2);
 							// Выполняем установку полного пути адреса файла
-							else linkName = this->_fmk->format("%s.lnk", this->realPath(name2).c_str());
+							else symlink = this->_fmk->format("%s.lnk", this->realPath(addr2).c_str());
 							/**
 							 * Если мы работаем с юникодом
 							 */
 							#ifdef _UNICODE
 								// Выполняем создание ярлыка в файловой системе
-								hres = ppf->Save(reinterpret_cast <LPCTSTR> (linkName.c_str()), true); 
+								hres = ppf->Save(reinterpret_cast <LPCTSTR> (symlink.c_str()), true); 
 							/**
 							 * Если мы работаем с кодировкой CP1251
 							 */
@@ -658,7 +660,7 @@ void awh::FS::symLink(const string & name1, const string & name2) const noexcept
 								// Создаём буфер для кодирования символов
 								WCHAR wsz[MAX_PATH] = {0};
 								// Выполняем перекодирование в UTF-8
-								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (linkName.c_str()), -1, wsz, MAX_PATH);
+								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (symlink.c_str()), -1, wsz, MAX_PATH);
 								// Выполняем создание ярлыка в файловой системе
 								hres = ppf->Save(wsz, true);
 							#endif
@@ -677,27 +679,27 @@ void awh::FS::symLink(const string & name1, const string & name2) const noexcept
 }
 /**
  * hardLink Метод создания жёстких ссылок
- * @param name1 адрес на который нужно сделать ссылку
- * @param name2 адрес где должна быть создана ссылка
+ * @param addr1 адрес на который нужно сделать ссылку
+ * @param addr2 адрес где должна быть создана ссылка
  */
-void awh::FS::hardLink(const string & name1, const string & name2) const noexcept {
+void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcept {
 	// Если адреса переданы
-	if(!name1.empty() && !name2.empty()){
+	if(!addr1.empty() && !addr2.empty()){
 		/**
 		 * Выполняем работу для Unix
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если адрес на который нужно создать ссылку существует
-			if(this->type(name1) != type_t::NONE)			
+			if(this->type(addr1) != type_t::NONE)			
 				// Выполняем создание символьной ссылки
-				::link(this->realPath(name1).c_str(), name2.c_str());
+				::link(this->realPath(addr1).c_str(), addr2.c_str());
 		/**
 		 * Выполняем работу для Windows
 		 */
 		#else
 			// Блокируем неиспользуемые переменные
-			(void) name1;
-			(void) name2;
+			(void) addr1;
+			(void) addr2;
 		#endif
 	}
 }
@@ -791,23 +793,27 @@ bool awh::FS::makeDir(const string & path, const string & user, const string & g
 	return result;
 }
 /**
- * fileComponents Метод извлечения названия и расширения файла
- * @param filename адрес файла для извлечения его параметров
- * @param before   флаг определения первой точки расширения слева
+ * components Метод извлечения названия и расширения файла
+ * @param addr   адрес файла для извлечения его параметров
+ * @param before флаг определения первой точки расширения слева
  */
-pair <string, string> awh::FS::fileComponents(const string & filename, const bool before) const noexcept {
+pair <string, string> awh::FS::components(const string & addr, const bool before) const noexcept {
 	// Результат работы функции
 	pair <string, string> result;
+	// Получаем полный адрес пути
+	const string & filename = this->realPath(addr);
 	// Если файл передан
 	if(!filename.empty()){
 		// Позиция разделителя каталога
 		size_t pos = 0;
+		// Определяем флаг обратного смещения
+		const uint8_t offset = (filename.back() == FS_SEPARATOR[0] ? 2 : 1);
 		// Выполняем поиск разделителя каталога
-		if((pos = filename.rfind(FS_SEPARATOR)) != string::npos){
+		if((pos = filename.rfind(FS_SEPARATOR, filename.length() - static_cast <size_t> (offset))) != string::npos){
 			// Если переданный адрес является каталогом
 			if(this->type(filename) == type_t::DIR)
 				// Выполняем вывод названия каталога
-				result.first = std::forward <const string> (filename.substr(pos + 1));
+				result.first = filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset)));
 			// Если переданный адрес не является каталогом
 			else {
 				// Извлекаем имя файла
