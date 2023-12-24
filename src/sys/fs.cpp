@@ -430,108 +430,111 @@ int awh::FS::delPath(const string & path) const noexcept {
 }
 /**
  * realPath Метод извлечения реального адреса
- * @param path путь который нужно определить
- * @return     полный путь
+ * @param path   путь который нужно определить
+ * @param actual флаг проверки актуальных файлов
+ * @return       полный путь
  */
-string awh::FS::realPath(const string & path) const noexcept {
+string awh::FS::realPath(const string & path, const bool actual) const noexcept {
 	// Результат работы функции
-	string result = path;
-	// Если путь передан
-	if(!result.empty()){
-		/**
-		 * Выполняем работу для Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Создаём буфер для полного адреса
-			char buffer[_MAX_PATH];
-			// Заполняем буфер нулями
-			::memset(buffer, 0, sizeof(buffer));
-			// Выполняем извлечение адресов из переменных окружений
-			ExpandEnvironmentStrings(result.c_str(), buffer, ARRAYSIZE(buffer));
-			// Устанавливаем результат
+	string result = "";
+	/**
+	 * Выполняем работу для Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Создаём буфер для полного адреса
+		char buffer[_MAX_PATH];
+		// Заполняем буфер нулями
+		::memset(buffer, 0, sizeof(buffer));
+		// Выполняем извлечение адресов из переменных окружений
+		ExpandEnvironmentStrings(path.c_str(), buffer, ARRAYSIZE(buffer));
+		// Устанавливаем результат
+		result = buffer;
+		// Заполняем буфер нулями
+		::memset(buffer, 0, sizeof(buffer));
+		// Если адрес существует
+		if(_fullpath(buffer, result.c_str(), _MAX_PATH) != nullptr){
+			// Получаем полный адрес пути
 			result = buffer;
-			// Заполняем буфер нулями
-			::memset(buffer, 0, sizeof(buffer));
-			// Если адрес существует
-			if(_fullpath(buffer, result.c_str(), _MAX_PATH) != nullptr){
-				// Получаем полный адрес пути
-				result = buffer;
-				// Если адрес пути получен
-				if(!result.empty()){
-					// Создаём объект проверки наличия ярлыка
-					IShellLink * psl = nullptr;
-					// Выполняем инициализацию результата
-					HRESULT hres = CoInitialize(nullptr);
-					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
-					// Если инициализация выполнена
+			// Если адрес пути получен
+			if(actual && !result.empty()){
+				// Создаём объект проверки наличия ярлыка
+				IShellLink * psl = nullptr;
+				// Выполняем инициализацию результата
+				HRESULT hres = CoInitialize(nullptr);
+				// Выполняем инициализацию объекта для проверки ярлыков
+				hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast <LPVOID *> (&psl));
+				// Если инициализация выполнена
+				if(SUCCEEDED(hres)){
+					// Создаём объект проверки файла
+					IPersistFile * ppf = nullptr;
+					// Выполняем инициализацию объекта для проверки файла
+					hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
+					// Если объект для проверки файла инициализирован
 					if(SUCCEEDED(hres)){
-						// Создаём объект проверки файла
-						IPersistFile * ppf = nullptr;
-						// Выполняем инициализацию объекта для проверки файла
-						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
-						// Если объект для проверки файла инициализирован
+						/**
+						 * Если мы работаем с юникодом
+						 */
+						#ifdef _UNICODE
+							// Выполняем загрузку переданного адреса
+							hres = ppf->Load(reinterpret_cast <LPCTSTR> (result.c_str()), STGM_READ);
+						/**
+						 * Если мы работаем с кодировкой CP1251
+						 */
+						#else
+							// Создаём буфер для кодирования символов
+							WCHAR wsz[MAX_PATH] = {0};
+							// Выполняем перекодирование в UTF-8
+							MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (result.c_str()), -1, wsz, MAX_PATH);
+							// Выполняем загрузку переданного адреса
+							hres = ppf->Load(wsz, STGM_READ);
+						#endif
+						// Если переданный адрес является ярлыком
 						if(SUCCEEDED(hres)){
-							/**
-							 * Если мы работаем с юникодом
-							 */
-							#ifdef _UNICODE
-								// Выполняем загрузку переданного адреса
-								hres = ppf->Load(reinterpret_cast <LPCTSTR> (result.c_str()), STGM_READ);
-							/**
-							 * Если мы работаем с кодировкой CP1251
-							 */
-							#else
-								// Создаём буфер для кодирования символов
-								WCHAR wsz[MAX_PATH] = {0};
-								// Выполняем перекодирование в UTF-8
-								MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (result.c_str()), -1, wsz, MAX_PATH);
-								// Выполняем загрузку переданного адреса
-								hres = ppf->Load(wsz, STGM_READ);
-							#endif
-							// Если переданный адрес является ярлыком
+							// Выполняем резолвинг ярлыка
+							hres = psl->Resolve(nullptr, 0);
+							// Если резолвинг ярлыка удачно выполнен
 							if(SUCCEEDED(hres)){
-								// Выполняем резолвинг ярлыка
-								hres = psl->Resolve(nullptr, 0);
-								// Если резолвинг ярлыка удачно выполнен
+								// Создаём буфер символов для получения каталога ярлыка
+								TCHAR szGotPath[MAX_PATH] = {0};
+								// Выполняем каталога где находится ярлыка
+								hres = psl->GetPath(szGotPath, _countof(szGotPath), nullptr, SLGP_RAWPATH);
+								// Если каталог где находится ярлык получен
 								if(SUCCEEDED(hres)){
-									// Создаём буфер символов для получения каталога ярлыка
-									TCHAR szGotPath[MAX_PATH] = {0};
-									// Выполняем каталога где находится ярлыка
-									hres = psl->GetPath(szGotPath, _countof(szGotPath), nullptr, SLGP_RAWPATH);
-									// Если каталог где находится ярлык получен
-									if(SUCCEEDED(hres)){
-										// Создаём буфер для извлечения полного адреса ярлыка
-										TCHAR achPath[MAX_PATH] = {0};
-										// Выполняем извлечение полного адреса ярлыка
-										hres = StringCbCopy(achPath, _countof(achPath), szGotPath);
-										// Если полный адрес ярлыка извлечён
-										if(SUCCEEDED(hres))
-											// Выполняем установку полного адреса ярлыка
-											result = reinterpret_cast <char *> (achPath);
-									}
+									// Создаём буфер для извлечения полного адреса ярлыка
+									TCHAR achPath[MAX_PATH] = {0};
+									// Выполняем извлечение полного адреса ярлыка
+									hres = StringCbCopy(achPath, _countof(achPath), szGotPath);
+									// Если полный адрес ярлыка извлечён
+									if(SUCCEEDED(hres))
+										// Выполняем установку полного адреса ярлыка
+										result = reinterpret_cast <char *> (achPath);
 								}
 							}
-							// Выполняем очистку объекта провверки файла
-							psl->Release();
 						}
 						// Выполняем очистку объекта провверки файла
 						psl->Release();
 					}
-					// Выполняем очистку объекта результата
-					CoUninitialize();
+					// Выполняем очистку объекта провверки файла
+					psl->Release();
 				}
+				// Выполняем очистку объекта результата
+				CoUninitialize();
 			}
-		/**
-		 * Выполняем работу для Unix
-		 */
-		#else
-			// Получаем полный адрес
-			const char * realPath = realpath(result.c_str(), nullptr);
+		}
+	/**
+	 * Выполняем работу для Unix
+	 */
+	#else
+		// Если нужно вывести актуальнй путь адреса
+		if(actual){
+			// Устанавливаем переданный путь адреса
+			result = path;
+			// Создаём буфер данных для получения адреса
+			char buffer[PATH_MAX];
 			// Если адрес существует
-			if(realPath != nullptr){
+			if(::realpath(result.c_str(), buffer) != nullptr){
 				// Получаем полный адрес пути
-				result = realPath;
+				result = buffer;
 				/**
 				 * Если операционной системой является MacOS X
 				 */
@@ -558,8 +561,8 @@ string awh::FS::realPath(const string & path) const noexcept {
 				#endif
 			// Если результат не получен
 			} else if(this->isLink(result)) {
-				// Создаём буфер данных для получения адреса
-				char buffer[PATH_MAX];
+				// Выполняем зануление буфера данных
+				::memset(buffer, 0, sizeof(buffer));
 				// Получаем длину полученного адреса
 				const ssize_t length = ::readlink(result.c_str(), buffer, sizeof(buffer) - 1);
 				// Если длина адреса получена
@@ -570,8 +573,71 @@ string awh::FS::realPath(const string & path) const noexcept {
 					return buffer;
 				}
 			}
-		#endif
-	}
+		// Если актуальный путь выводить не нужно
+		} else {
+			// Если путь передан пустой или конеь адреса не указан
+			if(path.empty() || (path.front() != FS_SEPARATOR[0])){
+				// Создаём буфер данных для получения адреса
+				char buffer[PATH_MAX];
+				// Выполняем получение адреса текущего каталога
+				if(::getcwd(buffer, sizeof(buffer)) == nullptr)
+					// Выводим результат как он был передан
+					return path;
+				// Получаем размер полученного адреса
+				size_t length = ::strlen(buffer);
+				// Выполняем выделение памяти для результирующего адреса
+				result.resize(length + 1, 0);
+				// Выполняем получение полного адреса до текущего каталога
+				::memcpy(result.data(), buffer, length);
+				// Выполняем установку конца строки
+				result.back() = '\0';
+			}
+			// Название кталога для перебора адреса
+			string folder = "";
+			// начало и конец диапазона строки
+			size_t begin = 0, end = 0;
+			// Выполняем перебор всего переданного адреса
+			while((end = path.find(FS_SEPARATOR, end)) != string::npos){
+				// Получаем название текущего каталога
+				folder = path.substr(begin, end - begin);
+				// Если название каталога мы получили
+				if(!folder.empty()){
+					// Если указан переход на уровень вверх
+					if(folder.compare("..") == 0){
+						// Выполняем поиск предыдущего каталога
+						size_t pos = result.rfind(FS_SEPARATOR);
+						// Если разделитель найден
+						if(pos != string::npos)
+							// Выполняем удаление предыдущего каталога
+							result.erase(pos);
+					// Если мы получили название каталога, а не псевдоним текущего
+					} else if(folder.compare(".") != 0) {
+						// Добавляем разделитель адреса
+						result.append(FS_SEPARATOR);
+						// Добавляем название каталога
+						result.append(folder);
+					}
+				}
+				// Запоминаем начало смещения
+				begin = (end + 1);
+				// Увеличиваем конец смещения
+				end++;
+			}
+			// Получаем последний элемент адреса
+			folder = path.substr(begin, end - begin);
+			// Если последний элемент не является адресом текущего каталога
+			if(folder.compare(".") != 0){
+				// Добавляем разделитель адреса
+				result.append(FS_SEPARATOR);
+				// Добавляем название последнего элемента адреса
+				result.append(folder);
+			}
+			// Если последний символ является разделителем и адрес не состоит из одного символа
+			if((result.size() > 1) && (result.back() == FS_SEPARATOR[0]))
+				// Выполняем удаление последнего символа
+				result.pop_back();
+		}
+	#endif
 	// Выводим результат
 	return result;
 }
@@ -588,7 +654,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)			
 			// Выполняем создание символьной ссылки
-			::symlink(this->realPath(addr1).c_str(), addr2.c_str());
+			::symlink(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 		/**
 		 * Выполняем работу для Windows
 		 */
@@ -692,7 +758,7 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 			// Если адрес на который нужно создать ссылку существует
 			if(this->type(addr1) != type_t::NONE)			
 				// Выполняем создание символьной ссылки
-				::link(this->realPath(addr1).c_str(), addr2.c_str());
+				::link(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 		/**
 		 * Выполняем работу для Windows
 		 */
@@ -1075,10 +1141,11 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
  * readDir Метод рекурсивного получения файлов во всех подкаталогах
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
- * @param rec      флаг рекурсивного перебора каталогов
+ * @param recurs   флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
+ * @param actual   флаг проверки актуальных файлов
  */
-void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback) const noexcept {
+void awh::FS::readDir(const string & path, const string & ext, const bool recurs, function <void (const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		/**
@@ -1090,11 +1157,11 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 		function <void (const string &, const string &, const bool)> readFn;
 		/**
 		 * readFn Функция запроса файлов в каталоге
-		 * @param path путь до каталога
-		 * @param ext  расширение файла по которому идет фильтрация
-		 * @param rec  флаг рекурсивного перебора каталогов
+		 * @param path   путь до каталога
+		 * @param ext    расширение файла по которому идет фильтрация
+		 * @param recurs флаг рекурсивного перебора каталогов
 		 */
-		readFn = [&](const string & path, const string & ext, const bool rec) noexcept -> void {
+		readFn = [&](const string & path, const string & ext, const bool recurs) noexcept -> void {
 			// Открываем указанный каталог
 			DIR * dir = ::opendir(path.c_str());
 			// Если каталог открыт
@@ -1116,11 +1183,11 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 						// Если дочерний элемент является дирректорией
 						if(S_ISDIR(info.st_mode)){
 							// Продолжаем обработку следующих каталогов
-							if(rec)
+							if(recurs)
 								// Выполняем функцию обратного вызова
-								readFn(address, ext, rec);
+								readFn(address, ext, recurs);
 							// Выводим данные каталога как он есть
-							else callback(this->realPath(address));
+							else callback(this->realPath(address, actual));
 						// Если дочерний элемент является файлом и расширение файла указано то выводим его
 						} else if(!ext.empty()) {
 							// Получаем расширение файла
@@ -1130,9 +1197,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 							// Если расширение файла найдено
 							if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 								// Выводим полный путь файла
-								callback(this->realPath(address));
+								callback(this->realPath(address, actual));
 						// Если дочерний элемент является файлом то выводим его
-						} else callback(this->realPath(address));
+						} else callback(this->realPath(address, actual));
 					}
 				}
 				// Закрываем открытый каталог
@@ -1140,7 +1207,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 			}
 		};
 		// Запрашиваем данные первого каталога
-		readFn(path, ext, rec);
+		readFn(path, ext, recurs);
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
@@ -1148,14 +1215,15 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
  * readPath Метод рекурсивного чтения файлов во всех подкаталогах
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
- * @param rec      флаг рекурсивного перебора каталогов
+ * @param recurs   флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
+ * @param actual   флаг проверки актуальных файлов
  */
-void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback) const noexcept {
+void awh::FS::readPath(const string & path, const string & ext, const bool recurs, function <void (const string &, const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		// Переходим по всему списку файлов в каталоге
-		this->readDir(path, ext, rec, [&](const string & filename) noexcept -> void {
+		this->readDir(path, ext, recurs, [&](const string & filename) noexcept -> void {
 			// Выполняем считывание всех строк текста
 			this->readFile2(filename, [&](const string & text) noexcept -> void {
 				// Если текст получен
@@ -1163,7 +1231,7 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 					// Выводим функцию обратного вызова
 					callback(text, filename);
 			});
-		});
+		}, actual);
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }

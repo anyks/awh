@@ -41,18 +41,18 @@
 /**
  * Если это clang v10 или выше
  */
-#if defined(__AWH_EXPERIMENTAL__)
+#if defined(__DANUBE_EXPERIMENTAL__)
 	#include <filesystem>
 #endif
 
 /**
- * Если мы работаем в MS Windows
+ * Для операционной системы MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <conio.h>
 	#include <direct.h>
 /**
- * Если мы работаем в Unix
+ * Выполняем работу для Unix
  */
 #else
 	#include <grp.h>
@@ -182,10 +182,11 @@ namespace awh {
 		public:
 			/**
 			 * realPath Метод извлечения реального адреса
-			 * @param path путь который нужно определить
-			 * @return     полный путь
+			 * @param path   путь который нужно определить
+			 * @param actual флаг проверки актуальных файлов
+			 * @return       полный путь
 			 */
-			string realPath(const string & path) const noexcept;
+			string realPath(const string & path, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * symLink Метод создания символьной ссылки
@@ -265,18 +266,20 @@ namespace awh {
 			 * readDir Метод рекурсивного получения файлов во всех подкаталогах
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param rec      флаг рекурсивного перебора каталогов
+			 * @param recurs   флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
+			 * @param actual   флаг проверки актуальных файлов
 			 */
-			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback) const noexcept;
+			void readDir(const string & path, const string & ext, const bool recurs, function <void (const string &)> callback, const bool actual = true) const noexcept;
 			/**
 			 * readPath Метод рекурсивного чтения файлов во всех подкаталогах
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param rec      флаг рекурсивного перебора каталогов
+			 * @param recurs   флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
+			 * @param actual   флаг проверки актуальных файлов
 			 */
-			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback) const noexcept;
+			void readPath(const string & path, const string & ext, const bool recurs, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * FS конструктор
