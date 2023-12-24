@@ -778,10 +778,10 @@ namespace awh {
 		public:
 			/**
 			 * ca Метод установки доверенного сертификата (CA-файла)
-			 * @param trusted адрес доверенного сертификата (CA-файла)
-			 * @param path    адрес каталога где находится сертификат (CA-файл)
+			 * @param ca   адрес доверенного сертификата (CA-файла)
+			 * @param path адрес каталога где находится сертификат (CA-файл)
 			 */
-			void ca(const string & trusted, const string & path = "") noexcept;
+			void ca(const string & ca, const string & path = "") noexcept;
 			/**
 			 * certificate Метод установки файлов сертификата
 			 * @param chain файл цепочки сертификатов

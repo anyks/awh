@@ -2397,15 +2397,15 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если каталог получен
 			if(path != nullptr){
 				// Получаем полный адрес
-				const string & trustdir = this->_fs.realPath(this->_cert.capath);
+				const string & dir = this->_fs.realPath(this->_cert.capath);
 				// Если адрес существует
-				if(this->_fs.isDir(trustdir) && !this->_fs.isFile(this->_cert.ca)){
+				if(this->_fs.isDir(dir) && !this->_fs.isFile(this->_cert.ca)){
 					/**
 					 * Если операционной системой является MS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем сплит адреса
-						const auto & params = this->_uri->split(trustdir);
+						const auto & params = this->_uri->split(dir);
 						// Если путь и хост получен
 						if((params.count(uri_t::flag_t::HOST) > 0) && (params.count(uri_t::flag_t::PATH) > 0)){
 							// Выполняем сплит адреса
@@ -2434,7 +2434,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 					 */
 					#else
 						// Выполняем сплит адреса
-						auto path = this->_uri->splitPath(trustdir, FS_SEPARATOR);
+						auto path = this->_uri->splitPath(dir, FS_SEPARATOR);
 						// Добавляем адрес файла в список
 						path.push_back(this->_cert.ca);
 						// Формируем полный адарес файла
@@ -3019,7 +3019,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Если доверенный сертификат недействителен
 			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
 				// Выводим в лог сообщение
-				this->_log->print("Trusted certificate is invalid", log_t::flag_t::CRITICAL);
+				this->_log->print("CA certificate is invalid", log_t::flag_t::CRITICAL);
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
@@ -3738,14 +3738,14 @@ void awh::Engine::ciphers(const vector <string> & ciphers) noexcept {
 }
 /**
  * ca Метод установки доверенного сертификата (CA-файла)
- * @param trusted адрес доверенного сертификата (CA-файла)
- * @param path    адрес каталога где находится сертификат (CA-файл)
+ * @param ca   адрес доверенного сертификата (CA-файла)
+ * @param path адрес каталога где находится сертификат (CA-файл)
  */
-void awh::Engine::ca(const string & trusted, const string & path) noexcept {
+void awh::Engine::ca(const string & ca, const string & path) noexcept {
 	// Если адрес CA-файла передан
-	if(!trusted.empty())
+	if(!ca.empty())
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
-		this->_cert.ca = this->_fs.realPath(trusted);
+		this->_cert.ca = this->_fs.realPath(ca);
 	// Если адрес CA-файла не передан, выполняем очистку ранее установленного CA-файла
 	else this->_cert.ca.clear();
 	// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
@@ -3780,7 +3780,8 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : _verify(true), _fs(fmk, log), _cipher{""}, _fmk(fmk), _uri(uri), _log(log) {
+awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+ _verify(true), _fs(fmk, log), _cipher{""}, _fmk(fmk), _uri(uri), _log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca);
 	// Выполняем установку алгоритмов шифрования
