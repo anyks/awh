@@ -56,7 +56,7 @@ $ sudo sysctl -w net.sctp.auth_enable=1
 
 ```bash
 $ cd ./ca
-$ ./cert.sh
+$ ./cert.sh example.com
 ```
 
 ### Build third party for MacOS X, Linux and FreeBSD
