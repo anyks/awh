@@ -207,7 +207,7 @@ namespace awh {
 					// Устанавливаем количество потоков
 					this->_threads = count;	
 				// Если количество потоков не установлено
-				else this->_threads = static_cast <uint16_t> (thread::hardware_concurrency());
+				else this->_threads = static_cast <uint16_t> (std::thread::hardware_concurrency());
 			}
 			/**
 			 * ~ThreadPool Деструктор
