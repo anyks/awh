@@ -861,13 +861,14 @@ bool awh::FS::makeDir(const string & path, const string & user, const string & g
 /**
  * components Метод извлечения названия и расширения файла
  * @param addr   адрес файла для извлечения его параметров
+ * @param actual флаг проверки актуальных файлов
  * @param before флаг определения первой точки расширения слева
  */
-pair <string, string> awh::FS::components(const string & addr, const bool before) const noexcept {
+pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
 	// Результат работы функции
 	pair <string, string> result;
 	// Получаем полный адрес пути
-	const string & filename = this->realPath(addr);
+	const string & filename = this->realPath(addr, actual);
 	// Если файл передан
 	if(!filename.empty()){
 		// Позиция разделителя каталога

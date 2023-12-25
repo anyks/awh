@@ -218,9 +218,10 @@ namespace awh {
 			/**
 			 * components Метод извлечения названия и расширения файла
 			 * @param addr   адрес файла для извлечения его параметров
+			 * @param actual флаг проверки актуальных файлов
 			 * @param before флаг определения первой точки расширения слева
 			 */
-			pair <string, string> components(const string & addr, const bool before = false) const noexcept;
+			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
 			 * Выполняем работу для Unix
