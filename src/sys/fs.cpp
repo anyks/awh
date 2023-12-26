@@ -123,8 +123,10 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 	if(!addr.empty()){
 		// Структура проверка статистики
 		struct stat info;
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(addr, fmk_t::codepage_t::CP1251);
 		// Если тип определён
-		if(::stat(addr.c_str(), &info) == 0){
+		if(::stat(direction.c_str(), &info) == 0){
 			// Если это каталог
 			if(S_ISDIR(info.st_mode))
 				// Получаем тип файловой системы
@@ -213,7 +215,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 						 */
 						#ifdef _UNICODE
 							// Выполняем загрузку переданного адреса
-							hres = ppf->Load(reinterpret_cast <LPCTSTR> (addr.c_str()), STGM_READ);
+							hres = ppf->Load(reinterpret_cast <LPCTSTR> (direction.c_str()), STGM_READ);
 						/**
 						 * Если мы работаем с кодировкой CP1251
 						 */
@@ -221,7 +223,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 							// Создаём буфер для кодирования символов
 							WCHAR wsz[MAX_PATH] = {0};
 							// Выполняем перекодирование в UTF-8
-							MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (addr.c_str()), -1, wsz, MAX_PATH);
+							MultiByteToWideChar(CP_ACP, 0, reinterpret_cast <LPCTSTR> (direction.c_str()), -1, wsz, MAX_PATH);
 							// Выполняем загрузку переданного адреса
 							hres = ppf->Load(wsz, STGM_READ);
 						#endif
@@ -258,24 +260,37 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 		switch(static_cast <uint8_t> (this->type(path))){
 			// Если полный путь является файлом
 			case static_cast <uint8_t> (type_t::FILE): {
-				// Открываем файл на чтение
-				ifstream file(path, ios::in);
-				// Если файл открыт
-				if(file.is_open()){
-					// Перемещаем указатель в конец файла
-					file.seekg(0, file.end);
-					// Определяем размер файла
-					result = file.tellg();
-					// Возвращаем указатель обратно
-					file.seekg(0, file.beg);
-					// Закрываем файл
-					file.close();
+				// Структура проверка статистики
+				struct stat info;
+				// Выполняем перекодирование адреса
+				const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
+				// Если тип определён
+				if(::stat(direction.c_str(), &info) == 0)
+					// Выводим размер файла
+					result = static_cast <uintmax_t> (info.st_size);
+				// Если прочитать файла не вышло
+				else {
+					// Открываем файл на чтение
+					ifstream file(direction, ios::in);
+					// Если файл открыт
+					if(file.is_open()){
+						// Перемещаем указатель в конец файла
+						file.seekg(0, file.end);
+						// Определяем размер файла
+						result = file.tellg();
+						// Возвращаем указатель обратно
+						file.seekg(0, file.beg);
+						// Закрываем файл
+						file.close();
+					}
 				}
 			} break;
 			// Если полный путь является каталогом
 			case static_cast <uint8_t> (type_t::DIR): {
+				// Выполняем перекодирование адреса
+				const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 				// Открываем указанный каталог
-				DIR * dir = ::opendir(path.c_str());
+				DIR * dir = ::opendir(direction.c_str());
 				// Если каталог открыт
 				if(dir != nullptr){
 					// Структура проверка статистики
@@ -289,13 +304,15 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 							// Выполняем пропуск каталога
 							continue;
 						// Получаем адрес в виде строки
-						const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+						const string & address = this->_fmk->format("%s%s%s", direction.c_str(), FS_SEPARATOR, ptr->d_name);
 						// Если статистика извлечена
-						if(!stat(address.c_str(), &info)){
+						if(!::stat(address.c_str(), &info)){
+							// Выполняем перекодирование адреса
+							const string & direction = this->_fmk->iconv(address, fmk_t::codepage_t::UTF8);
 							// Если дочерний элемент является дирректорией
 							if(S_ISDIR(info.st_mode))
 								// Выполняем подсчёт размера каталога
-								result += this->size(address, ext);
+								result += this->size(direction, ext);
 							// Если дочерний элемент является файлом
 							else if(!ext.empty()) {
 								// Получаем расширение файла
@@ -303,11 +320,11 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 								// Получаем длину адреса
 								const size_t length = extension.length();
 								// Если расширение файла найдено
-								if(this->_fmk->compare(address.substr(address.length() - length), extension))
+								if(this->_fmk->compare(direction.substr(direction.length() - length), extension))
 									// Получаем размер файла
-									result += this->size(address);
+									result += this->size(direction);
 							// Получаем размер файла
-							} else result += this->size(address);
+							} else result += this->size(direction);
 						}
 					}
 					// Закрываем открытый каталог
@@ -330,8 +347,10 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 	uintmax_t result = 0;
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 		// Открываем указанный каталог
-		DIR * dir = ::opendir(path.c_str());
+		DIR * dir = ::opendir(direction.c_str());
 		// Если каталог открыт
 		if(dir != nullptr){
 			// Структура проверка статистики
@@ -345,13 +364,15 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 					// Выполняем пропуск каталога
 					continue;
 				// Получаем адрес в виде строки
-				const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+				const string & address = this->_fmk->format("%s%s%s", direction.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
-				if(!stat(address.c_str(), &info)){
+				if(!::stat(address.c_str(), &info)){
+					// Выполняем перекодирование адреса
+					const string & direction = this->_fmk->iconv(address, fmk_t::codepage_t::UTF8);
 					// Если дочерний элемент является дирректорией
 					if(S_ISDIR(info.st_mode))
 						// Выполняем подсчитываем количество файлов в каталоге
-						result += this->count(address, ext);
+						result += this->count(direction, ext);
 					// Если дочерний элемент является файлом
 					else if(!ext.empty()) {
 						// Получаем расширение файла
@@ -359,7 +380,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 						// Получаем длину адреса
 						const size_t length = extension.length();
 						// Если расширение файла найдено
-						if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
+						if(this->_fmk->compare(direction.substr(direction.length() - length, length), extension))
 							// Получаем количество файлов в каталоге
 							result++;
 					// Получаем количество файлов в каталоге
@@ -384,8 +405,10 @@ int awh::FS::delPath(const string & path) const noexcept {
 	int result = -1;
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 		// Открываем указанный каталог
-		DIR * dir = ::opendir(path.c_str());
+		DIR * dir = ::opendir(direction.c_str());
 		// Если каталог открыт
 		if(dir != nullptr){
 			// Устанавливаем количество дочерних элементов
@@ -403,13 +426,13 @@ int awh::FS::delPath(const string & path) const noexcept {
 					// Выполняем пропуск каталога
 					continue;
 				// Получаем адрес каталога
-				const string & dirname = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+				const string & dirname = this->_fmk->format("%s%s%s", direction.c_str(), FS_SEPARATOR, ptr->d_name);
 				// Если статистика извлечена
-				if(!stat(dirname.c_str(), &buffer)){
+				if(!::stat(dirname.c_str(), &buffer)){
 					// Если дочерний элемент является дирректорией
 					if(S_ISDIR(buffer.st_mode))
 						// Выполняем удаление подкаталогов
-						res = this->delPath(dirname);
+						res = this->delPath(this->_fmk->iconv(dirname, fmk_t::codepage_t::UTF8));
 					// Если дочерний элемент является файлом то удаляем его
 					else res = ::unlink(dirname.c_str());
 				}
@@ -422,7 +445,7 @@ int awh::FS::delPath(const string & path) const noexcept {
 		// Удаляем последний каталог
 		if(!result)
 			// Получаем количество дочерних элементов
-			result = ::rmdir(path.c_str());
+			result = ::rmdir(direction.c_str());
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
 	// Выводим результат
@@ -445,8 +468,10 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 		char buffer[_MAX_PATH];
 		// Заполняем буфер нулями
 		::memset(buffer, 0, sizeof(buffer));
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 		// Выполняем извлечение адресов из переменных окружений
-		ExpandEnvironmentStrings(path.c_str(), buffer, ARRAYSIZE(buffer));
+		ExpandEnvironmentStrings(direction.c_str(), buffer, ARRAYSIZE(buffer));
 		// Устанавливаем результат
 		result = buffer;
 		// Заполняем буфер нулями
@@ -521,6 +546,8 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 				CoUninitialize();
 			}
 		}
+		// Выполняем перекодирование адреса
+		return this->_fmk->iconv(result, fmk_t::codepage_t::UTF8);
 	/**
 	 * Выполняем работу для Unix
 	 */
@@ -679,18 +706,20 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 					hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
 					// Если объект для проверки файла инициализирован
 					if(SUCCEEDED(hres)){
+						// Выполняем перекодирование адреса
+						const string & direction = this->_fmk->iconv(filename, fmk_t::codepage_t::CP1251);
 						// Определяем флаг обратного смещения
-						const uint8_t offset = (filename.back() == '\\' ? 2 : 1);
+						const uint8_t offset = (direction.back() == '\\' ? 2 : 1);
 						// Выполняем поиск разделителя каталога
-						if((pos = filename.rfind("\\", filename.length() - static_cast <size_t> (offset))) != string::npos){
+						if((pos = direction.rfind("\\", direction.length() - static_cast <size_t> (offset))) != string::npos){
 							// Создаём адрес ярлыка
 							string symlink = "";
 							// Описание создаваемого ярлыка
 							string description = "";
 							// Получаем адрес каталога где хранится файл
-							const string & working = filename.substr(0, pos + 1);
+							const string & working = direction.substr(0, pos + 1);
 							// Извлекаем имя файла
-							const string & name = filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset)));
+							const string & name = direction.substr(pos + 1, direction.length() - (pos + static_cast <size_t> (offset)));
 							// Ищем расширение файла
 							if((pos = name.find('.')) != string::npos)
 								// Устанавливаем имя файла
@@ -698,7 +727,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 							// Устанавливаем только имя файла
 							else description = name;
 							// Выполняем установку адреса ярлыка как он есть
-							psl->SetPath(reinterpret_cast <LPCTSTR> (filename.c_str()));
+							psl->SetPath(reinterpret_cast <LPCTSTR> (direction.c_str()));
 							// Если рабочий каталог найден
 							if(!working.empty())
 								// Выполняем установку рабочего каталога
@@ -707,12 +736,14 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 							if(!description.empty())
 								// Выполняем установку описания ярлыка
 								psl->SetDescription(reinterpret_cast <LPCTSTR> (description.c_str()));
+							// Выполняем перекодирование адреса назначения
+							const string & addr = this->_fmk->iconv(addr2, fmk_t::codepage_t::CP1251);
 							// Если расширение ярлыка уже установлено
-							if((addr2.length() > 4) && this->_fmk->compare(".lnk", addr2.substr(addr2.length() - 4)))
+							if((addr.length() > 4) && this->_fmk->compare(".lnk", addr.substr(addr.length() - 4)))
 								// Выполняем установку адреса ярлыка как он есть
-								symlink = this->realPath(addr2);
+								symlink = this->realPath(addr);
 							// Выполняем установку полного пути адреса файла
-							else symlink = this->_fmk->format("%s.lnk", this->realPath(addr2).c_str());
+							else symlink = this->_fmk->format("%s.lnk", this->realPath(addr).c_str());
 							/**
 							 * Если мы работаем с юникодом
 							 */
@@ -763,9 +794,10 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		 * Выполняем работу для Windows
 		 */
 		#else
-			// Блокируем неиспользуемые переменные
-			(void) addr1;
-			(void) addr2;
+			// Если адрес на который нужно создать ссылку существует
+			if(this->type(addr1) != type_t::NONE)
+				// Выполняем создание обычный ярлык
+				this->symLink(addr1, addr2);
 		#endif
 	}
 }
@@ -780,14 +812,16 @@ void awh::FS::makePath(const string & path) const noexcept {
 		char * p = nullptr;
 		// Получаем сепаратор
 		const char sep = FS_SEPARATOR[0];
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 		// Создаём буфер входящих данных
-		unique_ptr <char []> buffer(new char [path.size() + 1]);
+		unique_ptr <char []> buffer(new char [direction.size() + 1]);
 		// Копируем переданный адрес в буфер
-		snprintf(buffer.get(), path.size() + 1, "%s", path.c_str());
+		snprintf(buffer.get(), direction.size() + 1, "%s", direction.c_str());
 		// Если последний символ является сепаратором тогда удаляем его
-		if(buffer.get()[path.size() - 1] == sep)
+		if(buffer.get()[direction.size() - 1] == sep)
 			// Устанавливаем конец строки
-			buffer.get()[path.size() - 1] = 0;
+			buffer.get()[direction.size() - 1] = 0;
 		// Переходим по всем символам
 		for(p = buffer.get() + 1; * p; p++){
 			// Если найден сепаратор
@@ -1077,16 +1111,29 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 void awh::FS::readFile2(const string & filename, function <void (const string &)> callback) const noexcept {
 	// Если адрес файла передан
 	if(!filename.empty() && this->isFile(filename)){
+		// Структура проверка статистики
+		struct stat info;
+		// Общий размер файла
+		uintmax_t size = 0;
+		// Выполняем перекодирование адреса
+		const string & direction = this->_fmk->iconv(filename, fmk_t::codepage_t::CP1251);
+		// Если тип определён
+		if(::stat(direction.c_str(), &info) == 0)
+			// Получаем размер файла
+			size = static_cast <uintmax_t> (info.st_size);
 		// Открываем файл на чтение
-		ifstream file(filename, ios::in);
+		ifstream file(direction, ios::in);
 		// Если файл открыт
 		if(file.is_open()){
-			// Перемещаем указатель в конец файла
-			file.seekg(0, file.end);
-			// Определяем размер файла
-			const size_t size = file.tellg();
-			// Возвращаем указатель обратно
-			file.seekg(0, file.beg);
+			// Если арзмер файла не получен
+			if(size == 0){
+				// Перемещаем указатель в конец файла
+				file.seekg(0, file.end);
+				// Определяем размер файла
+				size = file.tellg();
+				// Возвращаем указатель обратно
+				file.seekg(0, file.beg);
+			}
 			// Устанавливаем размер буфера
 			vector <char> buffer(size);
 			// Выполняем чтение данных из файла
@@ -1163,8 +1210,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 		 * @param recurs флаг рекурсивного перебора каталогов
 		 */
 		readFn = [&](const string & path, const string & ext, const bool recurs) noexcept -> void {
+			// Выполняем перекодирование адреса
+			const string & direction = this->_fmk->iconv(path, fmk_t::codepage_t::CP1251);
 			// Открываем указанный каталог
-			DIR * dir = ::opendir(path.c_str());
+			DIR * dir = ::opendir(direction.c_str());
 			// Если каталог открыт
 			if(dir != nullptr){
 				// Структура проверка статистики
@@ -1178,17 +1227,19 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 						// Выполняем пропуск каталога
 						continue;
 					// Получаем адрес в виде строки
-					const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+					const string & address = this->_fmk->format("%s%s%s", direction.c_str(), FS_SEPARATOR, ptr->d_name);
 					// Если статистика извлечена
-					if(!stat(address.c_str(), &info)){
+					if(!::stat(address.c_str(), &info)){
+						// Выполняем перекодирование адреса
+						const string & direction = this->_fmk->iconv(address, fmk_t::codepage_t::UTF8);
 						// Если дочерний элемент является дирректорией
 						if(S_ISDIR(info.st_mode)){
 							// Продолжаем обработку следующих каталогов
 							if(recurs)
 								// Выполняем функцию обратного вызова
-								readFn(address, ext, recurs);
+								readFn(direction, ext, recurs);
 							// Выводим данные каталога как он есть
-							else callback(this->realPath(address, actual));
+							else callback(this->realPath(direction, actual));
 						// Если дочерний элемент является файлом и расширение файла указано то выводим его
 						} else if(!ext.empty()) {
 							// Получаем расширение файла
@@ -1196,11 +1247,11 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 							// Получаем длину адреса
 							const size_t length = extension.length();
 							// Если расширение файла найдено
-							if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
+							if(this->_fmk->compare(direction.substr(direction.length() - length, length), extension))
 								// Выводим полный путь файла
-								callback(this->realPath(address, actual));
+								callback(this->realPath(direction, actual));
 						// Если дочерний элемент является файлом то выводим его
-						} else callback(this->realPath(address, actual));
+						} else callback(this->realPath(direction, actual));
 					}
 				}
 				// Закрываем открытый каталог

@@ -410,7 +410,7 @@ namespace awh {
 								// Выполняем замену второго возвращаемого значения
 								j->second = type;
 							}
-						}	
+						}
 					}{
 						// Выполняем поиск первой функции
 						auto i = this->_functions.find(idw1);
@@ -474,7 +474,7 @@ namespace awh {
 								// Выполняем замену второго возвращаемого значения
 								j->second = type;
 							}
-						}	
+						}
 					}{
 						// Выполняем поиск первой функции
 						auto i = this->_functions.find(idw1);
@@ -536,7 +536,7 @@ namespace awh {
 								j->second = i->second;
 							// Если возращаемое значение ещё не установлено
 							else this->_types.emplace(idw, i->second);
-						}	
+						}
 					}{
 						// Выполняем поиск указанной функции в переданном хранилище
 						auto i = storage._functions.find(idw);
@@ -586,7 +586,7 @@ namespace awh {
 									j->second = i->second;
 								// Если возращаемое значение ещё не установлено
 								else this->_types.emplace(idw, i->second);
-							}	
+							}
 						}{
 							// Выполняем поиск указанной функции в переданном хранилище
 							auto i = storage._functions.find(idw);
@@ -634,7 +634,7 @@ namespace awh {
 								j->second = i->second;
 							// Если возращаемое значение ещё не установлено
 							else this->_types.emplace(idw2, i->second);
-						}	
+						}
 					}{
 						// Выполняем поиск указанной функции в переданном хранилище
 						auto i = storage._functions.find(idw1);
@@ -687,7 +687,7 @@ namespace awh {
 									j->second = i->second;
 								// Если возращаемое значение ещё не установлено
 								else this->_types.emplace(idw2, i->second);
-							}	
+							}
 						}{
 							// Выполняем поиск указанной функции в переданном хранилище
 							auto i = storage._functions.find(idw1);

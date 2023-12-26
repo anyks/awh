@@ -357,7 +357,7 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 		zs.zfree  = Z_NULL;
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
-		// Буфер выходных данных		
+		// Буфер выходных данных
 		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->_takeOverCompress || (deflateInit2(&zs, this->_levelGzip, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
@@ -433,7 +433,7 @@ vector <char> awh::Hash::decompressDeflate(const char * buffer, const size_t siz
 		zs.zfree  = Z_NULL;
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
-		// Буфер выходных данных		
+		// Буфер выходных данных
 		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->_takeOverDecompress || (inflateInit2(&zs, -1 * this->_wbit) == Z_OK)){

@@ -71,6 +71,14 @@ namespace awh {
 	typedef class Framework {
 		public:
 			/**
+			 * codepage_t Типы кодировок адресов файлов и каталогов
+			 */
+			enum class codepage_t : uint8_t {
+				NONE   = 0x00, // Кодировка не установлена
+				UTF8   = 0x01, // Кодировка UTF-8
+				CP1251 = 0x02  // Кодировка CP1251
+			};
+			/**
 			 * stamp_t Тип штампа времени
 			 */
 			enum class stamp_t : uint8_t {
@@ -443,6 +451,14 @@ namespace awh {
 			 * @return     полученная хэш-сумма
 			 */
 			string hash(const string & key, const string & text, const hash_t hash) const noexcept;
+		public:
+			/**
+			 * iconv Метод конвертирования строки кодировки
+			 * @param text     текст для конвертирования
+			 * @param codepage кодировка в которую необходимо сконвертировать текст
+			 * @return         сконвертированный текст в требуемой кодировке
+			 */
+			string iconv(const string & text, const codepage_t codepage) const noexcept;
 		public:
 			/**
 			 * transform Метод трансформации одного символа

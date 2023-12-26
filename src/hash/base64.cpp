@@ -50,7 +50,7 @@ const int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int so
 		BIO_flush(bio);
 		// Выполняем чтение полученного результата
 		if(result) result = BIO_read(b64, out, sout);
-    }
+	}
 	// Очищаем объект base64
 	BIO_free(b64);
 	// Выводим результат

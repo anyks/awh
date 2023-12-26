@@ -1171,6 +1171,63 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 	return result;
 }
 /**
+ * iconv Метод конвертирования строки кодировки
+ * @param text     текст для конвертирования
+ * @param codepage кодировка в которую необходимо сконвертировать текст
+ * @return         сконвертированный текст в требуемой кодировке
+ */
+string awh::Framework::iconv(const string & text, const codepage_t codepage) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если текст передан
+	if(!text.empty()){
+		/**
+		 * Выполняем работу для MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Определяем кодировку в которую нам нужно сконвертировать текст
+			switch(static_cast <uint8_t> (codepage)){
+				// Если требуется выполнить кодировку в UTF-8
+				case static_cast <uint8_t> (codepage_t::UTF8): {
+					// Выполняем создание буфера новой строки
+					wstring buffer(text.size() + 1, 0);
+					// Выполняем перекодирование текста
+					MultiByteToWideChar(1251, 0, text.c_str(), -1, buffer.data(), buffer.size());
+					// Выполняем создание результатирующей новой строки
+					result.resize(buffer.size() * 2, 0);
+					// Выполняем перекодирование текста
+					WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, result.data(), result.size(), nullptr, nullptr);
+					// Восстанавливаем размер результирующей строки
+					result.resize(strlen(result.c_str()));
+				} break;
+				// Если требуется выполнить кодировку в CP1251
+				case static_cast <uint8_t> (codepage_t::CP1251): {
+					// Выполняем создание буфера новой строки
+					wstring buffer(text.size() + 1, 0);
+					// Выполняем перекодирование текста
+					MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, buffer.data(), buffer.size());
+					// Выполняем создание результатирующей новой строки
+					result.resize(buffer.size() * 2, 0);
+					// Выполняем перекодирование текста
+					WideCharToMultiByte(1251, 0, buffer.data(), -1, result.data(), result.size(), nullptr, nullptr);
+					// Восстанавливаем размер результирующей строки
+					result.resize(strlen(result.c_str()));
+				} break;
+				// Если кодировка не установлена
+				default: return text;
+			}
+		/**
+		 * Выполняем работу для Unix
+		 */
+		#else
+			// Конвертация нам не требуется
+			return text;
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * transform Метод трансформации одного символа
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
@@ -1607,7 +1664,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
  */
 float awh::Framework::rate(const float a, const float b) const noexcept {
 	// Выводим разницу в процентах
-	return ((a > b ? ((a - b) / b * 100.0f) : ((b - a) / b * 100.0f) * -1.0f));
+	return ((a > b ? ((a - b) / b * 100.f) : ((b - a) / b * 100.f) * -1.f));
 }
 /**
  * floor Метод приведения количества символов после запятой к указанному количества
@@ -2500,13 +2557,13 @@ string awh::Framework::bytes(const double value) const noexcept {
 		// Выделяем память результата
 		result.resize(512, 0);
 		// Шаблон киллобайта
-		const float kb = 1024.0f;
+		const float kb = 1024.f;
 		// Шаблон мегабайта
-		const float mb = 1048576.0f;
+		const float mb = 1048576.f;
 		// Шаблон гигабайта
-		const float gb = 1073741824.0f;
+		const float gb = 1073741824.f;
 		// Шаблон терабайта
-		const float tb = 1099511627776.0f;
+		const float tb = 1099511627776.f;
 		// Если переданное значение соответствует терабайту
 		if(value >= tb)
 			// Выполняем копирование терабайта
