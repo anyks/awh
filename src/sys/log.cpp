@@ -19,18 +19,12 @@
  * rotate Метод выполнения ротации логов
  */
 void awh::Log::rotate() const noexcept {
-	// Открываем файл на чтение
-	ifstream file(this->_filename, ios::in);
-	// Если файл открыт
-	if(file.is_open()){
-		// Перемещаем указатель в конец файла
-		file.seekg(0, file.end);
-		// Определяем размер файла
-		const size_t size = file.tellg();
-		// Возвращаем указатель обратно
-		file.seekg(0, file.beg);
-		// Закрываем файл
-		file.close();
+	// Структура проверка статистики
+	struct stat info;
+	// Если тип определён
+	if(::stat(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251).c_str(), &info) == 0){
+		// Выводим размер файла
+		const uintmax_t size = static_cast <uintmax_t> (info.st_size);
 		// Если размер файла лога, превышает максимально-установленный
 		if(size >= this->_maxSize){
 			// Создаем буфер для хранения даты
@@ -46,13 +40,13 @@ void awh::Log::rotate() const noexcept {
 			// Копируем в буфер полученную дату и время
 			strftime(date, sizeof(date), format.c_str(), timeinfo);
 			// Открываем файл на чтение
-			ifstream file(this->_filename, ios::in);
+			ifstream file(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251), ios::in);
 			// Если файл открыт
 			if(file.is_open()){
 				// Прочитанная строка из файла
 				string filedata = "";
 				// Открываем файл на сжатие
-				gzFile gz = gzopen(this->_fmk->format("%s%s.gz", this->_filename.c_str(), date).c_str(), "wb9h");
+				gzFile gz = gzopen(this->_fmk->iconv(this->_fmk->format("%s.gz", this->_filename.c_str()), fmk_t::codepage_t::CP1251).c_str(), "wb9h");
 				// Считываем до тех пор пока все удачно
 				while(file.good()){
 					// Считываем строку из файла
@@ -98,7 +92,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
 		// Открываем файл на запись
-		ofstream file(this->_filename, ios::out | ios::app);
+		ofstream file(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251), ios::out | ios::app);
 		// Если файл открыт
 		if(file.is_open()){
 			// Определяем тип сообщения

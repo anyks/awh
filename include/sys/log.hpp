@@ -29,6 +29,8 @@
 #include <functional>
 #include <zlib.h>
 #include <unistd.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 
 /**
  * Наши модули
