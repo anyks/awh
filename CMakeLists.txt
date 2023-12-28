@@ -366,11 +366,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
-    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigInteger.cc"
-    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigUnsigned.cc"
-    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigIntegerUtils.cc"
-    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigUnsignedInABase.cc"
-    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigIntegerAlgorithms.cc"
 )
 
 # Задаем именя библиотеки и бинарника
