@@ -989,7 +989,7 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 		// Результат работы функции
 		bool result = false;
 		// Если путь передан
-		if(!path.empty() && !user.empty() && !group.empty() && this->isFile(path)){
+		if(!path.empty() && !user.empty() && !group.empty() && (this->type(path) != type_t::NONE)){
 			// Идентификатор пользователя
 			const uid_t uid = this->uid(user);
 			// Идентификатор группы
