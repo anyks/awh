@@ -679,7 +679,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		/**
 		 * Выполняем работу для Unix
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)			
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем создание символьной ссылки
 			::symlink(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 		/**
@@ -787,7 +787,7 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если адрес на который нужно создать ссылку существует
-			if(this->type(addr1) != type_t::NONE)			
+			if(this->type(addr1) != type_t::NONE)
 				// Выполняем создание символьной ссылки
 				::link(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 		/**
