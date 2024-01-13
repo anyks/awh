@@ -611,10 +611,26 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					} else if(this->_fmk->exists("content-encoding", j->first)) {
 						// Если флаг рекомпрессии данных прокси-сервером не установлен
 						if(this->_flags.count(flag_t::RECOMPRESS) == 0){
+							// Если данные пришли сжатые методом LZ4
+							if(this->_fmk->exists("lz4", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::LZ4;
+							// Если данные пришли сжатые методом Zstandard
+							else if(this->_fmk->exists("zstd", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::ZSTD;
+							// Если данные пришли сжатые методом LZma
+							else if(this->_fmk->exists("xz", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::LZMA;
 							// Если данные пришли сжатые методом Brotli
-							if(this->_fmk->exists("br", j->second))
+							else if(this->_fmk->exists("br", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
 								compress = http_t::compress_t::BROTLI;
+							// Если данные пришли сжатые методом BZip2
+							else if(this->_fmk->exists("bzip2", j->second))
+								// Устанавливаем тип компрессии полезной нагрузки
+								compress = http_t::compress_t::BZIP2;
 							// Если данные пришли сжатые методом GZip
 							else if(this->_fmk->exists("gzip", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
@@ -780,6 +796,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							it->second->awh.mode(std::move(flags));
 							// Выполняем инициализацию подключения
 							it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
+								awh::http_t::compress_t::ZSTD,
 								awh::http_t::compress_t::BROTLI,
 								awh::http_t::compress_t::GZIP,
 								awh::http_t::compress_t::DEFLATE
@@ -868,6 +885,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									it->second->awh.mode(std::move(flags));
 									// Выполняем инициализацию подключения
 									it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
+										awh::http_t::compress_t::ZSTD,
 										awh::http_t::compress_t::BROTLI,
 										awh::http_t::compress_t::GZIP,
 										awh::http_t::compress_t::DEFLATE
@@ -968,6 +986,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										it->second->request.params.url.schema = "https";
 									// Выполняем инициализацию подключения
 									it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
+										awh::http_t::compress_t::ZSTD,
 										awh::http_t::compress_t::BROTLI,
 										awh::http_t::compress_t::GZIP,
 										awh::http_t::compress_t::DEFLATE

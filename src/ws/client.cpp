@@ -53,10 +53,26 @@ void awh::client::WS::commit() noexcept {
 						 * @param compressor название компрессора в текстовом виде
 						 */
 						auto extractFn = [this](const string & compressor) noexcept -> void {
+							// Если данные пришли сжатые методом LZ4
+							if(this->_fmk->compare(compressor, "lz4"))
+								// Устанавливаем тип компрессии полезной нагрузки
+								http_t::_compressor.current = compress_t::LZ4;
+							// Если данные пришли сжатые методом Zstandard
+							else if(this->_fmk->compare(compressor, "zstd"))
+								// Устанавливаем тип компрессии полезной нагрузки
+								http_t::_compressor.current = compress_t::ZSTD;
+							// Если данные пришли сжатые методом LZma
+							else if(this->_fmk->compare(compressor, "xz"))
+								// Устанавливаем тип компрессии полезной нагрузки
+								http_t::_compressor.current = compress_t::LZMA;
 							// Если данные пришли сжатые методом Brotli
-							if(this->_fmk->compare(compressor, "br"))
+							else if(this->_fmk->compare(compressor, "br"))
 								// Устанавливаем тип компрессии полезной нагрузки
 								http_t::_compressor.current = compress_t::BROTLI;
+							// Если данные пришли сжатые методом BZip2
+							else if(http_t::_fmk->compare(compressor, "bzip2"))
+								// Устанавливаем тип компрессии полезной нагрузки
+								http_t::_compressor.current = compress_t::BZIP2;
 							// Если данные пришли сжатые методом GZip
 							else if(http_t::_fmk->compare(compressor, "gzip"))
 								// Устанавливаем тип компрессии полезной нагрузки
@@ -288,6 +304,7 @@ void awh::client::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
 awh::client::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
 	// Выполняем установку списка поддерживаемых компрессоров
 	http_t::compressors({
+		compress_t::ZSTD,
 		compress_t::BROTLI,
 		compress_t::GZIP,
 		compress_t::DEFLATE

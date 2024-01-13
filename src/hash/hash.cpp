@@ -1,6 +1,6 @@
 /**
  * @file: hash.cpp
- * @date: 2021-12-19
+ * @date: 2023-02-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2023
  */
 
 // Подключаем заголовочный файл
@@ -69,7 +69,12 @@ bool awh::Hash::init() const {
 	vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
 	*/
 	// Выполняем инициализацию ключа
-	const int ok = EVP_BytesToKey(cipher, EVP_sha256(), (this->_salt.empty() ? nullptr : (u_char *) this->_salt.data()), (u_char *) this->_pass.data(), this->_pass.length(), this->_rounds, key.data(), iv.data());
+	const int ok = EVP_BytesToKey(
+		cipher, EVP_sha256(),
+		(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
+		reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_pass.data()),
+		this->_pass.length(), this->_rounds, key.data(), iv.data()
+	);
 	// Очищаем контекст
 	EVP_CIPHER_CTX_free(ctx);
 	// Если инициализация не произошла
@@ -131,226 +136,569 @@ void awh::Hash::setTail(vector <char> & buffer) const noexcept {
 	buffer.insert(buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 }
 /**
- * compressBrotli Метод компрессии данных в Brotli
+ * lz4 Метод работы с компрессором Lz4
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
- * @return       результат компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
  */
-vector <char> awh::Hash::compressBrotli(const char * buffer, const size_t size) noexcept {
+vector <char> awh::Hash::lz4(const char * buffer, const size_t size, const event_t event) noexcept {
 	// Результирующая строка с данными
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		// Получаем размер бинарного буфера входящих данных
-		size_t sizeInput = size;
-		// Создаём временный буфер данных
-		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
-		// Получаем бинарный буфер входящих данных
-		const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
-		// Инициализируем стейт энкодера Brotli
-		BrotliEncoderState * encoder = BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
-		// Выполняем сжатие данных
-		while(!BrotliEncoderIsFinished(encoder)){
-			// Получаем размер буфера закодированных бинарных данных
-			size_t sizeOutput = data.size();
-			// Получаем буфер закодированных бинарных данных
-			uint8_t * nextOutput = data.data();
-			// Если сжатие данных закончено, то завершаем работу
-			if(!BrotliEncoderCompressStream(encoder, BROTLI_OPERATION_FINISH, &sizeInput, &nextInput, &sizeOutput, &nextOutput, nullptr)){
-				// Очищаем результат собранных данных
-				result.clear();
-				// Освобождаем память энкодера
-				BrotliEncoderDestroyInstance(encoder);
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Выполняем получение размер результирующего буфера
+				int32_t actual = ::LZ4_compressBound(size);
+				// Если размер выделен
+				if(actual <= 0){
+					// Выводим сообщение об ошибке
+					this->_log->print("Lz4: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(actual, 0);
+				// Выполняем компрессию буфера бинарных данных
+				actual = ::LZ4_compress_fast(buffer, result.data(), size, actual, this->_level[0]);
+				// Если компрессия не выполнена
+				if((actual <= 0) || (static_cast <uint32_t> (actual) > static_cast <uint32_t> (size + size / 10))){
+					// Выводим сообщение об ошибке
+					this->_log->print("Lz4: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Корректируем размер результирующего буфера
+				result.resize(actual);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(size * 3, 0);
+				// Выполняем получение размер результирующего буфера
+				int32_t actual = result.size();
+				// Выполняем декомпрессию буфера бинарных данных
+				actual = ::LZ4_decompress_safe(buffer, result.data(), size, actual);
+				// Если компрессия не выполнена
+				if(actual <= 0){
+					// Выводим сообщение об ошибке
+					this->_log->print("Lz4: %s", log_t::flag_t::WARNING, "decompress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Корректируем размер результирующего буфера
+				result.resize(actual);
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * lzma Метод работы с компрессором LZma
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
+ */
+vector <char> awh::Hash::lzma(const char * buffer, const size_t size, const event_t event) noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 80)){
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Инициализируем опции компрессора LZma
+				static const lzma_options_lzma options = {
+					1u << 20u, nullptr, 0, LZMA_LC_DEFAULT, LZMA_LP_DEFAULT,
+					LZMA_PB_DEFAULT, LZMA_MODE_FAST, 128, LZMA_MF_HC3, 4
+				};
+				// Инициализируем фильтры компрессора LZma
+				static const lzma_filter filters[] = {
+					{LZMA_FILTER_LZMA2, const_cast <lzma_options_lzma *> (&options)},
+					{LZMA_VLI_UNKNOWN, nullptr}
+				};
+				// Актуальный размер сжатых данных
+				size_t actual = 0;
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(size, 0);
+				// Выполняем компрессию буфера данных
+				lzma_ret rv = ::lzma_stream_buffer_encode(const_cast <lzma_filter *> (filters), LZMA_CHECK_NONE, nullptr, reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), &actual, size - 1);
+				// Если мы получили ошибку
+				if(rv != LZMA_OK){
+					// Выводим сообщение об ошибке
+					this->_log->print("LZma: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Корректируем размер результирующего буфера
+				result.resize(actual);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Указатель позиции в буфере для распаковки
+				char * ptr = nullptr;
+				// Индекс потока LZma компрессора
+				lzma_index * index = nullptr;
+				// Лимит доступной памяти
+				uint64_t memlimit = 134217728;
+				// Позиции в буферах и актуальный размер данных результата
+				size_t inpos = 0, outpos = 0, actual = 0;
+				// Смещаем указатель в буфере на подвал
+				if((ptr = const_cast <char *> (buffer) + size - 12) < buffer)
+					// Переходим к выводу ошибки
+					goto Error;
+				// Список флагов потока LZma
+				lzma_stream_flags flags;
+				// Пытаемся декодировать подвал архива
+				if(::lzma_stream_footer_decode(&flags, reinterpret_cast <uint8_t *> (ptr)) != LZMA_OK)
+					// Переходим к выводу ошибки
+					goto Error;
+				// Если буфер данных испорчен
+				if((ptr -= flags.backward_size) < buffer)
+					// Переходим к выводу ошибки
+					goto Error;
+				// Выполняем декодирование буфера LZma
+				if(::lzma_index_buffer_decode(&index, &memlimit, nullptr, reinterpret_cast <uint8_t *> (ptr), &inpos, size - (ptr - buffer)) != LZMA_OK)
+					// Переходим к выводу ошибки
+					goto Error;
+				// Сбрасываем иозицию во входящем буфере
+				inpos = 0;
+				// Сбрасываем лимит доступной памяти
+				memlimit = 134217728;
+				// Получаем размер результирующего буфера данных
+				actual = ::lzma_index_uncompressed_size(index);
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(actual, 0);
+				// Выполняем декомпрессию буфера бинарных данных
+				if(::lzma_stream_buffer_decode(&memlimit, 0, nullptr, reinterpret_cast <const uint8_t *> (buffer), &inpos, size, reinterpret_cast <uint8_t *> (result.data()), &outpos, actual) == LZMA_OK){
+					// Выполняем закрытие индекса компрессора LZma
+					lzma_index_end(index, nullptr);
+					// Выводим полученный результат
+					return result;
+				}
+				// Устанавливаем метку вывода ошибки
+				Error:
+				// Выводим сообщение об ошибке
+				this->_log->print("LZma: %s", log_t::flag_t::WARNING, "decompress failed");
 				// Выходим из функции
-				return result;
-			}
-			// Получаем размер полученных данных
-			size_t size = (data.size() - sizeOutput);
-			// Если данные получены, формируем результирующий буфер
-			if(size > 0){
-				// Получаем буфер данных
-				const char * buffer = reinterpret_cast <const char *> (data.data());
-				// Формируем результирующий буфер бинарных данных
-				result.insert(result.end(), buffer, buffer + size);
+				return vector <char> ();
 			}
 		}
-		// Освобождаем память энкодера
-		BrotliEncoderDestroyInstance(encoder);
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * decompressBrotli Метод декомпрессии данных в Brotli
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @return       результат декомпрессии
+ * zstd Метод работы с компрессором ZStd
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
  */
-vector <char> awh::Hash::decompressBrotli(const char * buffer, const size_t size) noexcept {
+vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const event_t event) noexcept {
 	// Результирующая строка с данными
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		// Полный размер обработанных данных
-		size_t total = 0;
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Выполняем получение размер результирующего буфера
+				size_t actual = ::ZSTD_compressBound(size);
+				// Если размер выделен
+				if(actual == 0){
+					// Выводим сообщение об ошибке
+					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(actual, 0);
+				// Выполняем компрессию буфера данных
+				actual = ::ZSTD_compress(result.data(), actual, buffer, size, this->_level[2]);
+				// Если мы получили ошибку
+				if(::ZSTD_isError(actual)){
+					// Выводим сообщение об ошибке
+					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Корректируем размер результирующего буфера
+				result.resize(actual);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Получаем размер будущего фрейма (определяем размер контента)
+				size_t actual = ::ZSTD_getFrameContentSize(buffer, size);
+				// Если размер контента не получен или неизвестен
+				if((actual == 0) || (actual == ZSTD_CONTENTSIZE_UNKNOWN) || (actual == ZSTD_CONTENTSIZE_ERROR)){
+					// Выводим сообщение об ошибке
+					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "decompress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выделяем буфер памяти нужного нам размера
+				result.resize(actual, 0);
+				// Выполняем декомпрессию буфера данных
+				actual = ::ZSTD_decompress(result.data(), actual, buffer, size);
+				// Если мы получили ошибку
+				if(::ZSTD_isError(actual)){
+					// Выводим сообщение об ошибке
+					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "decompress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Корректируем размер результирующего буфера
+				result.resize(actual);
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * gzip Метод работы с компрессором GZip
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
+ */
+vector <char> awh::Hash::gzip(const char * buffer, const size_t size, const event_t event) noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
+		// Создаем поток zip
+		z_stream zs;
+		// Заполняем его нулями
+		::memset(&zs, 0, sizeof(zs));
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Результирующий размер данных
+				int rv = Z_OK;
+				// Если поток инициализировать не удалось, выходим
+				if(::deflateInit2(&zs, this->_level[1], Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
+					// Указываем размер входного буфера
+					zs.avail_in = static_cast <uint32_t> (size);
+					// Заполняем входные данные буфера
+					zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
+					// Выделяем память на результирующий буфер
+					result.resize(size, 0);
+					/**
+					 * Выполняем компрессию всех данных
+					 */
+					do {
+						// Устанавливаем буфер для получения результата
+						zs.next_out = reinterpret_cast <Bytef *> (result.data() + zs.total_out);
+						// Устанавливаем максимальный размер буфера
+						zs.avail_out = (static_cast <uint32_t> (size) - zs.total_out);
+						// Выполняем сжатие
+						rv = ::deflate(&zs, Z_FINISH);
+						// Если произошла ошибка компрессии
+						if((rv != Z_OK) && (rv != Z_STREAM_END)){
+							// Выводим сообщение об ошибке
+							this->_log->print("GZip: %s", log_t::flag_t::WARNING, "compress failed");
+							// Выходим из цикла
+							break;
+						}
+					// Если данные ещё не сжаты
+					} while(rv == Z_OK);
+				}
+				// Если данные обработаны удачно
+				if((rv == Z_OK) || (rv == Z_STREAM_END))
+					// Добавляем оставшиеся данные в список
+					result.erase(result.begin() + (result.size() - zs.avail_out), result.end());
+				// Выполняем очистку буфера данных
+				else result.clear();
+				// Завершаем сжатие
+				::deflateEnd(&zs);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Результирующий размер данных
+				int rv = Z_OK;
+				// Если поток инициализировать не удалось, выходим
+				if(::inflateInit2(&zs, this->_wbit | 16) == Z_OK){
+					// Указываем размер входного буфера
+					zs.avail_in = static_cast <uint32_t> (size);
+					// Заполняем входные данные буфера
+					zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
+					// Размер буфера извлечённых данных
+					uint32_t actual = (static_cast <uint32_t> (size) * 2);
+					// Выделяем память на результирующий буфер
+					result.resize(actual, 0);
+					/**
+					 * Выполняем декомпрессию всех данных
+					 */
+					do {
+						// Если место для извлечения данных закончилось
+						if((actual - zs.total_out) == 0){
+							// Увеличиваем буфер исходящих данных в два раза
+							actual *= 2;
+							// Выделяем пмять для буфера извлечения данных
+							result.resize(actual, 0);
+						}
+						// Устанавливаем буфер для получения результата
+						zs.next_out = reinterpret_cast <Bytef *> (result.data() + zs.total_out);
+						// Устанавливаем максимальный размер буфера
+						zs.avail_out = (actual - zs.total_out);
+						// Выполняем расжатие
+						rv = ::inflate(&zs, 0);
+						// Если мы завершили сбор данных
+						if(rv == Z_STREAM_END)
+							// Выходим из цикла
+     						break;
+					// Если данные ещё не извлечены
+					} while(rv == Z_OK);
+				}
+				// Если данные обработаны удачно
+				if((rv == Z_OK) || (rv == Z_STREAM_END))
+					// Добавляем оставшиеся данные в список
+					result.erase(result.begin() + (result.size() - zs.avail_out), result.end());
+				// Выполняем очистку буфера данных
+				else result.clear();
+				// Завершаем расжатие
+				::inflateEnd(&zs);
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * bzip2 Метод работы с компрессором BZip2
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
+ */
+vector <char> awh::Hash::bzip2(const char * buffer, const size_t size, const event_t event) noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
+		// Результат выполнения компрессии
+		int rv = BZ_OK;
+		// Выполняем создание объекта потока
+		bz_stream stream;
+		// Выполняем зануление параметров потока
+		stream.bzfree  = nullptr;
+		stream.opaque  = nullptr;
+		stream.bzalloc = nullptr;
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Выполняем инициализацию потока
+				if(::BZ2_bzCompressInit(&stream, 5, 0, 0) != BZ_OK){
+					// Выводим сообщение об ошибке
+					this->_log->print("BZip2: %s", log_t::flag_t::WARNING, "compress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выделяем память на результирующий буфер
+				result.resize(size, 0);
+				// Указываем размер входного буфера
+				stream.avail_in = static_cast <uint32_t> (size);
+				// Заполняем входные данные буфера
+				stream.next_in = const_cast <char *> (buffer);
+				// Устанавливаем буфер для получения результата
+				stream.next_out = result.data();
+				// Устанавливаем максимальный размер буфера
+				stream.avail_out = static_cast <uint32_t> (result.size());
+				// Выполняем компрессию буфера бинарных данных
+				while((rv = ::BZ2_bzCompress(&stream, BZ_FINISH)) != BZ_STREAM_END){
+					// Выполняем ещё одну попытку компрессии
+					rv = ::BZ2_bzCompress(&stream, BZ_FINISH);
+					// Если произошла ошибка компрессии
+					if((rv != BZ_FINISH_OK) && (rv != BZ_STREAM_END)){
+						// Выводим сообщение об ошибке
+						this->_log->print("BZip2: %s", log_t::flag_t::WARNING, "compress failed");
+						// Выходим из цикла
+						break;
+					}
+				}
+				// Если данные обработаны удачно
+				if((rv == BZ_FINISH_OK) || (rv == BZ_STREAM_END))
+					// Добавляем оставшиеся данные в список
+					result.erase(result.begin() + (result.size() - stream.avail_out), result.end());
+				// Выполняем очистку буфера данных
+				else result.clear();
+				// Выполняем очистку объекта потока
+				::BZ2_bzCompressEnd(&stream);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Выполняем инициализацию потока
+				if(::BZ2_bzDecompressInit(&stream, 0, 0) != BZ_OK){
+					// Выводим сообщение об ошибке
+					this->_log->print("BZip2: %s", log_t::flag_t::WARNING, "decompress failed");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Заполняем входные данные буфера
+				stream.next_in = const_cast <char *> (buffer);
+				// Указываем размер входного буфера
+				stream.avail_in = static_cast <uint32_t> (size);
+				// Размер буфера извлечённых данных
+				uint32_t actual = (static_cast <uint32_t> (size) * 2);
+				// Выделяем память на результирующий буфер
+				result.resize(actual, 0);
+				/**
+				 * Выполняем компрессию всех данных
+				 */
+				do {
+					// Если место для извлечения данных закончилось
+					if((actual - stream.total_out_lo32) == 0){
+						// Увеличиваем буфер исходящих данных в два раза
+						actual *= 2;
+						// Выделяем пмять для буфера извлечения данных
+						result.resize(actual, 0);
+					}
+					// Устанавливаем буфер для получения результата
+					stream.next_out = (result.data() + stream.total_out_lo32);
+					// Устанавливаем максимальный размер буфера
+					stream.avail_out = (actual - stream.total_out_lo32);
+					// Выполняем декомпрессию
+					rv = ::BZ2_bzDecompress(&stream);
+					// Если мы завершили сбор данных
+					if((rv == BZ_STREAM_END) || (rv == BZ_FINISH_OK))
+						// Выходим из цикла
+						break;
+				// Если данные ещё не извлечены
+				} while(rv == BZ_OK);
+				// Если данные обработаны удачно
+				if((rv == BZ_FINISH_OK) || (rv == BZ_STREAM_END))
+					// Добавляем оставшиеся данные в список
+					result.erase(result.begin() + (result.size() - stream.avail_out), result.end());
+				// Выполняем очистку буфера данных
+				else result.clear();
+				// Выполняем очистку объекта потока
+				::BZ2_bzDecompressEnd(&stream);
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * brotli Метод работы с компрессором Brotli
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
+ */
+vector <char> awh::Hash::brotli(const char * buffer, const size_t size, const event_t event) noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
 		// Получаем размер бинарного буфера входящих данных
 		size_t sizeInput = size;
 		// Создаём временный буфер данных
-		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
+		vector <uint8_t> data(CHUNK_BUFFER_SIZE, 0);
 		// Получаем бинарный буфер входящих данных
 		const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
-		// Активируем работу декодера
-		BrotliDecoderResult rbr = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
-		// Инициализируем стейт декодера Brotli
-		BrotliDecoderState * decoder = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
-		// Если декодеру есть с чем работать
-		while(rbr == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
-			// Получаем размер буфера декодированных бинарных данных
-			size_t sizeOutput = data.size();
-			// Получаем буфер декодированных бинарных данных
-			char * nextOutput = reinterpret_cast <char *> (data.data());
-			// Выполняем декодирование бинарных данных
-			rbr = BrotliDecoderDecompressStream(decoder, &sizeInput, &nextInput, &sizeOutput, reinterpret_cast <uint8_t **> (&nextOutput), &total);
-			// Если декодирование данных не выполнено
-			if(rbr == BROTLI_DECODER_RESULT_ERROR){
-				// Выполняем очистку результата
-				result.clear();
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Инициализируем стейт энкодера Brotli
+				BrotliEncoderState * encoder = ::BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
+				// Выполняем сжатие данных
+				while(!::BrotliEncoderIsFinished(encoder)){
+					// Получаем размер буфера закодированных бинарных данных
+					size_t sizeOutput = data.size();
+					// Получаем буфер закодированных бинарных данных
+					uint8_t * nextOutput = data.data();
+					// Если сжатие данных закончено, то завершаем работу
+					if(!::BrotliEncoderCompressStream(encoder, BROTLI_OPERATION_FINISH, &sizeInput, &nextInput, &sizeOutput, &nextOutput, nullptr)){
+						// Выводим сообщение об ошибке
+						this->_log->print("BROTLI: %s", log_t::flag_t::WARNING, "compress failed");
+						// Выходим из цикла
+						break;
+					}
+					// Получаем размер полученных данных
+					const size_t size = (data.size() - sizeOutput);
+					// Если данные получены, формируем результирующий буфер
+					if(size > 0){
+						// Получаем буфер данных
+						const char * buffer = reinterpret_cast <const char *> (data.data());
+						// Формируем результирующий буфер бинарных данных
+						result.insert(result.end(), buffer, buffer + size);
+					}
+				}
+				// Освобождаем память энкодера
+				::BrotliEncoderDestroyInstance(encoder);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Полный размер обработанных данных
+				size_t total = 0, size = 0;
+				// Активируем работу декодера
+				BrotliDecoderResult rbr = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
+				// Инициализируем стейт декодера Brotli
+				BrotliDecoderState * decoder = ::BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+				// Если декодеру есть с чем работать
+				while(rbr == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
+					// Получаем размер буфера декодированных бинарных данных
+					size_t sizeOutput = data.size();
+					// Получаем буфер декодированных бинарных данных
+					char * nextOutput = reinterpret_cast <char *> (data.data());
+					// Выполняем декодирование бинарных данных
+					rbr = ::BrotliDecoderDecompressStream(decoder, &sizeInput, &nextInput, &sizeOutput, reinterpret_cast <uint8_t **> (&nextOutput), &total);
+					// Если декодирование данных не выполнено
+					if(rbr == BROTLI_DECODER_RESULT_ERROR){
+						// Выводим сообщение об ошибке
+						this->_log->print("BROTLI: %s", log_t::flag_t::WARNING, "decompress failed");
+						// Выходим из цикла
+						break;
+					}
+					// Получаем размер полученных данных
+					size = (data.size() - sizeOutput);
+					// Если данные получены, формируем результирующий буфер
+					if(size > 0){
+						// Получаем буфер данных
+						const char * buffer = reinterpret_cast <const char *> (data.data());
+						// Формируем результирующий буфер бинарных данных
+						result.insert(result.end(), buffer, buffer + size);
+					}
+				}
+				// Если декомпрессия данных выполнена не удачно
+				if((rbr != BROTLI_DECODER_RESULT_SUCCESS) && (rbr != BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT))
+					// Выполняем очистку результата
+					result.clear();
 				// Освобождаем память декодера
-				BrotliDecoderDestroyInstance(decoder);
-				// Выводим результат
-				return result;
-			}
-			// Получаем размер полученных данных
-			size_t size = (data.size() - sizeOutput);
-			// Если данные получены, формируем результирующий буфер
-			if(size > 0){
-				// Получаем буфер данных
-				const char * buffer = reinterpret_cast <const char *> (data.data());
-				// Формируем результирующий буфер бинарных данных
-				result.insert(result.end(), buffer, buffer + size);
-			}
+				::BrotliDecoderDestroyInstance(decoder);
+			} break;
 		}
-		// Если декомпрессия данных выполнена не удачно
-		if((rbr != BROTLI_DECODER_RESULT_SUCCESS) && (rbr != BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT))
-			// Выполняем очистку результата
-			result.clear();
-		// Освобождаем память декодера
-		BrotliDecoderDestroyInstance(decoder);
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * compressGzip Метод компрессии данных в GZIP
+ * deflate Метод работы с компрессором Deflate
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
- * @return       результат компрессии
+ * @param event  событие выполнения операции
+ * @return       результат выполнения операции
  */
-vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) const noexcept {
+vector <char> awh::Hash::deflate(const char * buffer, const size_t size, const event_t event) noexcept {
 	// Результирующая строка с данными
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		// Результирующий размер данных
-		int ret = 0;
-		// Создаем поток zip
-		z_stream zs;
-		// Заполняем его нулями
-		::memset(&zs, 0, sizeof(zs));
-		// Если поток инициализировать не удалось, выходим
-		if(deflateInit2(&zs, this->_levelGzip, Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
-			// Указываем размер входного буфера
-			zs.avail_in = static_cast <u_int> (size);
-			// Заполняем входные данные буфера
-			zs.next_in = reinterpret_cast <u_char *> (const_cast <char *> (buffer));
-			// Создаем буфер с сжатыми данными
-			vector <u_char> output(zs.avail_in, 0);
-			// Выполняем сжатие данных
-			do {
-				// Устанавливаем буфер для получения результата
-				zs.next_out = output.data();
-				// Устанавливаем максимальный размер буфера
-				zs.avail_out = static_cast <u_int> (zs.avail_in);
-				// Выполняем сжатие
-				ret = deflate(&zs, Z_FINISH);
-				// Если данные добавлены не полностью
-				if(result.size() < zs.total_out)
-					// Добавляем оставшиеся данные
-					result.insert(result.end(), output.data(), output.data() + (zs.total_out - result.size()));
-			} while(ret == Z_OK);
-		}
-		// Завершаем сжатие
-		deflateEnd(&zs);
-		// Если сжатие не удалось то очищаем выходные данные
-		if(ret != Z_STREAM_END)
-			// Выполняем очистку буфера данных
-			result.clear();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * decompressGzip Метод декомпрессии данных в GZIP
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @return       результат декомпрессии
- */
-vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t size) const noexcept {
-	// Результирующая строка с данными
-	vector <char> result;
-	// Если буфер для сжатия передан
-	if((buffer != nullptr) && (size > 0)){
-		// Результирующий размер данных
-		int ret = 0;
-		// Создаем поток zip
-		z_stream zs;
-		// Заполняем его нулями
-		::memset(&zs, 0, sizeof(zs));
-		// Если поток инициализировать не удалось, выходим
-		if(inflateInit2(&zs, this->_wbit | 16) == Z_OK){
-			// Указываем размер входного буфера
-			zs.avail_in = static_cast <u_int> (size);
-			// Заполняем входные данные буфера
-			zs.next_in = reinterpret_cast <u_char *> (const_cast <char *> (buffer));
-			// Получаем размер выходных данных
-			const size_t length = static_cast <size_t> (zs.avail_in * 10);
-			// Создаем буфер с сжатыми данными
-			vector <u_char> output(length, 0);
-			// Выполняем расжатие данных
-			do {
-				// Устанавливаем максимальный размер буфера
-				zs.avail_out = length;
-				// Устанавливаем буфер для получения результата
-				zs.next_out = output.data();
-				// Выполняем расжатие
-				ret = inflate(&zs, 0);
-				// Если данные добавлены не полностью
-				if(result.size() < zs.total_out)
-					// Добавляем оставшиеся данные
-					result.insert(result.end(), output.data(), output.data() + (zs.total_out - result.size()));
-			} while(ret == Z_OK);
-		}
-		// Завершаем расжатие
-		inflateEnd(&zs);
-		// Если сжатие не удалось то очищаем выходные данные
-		if(ret != Z_STREAM_END)
-			// Выполняем очистку буфера данных
-			result.clear();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * compressDeflate Метод компрессии данных в DEFLATE
- * @param buffer буфер данных для компрессии
- * @param size   размер данных для компрессии
- * @return       результат компрессии
- */
-vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если буфер передан
-	if((buffer != nullptr) && (size > 0)){
+		// Результат проверки декомпрессии
+		int rv = Z_OK;
 		// Создаем поток zip
 		z_stream zs = {0};
 		// Обнуляем структуру
@@ -358,135 +706,113 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
 		// Буфер выходных данных
-		vector <u_char> output(size, 0);
-		// Если поток инициализировать не удалось, выходим
-		if(this->_takeOverCompress || (deflateInit2(&zs, this->_levelGzip, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
-			// Результат проверки декомпрессии
-			int ret = Z_OK;
-			// Если поток декомпрессора не создан ранее
-			if(!this->_takeOverCompress){
-				// Устанавливаем количество доступных данных
-				zs.avail_in = static_cast <u_int> (size);
-				// Устанавливаем буфер с данными для шифрования
-				zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-			// Если нужно переиспользовать поток декомпрессора
-			} else {
-				// Устанавливаем количество доступных данных
-				this->_zdef.avail_in = static_cast <u_int> (size);
-				// Устанавливаем буфер с данными для шифрования
-				this->_zdef.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-			}
-			/**
-			 * Выполняем компрессию всех данных
-			 */
-			do {
-				// Если поток декомпрессора не создан ранее
-				if(!this->_takeOverCompress){
-					// Устанавливаем буфер для записи шифрованных данных
-					zs.next_out = output.data();
-					// Устанавливаем количество доступных данных для записи
-					zs.avail_out = output.size();
-					// Выполняем сжатие данных
-					ret = deflate(&zs, Z_SYNC_FLUSH);
-				// Если нужно переиспользовать поток декомпрессора
-				} else {
-					// Устанавливаем буфер для записи шифрованных данных
-					this->_zdef.next_out = output.data();
-					// Устанавливаем количество доступных данных для записи
-					this->_zdef.avail_out = output.size();
-					// Выполняем сжатие данных
-					ret = deflate(&this->_zdef, Z_FULL_FLUSH);
+		vector <Bytef> tmp(size, 0);
+		// Определяем событие выполнения операции
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо выполнить компрессию данных
+			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Если поток инициализировать не удалось, выходим
+				if(this->_takeOverCompress || (::deflateInit2(&zs, this->_level[1], Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
+					// Если поток декомпрессора не создан ранее
+					if(!this->_takeOverCompress){
+						// Устанавливаем количество доступных данных
+						zs.avail_in = static_cast <uint32_t> (size);
+						// Устанавливаем буфер с данными для шифрования
+						zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
+					// Если нужно переиспользовать поток декомпрессора
+					} else {
+						// Устанавливаем количество доступных данных
+						this->_zdef.avail_in = static_cast <uint32_t> (size);
+						// Устанавливаем буфер с данными для шифрования
+						this->_zdef.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
+					}
+					/**
+					 * Выполняем компрессию всех данных
+					 */
+					do {
+						// Если поток декомпрессора не создан ранее
+						if(!this->_takeOverCompress){
+							// Устанавливаем буфер для записи шифрованных данных
+							zs.next_out = tmp.data();
+							// Устанавливаем количество доступных данных для записи
+							zs.avail_out = static_cast <uint32_t> (tmp.size());
+							// Выполняем сжатие данных
+							rv = ::deflate(&zs, Z_SYNC_FLUSH);
+						// Если нужно переиспользовать поток декомпрессора
+						} else {
+							// Устанавливаем буфер для записи шифрованных данных
+							this->_zdef.next_out = tmp.data();
+							// Устанавливаем количество доступных данных для записи
+							this->_zdef.avail_out = static_cast <uint32_t> (tmp.size());
+							// Выполняем сжатие данных
+							rv = ::deflate(&this->_zdef, Z_FULL_FLUSH);
+						}
+						// Если данные обработаны удачно
+						if((rv == Z_OK) || (rv == Z_STREAM_END))
+							// Добавляем оставшиеся данные в список
+							result.insert(result.end(), tmp.begin(), tmp.begin() + (static_cast <uint32_t> (tmp.size()) - (!this->_takeOverDecompress ? zs.avail_out : this->_zdef.avail_out)));
+						// Если данные не могут быть обработанны, то выходим
+						else break;
+					// Если ещё не все данные сжаты
+					} while(rv != Z_STREAM_END);
+					// Закрываем поток
+					if(!this->_takeOverCompress)
+						// Завершаем работу
+						::deflateEnd(&zs);
 				}
-				// Если данные обработаны удачно
-				if((ret == Z_OK) || (ret == Z_STREAM_END)){
-					// Получаем размер полученных данных
-					size_t size = (output.size() - (!this->_takeOverDecompress ? zs.avail_out : this->_zdef.avail_out));
-					// Добавляем оставшиеся данные в список
-					result.insert(result.end(), output.begin(), output.begin() + size);
-				// Если данные не могут быть обработанны, то выходим
-				} else break;
-			// Если все данные уже сжаты
-			} while(ret != Z_STREAM_END);
-			// Закрываем поток
-			if(!this->_takeOverCompress)
-				// Завершаем работу
-				deflateEnd(&zs);
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * decompressDeflate Метод декомпрессии данных в DEFLATE
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @return       результат декомпрессии
- */
-vector <char> awh::Hash::decompressDeflate(const char * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если буфер передан
-	if((buffer != nullptr) && (size > 0)){
-		// Создаем поток zip
-		z_stream zs = {0};
-		// Обнуляем структуру
-		zs.zfree  = Z_NULL;
-		zs.zalloc = Z_NULL;
-		zs.opaque = Z_NULL;
-		// Буфер выходных данных
-		vector <u_char> output(size, 0);
-		// Если поток инициализировать не удалось, выходим
-		if(this->_takeOverDecompress || (inflateInit2(&zs, -1 * this->_wbit) == Z_OK)){
-			// Результат проверки декомпрессии
-			int ret = Z_OK;
-			// Если поток декомпрессора не создан ранее
-			if(!this->_takeOverDecompress){
-				// Устанавливаем количество доступных данных
-				zs.avail_in = static_cast <u_int> (size);
-				// Копируем входящий буфер для дешифровки
-				zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-			// Если нужно переиспользовать поток декомпрессора
-			} else {
-				// Устанавливаем количество доступных данных
-				this->_zinf.avail_in = static_cast <u_int> (size);
-				// Копируем входящий буфер для дешифровки
-				this->_zinf.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-			}
-			/**
-			 * Выполняем декомпрессию всех данных
-			 */
-			do {
-				// Если поток декомпрессора не создан ранее
-				if(!this->_takeOverDecompress){
-					// Устанавливаем буфер для записи дешифрованных данных
-					zs.next_out = output.data();
-					// Устанавливаем количество доступных данных для записи
-					zs.avail_out = output.size();
-					// Выполняем декомпрессию данных
-					ret = inflate(&zs, Z_NO_FLUSH);
-				// Если нужно переиспользовать поток декомпрессора
-				} else {
-					// Устанавливаем буфер для записи дешифрованных данных
-					this->_zinf.next_out = output.data();
-					// Устанавливаем количество доступных данных для записи
-					this->_zinf.avail_out = output.size();
-					// Выполняем декомпрессию данных
-					ret = inflate(&this->_zinf, Z_SYNC_FLUSH);
+			} break;
+			// Если необходимо выполнить декомпрессию данных
+			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Если поток инициализировать не удалось, выходим
+				if(this->_takeOverDecompress || (::inflateInit2(&zs, -1 * this->_wbit) == Z_OK)){
+					// Если поток декомпрессора не создан ранее
+					if(!this->_takeOverDecompress){
+						// Устанавливаем количество доступных данных
+						zs.avail_in = static_cast <uint32_t> (size);
+						// Копируем входящий буфер для дешифровки
+						zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
+					// Если нужно переиспользовать поток декомпрессора
+					} else {
+						// Устанавливаем количество доступных данных
+						this->_zinf.avail_in = static_cast <uint32_t> (size);
+						// Копируем входящий буфер для дешифровки
+						this->_zinf.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
+					}
+					/**
+					 * Выполняем декомпрессию всех данных
+					 */
+					do {
+						// Если поток декомпрессора не создан ранее
+						if(!this->_takeOverDecompress){
+							// Устанавливаем буфер для записи дешифрованных данных
+							zs.next_out = tmp.data();
+							// Устанавливаем количество доступных данных для записи
+							zs.avail_out = static_cast <uint32_t> (tmp.size());
+							// Выполняем декомпрессию данных
+							rv = ::inflate(&zs, Z_NO_FLUSH);
+						// Если нужно переиспользовать поток декомпрессора
+						} else {
+							// Устанавливаем буфер для записи дешифрованных данных
+							this->_zinf.next_out = tmp.data();
+							// Устанавливаем количество доступных данных для записи
+							this->_zinf.avail_out = static_cast <uint32_t> (tmp.size());
+							// Выполняем декомпрессию данных
+							rv = ::inflate(&this->_zinf, Z_SYNC_FLUSH);
+						}
+						// Если данные обработаны удачно
+						if((rv == Z_OK) || (rv == Z_STREAM_END))
+							// Добавляем оставшиеся данные в список
+							result.insert(result.end(), tmp.begin(), tmp.begin() + (static_cast <uint32_t> (tmp.size()) - (!this->_takeOverDecompress ? zs.avail_out : this->_zinf.avail_out)));
+						// Если данные не могут быть обработанны, то выходим
+						else break;
+					// Если ещё не все данные извлечены
+					} while(rv != Z_STREAM_END);
+					// Очищаем выделенную память для декомпрессора
+					if(!this->_takeOverDecompress)
+						// Завершаем работу
+						::inflateEnd(&zs);
 				}
-				// Если данные обработаны удачно
-				if((ret == Z_OK) || (ret == Z_STREAM_END)){
-					// Получаем размер полученных данных
-					size_t size = (output.size() - (!this->_takeOverDecompress ? zs.avail_out : this->_zinf.avail_out));
-					// Добавляем оставшиеся данные в список
-					result.insert(result.end(), output.begin(), output.begin() + size);
-				// Если данные не могут быть обработанны, то выходим
-				} else break;
-			// Если все данные уже дешифрованы
-			} while(ret != Z_STREAM_END);
-			// Очищаем выделенную память для декомпрессора
-			if(!this->_takeOverDecompress)
-				// Завершаем работу
-				inflateEnd(&zs);
+			} break;
 		}
 	}
 	// Выводим результат
@@ -512,32 +838,30 @@ vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const n
 				// Размер буфера полученных данных
 				size_t count = 0;
 				// Определяем размер данных для считывания
-				size_t len = size;
+				size_t actual = size;
 				// Выделяем память для буфера данных
-				vector <u_char> output(len, 0);
+				vector <u_char> output(actual, 0);
 				// Входные данные
-				const u_char * input = reinterpret_cast <const u_char *> (buffer);
-				// Выполняем извлечение оставшихся данных
+				const Bytef * input = reinterpret_cast <const Bytef *> (buffer);
+				/**
+				 * Выполняем шифровку всех данных
+				 */
 				do {
 					// Максимальный размер считываемых данных
-					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+					chunk = (actual > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : actual);
 					// Выполняем сжатие данных
 					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->_key, this->_state.ivec, &this->_state.num, AES_ENCRYPT);
 					// Увеличиваем смещение
 					count += chunk;
 					// Вычитаем считанные данные
-					len -= chunk;
-				} while(len > 0);
+					actual -= chunk;
+				// Если данные ещё не зашифрованны
+				} while(actual > 0);
 				// Запоминаем полученные данные
 				result.insert(result.end(), output.data(), output.data() + count);
 			}
-		// Если пароль не установлен
-		} else {
-			// Выводим тот же самый буфер как он был передан
-			result.insert(result.end(), buffer, buffer + size);
-			// Выводим сообщение об ошибке
-			this->_log->print("Data encryption password is not set", log_t::flag_t::CRITICAL);
-		}
+		// Выводим тот же самый буфер как он был передан
+		} else result.insert(result.end(), buffer, buffer + size);
 	}
 	// Выводим результат
 	return result;
@@ -562,32 +886,30 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
 				// Размер буфера полученных данных
 				size_t count = 0;
 				// Определяем размер данных для считывания
-				size_t len = size;
+				size_t actual = size;
 				// Выделяем память для буфера данных
-				vector <u_char> output(len, 0);
+				vector <u_char> output(actual, 0);
 				// Входные данные
-				const u_char * input = reinterpret_cast <const u_char *> (buffer);
-				// Выполняем извлечение оставшихся данных
+				const Bytef * input = reinterpret_cast <const Bytef *> (buffer);
+				/**
+				 * Выполняем дешифровку всех данных
+				 */
 				do {
 					// Максимальный размер считываемых данных
-					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+					chunk = (actual > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : actual);
 					// Выполняем сжатие данных
 					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->_key, this->_state.ivec, &this->_state.num, AES_DECRYPT);
 					// Увеличиваем смещение
 					count += chunk;
 					// Вычитаем считанные данные
-					len -= chunk;
-				} while(len > 0);
+					actual -= chunk;
+				// Если данные ещё не дешифрованны
+				} while(actual > 0);
 				// Запоминаем полученные данные
 				result.insert(result.end(), output.data(), output.data() + count);
 			}
-		// Если пароль не установлен
-		} else {
-			// Выводим тот же самый буфер как он был передан
-			result.insert(result.end(), buffer, buffer + size);
-			// Выводим сообщение об ошибке
-			this->_log->print("Data decryption password is not set", log_t::flag_t::CRITICAL);
-		}
+		// Выводим тот же самый буфер как он был передан
+		} else result.insert(result.end(), buffer, buffer + size);
 	}
 	// Выводим результат
 	return result;
@@ -602,18 +924,34 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
 vector <char> awh::Hash::compress(const char * buffer, const size_t size, const method_t method) noexcept {
 	// Определяем метод компрессии данных
 	switch(static_cast <uint8_t> (method)){
-		// Если метод компрессии установлен GZIP
+		// Если метод компрессии установлен Lz4
+		case static_cast <uint8_t> (method_t::LZ4):
+			// Выполняем компрессию данных методом Lz4
+			return this->lz4(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен LZma
+		case static_cast <uint8_t> (method_t::LZMA):
+			// Выполняем компрессию данных методом LZma
+			return this->lzma(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен ZStd
+		case static_cast <uint8_t> (method_t::ZSTD):
+			// Выполняем компрессию данных методом ZStd
+			return this->zstd(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
-			// Выполняем компрессию данных
-			return this->compressGzip(buffer, size);
-		// Если метод компрессии установлен BROTLI
+			// Выполняем компрессию данных методом GZip
+			return this->gzip(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен BZip2
+		case static_cast <uint8_t> (method_t::BZIP2):
+			// Выполняем компрессию данных методом BZip2
+			return this->bzip2(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен Brotli
 		case static_cast <uint8_t> (method_t::BROTLI):
-			// Выполняем компрессию данных
-			return this->compressBrotli(buffer, size);
-		// Если метод компрессии установлен DEFLATE
+			// Выполняем компрессию данных методом Brotli
+			return this->brotli(buffer, size, event_t::COMPRESS);
+		// Если метод компрессии установлен Deflate
 		case static_cast <uint8_t> (method_t::DEFLATE):
-			// Выполняем компрессию данных
-			return this->compressDeflate(buffer, size);
+			// Выполняем компрессию данных методом Deflate
+			return this->deflate(buffer, size, event_t::COMPRESS);
 		// Если метод компрессии не установлен
 		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
@@ -632,18 +970,34 @@ vector <char> awh::Hash::compress(const char * buffer, const size_t size, const 
 vector <char> awh::Hash::decompress(const char * buffer, const size_t size, const method_t method) noexcept {
 	// Определяем метод декомпрессию данных
 	switch(static_cast <uint8_t> (method)){
-		// Если метод декомпрессии установлен GZIP
+		// Если метод декомпрессии установлен Lz4
+		case static_cast <uint8_t> (method_t::LZ4):
+			// Выполняем декомпрессию данных методом Lz4
+			return this->lz4(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен LZma
+		case static_cast <uint8_t> (method_t::LZMA):
+			// Выполняем декомпрессию данных методом LZma
+			return this->lzma(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен ZStd
+		case static_cast <uint8_t> (method_t::ZSTD):
+			// Выполняем декомпрессию данных методом ZStd
+			return this->zstd(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
-			// Выполняем компрессию данных
-			return this->decompressGzip(buffer, size);
-		// Если метод декомпрессии установлен BROTLI
+			// Выполняем декомпрессию данных методом GZip
+			return this->gzip(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен BZip2
+		case static_cast <uint8_t> (method_t::BZIP2):
+			// Выполняем декомпрессию данных методом BZip2
+			return this->bzip2(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен Brotli
 		case static_cast <uint8_t> (method_t::BROTLI):
-			// Выполняем компрессию данных
-			return this->decompressBrotli(buffer, size);
-		// Если метод декомпрессии установлен DEFLATE
+			// Выполняем декомпрессию данных методом Brotli
+			return this->brotli(buffer, size, event_t::DECOMPRESS);
+		// Если метод декомпрессии установлен Deflate
 		case static_cast <uint8_t> (method_t::DEFLATE):
-			// Выполняем компрессию данных
-			return this->decompressDeflate(buffer, size);
+			// Выполняем декомпрессию данных методом Deflate
+			return this->deflate(buffer, size, event_t::DECOMPRESS);
 		// Если метод компрессии не установлен
 		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
@@ -696,20 +1050,32 @@ void awh::Hash::level(const level_t level) noexcept {
 	// Определяем переданный уровень компрессии
 	switch(static_cast <uint8_t> (level)){
 		// Выполняем установку максимального уровня компрессии
-		case static_cast <uint8_t> (level_t::BEST):
-			// Выполняем установку уровня компрессии
-			this->_levelGzip = Z_BEST_COMPRESSION;
-		break;
+		case static_cast <uint8_t> (level_t::BEST): {
+			// Выполняем установку уровня максимальной компрессии Lz4
+			this->_level[0] = 0;
+			// Выполняем установку уровня компрессии GZip
+			this->_level[1] = Z_BEST_COMPRESSION;
+			// Выполняем установку уровня максимальной компрессии ZStd
+			this->_level[2] = 100;
+		} break;
 		// Выполняем установку уровень компрессии на максимальную производительность
-		case static_cast <uint8_t> (level_t::SPEED):
-			// Выполняем установку уровня компрессии
-			this->_levelGzip = Z_BEST_SPEED;
-		break;
+		case static_cast <uint8_t> (level_t::SPEED): {
+			// Выполняем установку уровня максимальной компрессии Lz4
+			this->_level[0] = 3;
+			// Выполняем установку уровня компрессии GZip
+			this->_level[1] = Z_BEST_SPEED;
+			// Выполняем установку уровня максимальной компрессии ZStd
+			this->_level[2] = ZSTD_CLEVEL_DEFAULT;
+		} break;
 		// Выполняем установку нормального уровня компрессии
-		case static_cast <uint8_t> (level_t::NORMAL):
-			// Выполняем установку уровня компрессии
-			this->_levelGzip = Z_DEFAULT_COMPRESSION;
-		break;
+		case static_cast <uint8_t> (level_t::NORMAL): {
+			// Выполняем установку уровня максимальной компрессии Lz4
+			this->_level[0] = 1;
+			// Выполняем установку уровня компрессии GZip
+			this->_level[1] = Z_DEFAULT_COMPRESSION;
+			// Выполняем установку уровня максимальной компрессии ZStd
+			this->_level[2] = 22;
+		} break;
 	}
 }
 /**
@@ -720,7 +1086,7 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 	// Если флаг установлен
 	if(this->_takeOverCompress)
 		// Очищаем выделенную память для компрессора
-		deflateEnd(&this->_zdef);
+		::deflateEnd(&this->_zdef);
 	// Устанавливаем переданный флаг
 	this->_takeOverCompress = flag;
 	// Если флаг установлен
@@ -732,7 +1098,7 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 		this->_zdef.zfree  = Z_NULL;
 		this->_zdef.opaque = Z_NULL;
 		// Если поток инициализировать не удалось, выходим
-		if(deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
+		if(::deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
@@ -740,13 +1106,13 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выходим из приложения
-				raise(SIGINT);
+				::raise(SIGINT);
 			/**
 			 * Если операционной системой является MS Windows
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 	}
@@ -759,7 +1125,7 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 	// Если флаг установлен
 	if(this->_takeOverDecompress)
 		// Очищаем выделенную память для декомпрессора
-		inflateEnd(&this->_zinf);
+		::inflateEnd(&this->_zinf);
 	// Устанавливаем переданный флаг
 	this->_takeOverDecompress = flag;
 	// Если флаг установлен
@@ -773,7 +1139,7 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 		this->_zinf.opaque   = Z_NULL;
 		this->_zinf.next_in  = Z_NULL;
 		// Если поток инициализировать не удалось, выходим
-		if(inflateInit2(&this->_zinf, -1 * this->_wbit) != Z_OK){
+		if(::inflateInit2(&this->_zinf, -1 * this->_wbit) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
@@ -781,13 +1147,13 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выходим из приложения
-				raise(SIGINT);
+				::raise(SIGINT);
 			/**
 			 * Если операционной системой является MS Windows
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 	}
@@ -799,9 +1165,9 @@ awh::Hash::~Hash() noexcept {
 	// Очищаем выделенную память для компрессора
 	if(this->_takeOverCompress)
 		// Завершаем работу
-		deflateEnd(&this->_zdef);
+		::deflateEnd(&this->_zdef);
 	// Очищаем выделенную память для декомпрессора
 	if(this->_takeOverDecompress)
 		// Завершаем работу
-		inflateEnd(&this->_zinf);
+		::inflateEnd(&this->_zinf);
 }

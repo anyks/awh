@@ -42,14 +42,19 @@ if [ -n "$1" ]; then
 			git clean -dfx "$1"
 		}
 
-		# Очищаем подпроекты
+		# Очищаем подпроекты компрессоров
+		clean_submodule "bz2"
+		clean_submodule "lz4"
 		clean_submodule "zlib"
+		clean_submodule "zstd"
+		clean_submodule "lzma"
+		clean_submodule "brotli"
+		# Очищаем подпроекты
 		clean_submodule "pcre2"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
 		clean_submodule "ngtcp2"
 		# clean_submodule "c-ares"
-		clean_submodule "brotli"
 		clean_submodule "libxml2"
 		clean_submodule "openssl"
 		clean_submodule "nghttp3"
@@ -315,6 +320,306 @@ if [ ! -f "$src/.stamp_done" ]; then
 	$BUILD -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка BZip2
+src="$ROOT/submodules/bz2"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** BZip2 ******\n"
+	cd "$src" || exit 1
+
+	# Версия BZip2
+	# VER="1.0.8"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	#git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	#git checkout -b v${VER}-branch bzip2-${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_DOCS="OFF" \
+		 -DENABLE_TESTS="OFF" \
+		 -DENABLE_DEBUG="OFF" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_DOCS="OFF" \
+		 -DENABLE_TESTS="OFF" \
+		 -DENABLE_DEBUG="OFF" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог BZip2
+	mkdir "$PREFIX/include/bz2"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep ".*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/bz2/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/bz2/$i" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка LZ4
+src="$ROOT/submodules/lz4"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** LZ4 ******\n"
+	cd "$src/build/cmake" || exit 1
+
+	# Версия LZ4
+	VER="1.9.4"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на release
+	git reset --hard origin/release
+	# Переключаемся на release
+	git checkout release
+	# Выполняем обновление данных
+	git pull origin release
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/cmake/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог LZ4
+	mkdir "$PREFIX/include/lz4"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep "lz4.*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/lz4/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/lz4/$i" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка ZSTD
+src="$ROOT/submodules/zstd"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** ZSTD ******\n"
+	cd "$src/build/cmake" || exit 1
+
+	# Версия ZSTD
+	VER="1.5.5"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на release
+	git reset --hard origin/release
+	# Переключаемся на release
+	git checkout release
+	# Выполняем обновление данных
+	git pull origin release
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/cmake/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DZSTD_BUILD_TESTS="OFF" \
+		 -DZSTD_BUILD_STATIC="ON" \
+		 -DZSTD_BUILD_SHARED="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DZSTD_BUILD_TESTS="OFF" \
+		 -DZSTD_BUILD_STATIC="ON" \
+		 -DZSTD_BUILD_SHARED="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог ZSTD
+	mkdir "$PREFIX/include/zstd"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep ".*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/zstd/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/zstd/$i" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка LZma
+src="$ROOT/submodules/lzma"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** LZma ******\n"
+	cd "$src" || exit 1
+
+	# Версия LZMA
+	VER="5.2.3"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на hunter
+	git reset --hard origin/hunter-${VER}
+	# Переключаемся на hunter
+	git checkout hunter-${VER}
+	# Выполняем обновление данных
+	git pull origin hunter-${VER}
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}-p4
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DLZMA_BUILD_TESTS="OFF" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DLZMA_BUILD_TESTS="OFF" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог LZMA
+	mkdir "$PREFIX/include/lzma2"
+
+	# Перемещаем каталог lzma в новый каталог
+	mv "$PREFIX/include/lzma" "$PREFIX/include/lzma2/lzma"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep ".*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/lzma/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/lzma2/$i" || exit 1
+	done
+
+	# Переименовываем каталог lzma2 в новый каталог
+	mv "$PREFIX/include/lzma2" "$PREFIX/include/lzma"
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

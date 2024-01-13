@@ -250,7 +250,7 @@ namespace awh {
 					 sonet(scheme_t::sonet_t::TCP),
 					 family(scheme_t::family_t::IPV4),
 					 login{""}, password{""}, userAgent{""},
-					 compressors({http_t::compress_t::BROTLI, http_t::compress_t::GZIP, http_t::compress_t::DEFLATE}) {}
+					 compressors({http_t::compress_t::ZSTD, http_t::compress_t::BROTLI, http_t::compress_t::GZIP, http_t::compress_t::DEFLATE}) {}
 				} settings_t;
 			private:
 				// Объект работы с URI ссылками

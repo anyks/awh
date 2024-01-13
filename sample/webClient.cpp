@@ -219,6 +219,7 @@ int main(int argc, char * argv[]){
 	/*
 	// Устанавливаем тип компрессии
 	awh.compress({
+		http_t::compress_t::ZSTD,
 		http_t::compress_t::BROTLI,
 		http_t::compress_t::GZIP,
 		http_t::compress_t::DEFLATE

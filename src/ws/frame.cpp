@@ -326,7 +326,7 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
  */
 vector <char> awh::ws::Frame::set(const head_t & head, const char * buffer, const size_t size) const noexcept {
 	/**
-	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZIP,
+	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZip,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии
 	 */
 	vector <char> result = {

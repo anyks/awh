@@ -115,9 +115,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Выполняем поиск нужных библиотек
 find_package(XML REQUIRED)
+find_package(LZ4 REQUIRED)
+find_package(BZ2 REQUIRED)
+find_package(LZMA REQUIRED)
+find_package(ZSTD REQUIRED)
 find_package(Zlib REQUIRED)
-find_package(PCRE REQUIRED)
 find_package(Brotli REQUIRED)
+find_package(PCRE REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(NgTCP2 REQUIRED)
 find_package(NgHttp2 REQUIRED)
@@ -146,6 +150,38 @@ if (XML_FOUND)
 else(XML_FOUND)
     message(FATAL_ERROR "XML not found")
 endif(XML_FOUND)
+
+# Провекра LZ4
+if (LZ4_FOUND)
+    message(STATUS "LZ4 lib found: " ${LZ4_LIBRARY})
+    message(STATUS "LZ4 include dir found: " ${LZ4_INCLUDE_DIR})
+else(LZ4_FOUND)
+    message(FATAL_ERROR "LZ4 not found")
+endif(LZ4_FOUND)
+
+# Провекра BZ2
+if (BZ2_FOUND)
+    message(STATUS "BZ2 lib found: " ${BZ2_LIBRARY})
+    message(STATUS "BZ2 include dir found: " ${BZ2_INCLUDE_DIR})
+else(BZ2_FOUND)
+    message(FATAL_ERROR "BZ2 not found")
+endif(BZ2_FOUND)
+
+# Провекра ZSTD
+if (ZSTD_FOUND)
+    message(STATUS "ZSTD lib found: " ${ZSTD_LIBRARY})
+    message(STATUS "ZSTD include dir found: " ${ZSTD_INCLUDE_DIR})
+else(ZSTD_FOUND)
+    message(FATAL_ERROR "ZSTD not found")
+endif(ZSTD_FOUND)
+
+# Провекра LZMA
+if (LZMA_FOUND)
+    message(STATUS "LZMA lib found: " ${LZMA_LIBRARY})
+    message(STATUS "LZMA include dir found: " ${LZMA_INCLUDE_DIR})
+else(LZMA_FOUND)
+    message(FATAL_ERROR "LZMA not found")
+endif(LZMA_FOUND)
 
 # Провекра ZLib
 if (Zlib_FOUND)
@@ -253,12 +289,16 @@ endif()
 
 # Выполняем подключение хидеров
 include_directories(SYSTEM ${XML_INCLUDE_DIR})
+include_directories(SYSTEM ${LZ4_INCLUDE_DIR})
+include_directories(SYSTEM ${BZ2_INCLUDE_DIR})
+include_directories(SYSTEM ${ZSTD_INCLUDE_DIR})
+include_directories(SYSTEM ${LZMA_INCLUDE_DIR})
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
+include_directories(SYSTEM ${BROTLI_INCLUDE_DIRS})
 include_directories(SYSTEM ${PCRE_INCLUDE_DIR})
 include_directories(SYSTEM ${NGTCP2_INCLUDE_DIR})
 include_directories(SYSTEM ${NGHTTP2_INCLUDE_DIR})
 include_directories(SYSTEM ${NGHTTP3_INCLUDE_DIR})
-include_directories(SYSTEM ${BROTLI_INCLUDE_DIRS})
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 include_directories(SYSTEM ${JEMALLOC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
@@ -462,13 +502,17 @@ if (CMAKE_SHARED_BUILD_LIB)
             PRIVATE
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -587,7 +631,12 @@ if (CMAKE_SHARED_BUILD_LIB)
             PRIVATE
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -595,7 +644,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -707,13 +755,17 @@ if (CMAKE_SHARED_BUILD_LIB)
             PRIVATE
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
         
@@ -813,13 +865,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -831,13 +887,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -849,13 +909,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -867,13 +931,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -885,13 +953,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -903,13 +975,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -921,13 +997,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -939,13 +1019,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -957,13 +1041,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -975,13 +1063,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -993,13 +1085,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -1011,13 +1107,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -1029,13 +1129,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -1050,7 +1154,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1058,7 +1167,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1069,7 +1177,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1077,7 +1190,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1088,7 +1200,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1096,7 +1213,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1107,7 +1223,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1115,7 +1236,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1126,7 +1246,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1134,7 +1259,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1145,7 +1269,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1153,7 +1282,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1164,7 +1292,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1172,7 +1305,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1183,7 +1315,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1191,7 +1328,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1202,7 +1338,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1210,7 +1351,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1221,7 +1361,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1229,7 +1374,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1240,7 +1384,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1248,7 +1397,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1259,7 +1407,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1267,7 +1420,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1278,7 +1430,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1286,7 +1443,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1297,7 +1453,12 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${IDN2_LIBRARY}
             ${ICONV_LIBRARIES}
             ${PCRE_LIBRARIES}
@@ -1305,7 +1466,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${AWH_IDN}
         )
@@ -1319,13 +1479,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1335,13 +1499,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1351,13 +1519,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1367,13 +1539,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1383,13 +1559,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1399,13 +1579,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1415,13 +1599,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1431,13 +1619,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1447,13 +1639,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1463,13 +1659,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1479,13 +1679,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1495,13 +1699,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1511,13 +1719,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1527,13 +1739,17 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${CURRENT_LIB_NAME_STATIC}
             ${EVENT_LIBRARY}
             ${XML_LIBRARY}
+            ${LZ4_LIBRARY}
+            ${BZ2_LIBRARY}
+            ${ZSTD_LIBRARY}
+            ${LZMA_LIBRARY}
             ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
             ${PCRE_LIBRARIES}
             ${NGTCP2_LIBRARY}
             ${NGHTTP2_LIBRARY}
             ${NGHTTP3_LIBRARY}
             ${JEMALLOC_LIBRARY}
-            ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
 
@@ -1716,6 +1932,10 @@ endif()
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${XML_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${LZ4_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGTCP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
@@ -1743,6 +1963,10 @@ endif()
 if(NOT CMAKE_SHARED_BUILD_LIB)
     # Устанавливаем стороние библиотеки
     install(FILES ${XML_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${LZ4_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${BZ2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${ZSTD_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${LZMA_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${NGTCP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")

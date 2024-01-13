@@ -100,9 +100,13 @@ namespace awh {
 			 */
 			enum class compress_t : uint8_t {
 				NONE    = 0x00, // Метод компрессии не установлен
-				GZIP    = 0x01, // Метод компрессии GZip
-				BROTLI  = 0x02, // Метод компрессии Brotli
-				DEFLATE = 0x03  // Метод компрессии Deflate
+				LZ4     = 0x01, // Метод компрессии Lz4
+				LZMA    = 0x02, // Метод компрессии LZma
+				ZSTD    = 0x03, // Метод компрессии ZStd
+				GZIP    = 0x04, // Метод компрессии GZip
+				BZIP2   = 0x05, // Метод компрессии BZip2
+				BROTLI  = 0x06, // Метод компрессии Brotli
+				DEFLATE = 0x07  // Метод компрессии Deflate
 			};
 		public:
 			/**

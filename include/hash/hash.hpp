@@ -1,6 +1,6 @@
 /**
  * @file: hash.hpp
- * @date: 2021-12-19
+ * @date: 2023-02-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2023
  */
 
 #ifndef __AWH_HASH__
@@ -23,9 +23,34 @@
 #include <vector>
 #include <csignal>
 #include <cstring>
-#include <zlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+/**
+ * Подключаем LZ4
+*/
+#include <lz4.h>
+#include <lz4hc.h>
+
+/**
+ * Подключаем GZip
+*/
+#include <zlib.h>
+
+/**
+ * Подключаем ZStd
+*/
+#include <zstd.h>
+
+/**
+ * Подключаем BZip2
+*/
+#include <bzlib.h>
+
+/**
+ * Подключаем LZma
+*/
+#include <lzma.h>
 
 /**
  * Подключаем Brotli
@@ -63,6 +88,15 @@ namespace awh {
 	typedef class Hash {
 		private:
 			/**
+			 * События выполнения операции
+			 */
+			enum class event_t : uint8_t {
+				NONE       = 0x00, // Событие не установленно
+				COMPRESS   = 0x01, // Компрессия данных
+				DECOMPRESS = 0x02  // Декомпрессия данных
+			};
+		private:
+			/**
 			 * State Стрейт шифрования
 			 */
 			mutable struct State {
@@ -80,6 +114,7 @@ namespace awh {
 			 * Набор размеров шифрования
 			 */
 			enum class cipher_t : uint16_t {
+				NONE   = 0,   // Размер шифрования не установлен
 				AES128 = 128, // Размер шифрования 128 бит
 				AES192 = 192, // Размер шифрования 192 бит
 				AES256 = 256  // Размер шифрования 256 бит
@@ -89,9 +124,13 @@ namespace awh {
 			 */
 			enum class method_t : uint8_t {
 				NONE    = 0x00, // Метод сжатия не установлен
-				GZIP    = 0x01, // Метод сжатия GZIP
-				BROTLI  = 0x02, // Метод сжатия BROTLI
-				DEFLATE = 0x03  // Метод сжатия DEFLATE
+				LZ4     = 0x01, // Метод сжатия Lz4
+				LZMA    = 0x02, // Метод сжатия LZma
+				ZSTD    = 0x03, // Метод сжатия ZStd
+				GZIP    = 0x04, // Метод сжатия GZip
+				BZIP2   = 0x05, // Метод сжания BZip2
+				BROTLI  = 0x06, // Метод сжатия Brotli
+				DEFLATE = 0x07  // Метод сжатия Deflate
 			};
 			/**
 			 * Уровень компрессии
@@ -108,8 +147,8 @@ namespace awh {
 			// Устанавливаем количество раундов
 			int _rounds;
 		private:
-			// Уровень сжатия
-			u_int _levelGzip;
+			// Уровни компрессии
+			uint32_t _level[3];
 		private:
 			// Соль и пароль для шифрования
 			string _salt, _pass;
@@ -139,7 +178,7 @@ namespace awh {
 			// Устанавливаем уровень сжатия
 			static constexpr u_short DEFAULT_MEM_LEVEL = 4;
 			// Размер буфера чанка в байтах
-			static constexpr u_int CHUNK_BUFFER_SIZE = 0x4000;
+			static constexpr uint32_t CHUNK_BUFFER_SIZE = 0x4000;
 		private:
 			/**
 			 * init Метод инициализации AES шифрования
@@ -170,49 +209,61 @@ namespace awh {
 			void setTail(vector <char> & buffer) const noexcept;
 		private:
 			/**
-			 * compressBrotli Метод компрессии данных в Brotli
+			 * lz4 Метод работы с компрессором Lz4
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
-			 * @return       результат компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
 			 */
-			vector <char> compressBrotli(const char * buffer, const size_t size) noexcept;
+			vector <char> lz4(const char * buffer, const size_t size, const event_t event) noexcept;
 			/**
-			 * decompressBrotli Метод декомпрессии данных в Brotli
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @return       результат декомпрессии
-			 */
-			vector <char> decompressBrotli(const char * buffer, const size_t size) noexcept;
-		private:
-			/**
-			 * compressGzip Метод компрессии данных в GZIP
+			 * lzma Метод работы с компрессором LZma
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
-			 * @return       результат компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
 			 */
-			vector <char> compressGzip(const char * buffer, const size_t size) const noexcept;
+			vector <char> lzma(const char * buffer, const size_t size, const event_t event) noexcept;
 			/**
-			 * decompressGzip Метод декомпрессии данных в GZIP
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @return       результат декомпрессии
-			 */
-			vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
-		private:
-			/**
-			 * compressDeflate Метод компрессии данных в DEFLATE
+			 * zstd Метод работы с компрессором ZStd
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
-			 * @return       результат компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
 			 */
-			vector <char> compressDeflate(const char * buffer, const size_t size) const noexcept;
+			vector <char> zstd(const char * buffer, const size_t size, const event_t event) noexcept;
 			/**
-			 * decompressDeflate Метод декомпрессии данных в DEFLATE
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @return       результат декомпрессии
+			 * gzip Метод работы с компрессором GZip
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
 			 */
-			vector <char> decompressDeflate(const char * buffer, const size_t size) const noexcept;
+			vector <char> gzip(const char * buffer, const size_t size, const event_t event) noexcept;
+			/**
+			 * bzip2 Метод работы с компрессором BZip2
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
+			 */
+			vector <char> bzip2(const char * buffer, const size_t size, const event_t event) noexcept;
+			/**
+			 * brotli Метод работы с компрессором Brotli
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
+			 */
+			vector <char> brotli(const char * buffer, const size_t size, const event_t event) noexcept;
+			/**
+			 * deflate Метод работы с компрессором Deflate
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param event  событие выполнения операции
+			 * @return       результат выполнения операции
+			 */
+			vector <char> deflate(const char * buffer, const size_t size, const event_t event) noexcept;
 		public:
 			/**
 			 * encrypt Метод шифрования текста
@@ -288,9 +339,9 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Hash(const log_t * log) noexcept :
-			 _wbit(MAX_WBITS), _rounds(5), _levelGzip(Z_DEFAULT_COMPRESSION),
+			 _wbit(MAX_WBITS), _rounds(5), _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT},
 			 _salt{""}, _pass{""}, _takeOverCompress(false), _takeOverDecompress(false),
-			 _btype{0x00, 0x00, 0xFF, 0xFF}, _cipher(cipher_t::AES128), _key{}, _zinf{0}, _zdef{0}, _log(log) {}
+			 _btype{0x00, 0x00, 0xFF, 0xFF}, _cipher(cipher_t::AES128), _zinf({0}), _zdef({0}), _log(log) {}
 			/**
 			 * ~Hash Деструктор
 			 */

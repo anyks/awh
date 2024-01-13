@@ -7,28 +7,32 @@
 - **HTTP / HTTPS**: WEB - CLIENT / SERVER.
 - **WS / WSS**: WebSocket - CLIENT / SERVER.
 - **Proxy**: HTTP(S) / SOCKS5 PROXY - CLIENT / SERVER.
-- **Compress**: GZIP / DEFLATE / BROTLI - compression support.
+- **Compress**: GZIP / BZIP2 / ZSTD / LZ4 / LZMA/ DEFLATE / BROTLI - compression support.
 - **Authentication**: BASIC / DIGEST - authentication support.
 
 ## Supported protocols HTTP/1.1 and HTTP/2 (RFC9113)
 
 ## Requirements
 
+- [LZ4](https://lz4.org)
 - [Zlib](http://www.zlib.net)
-- [PCRE](https://github.com/luvit/pcre)
-- [Brotli](https://github.com/google/brotli)
+- [BZip2](http://www.bzip.org)
+- [Brotli](https://brotli.org)
+- [ZStandart](https://github.com/facebook/zstd)
+- [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
+- [PCRE](https://www.pcre.org)
 - [OpenSSL](https://www.openssl.org)
 - [LibEv](http://software.schmorp.de/pkg/libev.html)
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)
-- [LibXML2](https://github.com/GNOME/libxml2)
+- [LibXML2](http://xmlsoft.org/html)
 - [JeMalloc](https://jemalloc.net)
 - [NgHttp2](https://nghttp2.org/documentation/)
 - [NgHttp3](https://nghttp2.org/nghttp3/programmers-guide.html)
 - [NgTCP2](https://nghttp2.org/ngtcp2/programmers-guide.html)
 - [Libev-Win](https://github.com/disenone/libev-win)
-- [LibEvent2](https://github.com/libevent/libevent)
-- [NLohmann::json](https://github.com/nlohmann/json)
+- [LibEvent2](https://libevent.org)
+- [NLohmann::json](https://json.nlohmann.me)
 
 ## To build and launch the project
 
@@ -434,6 +438,7 @@ int main(int argc, char * argv[]){
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
@@ -441,6 +446,7 @@ int main(int argc, char * argv[]){
 
 	/*
 	awh.init("anyks", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
@@ -877,6 +883,7 @@ int main(int argc, char * argv[]){
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
@@ -884,6 +891,7 @@ int main(int argc, char * argv[]){
 
 	/*
 	awh.init("anyks", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,

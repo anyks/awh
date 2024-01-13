@@ -288,23 +288,27 @@ int main(int argc, char * argv[]){
 	// Выполняем инициализацию Web-сервера
 	/*
 	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
 	});
 	*/
 	awh.init(2222, "anyks.net", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
 	});
 	/*
 	awh.init(2222, "127.0.0.1", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
 	});
 	awh.init("anyks", {
+		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,

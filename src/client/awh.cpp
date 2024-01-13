@@ -510,6 +510,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		// Выполняем инициализацию подключения
 		this->init(this->_uri.origin(url), {
+			awh::http_t::compress_t::ZSTD,
 			awh::http_t::compress_t::BROTLI,
 			awh::http_t::compress_t::GZIP,
 			awh::http_t::compress_t::DEFLATE
