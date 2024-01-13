@@ -7,7 +7,7 @@
 - **HTTP / HTTPS**: WEB - CLIENT / SERVER.
 - **WS / WSS**: WebSocket - CLIENT / SERVER.
 - **Proxy**: HTTP(S) / SOCKS5 PROXY - CLIENT / SERVER.
-- **Compress**: GZIP / BZIP2 / ZSTD / LZ4 / LZMA/ DEFLATE / BROTLI - compression support.
+- **Compress**: GZIP / BZIP2 / ZSTD / LZ4 / LZMA / DEFLATE / BROTLI - compression support.
 - **Authentication**: BASIC / DIGEST - authentication support.
 
 ## Supported protocols HTTP/1.1 and HTTP/2 (RFC9113)
