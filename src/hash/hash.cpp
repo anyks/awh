@@ -176,21 +176,36 @@ vector <char> awh::Hash::lz4(const char * buffer, const size_t size, const event
 			} break;
 			// Если необходимо выполнить декомпрессию данных
 			case static_cast <uint8_t> (event_t::DECOMPRESS): {
-				// Выделяем буфер памяти нужного нам размера
-				result.resize(size * 3, 0);
-				// Выполняем получение размер результирующего буфера
-				int32_t actual = result.size();
-				// Выполняем декомпрессию буфера бинарных данных
-				actual = ::LZ4_decompress_safe(buffer, result.data(), size, actual);
-				// Если компрессия не выполнена
-				if(actual <= 0){
-					// Выводим сообщение об ошибке
-					this->_log->print("Lz4: %s", log_t::flag_t::WARNING, "decompress failed");
-					// Выходим из функции
-					return vector <char> ();
+				// Множитель
+				size_t factor = 2;
+				/**
+				 * Выполняем извлечение данных пока не извлечём
+				 */
+				for(;;){
+					// Выделяем буфер памяти нужного нам размера
+					result.resize(size * factor, 0);
+					// Выполняем получение размер результирующего буфера
+					int32_t actual = result.size();
+					// Выполняем декомпрессию буфера бинарных данных
+					actual = ::LZ4_decompress_safe(buffer, result.data(), size, actual);
+					// Если компрессия не выполнена из-за отсутствия памяти
+					if(actual < 0)
+						// Выполняем увеличение множителя
+						factor++;
+					// Если компрессия не выполнена
+					else if(actual == 0){
+						// Выводим сообщение об ошибке
+						this->_log->print("Lz4: %s", log_t::flag_t::WARNING, "decompress failed");
+						// Выходим из функции
+						return vector <char> ();
+					// Если данные извлечены удачно
+					} else {
+						// Корректируем размер результирующего буфера
+						result.resize(actual);
+						// Выходим из цикла
+						break;
+					}
 				}
-				// Корректируем размер результирующего буфера
-				result.resize(actual);
 			} break;
 		}
 	}
