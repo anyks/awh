@@ -19,13 +19,6 @@ if [[ $OS =~ "MINGW64" ]]; then
 	OS="Windows"
 fi
 
-# Устанавливаем систему сборки
-if [[ $OS = "Windows" ]]; then
-	export BUILD="mingw32-make"
-else
-	export BUILD="make"
-fi
-
 if [ -n "$1" ]; then
 	if [ $1 = "--clean" ]; then
 
@@ -256,10 +249,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта без документации
-	$BUILD install_sw || exit 1
-	$BUILD install_ssldirs || exit 1
+	make install_sw || exit 1
+	make install_ssldirs || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -317,9 +310,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -386,9 +379,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Создаём каталог BZip2
 	mkdir "$PREFIX/include/bz2"
@@ -457,9 +450,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Создаём каталог LZ4
 	mkdir "$PREFIX/include/lz4"
@@ -530,9 +523,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Создаём каталог ZSTD
 	mkdir "$PREFIX/include/zstd"
@@ -601,9 +594,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Создаём каталог LZMA
 	mkdir "$PREFIX/include/lzma2"
@@ -684,7 +677,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 
 	# Производим установку библиотеки по нужному пути
 	echo "Install \"$src/${build}/libbrotlicommon.a\" to \"$PREFIX/lib/libbrotlicommon.a\""
@@ -770,9 +763,9 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 		fi
 
 		# Выполняем сборку на всех логических ядрах
-		$BUILD -j"$numproc" || exit 1
+		make -j"$numproc" || exit 1
 		# Выполняем установку проекта
-		$BUILD install || exit 1
+		make install || exit 1
 
 		# Помечаем флагом, что сборка и установка произведена
 		touch "$src/.stamp_done"
@@ -807,7 +800,7 @@ else
 			 .. || exit 1
 
 			# Выполняем сборку на всех логических ядрах
-			$BUILD -j"$numproc" || exit 1
+			make -j"$numproc" || exit 1
 
 			# Производим установку библиотеки по нужному пути
 			echo "Install \"$src/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
@@ -845,9 +838,9 @@ else
 			apply_patch "libev" "libev.patch"
 			
 			# Выполняем сборку проекта
-			$BUILD -j"$numproc" || exit 1
+			make -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			$BUILD install || exit 1
+			make install || exit 1
 
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
@@ -901,9 +894,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			fi
 
 			# Выполняем сборку проекта
-			$BUILD || exit 1
+			make || exit 1
 			# Выполняем установку проекта
-			$BUILD install || exit 1
+			make install || exit 1
 
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
@@ -947,9 +940,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			 --libdir="$PREFIX/lib"
 
 			# Выполняем сборку проекта
-			$BUILD || exit 1
+			make || exit 1
 			# Выполняем установку проекта
-			$BUILD install || exit 1
+			make install || exit 1
 
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
@@ -1016,9 +1009,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Создаём каталог PCRE
 	mkdir "$PREFIX/include/pcre2"
@@ -1078,7 +1071,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DCMAKE_SYSTEM_NAME=Windows \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MinGW Makefiles" \
+		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
@@ -1093,9 +1086,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -1143,9 +1136,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 		gmake install || exit 1
 	else
 		# Выполняем сборку на всех логических ядрах
-		$BUILD -j"$numproc" || exit 1
+		make -j"$numproc" || exit 1
 		# Выполняем установку проекта
-		$BUILD install || exit 1
+		make install || exit 1
 	fi
 
 	# Выполняем конфигурацию проекта
@@ -1232,9 +1225,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -1355,9 +1348,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -1554,9 +1547,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$BUILD install || exit 1
+	make install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
