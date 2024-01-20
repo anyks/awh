@@ -15,6 +15,15 @@ if [[ -d $1 ]]; then
 	THIRD_PARTY="$1"
 fi
 
+# Расширение файла объекта
+OBJECT_NAME="o"
+
+# Если операционной системой является Windows
+if [ $2 = "Windows" ]; then
+	# Расширение файла объекта
+	OBJECT_NAME="obj"
+fi
+
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
 
@@ -26,20 +35,8 @@ fi
 # Функция упаковка модулей в библиотеку
 #
 intract(){
-	# Расширение файла объекта
-	OBJECT_NAME="o"
-
-	# Если операционной системой является Windows
-	if [ $2 = "Windows" ]; then
-		# Расширение файла объекта
-		OBJECT_NAME="obj"
-	fi
-
-	# Регулярное выражение поиска
-	readonly REG=".*\.${OBJECT_NAME}$"
-
 	# Производим пересборку всех зависимых библиотек
-	for i in $(ls . | grep "$REG");
+	for i in $(ls . | grep ".*\.${OBJECT_NAME}$");
 	do
 		# Если операционной системой является Windows
 		if [ $2 = "Windows" ]; then
@@ -69,42 +66,26 @@ intract(){
 # Функция извлечения модулей из библиотеки
 #
 extract(){
-	# Регулярное выражение поиска
-	readonly REG1=".*\.$1$"
-	# Регулярное выражение поиска
-	readonly REG2=".*\.$2$"
-
-	# Расширение файла объекта
-	OBJECT_NAME="o"
-
-	# Если операционной системой является Windows
-	if [ $3 = "Windows" ]; then
-		# Расширение файла объекта
-		OBJECT_NAME="obj"
-	fi
-
 	# Производим пересборку всех зависимых библиотек
-	for i in $(ls . | grep "$REG1");
+	for i in $(ls . | grep ".*\.$1$");
 	do
 		# Индекс текущей библиотеки
 		INDEX=0
 		# Выводим сообщение
 		echo "Extract \"$i\""
 		# Выполняем формирование последовательности списка модулей
-		for j in $(ar -t $i | grep "$REG2");
+		for j in $(ar -t $i | grep ".*\.$2$");
 		do
-			# Получаем название модуля
-			MODULE=$j
 			# Выводим название модуля
-			echo "Module: $MODULE in $i"
+			echo "Module: $j in $i"
 
 			# Выполняем извлечение модуля из архива
-			ar -xv $i "$MODULE"
+			ar -xv $i "$j"
 			# Выполняем удаление модуля в архиве
-			ar -dv $i "$MODULE"
+			ar -dv $i "$j"
 
 			# Выполняем переименование модуля
-			mv "${MODULE%.*}.$2" "${MODULE%.*}_$INDEX.$OBJECT_NAME"
+			mv "${j%.*}.$2" "${j%.*}_$INDEX.$OBJECT_NAME"
 
 			# Выполняем увеличение индекса
 			INDEX=$((INDEX+1))
