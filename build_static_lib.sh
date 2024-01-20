@@ -48,7 +48,7 @@ intract(){
 	for i in $(ls . | grep ".*\.${OBJECT_NAME}$");
 	do
 		# Если операционной системой является Windows
-		if [ $2 = "Windows" ]; then
+		if [ $OS = "Windows" ]; then
 			# Выполняем сборку новой статической библиотеки
 			ar -crv "$1" "$i" || exit 1
 		# Если операционной системой является Unix-подобная ОС
@@ -64,7 +64,7 @@ intract(){
 	ranlib "$1"
 
 	# Если операционной системой является Unix-подобная ОС
-	if [ ! $2 = "Windows" ]; then
+	if [ ! $OS = "Windows" ]; then
 		# Удаляем файл разметки
 		rm -f "__.SYMDEF"
 		rm -f "__.SYMDEF SORTED"
@@ -109,23 +109,23 @@ cd "$THIRD_PARTY"
 # Если операционной системой является Windows
 if [ $OS = "Windows" ]; then
 	# Извлекаем все модули из библиотеки
-	extract $FILENAME "obj" $OS
+	extract $FILENAME "obj"
 	# Выполняем копирование библиотеки зависимостей
 	cp libdependence.lib libdependence.tmp.lib
 	# Извлекаем все модули из библиотеки
-	extract libdependence.tmp.lib "obj" $OS
+	extract libdependence.tmp.lib "obj"
 # Если операционной системой является Unix-подобная ОС
 else
 	# Извлекаем все модули из библиотеки
-	extract $FILENAME "o" $OS
+	extract $FILENAME "o"
 	# Выполняем копирование библиотеки зависимостей
 	cp libdependence.a libdependence.tmp.a
 	# Извлекаем все модули из библиотеки
-	extract libdependence.tmp.a "o" $OS
+	extract libdependence.tmp.a "o"
 fi
 
 # Выполняем сборку библиотеки
-intract $FILENAME $OS
+intract $FILENAME
 
 # Удаляем исходную библиотеку
 rm $LIB

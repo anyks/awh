@@ -39,7 +39,7 @@ intract(){
 	for i in $(ls . | grep ".*\.${OBJECT_NAME}$");
 	do
 		# Если операционной системой является Windows
-		if [ $2 = "Windows" ]; then
+		if [ $OS = "Windows" ]; then
 			# Выполняем сборку новой статической библиотеки
 			ar -crv "lib$1.a" "$i" || exit 1
 		# Если операционной системой является Unix-подобная ОС
@@ -55,7 +55,7 @@ intract(){
 	ranlib "lib$1.a"
 
 	# Если операционной системой является Unix-подобная ОС
-	if [ ! $2 = "Windows" ]; then
+	if [ ! $OS = "Windows" ]; then
 		# Удаляем файл разметки
 		rm -f "__.SYMDEF"
 		rm -f "__.SYMDEF SORTED"
@@ -106,16 +106,16 @@ cd $THIRD_PARTY
 # Если операционной системой является Windows
 if [ $OS = "Windows" ]; then
 	# Извлекаем все модули из библиотеки
-	extract "a" "o" $OS
-	extract "a" "obj" $OS
+	extract "a" "o"
+	extract "a" "obj"
 # Если операционной системой является Unix-подобная ОС
 else
 	# Извлекаем все модули из библиотеки
-	extract "a" "o" $OS
+	extract "a" "o"
 fi
 
 # Выполняем сборку библиотеки
-intract $LIBNAME $OS
+intract $LIBNAME
 
 # Переходим обратно
 cd "$ROOT" || exit 1
