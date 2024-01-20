@@ -254,6 +254,106 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make install_sw || exit 1
 	make install_ssldirs || exit 1
 
+	# Список модулей для сборки итоговой библиотеки
+	MODULES=""
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Переносим собранные библиотеки
+		mv "$PREFIX/lib64/libssl.a" "$PREFIX/lib/libssl.a"
+		mv "$PREFIX/lib64/libcrypto.a" "$PREFIX/lib/libcrypto.a"
+	fi
+
+	# Переходим в каталог с библиотеками
+	cd "$PREFIX/lib"
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libssl.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libssl.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libcrypto.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libcrypto.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libssl.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libssl.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libcrypto.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libcrypto.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+	fi
+
+	# Если список модулей не получен
+	if [ ! -n "$MODULES" ]; then
+		echo "OpenSSL library is not build"
+		exit 1
+	fi
+
+	# Извлекаем все модули из библиотеки
+	ar x libssl.a || exit 1
+	ar x libcrypto.a || exit 1
+
+	# Удаляем все старые библиотеки
+	rm libssl.a || exit 1
+	rm libcrypto.a || exit 1
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем сборку новой статической библиотеки
+		ar cr libopenssl.a $MODULES
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем сборку новой статической библиотеки
+		ar cru libopenssl.a $MODULES
+	fi
+
+	# Выполняем запуск библиотеки
+	ranlib libopenssl.a
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.obj
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.o
+		# Удаляем файл разметки
+		rm -f "__.SYMDEF SORTED"
+	fi
+
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
@@ -313,6 +413,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Удаляем лишние библиотеки
+		rm "$PREFIX/lib/libzlib.dll"
+		rm "$PREFIX/lib/libzlib.dll.a"
+	fi
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -696,6 +803,122 @@ if [ ! -f "$src/.stamp_done" ]; then
 		${INSTALL_CMD} "$src/c/include/brotli/$i" "$PREFIX/include/brotli/$i" || exit 1
 	done
 
+	# Список модулей для сборки итоговой библиотеки
+	MODULES=""
+	# Переходим в каталог с библиотеками
+	cd "$PREFIX/lib"
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlienc.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libbrotlienc.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlidec.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libbrotlidec.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlicommon.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libbrotlicommon.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlienc.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libbrotlienc.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlidec.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libbrotlidec.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libbrotlicommon.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libbrotlicommon.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+	fi
+
+	# Если список модулей не получен
+	if [ ! -n "$MODULES" ]; then
+		echo "Brotli library is not build"
+		exit 1
+	fi
+
+	# Извлекаем все модули из библиотеки
+	ar x libbrotlienc.a || exit 1
+	ar x libbrotlidec.a || exit 1
+	ar x libbrotlicommon.a || exit 1
+
+	# Удаляем все старые библиотеки
+	rm libbrotlienc.a || exit 1
+	rm libbrotlidec.a || exit 1
+	rm libbrotlicommon.a || exit 1
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем сборку новой статической библиотеки
+		ar cr libbrotli.a $MODULES
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем сборку новой статической библиотеки
+		ar cru libbrotli.a $MODULES
+	fi
+
+	# Выполняем запуск библиотеки
+	ranlib libbrotli.a
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.obj
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.o
+		# Удаляем файл разметки
+		rm -f "__.SYMDEF SORTED"
+	fi
+
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
@@ -1022,6 +1245,218 @@ if [ ! -f "$src/.stamp_done" ]; then
 		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/pcre2/$i\""
 		mv "$PREFIX/include/$i" "$PREFIX/include/pcre2/$i" || exit 1
 	done
+
+	# Список модулей для сборки итоговой библиотеки
+	MODULES=""
+	# Переходим в каталог с библиотеками
+	cd "$PREFIX/lib"
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-posix.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libpcre2-posix.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-8.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libpcre2-8.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="a_$i"
+			else
+				MODULES="$MODULES a_$i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-16.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libpcre2-16.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="b_$i"
+			else
+				MODULES="$MODULES b_$i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-32.a | grep ".*\.obj$");
+		do
+			echo "Module: $i in libpcre2-32.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="c_$i"
+			else
+				MODULES="$MODULES c_$i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-posix.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libpcre2-posix.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="$i"
+			else
+				MODULES="$MODULES $i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-8.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libpcre2-8.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="a_$i"
+			else
+				MODULES="$MODULES a_$i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-16.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libpcre2-16.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="b_$i"
+			else
+				MODULES="$MODULES b_$i"
+			fi
+		done
+
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-32.a | grep ".*\.o$");
+		do
+			echo "Module: $i in libpcre2-32.a"
+			if [ ! -n "$MODULES" ]; then
+				MODULES="c_$i"
+			else
+				MODULES="$MODULES c_$i"
+			fi
+		done
+	fi
+
+	# Если список модулей не получен
+	if [ ! -n "$MODULES" ]; then
+		echo "PCRE2 library is not build"
+		exit 1
+	fi
+
+	# Извлекаем все модули из библиотеки
+	ar x libpcre2-8.a || exit 1
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-8.a | grep ".*\.obj$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"a_$i\""
+				mv "$i" "a_$i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-8.a | grep ".*\.o$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"a_$i\""
+				mv "$i" "a_$i"
+			fi
+		done
+	fi
+	# Извлекаем все модули из библиотеки
+	ar x libpcre2-16.a || exit 1
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-16.a | grep ".*\.obj$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"b_$i\""
+				mv "$i" "b_$i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-16.a | grep ".*\.o$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"b_$i\""
+				mv "$i" "b_$i"
+			fi
+		done
+	fi
+	# Извлекаем все модули из библиотеки
+	ar x libpcre2-32.a || exit 1
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-32.a | grep ".*\.obj$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"c_$i\""
+				mv "$i" "c_$i"
+			fi
+		done
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем формирование последовательности списка модулей
+		for i in $(ar -t libpcre2-32.a | grep ".*\.o$");
+		do
+			# Если такой модуль уже существует
+			if [[ -f $i ]]; then
+				echo "Rename \"$i\" to \"c_$i\""
+				mv "$i" "c_$i"
+			fi
+		done
+	fi
+	# Извлекаем все модули из библиотеки
+	ar x libpcre2-posix.a || exit 1
+
+	# Удаляем все старые библиотеки
+	rm libpcre2-8.a || exit 1
+	rm libpcre2-16.a || exit 1
+	rm libpcre2-32.a || exit 1
+	rm libpcre2-posix.a || exit 1
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем сборку новой статической библиотеки
+		ar cr libpcre2.a $MODULES
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем сборку новой статической библиотеки
+		ar cru libpcre2.a $MODULES
+	fi
+
+	# Выполняем запуск библиотеки
+	ranlib libpcre2.a
+
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.obj
+	# Если операционной системой является Unix-подобная ОС
+	else
+		# Выполняем удаление всех извлечённых модулей
+		rm -rf *.o
+		# Удаляем файл разметки
+		rm -f "__.SYMDEF SORTED"
+	fi
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -1556,17 +1991,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
+# Выполняем объединение статических библиотек
+bash "$ROOT/merge_static_libs.sh"
+
 # Переименовываем расширение библиотек для Windows
 if [ $OS = "Windows" ]; then # Windows
 	# Выполняем исправление библиотек для x32
 	for i in $(ls "$PREFIX/lib" | grep .a$);
 	do
 		mv "$PREFIX/lib/$i" "$PREFIX/lib/$(basename "$i" .a).lib"
-	done
-	# Выполняем исправление библиотек для x64
-	for i in $(ls "$PREFIX/lib64" | grep .a$);
-	do
-		mv "$PREFIX/lib64/$i" "$PREFIX/lib64/$(basename "$i" .a).lib"
 	done
 fi
 
