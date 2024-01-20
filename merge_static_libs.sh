@@ -19,7 +19,7 @@ fi
 OBJECT_NAME="o"
 
 # Если операционной системой является Windows
-if [ $2 = "Windows" ]; then
+if [ $OS = "Windows" ]; then
 	# Расширение файла объекта
 	OBJECT_NAME="obj"
 fi
