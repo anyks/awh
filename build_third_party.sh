@@ -322,22 +322,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Извлекаем все модули из библиотеки
-	ar x libssl.a || exit 1
-	ar x libcrypto.a || exit 1
+	ar -xv libssl.a || exit 1
+	ar -xv libcrypto.a || exit 1
 
 	# Удаляем все старые библиотеки
 	rm libssl.a || exit 1
 	rm libcrypto.a || exit 1
 
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then
-		# Выполняем сборку новой статической библиотеки
-		ar cr libopenssl.a $MODULES
-	# Если операционной системой является Unix-подобная ОС
-	else
-		# Выполняем сборку новой статической библиотеки
-		ar cru libopenssl.a $MODULES
-	fi
+	# Выполняем сборку новой статической библиотеки
+	ar -crUuv libopenssl.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libopenssl.a
@@ -885,24 +878,17 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Извлекаем все модули из библиотеки
-	ar x libbrotlienc.a || exit 1
-	ar x libbrotlidec.a || exit 1
-	ar x libbrotlicommon.a || exit 1
+	ar -xv libbrotlienc.a || exit 1
+	ar -xv libbrotlidec.a || exit 1
+	ar -xv libbrotlicommon.a || exit 1
 
 	# Удаляем все старые библиотеки
 	rm libbrotlienc.a || exit 1
 	rm libbrotlidec.a || exit 1
 	rm libbrotlicommon.a || exit 1
 
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then
-		# Выполняем сборку новой статической библиотеки
-		ar cr libbrotli.a $MODULES
-	# Если операционной системой является Unix-подобная ОС
-	else
-		# Выполняем сборку новой статической библиотеки
-		ar cru libbrotli.a $MODULES
-	fi
+	# Выполняем сборку новой статической библиотеки
+	ar -crUuv libbrotli.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libbrotli.a
@@ -1350,7 +1336,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Извлекаем все модули из библиотеки
-	ar x libpcre2-8.a || exit 1
+	ar -xv libpcre2-8.a || exit 1
 	# Если операционной системой является Windows
 	if [ $OS = "Windows" ]; then
 		# Выполняем формирование последовательности списка модулей
@@ -1375,7 +1361,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		done
 	fi
 	# Извлекаем все модули из библиотеки
-	ar x libpcre2-16.a || exit 1
+	ar -xv libpcre2-16.a || exit 1
 	# Если операционной системой является Windows
 	if [ $OS = "Windows" ]; then
 		# Выполняем формирование последовательности списка модулей
@@ -1400,7 +1386,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		done
 	fi
 	# Извлекаем все модули из библиотеки
-	ar x libpcre2-32.a || exit 1
+	ar -xv libpcre2-32.a || exit 1
 	# Если операционной системой является Windows
 	if [ $OS = "Windows" ]; then
 		# Выполняем формирование последовательности списка модулей
@@ -1425,7 +1411,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		done
 	fi
 	# Извлекаем все модули из библиотеки
-	ar x libpcre2-posix.a || exit 1
+	ar -xv libpcre2-posix.a || exit 1
 
 	# Удаляем все старые библиотеки
 	rm libpcre2-8.a || exit 1
@@ -1433,15 +1419,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	rm libpcre2-32.a || exit 1
 	rm libpcre2-posix.a || exit 1
 
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then
-		# Выполняем сборку новой статической библиотеки
-		ar cr libpcre2.a $MODULES
-	# Если операционной системой является Unix-подобная ОС
-	else
-		# Выполняем сборку новой статической библиотеки
-		ar cru libpcre2.a $MODULES
-	fi
+	# Выполняем сборку новой статической библиотеки
+	ar -crUuv libpcre2.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libpcre2.a
