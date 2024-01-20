@@ -81,11 +81,11 @@ done
 # Если операционной системой является Windows
 if [ $OS = "Windows" ]; then
 	# Выполняем сборку новой статической библиотеки
-	ar -cr "lib$LIBNAME.a" $MODULES
+	ar -crv "lib$LIBNAME.a" *.$OBJECT_NAME || exit 1
 # Если операционной системой является Unix-подобная ОС
 else
 	# Выполняем сборку новой статической библиотеки
-	ar -cruv "lib$LIBNAME.a" $MODULES
+	ar -cruv "lib$LIBNAME.a" $MODULES || exit 1
 fi
 
 # Выполняем запуск библиотеки
