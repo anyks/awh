@@ -31,129 +31,116 @@ if [ -f "$THIRD_PARTY/$FILENAME" ]; then
 	rm "$THIRD_PARTY/$FILENAME"
 fi
 
+##
+# Функция упаковка модулей в библиотеку
+#
+intract(){
+	# Расширение файла объекта
+	OBJECT_NAME="o"
+
+	# Если операционной системой является Windows
+	if [ $2 = "Windows" ]; then
+		# Расширение файла объекта
+		OBJECT_NAME="obj"
+	fi
+
+	# Регулярное выражение поиска
+	readonly REG=".*\.${OBJECT_NAME}$"
+
+	# Производим пересборку всех зависимых библиотек
+	for i in $(ls . | grep "$REG");
+	do
+		# Если операционной системой является Windows
+		if [ $2 = "Windows" ]; then
+			# Выполняем сборку новой статической библиотеки
+			ar -crv "$1" "$i" || exit 1
+		# Если операционной системой является Unix-подобная ОС
+		else
+			# Выполняем сборку новой статической библиотеки
+			ar -cruv "$1" "$i" || exit 1
+		fi
+		# Выполняем удаление уже добавленный модуль
+		rm "$i" || exit 1
+	done
+
+	# Выполняем запуск библиотеки
+	ranlib "$1"
+
+	# Если операционной системой является Unix-подобная ОС
+	if [ ! $2 = "Windows" ]; then
+		# Удаляем файл разметки
+		rm -f "__.SYMDEF"
+		rm -f "__.SYMDEF SORTED"
+	fi
+}
+
+##
+# Функция извлечения модулей из библиотеки
+#
+extract(){
+	# Регулярное выражение поиска
+	readonly REG=".*\.$2$"
+
+	# Расширение файла объекта
+	OBJECT_NAME="o"
+
+	# Если операционной системой является Windows
+	if [ $3 = "Windows" ]; then
+		# Расширение файла объекта
+		OBJECT_NAME="obj"
+	fi
+	
+	# Индекс текущей библиотеки
+	INDEX=0
+	# Выводим сообщение
+	echo "Extract \"$1\""
+	# Выполняем формирование последовательности списка модулей
+	for i in $(ar -t $1 | grep "$REG");
+	do
+		# Выводим название модуля
+		echo "Module: $i in $1"
+
+		# Выполняем извлечение модуля из архива
+		ar -xv $1 "$i"
+		# Выполняем удаление модуля в архиве
+		ar -dv $1 "$i"
+
+		# Выполняем переименование модуля
+		mv "${i%.*}.$2" "${i%.*}_$INDEX.$OBJECT_NAME"
+
+		# Выполняем увеличение индекса
+		INDEX=$((INDEX+1))
+	done
+	# Удалем архив статической библиотеки
+	rm "$1" || exit 1
+}
+
 # Выполняем копирование библиотеки
 cp "$LIB" "$THIRD_PARTY/$FILENAME" || exit 1
 
-# Список модулей для сборки итоговой библиотеки
-MODULES=""
 # Переходим в каталог с библиотеками
 cd "$THIRD_PARTY"
 
-# Расширение файла объекта
-OBJECT_NAME="o"
-# Расширение файла библиотеки
-LIBRARY_NAME="a"
-
 # Если операционной системой является Windows
 if [ $OS = "Windows" ]; then
-	# Расширение файла объекта
-	OBJECT_NAME="obj"
-	# Расширение файла библиотеки
-	LIBRARY_NAME="lib"
-fi
-
-# Регулярное выражение поиска
-readonly REG=".*\.${OBJECT_NAME}$"
-
-# Индекс текущей библиотеки
-INDEX=0
-# Выполняем формирование последовательности списка модулей
-for i in $(ar -t $FILENAME | grep "$REG");
-do
-	# Получаем название модуля
-	MODULE=$i
-	# Выводим название модуля
-	echo "Module: $MODULE in $FILENAME"
-
-	# Выполняем извлечение модуля из архива
-	ar -xv $FILENAME "$MODULE"
-	# Выполняем удаление модуля в архиве
-	ar -dv $FILENAME "$MODULE"
-
-	# Выполняем переименование модуля
-	mv "${MODULE%.*}.$OBJECT_NAME" "${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	
-	# Если список модулей не заполнен
-	if [ ! -n "$MODULES" ]; then
-		MODULES="${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	# Если список модулей уже назполнен
-	else
-		MODULES="$MODULES ${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	fi
-
-	# Выполняем увеличение индекса
-	INDEX=$((INDEX+1))
-done
-
-# Индекс текущей библиотеки
-INDEX=0
-# Выполняем копирование библиотеки зависимостей
-cp libdependence.$LIBRARY_NAME libdependence.tmp.$LIBRARY_NAME
-# Выполняем формирование последовательности списка модулей
-for i in $(ar -t libdependence.tmp.$LIBRARY_NAME | grep "$REG");
-do
-	# Получаем название модуля
-	MODULE=$i
-	# Выводим название модуля
-	echo "Module: $MODULE in libdependence.$LIBRARY_NAME"
-
-	# Выполняем извлечение модуля из архива
-	ar -xv libdependence.tmp.$LIBRARY_NAME "$MODULE"
-	# Выполняем удаление модуля в архиве
-	ar -dv libdependence.tmp.$LIBRARY_NAME "$MODULE"
-
-	# Выполняем переименование модуля
-	mv "${MODULE%.*}.$OBJECT_NAME" "${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	
-	# Если список модулей не заполнен
-	if [ ! -n "$MODULES" ]; then
-		MODULES="${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	# Если список модулей уже назполнен
-	else
-		MODULES="$MODULES ${MODULE%.*}_$INDEX.$OBJECT_NAME"
-	fi
-
-	# Выполняем увеличение индекса
-	INDEX=$((INDEX+1))
-done
-
-# Удаляем временную библиотеку
-rm libdependence.tmp.$LIBRARY_NAME || exit 1
-
-# Если список модулей не получен
-if [ ! -n "$MODULES" ]; then
-	echo "Danube library is not build"
-	exit 1
-fi
-
-# Удаляем все старые библиотеки
-rm $FILENAME
-
-# Производим пересборку всех зависимых библиотек
-for i in $(ls . | grep "$REG");
-do
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then
-		# Выполняем сборку новой статической библиотеки
-		ar -crv $FILENAME "$i" || exit 1
-	# Если операционной системой является Unix-подобная ОС
-	else
-		# Выполняем сборку новой статической библиотеки
-		ar -cruv $FILENAME "$i" || exit 1
-	fi
-	# Выполняем удаление уже добавленный модуль
-	rm "$i" || exit 1
-done
-
-# Выполняем запуск библиотеки
-ranlib $FILENAME
-
+	# Извлекаем все модули из библиотеки
+	extract $FILENAME "obj" $OS
+	# Выполняем копирование библиотеки зависимостей
+	cp libdependence.lib libdependence.tmp.lib
+	# Извлекаем все модули из библиотеки
+	extract libdependence.tmp.lib "obj" $OS
 # Если операционной системой является Unix-подобная ОС
-if [ ! $OS = "Windows" ]; then
-	# Удаляем файл разметки
-	rm -f "__.SYMDEF"
-	rm -f "__.SYMDEF SORTED"
+else
+	# Извлекаем все модули из библиотеки
+	extract $FILENAME "o" $OS
+	# Выполняем копирование библиотеки зависимостей
+	cp libdependence.a libdependence.tmp.a
+	# Извлекаем все модули из библиотеки
+	extract libdependence.tmp.a "o" $OS
 fi
+
+# Выполняем сборку библиотеки
+intract $FILENAME $OS
 
 # Удаляем исходную библиотеку
 rm $LIB
