@@ -330,7 +330,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	rm libcrypto.a || exit 1
 
 	# Выполняем сборку новой статической библиотеки
-	ar -crUuv libopenssl.a $MODULES
+	ar -crv libopenssl.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libopenssl.a
@@ -888,7 +888,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	rm libbrotlicommon.a || exit 1
 
 	# Выполняем сборку новой статической библиотеки
-	ar -crUuv libbrotli.a $MODULES
+	ar -crv libbrotli.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libbrotli.a
@@ -1420,7 +1420,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	rm libpcre2-posix.a || exit 1
 
 	# Выполняем сборку новой статической библиотеки
-	ar -crUuv libpcre2.a $MODULES
+	ar -crv libpcre2.a $MODULES
 
 	# Выполняем запуск библиотеки
 	ranlib libpcre2.a

@@ -39,7 +39,7 @@ intract(){
 	for i in $(ls . | grep ".*\.${OBJECT_NAME}$");
 	do
 		# Выполняем сборку новой статической библиотеки
-		ar -crUuv "lib$1.a" "$i" || exit 1
+		ar -crv "lib$1.a" "$i" || exit 1
 		# Выполняем удаление уже добавленный модуль
 		rm "$i" || exit 1
 	done
