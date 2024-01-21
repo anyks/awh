@@ -289,6 +289,7 @@ endif(CMAKE_SHARED_BUILD_LIB)
 
  # Если операционной системой является Windows
  if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
     set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=6)
 
