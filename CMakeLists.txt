@@ -1151,6 +1151,10 @@ else(CMAKE_SHARED_BUILD_LIB)
         add_custom_command(TARGET "${CURRENT_LIB_NAME_STATIC}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${CURRENT_LIB_NAME_STATIC}>"
         VERBATIM)
+    # Если режим отладки активирован
+    else()
+        # Выполняем установку библиотеки зависимостей
+        install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     endif()
     # Устанавливаем статическую библиотеку
     install(TARGETS ${CURRENT_LIB_NAME_STATIC} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
