@@ -662,6 +662,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${IP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -670,6 +671,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -678,6 +680,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -686,6 +689,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -694,6 +698,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${NTP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -702,6 +707,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -710,6 +716,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -718,6 +725,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PING_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -726,6 +734,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -734,6 +743,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -742,6 +752,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -750,6 +761,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -758,6 +770,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -769,6 +782,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${IP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -776,6 +790,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -783,6 +798,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -790,6 +806,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -797,6 +814,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${NTP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -804,6 +822,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -811,6 +830,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -818,6 +838,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PING_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -825,6 +846,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -832,6 +854,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -839,6 +862,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -846,6 +870,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLUSTER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -853,6 +878,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -860,6 +886,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
 
@@ -870,84 +897,98 @@ else(CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${IP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME_STATIC}
+            ${DEPEND_LIBRARY}
         )
 
     endif()
@@ -1103,10 +1144,13 @@ if(CMAKE_SHARED_BUILD_LIB)
     # Устанавливаем динамическую библиотеку
     install(TARGETS ${CURRENT_LIB_NAME_SHARED} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 else(CMAKE_SHARED_BUILD_LIB)
-    # Выполняем запуск скрипта объединения библиотек
-    add_custom_command(TARGET "${CURRENT_LIB_NAME_STATIC}" POST_BUILD
-        COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${CURRENT_LIB_NAME_STATIC}>"
-    VERBATIM)
+    # Если режим отладки не активирован
+    if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
+        # Выполняем запуск скрипта объединения библиотек
+        add_custom_command(TARGET "${CURRENT_LIB_NAME_STATIC}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${CURRENT_LIB_NAME_STATIC}>"
+        VERBATIM)
+    endif()
     # Устанавливаем статическую библиотеку
     install(TARGETS ${CURRENT_LIB_NAME_STATIC} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif(CMAKE_SHARED_BUILD_LIB)
