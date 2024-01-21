@@ -136,7 +136,6 @@ $ cmake --build .
 ```
 
 ### Example WEB Client Multi requests
-
 ```c++
 #include <client/awh.hpp>
 
@@ -250,7 +249,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example WEB Client Simple
-
 ```c++
 #include <client/awh.hpp>
 
@@ -299,7 +297,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example WEB Server
-
 ```c++
 #include <server/awh.hpp>
 
@@ -476,7 +473,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example WebSocket Client
-
 ```c++
 #include <client/ws.hpp>
 
@@ -599,7 +595,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example WebSocket Server
-
 ```c++
 #include <server/ws.hpp>
 
@@ -923,7 +918,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example HTTPS PROXY Server
-
 ```c++
 #include <server/proxy.hpp>
 
@@ -1011,7 +1005,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example Socks5 PROXY Server
-
 ```c++
 #include <server/socks5.hpp>
 
@@ -1082,7 +1075,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example Timer
-
 ```c++
 #include <chrono>
 #include <core/core.hpp>
@@ -1159,7 +1151,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example DNS Resolver
-
 ```c++
 #include <net/dns.hpp>
 #include <core/core.hpp>
@@ -1193,7 +1184,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example NTP Client
-
 ```c++
 #include <net/ntp.hpp>
 #include <core/core.hpp>
@@ -1221,7 +1211,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example PING
-
 ```c++
 #include <net/ping.hpp>
 #include <core/core.hpp>
@@ -1247,7 +1236,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TCP Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1314,7 +1302,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TCP Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -1380,7 +1367,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TLS Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1449,7 +1435,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TLS Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -1517,7 +1502,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example UDP Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1584,7 +1568,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example UDP Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -1650,7 +1633,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example SCTP Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1719,7 +1701,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example SCTP Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -1787,7 +1768,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example DTLS Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1856,7 +1836,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example DTLS Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -1924,7 +1903,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TCP UnixSocket Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -1992,7 +1970,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example TCP UnixSocket Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -2059,7 +2036,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example UDP UnixSocket Client
-
 ```c++
 #include <client/sample.hpp>
 
@@ -2127,7 +2103,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example UDP UnixSocket Server
-
 ```c++
 #include <server/sample.hpp>
 
@@ -2194,7 +2169,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example Cluster
-
 ```c++
 #include <cluster/core.hpp>
 
@@ -2278,7 +2252,6 @@ int main(int argc, char * argv[]){
 ```
 
 ### Example IP-Address
-
 ```c++
 #include <net/net.hpp>
 
