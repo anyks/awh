@@ -290,7 +290,7 @@ endif(CMAKE_SHARED_BUILD_LIB)
  # Если операционной системой является Windows
  if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Устанавливаем необходимые зависимости для MS Windows
-    set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=6 -ffat-lto-object)
+    set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=6)
 
     # Устанавливаем иконку для windows под MinGW.
     set(RES_FILES "awh.rc")
