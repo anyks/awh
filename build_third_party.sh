@@ -890,6 +890,19 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 		# Выполняем установку проекта
 		make install || exit 1
 
+		# Создаём каталог LibEvent2
+		mkdir "$PREFIX/include/libevent2"
+
+		# Производим установку заголовочных файлов по нужному пути
+		for i in $(ls "$PREFIX/include" | grep "ev.*\.h$");
+		do
+			echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/libevent2/$i\""
+			mv "$PREFIX/include/$i" "$PREFIX/include/libevent2/$i" || exit 1
+		done
+
+		# Переносим остальные заголовочные файлы
+		mv "$PREFIX/include/event2" "$PREFIX/include/libevent2"/
+
 		# Помечаем флагом, что сборка и установка произведена
 		touch "$src/.stamp_done"
 		cd "$ROOT" || exit 1
@@ -1614,6 +1627,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
 			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -1631,6 +1645,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
 			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -1651,6 +1666,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
 			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -1664,6 +1680,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
 			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -1768,7 +1785,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
-			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include/libevent2" \
 			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		# Если нужно собрать модуль LibEv
@@ -1838,7 +1855,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
-			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include/libevent2" \
 			 .. || exit 1
 		# Если нужно собрать модуль LibEv
 		else
