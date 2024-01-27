@@ -110,6 +110,13 @@ else()
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}\n")
 endif()
 
+# Если нужно собрать и динамическую библиотеку
+if (CMAKE_SHARED_BUILD_LIB)
+    if (MSVC)
+        set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    endif(MSVC)
+endif(CMAKE_SHARED_BUILD_LIB)
+
 # Добавляем модули cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -267,7 +274,6 @@ set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
 set(CURRENT_LIB_NAME_STATIC ${PROJECT_NAME})
 set(CURRENT_LIB_NAME_SHARED ${PROJECT_NAME})
-set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
