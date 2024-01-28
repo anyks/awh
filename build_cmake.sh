@@ -16,8 +16,11 @@ DESTINATION=$1
 # Если место назначения указанно
 if [ -n "$DESTINATION" ]; then
 
+	# Название CMAKE-файла
+	NAME="FindAWH.cmake"
+
 	# Получаем адрес CMAKE-файла
-	CMAKE="$ROOT/third_party/cmake/FindAWH.cmake"
+	CMAKE="$ROOT/third_party/cmake/$NAME"
 
 	# Если адрес CMAKE-файла уже существует
 	if [ -f "$CMAKE" ]; then
@@ -30,32 +33,32 @@ if [ -n "$DESTINATION" ]; then
 	fi
 
 	# Выполняем копирование CMAKE-файла
-	cp "$ROOT/contrib/cmake/FindAWH.cmake" "$CMAKE"
+	cp "$ROOT/contrib/cmake/$NAME" "$CMAKE"
 
 	# Если операционная система FreeBSD
 	if [ "$OS" = "FreeBSD" ]; then
 		# Заменяем конечный адрес назначения
-		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$ROOT/third_party/cmake/FindAWH.cmake"
+		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"
 		# Удаляем временные паразитные файлы
-		if [ -f "$ROOT/third_party/cmake/FindAWH.cmake-e" ]; then
-			rm "$ROOT/third_party/cmake/FindAWH.cmake-e"
+		if [ -f "$CMAKE-e" ]; then
+			rm "$CMAKE-e"
 		fi
 	# Если операционная система MacOS X
 	elif [ "$OS" = "Darwin" ]; then
 		# Заменяем конечный адрес назначения
-		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$ROOT/third_party/cmake/FindAWH.cmake"
+		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"
 		# Удаляем временные паразитные файлы
-		if [ -f "$ROOT/third_party/cmake/FindAWH.cmake-e" ]; then
-			rm "$ROOT/third_party/cmake/FindAWH.cmake-e"
+		if [ -f "$CMAKE-e" ]; then
+			rm "$CMAKE-e"
 		fi
 	# Если операционная система Linux
 	elif [ "$OS" = "Linux" ]; then
 		# Заменяем конечный адрес назначения
-		sed -i "s%\${CMAKE_SOURCE_DIR}/third_party%${DESTINATION}%g" "$ROOT/third_party/cmake/FindAWH.cmake"
+		sed -i "s%\${CMAKE_SOURCE_DIR}/third_party%${DESTINATION}%g" "$CMAKE"
 	# Если операционная система Windows
 	elif [ "$OS" = "Windows" ]; then
 		# Заменяем конечный адрес назначения
-		sed -i "s%\${CMAKE_SOURCE_DIR}/third_party%${DESTINATION}%g" "$ROOT/third_party/cmake/FindAWH.cmake"
+		sed -i "s%\${CMAKE_SOURCE_DIR}/third_party%${DESTINATION}%g" "$CMAKE"
 	fi
 # Если место назначения не указанно
 else
