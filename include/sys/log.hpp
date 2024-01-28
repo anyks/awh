@@ -16,7 +16,7 @@
 #define __AWH_LOG__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <ctime>

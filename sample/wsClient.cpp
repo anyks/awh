@@ -285,7 +285,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 	// Устанавливаем активный протокол подключения
 	// core.proto(awh::engine_t::proto_t::HTTP2);
 	core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -300,7 +300,7 @@ int main(int argc, char * argv[]){
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
 	// Устанавливаем SSL сертификаты сервера
-	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	// core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
 	// ws.user("user", "password");
 	// Выполняем активацию многопоточности

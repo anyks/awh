@@ -15,7 +15,7 @@
 #define __AWH_VERSION__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <string>
 #include <cstring>

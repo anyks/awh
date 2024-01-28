@@ -16,7 +16,7 @@
 #define __AWH_FRAMEWORK__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <map>

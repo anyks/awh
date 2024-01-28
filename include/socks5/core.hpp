@@ -16,7 +16,7 @@
 #define __AWH_SOCKS5__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <string>

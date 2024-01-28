@@ -16,7 +16,7 @@
 #define __AWH_SAMPLE_CLIENT__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <stack>
 #include <functional>

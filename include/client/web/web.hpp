@@ -16,7 +16,7 @@
 #define __AWH_WEB_CLIENT__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <stack>

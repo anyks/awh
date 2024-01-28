@@ -15,6 +15,9 @@
 #ifndef __AWH_BASE64__
 #define __AWH_BASE64__
 
+/**
+ * Стандартные модули
+ */
 #include <string>
 #include <vector>
 #include <sys/types.h>

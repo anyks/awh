@@ -16,7 +16,7 @@
 #define __AWH_SIGNALS__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <string>
 #include <thread>
@@ -32,7 +32,7 @@
 #endif
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <libev/ev++.h>
 

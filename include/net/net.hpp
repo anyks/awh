@@ -16,7 +16,7 @@
 #define __AWH_NET__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <array>

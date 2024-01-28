@@ -16,7 +16,7 @@
 #define __AWH_CLIENT__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <nlohmann/json.hpp>
 

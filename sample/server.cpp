@@ -104,7 +104,7 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	// core.cluster();
 	// Устанавливаем адрес сертификата
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -124,7 +124,7 @@ int main(int argc, char * argv[]){
 	// Разрешаем перехват сигналов
 	core.signalInterception(core_t::mode_t::DISABLED);
 	// Устанавливаем SSL сертификаты сервера
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

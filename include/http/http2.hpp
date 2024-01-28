@@ -16,7 +16,7 @@
 #define __AWH_HTTP2__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <string>
 #include <vector>

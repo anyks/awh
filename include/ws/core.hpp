@@ -16,7 +16,7 @@
 #define __AWH_WS_CORE__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <string>

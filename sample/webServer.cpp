@@ -259,7 +259,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	// core.ca("./ca/cert.pem");
+	// core.ca("./certs/ca.pem");
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -317,11 +317,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(100, 30, 10);
 	// Устанавливаем SSL сертификаты сервера
+	/*
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	*/
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Активируем шифрование
 	awh.encryption(true);
 	// Устанавливаем пароль шифрования

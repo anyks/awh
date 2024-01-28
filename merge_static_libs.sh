@@ -15,6 +15,13 @@ if [[ -d $1 ]]; then
 	THIRD_PARTY="$1"
 fi
 
+# Получаем версию OS
+OS=$(uname -a | awk '{print $1}')
+
+if [[ $OS =~ "MINGW64" ]]; then
+	OS="Windows"
+fi
+
 # Расширение файла объекта
 OBJECT_NAME="o"
 
@@ -22,13 +29,6 @@ OBJECT_NAME="o"
 if [ $OS = "Windows" ]; then
 	# Расширение файла объекта
 	OBJECT_NAME="obj"
-fi
-
-# Получаем версию OS
-OS=$(uname -a | awk '{print $1}')
-
-if [[ $OS =~ "MINGW64" ]]; then
-	OS="Windows"
 fi
 
 ##

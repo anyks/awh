@@ -16,7 +16,7 @@
 #define __AWH_DNS_RESOLVER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <ctime>
 #include <mutex>

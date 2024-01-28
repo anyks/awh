@@ -16,7 +16,7 @@
 #define __AWH_FRAME__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <vector>

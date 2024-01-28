@@ -16,7 +16,7 @@
 #define __AWH_WEB_ERRORS__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <cstdint>
 

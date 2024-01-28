@@ -15,7 +15,7 @@
 #define __AWH_FUNCTION__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <tuple>

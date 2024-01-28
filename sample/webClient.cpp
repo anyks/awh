@@ -179,7 +179,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 	// Активируем шифрование
 	// awh.encryption(true);
 	// Устанавливаем пароль шифрования

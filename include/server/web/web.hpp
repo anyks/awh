@@ -16,7 +16,7 @@
 #define __AWH_WEB_SERVER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <string>

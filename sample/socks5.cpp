@@ -103,7 +103,7 @@ int main(int argc, char * argv[]){
 		proxy_socks5_t::flag_t::WAIT_MESS
 	});
 	// Устанавливаем адрес сертификата
-	// proxy.ca("./ca/cert.pem");
+	// proxy.ca("./certs/ca.pem");
 	// Устанавливаем тип сокета unix-сокет
 	// proxy.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

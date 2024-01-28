@@ -272,8 +272,7 @@ set(WS_CLIENT_APP_NAME wsClient)
 set(WS_SERVER_APP_NAME wsServer)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
-set(CURRENT_LIB_NAME_STATIC ${PROJECT_NAME})
-set(CURRENT_LIB_NAME_SHARED ${PROJECT_NAME})
+set(AWH_LIB_NAME ${PROJECT_NAME})
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -283,14 +282,14 @@ endif()
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
-    add_library(${CURRENT_LIB_NAME_SHARED} SHARED ${SOURCE_FILES})
-    target_compile_definitions(${CURRENT_LIB_NAME_SHARED} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
+    add_library(${AWH_LIB_NAME} SHARED ${SOURCE_FILES})
+    target_compile_definitions(${AWH_LIB_NAME} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
 # Если нужно собрать и статическую библиотеку
 else(CMAKE_SHARED_BUILD_LIB)
     # Активируем сборку статической библиотеки
     add_compile_definitions(AWH_STATICLIB)
     # Добавляем статическу библиотеку
-    add_library(${CURRENT_LIB_NAME_STATIC} STATIC ${SOURCE_FILES})
+    add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif(CMAKE_SHARED_BUILD_LIB)
 
  # Если операционной системой является Windows
@@ -345,7 +344,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
@@ -355,7 +354,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -363,7 +362,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -371,7 +370,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -379,7 +378,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -387,7 +386,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -395,7 +394,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -403,7 +402,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -411,7 +410,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -419,7 +418,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -427,7 +426,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -435,7 +434,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -443,7 +442,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -451,7 +450,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -461,7 +460,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
@@ -470,98 +469,98 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             ${AWH_IDN}
         )
 
@@ -570,7 +569,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
         )
@@ -578,85 +577,85 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_LIB_NAME}
         )
 
     endif()
@@ -668,7 +667,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -677,7 +676,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -686,7 +685,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -695,7 +694,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -704,7 +703,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -713,7 +712,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -722,7 +721,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -731,7 +730,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -740,7 +739,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -749,7 +748,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -758,7 +757,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -767,7 +766,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -776,7 +775,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${WINFLAGS}
             ${AWH_IDN}
@@ -788,7 +787,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -796,7 +795,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -804,7 +803,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -812,7 +811,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -820,7 +819,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -828,7 +827,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -836,7 +835,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -844,7 +843,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -852,7 +851,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -860,7 +859,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -868,7 +867,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -876,7 +875,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -884,7 +883,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -892,7 +891,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${AWH_IDN}
         )
@@ -903,98 +902,98 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME_STATIC}
+            ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
 
@@ -1139,31 +1138,31 @@ if("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" 
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 
+# Устанавливаем сертификаты
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/certs/" DESTINATION "${CMAKE_INSTALL_PREFIX}/certs")
+
 # Устанавливаем хидеры
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
-
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h" PATTERN "*.hh" PATTERN "*.hpp")
 
 # Устанавливаем библиотеку
-if(CMAKE_SHARED_BUILD_LIB)
-    # Устанавливаем динамическую библиотеку
-    install(TARGETS ${CURRENT_LIB_NAME_SHARED} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-else(CMAKE_SHARED_BUILD_LIB)
+if(NOT CMAKE_SHARED_BUILD_LIB)
     # Если режим отладки не активирован
     if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем запуск скрипта объединения библиотек
-        add_custom_command(TARGET "${CURRENT_LIB_NAME_STATIC}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${CURRENT_LIB_NAME_STATIC}>"
+        add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
         VERBATIM)
     # Если режим отладки активирован
     else()
         # Выполняем установку библиотеки зависимостей
         install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     endif()
-    # Устанавливаем статическую библиотеку
-    install(TARGETS ${CURRENT_LIB_NAME_STATIC} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-endif(CMAKE_SHARED_BUILD_LIB)
+endif()
+
+# Устанавливаем статическую библиотеку
+install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
@@ -1184,3 +1183,11 @@ install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 endif()
+
+# Выполняем запуск скрипта генерации CMAKE-файла
+add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+    COMMAND bash "${CMAKE_SOURCE_DIR}/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
+VERBATIM)
+
+# Устанавливаем сгенерированный CMAKE-файл
+install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")

@@ -16,7 +16,7 @@
 #define __AWH_HTTP__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <ctime>
 #include <string>

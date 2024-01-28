@@ -16,7 +16,7 @@
 #define __AWH_NTP_CLIENT__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <ctime>
 #include <mutex>

@@ -16,7 +16,7 @@
 #define __AWH_HTTP_PARSER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <string>

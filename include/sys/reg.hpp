@@ -16,7 +16,7 @@
 #define __AWH_REGEXP__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <memory>
 #include <string>

@@ -16,7 +16,7 @@
 #define __AWH_PING__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <mutex>
 #include <ctime>

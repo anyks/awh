@@ -16,7 +16,7 @@
 #define __AWH_HTTP_PROXY__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <map>

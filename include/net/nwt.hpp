@@ -16,7 +16,7 @@
 #define __AWH_NWT__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <sys/types.h>

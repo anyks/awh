@@ -34,17 +34,17 @@ $OPENSSL_BIN req -nodes -new -newkey rsa:2048 -keyout "$ROOT/client-key.pem" -ou
 # Sign Client Certificate
 $OPENSSL_BIN ca -config $SCRIPT_DIR/ca.conf -days 365 -in "$ROOT/client.csr" -out "$ROOT/client-cert.pem"
 
-# Remove old certs
-rm -rf "$ROOT/certs"
+# Remove old certificates
+rm -rf "$ROOT/certificates"
 
-# Create certs dir
-mkdir "$ROOT/certs"
+# Create certificates dir
+mkdir "$ROOT/certificates"
 
-# Copy certs
-cp "$ROOT/client-cert.pem" "$ROOT/certs/"
-cp "$ROOT/client-key.pem" "$ROOT/certs/"
-cp "$ROOT/server-cert.pem" "$ROOT/certs/"
-cp "$ROOT/server-key.pem" "$ROOT/certs/"
+# Copy certificates
+cp "$ROOT/client-cert.pem" "$ROOT/certificates/"
+cp "$ROOT/client-key.pem" "$ROOT/certificates/"
+cp "$ROOT/server-cert.pem" "$ROOT/certificates/"
+cp "$ROOT/server-key.pem" "$ROOT/certificates/"
 
 # Remove old file
 rm "$ROOT/ca-db-index"

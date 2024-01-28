@@ -227,7 +227,7 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 
 	// awh.proxy("http://user:password@host.com:port");
 	// awh.proxy("https://user:password@host.com:port");
@@ -276,7 +276,7 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 
 	// awh.proxy("http://user:password@host.com:port");
 	// awh.proxy("https://user:password@host.com:port");
@@ -450,7 +450,7 @@ int main(int argc, char * argv[]){
 	});
 	*/
 
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	// awh.addOrigin("example.net");
 
@@ -558,13 +558,13 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 
 	// ws.proxy("http://user:password@host.com:port");
 	// ws.proxy("https://user:password@host.com:port");
@@ -702,7 +702,7 @@ int main(int argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	ws.subprotocols({"test1", "test2", "test3"});
 
@@ -870,7 +870,7 @@ int main(int argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	awh.clusterAutoRestart(true);
 
@@ -975,7 +975,7 @@ int main(int argc, char * argv[]){
 
 	proxy.cluster();
 
-	proxy.ca(server::proxy_t::broker_t::CLIENT, "./ca/cert.pem");
+	proxy.ca(server::proxy_t::broker_t::CLIENT, "./certs/ca.pem");
 
 	proxy.mode({
 		server::proxy_t::flag_t::SYNCPROTO,
@@ -991,7 +991,7 @@ int main(int argc, char * argv[]){
 	// proxy.init(2222, "", http_t::compress_t::GZIP);
 	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	
-	proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	proxy.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	proxy.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Proxy::password, &executor, _1, _2));
 	proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
@@ -1054,7 +1054,7 @@ int main(int argc, char * argv[]){
 
 	proxy.cluster();
 
-	proxy.ca("./ca/cert.pem");
+	proxy.ca("./certs/ca.pem");
 
 	proxy.sonet(awh::scheme_t::sonet_t::TCP);
 
@@ -1421,7 +1421,7 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 
@@ -1487,7 +1487,7 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 
@@ -1687,7 +1687,7 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 
@@ -1753,7 +1753,7 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 
@@ -1822,7 +1822,7 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 
@@ -1888,7 +1888,7 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
 

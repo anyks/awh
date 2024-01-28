@@ -16,7 +16,7 @@
 #define __AWH_AUTH__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <ctime>
 #include <string>

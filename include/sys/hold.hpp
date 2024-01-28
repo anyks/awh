@@ -16,7 +16,7 @@
 #define __AWH_HOLDER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <set>
 #include <mutex>

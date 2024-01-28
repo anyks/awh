@@ -102,7 +102,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	core.ca("./ca/cert.pem");
+	core.ca("./certs/ca.pem");
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -114,7 +114,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Подключаем сертификаты
-	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 	// Подписываемся на событие получения сообщения

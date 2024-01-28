@@ -16,7 +16,7 @@
 #define __AWH_SCHEME__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <mutex>

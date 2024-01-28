@@ -16,7 +16,7 @@
 #define __AWH_CORE__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <ctime>

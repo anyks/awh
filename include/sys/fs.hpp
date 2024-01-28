@@ -24,7 +24,7 @@
 #endif
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <string>
 #include <fstream>

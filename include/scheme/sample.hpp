@@ -16,7 +16,7 @@
 #define __AWH_SCHEME_SAMPLE_SERVER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <map>
 #include <ctime>

@@ -15,7 +15,7 @@
 #define __AWH_THREAD_POOL__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <queue>
 #include <mutex>

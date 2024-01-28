@@ -16,7 +16,7 @@
 #define __AWH_SOCKS5_SERVER__
 
 /**
- * Стандартная библиотека
+ * Стандартные модули
  */
 #include <functional>
 
