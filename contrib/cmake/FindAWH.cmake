@@ -31,9 +31,11 @@ endif()
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
+    add_compile_definitions(AWH_EVENT2)
     find_path(LIBEVENT_INCLUDE_DIR NAMES event2/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/libevent2 NO_DEFAULT_PATH)
 # Сборка модуля AWH_EV
 else(CMAKE_BUILD_EVENT2)
+    add_compile_definitions(AWH_EV)
     find_path(LIBEV_EV_INCLUDE_DIR NAMES libev/ev.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
     find_path(LIBEV_EVPP_INCLUDE_DIR NAMES libev/ev++.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
     find_path(LIBEV_EVENT_INCLUDE_DIR NAMES libev/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
