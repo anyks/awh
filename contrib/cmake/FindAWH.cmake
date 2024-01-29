@@ -43,7 +43,7 @@ endif(CMAKE_BUILD_EVENT2)
 find_library(AWH_LIBRARY NAMES awh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Если активирован режим отладки
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if(CMAKE_AWH_BUILD_DEBUG)
     # Поиск библиотеки AWH
     find_library(DEPEND_LIBRARY NAMES dependence PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 endif()
@@ -57,7 +57,7 @@ if(CMAKE_BUILD_EVENT2)
     if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         
         # Если активирован режим отладки
-        if(CMAKE_BUILD_TYPE MATCHES Debug)
+        if(CMAKE_AWH_BUILD_DEBUG)
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -146,7 +146,7 @@ if(CMAKE_BUILD_EVENT2)
     else()
         
         # Если активирован режим отладки
-        if(CMAKE_BUILD_TYPE MATCHES Debug)
+        if(CMAKE_AWH_BUILD_DEBUG)
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -231,7 +231,7 @@ else(CMAKE_BUILD_EVENT2)
     if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         
         # Если активирован режим отладки
-        if(CMAKE_BUILD_TYPE MATCHES Debug)
+        if(CMAKE_AWH_BUILD_DEBUG)
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -324,7 +324,7 @@ else(CMAKE_BUILD_EVENT2)
     else()
         
         # Если активирован режим отладки
-        if(CMAKE_BUILD_TYPE MATCHES Debug)
+        if(CMAKE_AWH_BUILD_DEBUG)
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -410,12 +410,12 @@ else(CMAKE_BUILD_EVENT2)
 endif(CMAKE_BUILD_EVENT2)
 
 # Устанавливаем библиотеку AWH
-install(TARGETS ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если активирован режим отладки
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if(CMAKE_AWH_BUILD_DEBUG)
     # Устанавливаем статическую библиотеку
-    install(TARGETS ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")    
+    install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")    
 endif()
 
 # Выполняем установку оставшихся заголовочных файлов зависимостей
