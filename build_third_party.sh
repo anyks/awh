@@ -1507,8 +1507,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Производим корректировку названий библиотек
 		for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.lib$");
 		do
-			echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$i\""
-			mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$i" || exit 1
+			LIBNAME="${i%.*}"
+			echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$LIBNAME.a\""
+			mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$LIBNAME.a" || exit 1
 		done
 	fi
 
