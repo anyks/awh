@@ -137,8 +137,12 @@ if(Dependence_FOUND)
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "NgHttp3 include dir found: " ${NGHTTP3_INCLUDE_DIR})
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
-    message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
+
+    # Если операцинная система не относится к MS Windows
+    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+        message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
+    endif()
 
     # Сборка модуля AWH_EVENT2
     if(CMAKE_BUILD_EVENT2)
