@@ -256,10 +256,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make install_sw || exit 1
 	make install_ssldirs || exit 1
 
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then
-		# Переносим собранные библиотеки
+	# Если библиотека лежит не по тому адресу
+	if [ -f "$PREFIX/lib64/libssl.a" ]; then
+		# Переносим собранную библиотеку
 		mv "$PREFIX/lib64/libssl.a" "$PREFIX/lib/libssl.a"
+	fi
+
+	# Если библиотека лежит не по тому адресу
+	if [ -f "$PREFIX/lib64/libcrypto.a" ]; then
+		# Переносим собранную библиотеку
 		mv "$PREFIX/lib64/libcrypto.a" "$PREFIX/lib/libcrypto.a"
 	fi
 
