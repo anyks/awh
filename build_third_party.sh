@@ -1653,7 +1653,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_JEMALLOC="OFF" \
 			 -DENABLE_OPENSSL="ON" \
 			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
@@ -1671,7 +1671,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_JEMALLOC="OFF" \
 			 -DENABLE_OPENSSL="ON" \
 			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
 			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
@@ -1806,8 +1806,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
-			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
@@ -1842,8 +1840,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
-			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
