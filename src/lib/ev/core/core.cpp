@@ -640,10 +640,12 @@ void awh::Core::stop() noexcept {
 		this->_mtx.status.lock();
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
-		// Выполняем отключение всех клиентов
-		this->close();
+		// Если база событий является виртуальной
+		if(this->_dispatch._virt)
+			// Выполняем отключение всех клиентов
+			this->close();
 		// Выполняем остановку чтения базы событий
-		this->_dispatch.stop();
+		else this->_dispatch.stop();
 	// Выполняем разблокировку потока
 	} else this->_mtx.status.unlock();
 }

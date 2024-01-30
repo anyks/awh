@@ -633,8 +633,6 @@ void awh::Core::stop() noexcept {
 		this->_mtx.status.lock();
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
-		// Выполняем отключение всех клиентов
-		this->close();
 		// Выполняем остановку чтения базы событий
 		this->_dispatch.stop();
 	// Выполняем разблокировку потока
