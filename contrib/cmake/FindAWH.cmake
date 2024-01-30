@@ -1,5 +1,7 @@
 set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+
+# Если операцинная система относится к MS Windows
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 endif()
@@ -17,11 +19,15 @@ find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/thi
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
-find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/jemalloc NO_DEFAULT_PATH)
 find_path(NGTCP2_INCLUDE_DIR NAMES ngtcp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/ngtcp2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
 find_path(NGHTTP3_INCLUDE_DIR NAMES nghttp3.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp3 NO_DEFAULT_PATH)
 find_path(XML_INCLUDE_DIR NAMES libxml/xmlmemory.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/libxml2 NO_DEFAULT_PATH)
+
+# Если операцинная система не относится к MS Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/jemalloc NO_DEFAULT_PATH)
+endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -57,9 +63,9 @@ include(FindPackageHandleStandardArgs)
 if(CMAKE_BUILD_EVENT2)
     # Сборка модуля AWH_IDN, если операционной системой не является Windows
     if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-        
         # Если активирован режим отладки
         if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -86,10 +92,11 @@ if(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
         # Если режим отладки не активирован
         else()
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 LZ4_INCLUDE_DIR
@@ -115,10 +122,10 @@ if(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY})
         endif()
-
+        # Формируем список заголовочных файлов
         set(AWH_INCLUDE_DIRS
             ${LZ4_INCLUDE_DIR}
             ${BZ2_INCLUDE_DIR}
@@ -140,15 +147,94 @@ if(CMAKE_BUILD_EVENT2)
             ${ICONV_INCLUDE_DIR}
             ${LIBEVENT_INCLUDE_DIR}
         )
-
         # Выполняем установку указанного списка заголовочных файлов зависимостей
         install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
         install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
         install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-    else()
-        
+    # Если операцинная система относится к MS Windows
+    elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Если активирован режим отладки
         if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                DEPEND_LIBRARY
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGTCP2_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
+                NGHTTP3_INCLUDE_DIR
+                XML_INCLUDE_DIR
+                JSON_INCLUDE_DIR
+                LIBEVENT_INCLUDE_DIR
+
+                FAIL_MESSAGE "AWH library is not found"
+            )
+            # Формируем список библиотек
+            set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
+        # Если режим отладки не активирован
+        else()
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGTCP2_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
+                NGHTTP3_INCLUDE_DIR
+                XML_INCLUDE_DIR
+                JSON_INCLUDE_DIR
+                LIBEVENT_INCLUDE_DIR
+
+                FAIL_MESSAGE "AWH library is not found"
+            )
+            # Формируем список библиотек
+            set(AWH_LIBRARIES ${AWH_LIBRARY})
+        endif()
+        # Формируем список заголовочных файлов
+        set(AWH_INCLUDE_DIRS
+            ${LZ4_INCLUDE_DIR}
+            ${BZ2_INCLUDE_DIR}
+            ${ZSTD_INCLUDE_DIR}
+            ${LZMA_INCLUDE_DIR}
+            ${ZLIB_INCLUDE_DIR}
+            ${BROTLI_INCLUDE_ENCODE_DIR}
+            ${AWH_INCLUDE_DIR}
+            ${CITY_INCLUDE_DIR}
+            ${OPENSSL_INCLUDE_DIR}
+            ${PCRE_INCLUDE_DIR}
+            ${NGTCP2_INCLUDE_DIR}
+            ${NGHTTP2_INCLUDE_DIR}
+            ${NGHTTP3_INCLUDE_DIR}
+            ${XML_INCLUDE_DIR}
+            ${JSON_INCLUDE_DIR}
+            ${LIBEVENT_INCLUDE_DIR}
+        )
+        # Выполняем установку указанного списка заголовочных файлов зависимостей
+        install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+    # Если операцинная система относится к Nix-подобной
+    else()
+        # Если активирован режим отладки
+        if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -173,10 +259,11 @@ if(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
         # Если режим отладки не активирован
         else()
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 LZ4_INCLUDE_DIR
@@ -200,10 +287,10 @@ if(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY})
         endif()
-
+        # Формируем список заголовочных файлов
         set(AWH_INCLUDE_DIRS
             ${LZ4_INCLUDE_DIR}
             ${BZ2_INCLUDE_DIR}
@@ -223,7 +310,6 @@ if(CMAKE_BUILD_EVENT2)
             ${JSON_INCLUDE_DIR}
             ${LIBEVENT_INCLUDE_DIR}
         )
-
         # Выполняем установку указанного списка заголовочных файлов зависимостей
         install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
     endif()
@@ -231,9 +317,9 @@ if(CMAKE_BUILD_EVENT2)
 else(CMAKE_BUILD_EVENT2)
     # Сборка модуля AWH_IDN, если операционной системой не является Windows
     if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-        
         # Если активирован режим отладки
         if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -262,10 +348,11 @@ else(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
         # Если режим отладки не активирован
         else()
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 LZ4_INCLUDE_DIR
@@ -293,10 +380,10 @@ else(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY})
         endif()
-
+        # Формируем список заголовочных файлов
         set(AWH_INCLUDE_DIRS
             ${LZ4_INCLUDE_DIR}
             ${BZ2_INCLUDE_DIR}
@@ -318,15 +405,98 @@ else(CMAKE_BUILD_EVENT2)
             ${ICONV_INCLUDE_DIR}
             ${LIBEV_EV_INCLUDE_DIR}
         )
-
         # Выполняем установку указанного списка заголовочных файлов зависимостей
         install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
         install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
         install(DIRECTORY "${LIBEV_EV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-    else()
-        
+    # Если операцинная система относится к MS Windows
+    elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Если активирован режим отладки
         if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                DEPEND_LIBRARY
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGTCP2_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
+                NGHTTP3_INCLUDE_DIR
+                XML_INCLUDE_DIR
+                JSON_INCLUDE_DIR
+                LIBEV_EV_INCLUDE_DIR
+                LIBEV_EVPP_INCLUDE_DIR
+                LIBEV_EVENT_INCLUDE_DIR
+
+                FAIL_MESSAGE "AWH library is not found"
+            )
+            # Формируем список библиотек
+            set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
+        # Если режим отладки не активирован
+        else()
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGTCP2_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
+                NGHTTP3_INCLUDE_DIR
+                XML_INCLUDE_DIR
+                JSON_INCLUDE_DIR
+                LIBEV_EV_INCLUDE_DIR
+                LIBEV_EVPP_INCLUDE_DIR
+                LIBEV_EVENT_INCLUDE_DIR
+
+                FAIL_MESSAGE "AWH library is not found"
+            )
+            # Формируем список библиотек
+            set(AWH_LIBRARIES ${AWH_LIBRARY})
+        endif()
+        # Формируем список заголовочных файлов
+        set(AWH_INCLUDE_DIRS
+            ${LZ4_INCLUDE_DIR}
+            ${BZ2_INCLUDE_DIR}
+            ${ZSTD_INCLUDE_DIR}
+            ${LZMA_INCLUDE_DIR}
+            ${ZLIB_INCLUDE_DIR}
+            ${BROTLI_INCLUDE_ENCODE_DIR}
+            ${AWH_INCLUDE_DIR}
+            ${CITY_INCLUDE_DIR}
+            ${OPENSSL_INCLUDE_DIR}
+            ${PCRE_INCLUDE_DIR}
+            ${NGTCP2_INCLUDE_DIR}
+            ${NGHTTP2_INCLUDE_DIR}
+            ${NGHTTP3_INCLUDE_DIR}
+            ${XML_INCLUDE_DIR}
+            ${JSON_INCLUDE_DIR}
+            ${LIBEV_EV_INCLUDE_DIR}
+        )
+        # Выполняем установку указанного списка заголовочных файлов зависимостей
+        install(DIRECTORY "${LIBEV_EV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+    # Если операцинная система относится к Nix-подобной
+    else()
+        # Если активирован режим отладки
+        if(CMAKE_AWH_BUILD_DEBUG)
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 DEPEND_LIBRARY
@@ -353,10 +523,11 @@ else(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
         # Если режим отладки не активирован
         else()
+            # Выполняем проверку на существование зависимостей
             find_package_handle_standard_args(AWH REQUIRED_VARS
                 AWH_LIBRARY
                 LZ4_INCLUDE_DIR
@@ -382,10 +553,10 @@ else(CMAKE_BUILD_EVENT2)
 
                 FAIL_MESSAGE "AWH library is not found"
             )
-
+            # Формируем список библиотек
             set(AWH_LIBRARIES ${AWH_LIBRARY})
         endif()
-
+        # Формируем список заголовочных файлов
         set(AWH_INCLUDE_DIRS
             ${LZ4_INCLUDE_DIR}
             ${BZ2_INCLUDE_DIR}
@@ -405,7 +576,6 @@ else(CMAKE_BUILD_EVENT2)
             ${JSON_INCLUDE_DIR}
             ${LIBEV_EV_INCLUDE_DIR}
         )
-
         # Выполняем установку указанного списка заголовочных файлов зависимостей
         install(DIRECTORY "${LIBEV_EV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
     endif()
@@ -431,6 +601,10 @@ install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/inc
 install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${JEMALLOC_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+
+# Если операцинная система не относится к MS Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    install(DIRECTORY "${JEMALLOC_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+endif()

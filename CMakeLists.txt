@@ -50,7 +50,7 @@ message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Проверка версии OS
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     set(DEBUGGER "-ggdb3")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
@@ -82,7 +82,7 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 # Опции компилятора
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
@@ -92,7 +92,7 @@ else()
     set(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
-if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
+if(${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations ${AWH_PARAMS}")
 else()
@@ -111,8 +111,8 @@ else()
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if (CMAKE_SHARED_BUILD_LIB)
-    if (MSVC)
+if(CMAKE_SHARED_BUILD_LIB)
+    if(MSVC)
         set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     endif(MSVC)
 endif(CMAKE_SHARED_BUILD_LIB)
@@ -124,7 +124,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Dependence REQUIRED)
 
 # Провекра Dependence
-if (Dependence_FOUND)
+if(Dependence_FOUND)
     message(STATUS "Dependence lib found: " ${DEPEND_LIBRARY})
     message(STATUS "LZ4 include dir found: " ${LZ4_INCLUDE_DIR})
     message(STATUS "BZ2 include dir found: " ${BZ2_INCLUDE_DIR})
@@ -280,7 +280,7 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if (CMAKE_SHARED_BUILD_LIB)
+if(CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
     add_library(${AWH_LIB_NAME} SHARED ${SOURCE_FILES})
     target_compile_definitions(${AWH_LIB_NAME} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
@@ -338,7 +338,7 @@ else()
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if (CMAKE_SHARED_BUILD_LIB)
+if(CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 

@@ -1454,68 +1454,71 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка JeMalloc
-src="$ROOT/submodules/jemalloc"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** AWH JeMalloc ******\n"
-	cd "$src" || exit 1
+# Если операцинная система не относится к MS Windows
+if [[ ! $OS = "Windows" ]]; then
+	# Сборка JeMalloc
+	src="$ROOT/submodules/jemalloc"
+	if [ ! -f "$src/.stamp_done" ]; then
+		printf "\n****** AWH JeMalloc ******\n"
+		cd "$src" || exit 1
 
-	# Версия JeMalloc
-	VER="5.3.0"
+		# Версия JeMalloc
+		VER="5.3.0"
 
-	# Выполняем удаление предыдущей закаченной версии
-	git tag -d ${VER}
-	# Закачиваем все изменения
-	git fetch --all
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Выполняем жесткое переключение на master
-	git reset --hard origin/master
-	# Переключаемся на master
-	git checkout master
-	# Выполняем обновление данных
-	git pull origin master
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch ${VER}
+		# Выполняем удаление предыдущей закаченной версии
+		git tag -d ${VER}
+		# Закачиваем все изменения
+		git fetch --all
+		# Закачиваем все теги
+		git fetch --all --tags
+		# Выполняем жесткое переключение на master
+		git reset --hard origin/master
+		# Переключаемся на master
+		git checkout master
+		# Выполняем обновление данных
+		git pull origin master
+		# Удаляем старую ветку
+		git branch -D v${VER}-branch
+		# Выполняем переключение на указанную версию
+		git checkout -b v${VER}-branch ${VER}
 
-	# Подготавливаем сборочные данные
-	./autogen.sh || exit 1
-	# Выполняем конфигурацию исходников
-	./configure \
-	 --prefix="$PREFIX" \
-	 --enable-doc=no \
-	 --enable-shared=no \
-	 --enable-static=yes
+		# Подготавливаем сборочные данные
+		./autogen.sh || exit 1
+		# Выполняем конфигурацию исходников
+		./configure \
+		--prefix="$PREFIX" \
+		--enable-doc=no \
+		--enable-shared=no \
+		--enable-static=yes
 
-	# Устанавливаем систему сборки
-	if [[ $OS = "FreeBSD" ]]; then
-		# Выполняем сборку на всех логических ядрах
-		gmake -j"$numproc" || exit 1
-		# Выполняем установку проекта
-		gmake install || exit 1
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-		# Выполняем установку проекта
-		make install || exit 1
+		# Устанавливаем систему сборки
+		if [[ $OS = "FreeBSD" ]]; then
+			# Выполняем сборку на всех логических ядрах
+			gmake -j"$numproc" || exit 1
+			# Выполняем установку проекта
+			gmake install || exit 1
+		else
+			# Выполняем сборку на всех логических ядрах
+			make -j"$numproc" || exit 1
+			# Выполняем установку проекта
+			make install || exit 1
+		fi
+
+		# Выполняем конфигурацию проекта
+		if [[ $OS = "Windows" ]]; then
+			# Производим корректировку названий библиотек
+			for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.lib$");
+			do
+				LIBNAME="${i%.*}"
+				echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$LIBNAME.a\""
+				mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$LIBNAME.a" || exit 1
+			done
+		fi
+
+		# Помечаем флагом, что сборка и установка произведена
+		touch "$src/.stamp_done"
+		cd "$ROOT" || exit 1
 	fi
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		# Производим корректировку названий библиотек
-		for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.lib$");
-		do
-			LIBNAME="${i%.*}"
-			echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$LIBNAME.a\""
-			mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$LIBNAME.a" || exit 1
-		done
-	fi
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
 fi
 
 # Сборка NgHttp3
