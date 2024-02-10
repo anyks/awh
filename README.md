@@ -59,8 +59,8 @@ $ sudo sysctl -w net.sctp.auth_enable=1
 ```
 
 ```bash
-$ cd ./ca
-$ ./cert.sh example.com
+$ cd ./certs
+$ ./certs.sh example.com
 ```
 
 ### Build third party for MacOS X, Linux and FreeBSD
@@ -93,12 +93,12 @@ $ make
 - [MSYS2](https://www.msys2.org)
 - [CMAKE](https://cmake.org/download)
 
-#### Assembly is done in MSYS264 terminal
+#### Assembly is done in MSYS2 - USRT64 terminal
 
 ```bash
 $ pacman -Syuu
 $ pacman -Ss cmake
-$ pacman -S mingw64/mingw-w64-x86_64-cmake
+$ pacman -S ucrt64/mingw-w64-ucrt-x86_64-cmake
 $ pacman -S make
 $ pacman -S curl
 $ pacman -S wget
@@ -108,8 +108,8 @@ $ pacman -S bash
 $ pacman -S clang
 $ pacman -S git
 $ pacman -S autoconf
-$ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
-$ pacman -S mingw-w64-x86_64-dlfcn
+$ pacman -S --needed base-devel ucrt64/mingw-w64-ucrt-x86_64-toolchain
+$ pacman -S ucrt64/mingw-w64-ucrt-x86_64-dlfcn
 ```
 
 ### Build third party for MS Windows
