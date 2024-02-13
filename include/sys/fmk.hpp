@@ -537,14 +537,14 @@ namespace awh {
 			 * itoa Метод конвертации чисел в указанную систему счисления
 			 * @param value число для конвертации
 			 * @param radix система счисления
-			 * @return      полученная строка в системе счисления
+			 * @return      полученная строка в указанной системе счисления
 			 */
 			string itoa(const int64_t value, const uint8_t radix) const noexcept;
 			/**
 			 * atoi Метод конвертации строковых чисел в десятичную систему счисления
 			 * @param value число для конвертации
 			 * @param radix система счисления
-			 * @return      полученная строка в системе счисления
+			 * @return      полученное значение в указанной системе счисления
 			 */
 			int64_t atoi(const string & value, const uint8_t radix) const noexcept;
 		public:
