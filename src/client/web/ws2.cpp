@@ -238,7 +238,7 @@ void awh::client::Websocket2::readEvent(const char * buffer, const size_t size, 
 					// Выходим из функции
 					return;
 				// Если прочитать данные фрейма не удалось, выходим из функции
-				if(!this->_http2.frame((const uint8_t *) buffer, size)){
+				if(!this->_http2.frame(reinterpret_cast <const uint8_t *> (buffer), size)){
 					// Выполняем закрытие подключения
 					web2_t::close(bid, dynamic_cast <client::core_t *> (core));
 					// Выходим из функции

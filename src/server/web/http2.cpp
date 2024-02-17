@@ -144,7 +144,7 @@ void awh::server::Http2::readEvents(const char * buffer, const size_t size, cons
 									// Если активная сессия найдена
 									if(it != this->_sessions.end()){
 										// Если прочитать данные фрейма не удалось, выходим из функции
-										if(!it->second->frame((const uint8_t *) buffer, size)){
+										if(!it->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
 											// Выполняем закрытие подключения
 											web2_t::close(bid, dynamic_cast <server::core_t *> (core));
 											// Выходим из функции

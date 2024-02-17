@@ -327,7 +327,7 @@ void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, c
 					// Если протокол подключения является HTTP/2
 					if(core->proto(bid) == engine_t::proto_t::HTTP2){
 						// Если прочитать данные фрейма не удалось, выходим из функции
-						if(!this->_http2.frame((const uint8_t *) buffer, size))
+						if(!this->_http2.frame(reinterpret_cast <const uint8_t *> (buffer), size))
 							// Выходим из функции
 							return;
 					// Если активирован режим работы с HTTP/1.1 протоколом
