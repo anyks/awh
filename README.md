@@ -135,7 +135,7 @@ $ cmake \
 $ cmake --build .
 ```
 
-### Example WEB Client Multi requests
+### Example WEB-client multirequests
 ```c++
 #include <client/awh.hpp>
 
@@ -266,7 +266,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example WEB Client Simple
+### Example simple WEB-client
 ```c++
 #include <client/awh.hpp>
 
@@ -314,7 +314,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example WEB Server
+### Example WEB-server
 ```c++
 #include <server/awh.hpp>
 
@@ -506,7 +506,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example WebSocket Client
+### Example WebSocket-client
 ```c++
 #include <client/ws.hpp>
 
@@ -628,7 +628,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example WebSocket Server
+### Example WebSocket-server
 ```c++
 #include <server/ws.hpp>
 
@@ -761,7 +761,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example HTTPS Multi Server
+### Example multiprotocol HTTPS-server
 ```c++
 #include <server/awh.hpp>
 
@@ -875,6 +875,21 @@ class WebServer {
 
 			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
+
+		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+			(void) method;
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+
+			cout << "URL: " << url << endl << endl;
+
+			if(!entity.empty()){
+				cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
+
+				this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+			}
+		}
 	public:
 		WebServer(const fmk_t * fmk, const log_t * log, server::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh), _method(awh::web_t::method_t::NONE) {}
 };
@@ -942,8 +957,9 @@ int main(int argc, char * argv[]){
 	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3));
 	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
 	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6));
 
 	awh.start();
 
@@ -951,7 +967,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example HTTPS PROXY Server
+### Example HTTPS PROXY-server
 ```c++
 #include <server/proxy.hpp>
 
@@ -1038,7 +1054,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example Socks5 PROXY Server
+### Example Socks5 PROXY-server
 ```c++
 #include <server/socks5.hpp>
 
@@ -1184,7 +1200,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example DNS Resolver
+### Example DNS-resolver
 ```c++
 #include <net/dns.hpp>
 #include <core/core.hpp>
@@ -1217,7 +1233,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example NTP Client
+### Example NTP-client
 ```c++
 #include <net/ntp.hpp>
 #include <core/core.hpp>
@@ -1244,7 +1260,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example PING
+### Example ICMP-client PINGER
 ```c++
 #include <net/ping.hpp>
 #include <core/core.hpp>
@@ -1269,7 +1285,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TCP Client
+### Example TCP-client
 ```c++
 #include <client/sample.hpp>
 
@@ -1335,7 +1351,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TCP Server
+### Example TCP-server
 ```c++
 #include <server/sample.hpp>
 
@@ -1400,7 +1416,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TLS Client
+### Example TLS-client
 ```c++
 #include <client/sample.hpp>
 
@@ -1468,7 +1484,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TLS Server
+### Example TLS-server
 ```c++
 #include <server/sample.hpp>
 
@@ -1535,7 +1551,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP Client
+### Example UDP-client
 ```c++
 #include <client/sample.hpp>
 
@@ -1601,7 +1617,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP Server
+### Example UDP-server
 ```c++
 #include <server/sample.hpp>
 
@@ -1666,7 +1682,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example SCTP Client
+### Example SCTP-client
 ```c++
 #include <client/sample.hpp>
 
@@ -1734,7 +1750,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example SCTP Server
+### Example SCTP-server
 ```c++
 #include <server/sample.hpp>
 
@@ -1801,7 +1817,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example DTLS Client
+### Example DTLS-client
 ```c++
 #include <client/sample.hpp>
 
@@ -1869,7 +1885,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example DTLS Server
+### Example DTLS-server
 ```c++
 #include <server/sample.hpp>
 
@@ -1936,7 +1952,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TCP UnixSocket Client
+### Example UnixSocket TCP-client
 ```c++
 #include <client/sample.hpp>
 
@@ -2003,7 +2019,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example TCP UnixSocket Server
+### Example UnixSocket TCP-server
 ```c++
 #include <server/sample.hpp>
 
@@ -2069,7 +2085,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP UnixSocket Client
+### Example UnixSocket UDP-client
 ```c++
 #include <client/sample.hpp>
 
@@ -2136,7 +2152,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP UnixSocket Server
+### Example UnixSocket UDP-server
 ```c++
 #include <server/sample.hpp>
 
@@ -2285,7 +2301,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example IP-Address
+### Example IP-address
 ```c++
 #include <net/net.hpp>
 
