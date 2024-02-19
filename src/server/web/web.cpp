@@ -257,6 +257,8 @@ void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("headers", callbacks);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
 	this->_callbacks.set("chunking", callbacks);
+	// Выполняем установку функции завершения выполнения запроса
+	this->_callbacks.set("complete", callbacks);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
 	this->_callbacks.set("handshake", callbacks);
 	// Выполняем установку функции обратного вызова для обработки авторизации

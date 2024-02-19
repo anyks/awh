@@ -63,66 +63,83 @@ bool awh::URI::URL::empty() const noexcept {
  * @return    параметры URL-запроса
  */
 awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
-	// Выполняем копирование порта
-	this->port = url.port;
-	// Выполняем копирование протокола интернета
-	this->family = url.family;
-	// Если IP-адрес передан
-	if(!url.ip.empty())
-		// Выполняем копирование IP-адреса
-		this->ip.assign(url.ip.begin(), url.ip.end());
-	// Выполняем удаление IP-адреса
-	else this->ip.clear();
-	// Если хост сервера передан
-	if(!url.host.empty())
-		// Выполняем копирование хоста сервера
-		this->host.assign(url.host.begin(), url.host.end());
-	// Выполняем удаление хоста сервера
-	else this->host.clear();
-	// Если доменное имя сервера передано
-	if(!url.domain.empty())
-		// Выполняем копирование доменного имени сервера
-		this->domain.assign(url.domain.begin(), url.domain.end());
-	// Выполняем удаление доменного имени сервера
-	else this->domain.clear();
-	// Если протокол передачи данных передан
-	if(!url.schema.empty())
-		// Выполняем копирование протокола передачи данных
-		this->schema.assign(url.schema.begin(), url.schema.end());
-	// Выполняем удаление протокола передачи данных
-	else this->schema.clear();
-	// Если якорь URL-запроса передан
-	if(!url.anchor.empty())
-		// Выполняем копирование якоря URL-запроса
-		this->anchor.assign(url.anchor.begin(), url.anchor.end());
-	// Выполняем удаление якоря URL-запроса
-	else this->anchor.clear();
-	// Если пользователь передан
-	if(!url.user.empty())
-		// Выполняем копирование пользователя
-		this->user.assign(url.user.begin(), url.user.end());
-	// Выполняем удаление пользователя
-	else this->user.clear();
-	// Если пароль передан
-	if(!url.pass.empty())
-		// Выполняем копирование пароля
-		this->pass.assign(url.pass.begin(), url.pass.end());
-	// Выполняем удаление пароля
-	else this->pass.clear();
-	// Если путь передан
-	if(!url.path.empty())
-		// Выполняем копирование пути
-		this->path.assign(url.path.begin(), url.path.end());
-	// Выполняем удаление пути
-	else this->path.clear();
-	// Если параметры переданы
-	if(!url.params.empty())
-		// Выполняем копирование параметров
-		this->params.assign(url.params.begin(), url.params.end());
-	// Выполняем удаление параметров
-	else this->params.clear();
-	// Выполняем копирование функции обратного вызова
-	this->fn = url.fn;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем копирование порта
+		this->port = url.port;
+		// Выполняем копирование протокола интернета
+		this->family = url.family;
+		// Если IP-адрес передан
+		if(!url.ip.empty())
+			// Выполняем копирование IP-адреса
+			this->ip.assign(url.ip.begin(), url.ip.end());
+		// Выполняем удаление IP-адреса
+		else this->ip.clear();
+		// Если хост сервера передан
+		if(!url.host.empty())
+			// Выполняем копирование хоста сервера
+			this->host.assign(url.host.begin(), url.host.end());
+		// Выполняем удаление хоста сервера
+		else this->host.clear();
+		// Если доменное имя сервера передано
+		if(!url.domain.empty())
+			// Выполняем копирование доменного имени сервера
+			this->domain.assign(url.domain.begin(), url.domain.end());
+		// Выполняем удаление доменного имени сервера
+		else this->domain.clear();
+		// Если протокол передачи данных передан
+		if(!url.schema.empty())
+			// Выполняем копирование протокола передачи данных
+			this->schema.assign(url.schema.begin(), url.schema.end());
+		// Выполняем удаление протокола передачи данных
+		else this->schema.clear();
+		// Если якорь URL-запроса передан
+		if(!url.anchor.empty())
+			// Выполняем копирование якоря URL-запроса
+			this->anchor.assign(url.anchor.begin(), url.anchor.end());
+		// Выполняем удаление якоря URL-запроса
+		else this->anchor.clear();
+		// Если пользователь передан
+		if(!url.user.empty())
+			// Выполняем копирование пользователя
+			this->user.assign(url.user.begin(), url.user.end());
+		// Выполняем удаление пользователя
+		else this->user.clear();
+		// Если пароль передан
+		if(!url.pass.empty())
+			// Выполняем копирование пароля
+			this->pass.assign(url.pass.begin(), url.pass.end());
+		// Выполняем удаление пароля
+		else this->pass.clear();
+		// Если путь передан
+		if(!url.path.empty())
+			// Выполняем копирование пути
+			this->path.assign(url.path.begin(), url.path.end());
+		// Выполняем удаление пути
+		else this->path.clear();
+		// Если параметры переданы
+		if(!url.params.empty())
+			// Выполняем копирование параметров
+			this->params.assign(url.params.begin(), url.params.end());
+		// Выполняем удаление параметров
+		else this->params.clear();
+		// Выполняем копирование функции обратного вызова
+		this->fn = url.fn;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::length_error & error) {
+		// Передаём ошибку следующему обработчику
+		throw;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Передаём ошибку следующему обработчику
+		throw;
+	}
 	// Выводим результат
 	return (* this);
 }
@@ -404,8 +421,10 @@ string awh::URI::url(const url_t & url) const noexcept {
 			}
 			// Получаем строку HTTP запроса
 			const string & query = this->query(url);
-			// Если порт не установлен, формируем URL строку запроса без порта
-			if(port == 0) result = this->_fmk->format("%s://%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), query.c_str());
+			// Если порт не установлен
+			if(port == 0)
+				// Формируем URL строку запроса без порта
+				result = this->_fmk->format("%s://%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), query.c_str());
 			// Если порт установлен, формируем URL строку запроса с указанием порта
 			else result = this->_fmk->format("%s://%s%s:%u%s", url.schema.c_str(), auth.c_str(), host.c_str(), url.port, query.c_str());
 		}
@@ -479,8 +498,10 @@ string awh::URI::origin(const url_t & url) const noexcept {
 			// Если указан 443 порт
 			case 443: port = (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss") ? 0 : port); break;
 		}
-		// Выполняем формирование URL адреса
-		if(port > 0) result = this->_fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), port);
+		// Если порт установлен
+		if(port > 0)
+			// Выполняем формирование URL адреса
+			result = this->_fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), port);
 		// Иначе порт не устанавливаем
 		else result = this->_fmk->format("%s://%s", url.schema.c_str(), host.c_str());
 	}

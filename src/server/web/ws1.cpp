@@ -303,6 +303,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 												// Выполняем функцию обратного вызова
 												this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+											// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
+											if(this->_callbacks.is("complete"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 											// Если функция обратного вызова активности потока установлена
 											if(this->_callbacks.is("stream"))
 												// Выполняем функцию обратного вызова
@@ -403,6 +407,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+								// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
+								if(this->_callbacks.is("complete"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 								// Если функция обратного вызова активности потока установлена
 								if(this->_callbacks.is("stream"))
 									// Выполняем функцию обратного вызова

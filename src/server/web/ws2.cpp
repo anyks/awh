@@ -708,6 +708,10 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 													// Выходим из функции
 													return NGHTTP2_ERR_CALLBACK_FAILURE;
 												}
+												// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
+												if(this->_callbacks.is("complete"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 												// Если функция обратного вызова активности потока установлена
 												if(this->_callbacks.is("stream"))
 													// Выполняем функцию обратного вызова
@@ -1417,6 +1421,8 @@ void awh::server::Websocket2::callbacks(const fn_t & callbacks) noexcept {
 		callbacks.set("headers", this->_callbacks);
 		// Выполняем установку функции обратного вызова для перехвата полученных чанков
 		callbacks.set("chunking", this->_callbacks);
+		// Выполняем установку функции завершения выполнения запроса
+		callbacks.set("complete", this->_callbacks);
 		// Выполняем установку функции обратного вызова при выполнении рукопожатия
 		callbacks.set("handshake", this->_callbacks);
 		// Выполняем установку функции обратного вызова для обработки авторизации

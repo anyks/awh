@@ -329,6 +329,10 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
+							// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+							if(this->_callbacks.is("complete"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 							// Завершаем работу
 							dynamic_cast <client::core_t *> (core)->close(bid);
 							// Завершаем работу
@@ -541,6 +545,8 @@ void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("response", callbacks);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
 	this->_callbacks.set("chunking", callbacks);
+	// Выполняем установку функции завершения выполнения запроса
+	this->_callbacks.set("complete", callbacks);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
 	this->_callbacks.set("handshake", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения ошибок Websocket

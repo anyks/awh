@@ -128,6 +128,48 @@ class WebClient {
 				// Выводим информацию в лог
 				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
+		/**
+		 * complete Метод получения ответа с сервера
+		 * @param sid     идентификатор потока
+		 * @param rid     идентификатор запроса
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param body    данные полученного тела сообщения
+		 * @param data    данные полученных заголовков сообщения
+		 */
+		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+			// Блокируем неиспользуемые переменные
+			(void) sid;
+			(void) rid;
+			// Увеличиваем количество выполненных запросов
+			this->_count++;
+			// Переходим по всем заголовкам
+			for(auto & header : headers)
+				// Выводим информацию в лог
+				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+			/**
+			 * Выполняем обработку ошибки
+			 */
+			try {
+				// Получаем результат
+				const string result(entity.begin(), entity.end());
+				// Создаём объект JSON
+				json data = json::parse(result);
+				// Выводим полученный результат
+				cout << " =========== " << data.dump(4) << endl;
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выводим полученный результат
+				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
+			}
+			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+			// Если оба запроса выполнены
+			if(this->_count == 2)
+				// Выполняем остановку
+				this->_awh->stop();
+		}
 	public:
 		/**
 		 * WebClient Конструктор
@@ -238,11 +280,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	// Устанавливаем метод получения сообщения сервера
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения заголовков
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// Устанавливаем метод получения ответа с сервера
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6));
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы
@@ -270,7 +314,7 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
-	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");	
+	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	// Подключаем сертификаты
 	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Замеряем время начала работы

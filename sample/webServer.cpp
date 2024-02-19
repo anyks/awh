@@ -182,32 +182,27 @@ class WebServer {
 				this->_awh->send(sid, bid, 404);
 		}
 		/**
-		 * headers Метод получения заголовков запроса
+		 * complete Метод завершения получения запроса клиента
 		 * @param sid     идентификатор потока
 		 * @param bid     идентификатор брокера
 		 * @param method  метод запроса
 		 * @param url     url-адрес запроса
+		 * @param entity  тело запроса
 		 * @param headers заголовки запроса
 		 */
-		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
 				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
-		}
-		/**
-		 * entity Метод получения тела запроса
-		 * @param sid    идентификатор потока
-		 * @param bid    идентификатор брокера
-		 * @param method метод запроса
-		 * @param url    url-адрес запроса
-		 * @param entity тело запроса
-		 */
-		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity){
-			// Выводим информацию о входящих данных
-			cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
-			// Отправляем сообщение клиенту
-			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+
+			// Если данные запроса получены
+			if(!entity.empty()){
+				// Выводим информацию о входящих данных
+				cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
+				// Отправляем сообщение клиенту
+				this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+			}
 		}
 	public:
 		/**
@@ -286,27 +281,21 @@ int main(int argc, char * argv[]){
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
-	/*
 	awh.init(2222, "127.0.0.1", {
 		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
 	});
-	*/
+	/*
 	awh.init(2222, "anyks.net", {
 		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
 		awh::http_t::compress_t::GZIP,
 		awh::http_t::compress_t::DEFLATE,
 	});
+	*/
 	/*
-	awh.init(2222, "127.0.0.1", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
-	});
 	awh.init("anyks", {
 		awh::http_t::compress_t::ZSTD,
 		awh::http_t::compress_t::BROTLI,
@@ -351,10 +340,8 @@ int main(int argc, char * argv[]){
 	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения запроса
 	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
-	// Установливаем функцию обратного вызова на событие получения тела сообщения
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
-	// Установливаем функцию обратного вызова на событие получения заголовки сообщения
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6));
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат

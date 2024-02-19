@@ -2587,9 +2587,11 @@ void awh::Engine::encrypted(const bool mode, ctx_t & ctx) noexcept {
  */
 awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	// Результат работы функции
-	proto_t result = target._proto;
+	proto_t result = proto_t::HTTP1_1;
 	// Если контекст SSL инициализирован
 	if(target._ssl != nullptr){
+		// Результат работы функции
+		result = target._proto;
 		// Если подключение выполнено
 		if(target._type == type_t::SERVER ? SSL_accept(target._ssl) : SSL_connect(target._ssl)){
 			// Определяет желаемый активный протокол

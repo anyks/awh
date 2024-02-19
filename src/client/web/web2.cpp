@@ -73,6 +73,10 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
 						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
+					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+					if(this->_callbacks.is("complete"))
+						// Выполняем функцию обратного вызова
+						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 					// Если установлена функция отлова завершения запроса
 					if(this->_callbacks.is("end"))
 						// Выполняем функцию обратного вызова

@@ -424,35 +424,37 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		this->callback <void (const web_t::mode_t)> ("active", [method, &url, &entity, &headers, this](const web_t::mode_t mode) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
-				// Создаём объект запроса
-				web_t::request_t request;
-				// Устанавливаем адрес запроса
-				request.url = url;
-				// Устанавливаем метод запроса
-				request.method = method;
-				// Устанавливаем тепло запроса
-				request.entity = std::forward <const vector <char>> (entity);
-				// Запоминаем переданные заголовки
-				request.headers = std::forward <const unordered_multimap <string, string>> (headers);
-				// Выполняем запрос на сервер
-				this->send(request);
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Создаём объект запроса
+					web_t::request_t request;
+					// Устанавливаем адрес запроса
+					request.url = url;
+					// Устанавливаем метод запроса
+					request.method = method;
+					// Устанавливаем тепло запроса
+					request.entity = std::forward <const vector <char>> (entity);
+					// Запоминаем переданные заголовки
+					request.headers = std::forward <const unordered_multimap <string, string>> (headers);
+					// Выполняем запрос на сервер
+					this->send(request);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::length_error & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				}
 			// Выполняем остановку работы модуля
 			} else this->stop();
-		});
-		/**
-		 * Подписываемся на завершение выполнения запроса
-		 * @param sid    идентификатор потока
-		 * @param rid    идентификатор запроса
-		 * @param direct направление передачи данных
-		 */
-		this->callback <void (const int32_t, const uint64_t, const web_t::direct_t)> ("end", [this](const int32_t sid, const uint64_t rid, const web_t::direct_t direct) noexcept -> void {
-			// Блокируем пустую переменную
-			(void) sid;
-			(void) rid;
-			// Если мы получили данные
-			if(direct == web_t::direct_t::RECV)
-				// Выполняем остановку
-				this->stop();
 		});
 		/**
 		 * Подписываемся на получение сообщения сервера
@@ -466,47 +468,71 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			(void) sid;
 			(void) rid;
 			// Если возникла ошибка, выводим сообщение
-			if(code >= 300)
-				// Выводим сообщение о неудачном запросе
-				this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+			if(code >= 300){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выводим сообщение о неудачном запросе
+					this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::length_error & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				}
+			}
 		});
 		/**
-		 * Подписываемся на событие получения тела ответа
+		 * Подписываем на событие получения ответа с сервера
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
-		 * @param data    данные полученного тела сообщения
-		 */
-		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", [&entity, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & data) noexcept -> void {
-			// Блокируем пустую переменную
-			(void) sid;
-			(void) rid;
-			// Если тело ответа получено
-			if(!data.empty())
-				// Формируем результат ответа
-				entity.assign(data.begin(), data.end());
-			// Выполняем очистку тела запроса
-			else entity.clear();
-			// Выполняем остановку
-			this->stop();
-		});
-		/**
-		 * Подписываем на событие получения заголовков ответа
-		 * @param sid     идентификатор потока
-		 * @param rid     идентификатор запроса
-		 * @param code    код ответа сервера
-		 * @param message сообщение ответа сервера
+		 * @param body    данные полученного тела сообщения
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", [&headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", [&entity, &headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & body, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
 			// Если заголовки ответа получены
-			if(!data.empty())
-				// Извлекаем полученный список заголовков
-				headers = std::forward <const unordered_multimap <string, string>> (data);
+			if(!data.empty()){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Извлекаем полученный список заголовков
+					headers = std::forward <const unordered_multimap <string, string>> (data);
+					// Если тело ответа получено
+					if(!body.empty())
+						// Формируем результат ответа
+						entity.assign(body.begin(), body.end());
+					// Выполняем очистку тела запроса
+					else entity.clear();
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::length_error & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception & error) {
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				}
+			}
+			// Выполняем остановку
+			this->stop();
 		});
 		// Выполняем инициализацию подключения
 		this->init(this->_uri.origin(url), {

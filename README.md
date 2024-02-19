@@ -200,6 +200,23 @@ class WebClient {
 
 			cout << endl;
 		}
+
+		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+			(void) sid;
+			(void) rid;
+
+			this->_count++;
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+			
+			cout << endl;
+
+			cout << "RESPONSE: " << string(entity.begin(), entity.end()) << endl;
+
+			if(this->_count == 2)
+				this->_awh->stop();
+		}
 	public:
 		WebClient(const fmk_t * fmk, const log_t * log, client::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh) {}
 };
@@ -238,8 +255,9 @@ int main(int argc, char * argv[]){
 
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6));
 	
 	awh.init("https://apple.com");
 	awh.start();
@@ -407,6 +425,21 @@ class WebServer {
 
 			this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
+
+		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+			(void) method;
+
+			for(auto & header : headers)
+				cout << "HEADER: " << header.first << ": " << header.second << endl;
+
+			cout << "URL: " << url << endl << endl;
+
+			if(!entity.empty()){
+				cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
+
+				this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+			}
+		}
 	public:
 		WebServer(const fmk_t * fmk, const log_t * log, server::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh), _method(awh::web_t::method_t::NONE) {}
 };
@@ -463,8 +496,9 @@ int main(int argc, char * argv[]){
 	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
 	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
 	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6));
 
 	awh.start();
 

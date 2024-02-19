@@ -195,10 +195,14 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 								if(this->_callbacks.is("stream"))
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, rid, mode_t::CLOSE);
-								// Если функция обратного вызова установлена, выводим сообщение
+								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 								if(this->_resultCallback.is("entity"))
-									// Выполняем функцию обратного вызова дисконнекта
+									// Выполняем функцию обратного вызова
 									this->_resultCallback.bind("entity");
+								// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+								if(this->_resultCallback.is("complete"))
+									// Выполняем функцию обратного вызова
+									this->_resultCallback.bind("complete");
 								// Выполняем очистку функций обратного вызова
 								this->_resultCallback.clear();
 								// Если функция обратного вызова на получение удачного ответа установлена
@@ -677,6 +681,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+				if(this->_callbacks.is("complete"))
+					// Выполняем функцию обратного вызова
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 				// Устанавливаем размер стопбайт
@@ -708,6 +716,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
 					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+				if(this->_callbacks.is("complete"))
+					// Выполняем функцию обратного вызова
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 			}
@@ -725,6 +737,10 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
 			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+		// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+		if(this->_callbacks.is("complete"))
+			// Выполняем функцию обратного вызова
+			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 		// Выполняем завершение запроса
 		this->result(sid);
 	}
@@ -1113,6 +1129,8 @@ void awh::client::Http1::callbacks(const fn_t & callbacks) noexcept {
 		callbacks.set("response", this->_callbacks);
 		// Выполняем установку функции обратного вызова для перехвата полученных чанков
 		callbacks.set("chunking", this->_callbacks);
+		// Выполняем установку функции завершения выполнения запроса
+		callbacks.set("complete", this->_callbacks);
 		// Выполняем установку функции обратного вызова при выполнении рукопожатия
 		callbacks.set("handshake", this->_callbacks);
 		// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
