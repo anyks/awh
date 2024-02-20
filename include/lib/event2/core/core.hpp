@@ -195,6 +195,8 @@ namespace awh {
 					bool _work;
 					// Флаг инициализации базы событий
 					bool _init;
+					// Флаг виртуальной базы данных
+					bool _virt;
 					// Флаг заморозки получения данных
 					bool _freeze;
 				private:
@@ -203,14 +205,14 @@ namespace awh {
 				private:
 					// Частота обновления базы событий
 					chrono::milliseconds _freq;
-				private:
-					// Функция обратного вызова при запуске модуля
-					function <void (void)> _launching;
-					// Функция обратного вызова при остановки модуля
-					function <void (void)> _closedown;
 				public:
 					// База данных событий
 					struct event_base * base;
+				private:
+					// Функция обратного вызова при запуске модуля
+					function <void (const bool, const bool)> _launching;
+					// Функция обратного вызова при остановки модуля
+					function <void (const bool, const bool)> _closedown;
 				private:
 					/**
 					 * Если операционной системой является Windows
@@ -234,6 +236,16 @@ namespace awh {
 					void start() noexcept;
 				public:
 					/**
+					 * virt Метод активации работы базы событий как виртуальной
+					 * @param mode флаг активации
+					 */
+					void virt(const bool mode) noexcept;
+				public:
+					/**
+					 * rebase Метод пересоздания базы событий
+					 */
+					void rebase() noexcept;
+					/**
 					 * freeze Метод заморозки чтения данных
 					 * @param mode флаг активации
 					 */
@@ -243,17 +255,7 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void easily(const bool mode) noexcept;
-					/**
-					 * rebase Метод пересоздания базы событий
-					 * @param clear флаг очистки предыдущей базы событий
-					 */
-					void rebase(const bool clear = true) noexcept;
 				public:
-					/**
-					 * setBase Метод установки базы событий
-					 * @param base база событий
-					 */
-					void setBase(struct event_base * base) noexcept;
 					/**
 					 * frequency Метод установки частоты обновления базы событий
 					 * @param msec частота обновления базы событий в миллисекундах
@@ -328,18 +330,22 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * launching Метод вызова при активации базы событий
-			 */
-			void launching() noexcept;
-			/**
-			 * closedown Метод вызова при деакцтивации базы событий
-			 */
-			void closedown() noexcept;
-		private:
-			/**
 			 * signal Метод вывода полученного сигнала
 			 */
 			void signal(const int signal) noexcept;
+		private:
+			/**
+			 * launching Метод вызова при активации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void launching(const bool mode, const bool status) noexcept;
+			/**
+			 * closedown Метод вызова при деакцтивации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void closedown(const bool mode, const bool status) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий

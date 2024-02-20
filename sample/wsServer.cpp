@@ -104,14 +104,15 @@ class Executor {
 		 * @param bid    идентификатор брокера (клиента)
 		 * @param buffer бинарный буфер сообщения
 		 * @param text   тип буфера сообщения
+		 * @param ws     объект Websocket-сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text, server::websocket_t * ws){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
 				string subprotocol = "";
 				// Получаем список выбранных сабпротоколов
-				const auto subprotocols = this->_ws->subprotocols(bid);
+				const auto subprotocols = ws->subprotocols(bid);
 				// Если список выбранных сабпротоколов получен
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
@@ -119,7 +120,7 @@ class Executor {
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
-				this->_ws->sendMessage(bid, buffer, text);
+				ws->sendMessage(bid, buffer, text);
 			}
 		}
 		/**
@@ -145,9 +146,8 @@ class Executor {
 		 * Executor Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param ws  объект Websocket-сервера
 		 */
-		Executor(const fmk_t * fmk, const log_t * log, server::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
+		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -166,7 +166,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект REST запроса
 	websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	Executor executor(&fmk, &log, &ws);
+	Executor executor(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Websocket Server");
 	// Устанавливаем формат времени
@@ -243,7 +243,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	ws.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3));
+	ws.callback <void (const uint64_t, const vector <char> &, const bool, server::websocket_t *)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
 	ws.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск Websocket сервер

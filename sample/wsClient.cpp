@@ -30,9 +30,6 @@ class Executor {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект Websocket-клиента
-		client::websocket_t * _ws;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -61,8 +58,9 @@ class Executor {
 		 * @param sid   идентификатор потока
 		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
+		 * @param ws    бъект websocket-клиента
 		 */
-		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent){
+		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -182,7 +180,7 @@ class Executor {
 				// Получаем параметры запроса в виде строки
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
-				this->_ws->sendMessage(vector <char> (query.begin(), query.end()));
+				ws->sendMessage(vector <char> (query.begin(), query.end()));
 			}
 		}
 	public:
@@ -209,12 +207,13 @@ class Executor {
 		 * message Метод получения сообщений
 		 * @param buffer бинарный буфер сообщения
 		 * @param utf8   тип буфера сообщения
+		 * @param ws     объект websocket-клиента
 		 */
-		void message(const vector <char> & buffer, const bool utf8){
+		void message(const vector <char> & buffer, const bool utf8, client::websocket_t * ws){
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
-			const auto subprotocols = this->_ws->subprotocols();
+			const auto subprotocols = ws->subprotocols();
 			// Если список выбранных сабпротоколов получен
 			if(!subprotocols.empty())
 				// Выполняем получение выбранного сабпротокола
@@ -236,9 +235,8 @@ class Executor {
 		 * Executor Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param ws  объект Websocket-клиента
 		 */
-		Executor(const fmk_t * fmk, const log_t * log, client::websocket_t * ws) : _fmk(fmk), _log(log), _ws(ws) {}
+		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -257,7 +255,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект Websocket клиента
 	websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	Executor executor(&fmk, &log, &ws);
+	Executor executor(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Websocket Client");
 	// Устанавливаем формат времени
@@ -356,12 +354,12 @@ int main(int argc, char * argv[]){
 	// Создаём локальный контейнер функций обратного вызова
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
-	// Подписываемся на событие получения сообщения с сервера
-	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
 	ws.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
+	// Подписываемся на событие получения сообщения с сервера
+	ws.callback <void (const vector <char> &, const bool, client::websocket_t *)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
 	// Подписываемся на событие рукопожатия
-	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3));
+	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t, client::websocket_t *)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3, &ws));
 	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат

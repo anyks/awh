@@ -281,6 +281,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			auto it = this->_clients.find(bid);
 			// Если клиент в списке найден
 			if(it != this->_clients.end()){
+				// Выполняем остановку подключения
+				it->second->awh.stop();
 				// Выполняем сброс метода подклюения
 				it->second->method = awh::web_t::method_t::NONE;
 				// Выполняем отключение клиента от сетевого ядра
@@ -803,6 +805,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							});
 							// Выполняем подключение клиента к сетевому ядру
 							this->_core.bind(&it->second->core);
+							// Выполняем установку подключения
+							it->second->awh.start();
 						// Если подключение уже выполнено
 						} else {
 							// Создаём объект запроса
@@ -892,6 +896,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									});
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&it->second->core);
+									// Выполняем установку подключения
+									it->second->awh.start();
 								// Если подключение уже выполнено
 								} else {
 									// Создаём объект запроса
@@ -999,6 +1005,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									it->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&it->second->core);
+									// Выполняем установку подключения
+									it->second->awh.start();
 								}
 							} break;
 						}
@@ -2005,7 +2013,7 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_server.callback <void (const uint64_t)> ("erase", std::bind(&server::proxy_t::eraseClient, this, _1));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	this->_server.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&server::proxy_t::activeServer, this, _1, _2));
-	// Устанавливаем функцию извлечения пароля пользователя
+	// Устанавливаем функцию извлечения пароля пользователя для прохождения авторизации на сервере
 	this->_server.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&server::proxy_t::passwordEvents, this, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	this->_server.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&server::proxy_t::acceptEvents, this, _1, _2, _3));

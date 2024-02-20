@@ -132,14 +132,17 @@ void awh::Core::Dispatch::kick() noexcept {
  */
 void awh::Core::Dispatch::stop() noexcept {
 	// Если чтение базы событий уже началось
-	if(this->_work){
+	if(this->_work && this->_init){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
-		this->_work = false;
+		this->_work = !this->_work;
 		// Выполняем пинок
 		this->kick();
-	}
+	// Если модуль не инициализирован
+	} else if(!this->_init)
+		// Выполняем остановку функции активации базы событий
+		this->_closedown(true, false);
 }
 /**
  * start Метод запуска чтения базы событий
@@ -154,7 +157,7 @@ void awh::Core::Dispatch::start() noexcept {
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
 		// Выполняем запуск функции активации базы событий
-		this->_launching();
+		this->_launching(true, true);
 		// Выполняем чтение базы событий пока это разрешено
 		while(this->_work){
 			// Если база событий проинициализированна
@@ -170,19 +173,93 @@ void awh::Core::Dispatch::start() noexcept {
 			this_thread::sleep_for(this->_freq);
 		}
 		// Выполняем остановку функции активации базы событий
-		this->_closedown();
+		this->_closedown(true, true);
+	// Если модуль не инициализирован
+	} else if(!this->_init) {
+		// Выполняем разблокировку потока
+		this->_mtx.unlock();
+		// Выполняем запуск функции активации базы событий
+		this->_launching(true, false);
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
+}
+/**
+ * virt Метод активации работы базы событий как виртуальной
+ * @param mode флаг активации
+ */
+void awh::Core::Dispatch::virt(const bool mode) noexcept {
+	// Если требуется активировать базу событий как виртуальную
+	if(mode && !this->_virt){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Выполняем блокировку чтения данных
+		this->_init = false;
+		// Если работа уже запущена
+		if(this->_work)
+			// Выполняем пинок
+			this->kick();
+		// Удаляем объект базы событий
+		if(this->base != nullptr){
+			// Удаляем объект базы событий
+			event_base_free(this->base);
+			// Выполняем зануление базы событий
+			this->base = nullptr;
+		}
+		// Активируем флаг виртуальной базы событий
+		this->_virt = !this->_virt;
+	// Если требуется деактивировать базу событий как виртуальную
+	} else if(!mode && this->_virt) {
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Создаем новую базу событий
+		this->base = event_base_new();
+		// Активируем флаг виртуальной базы событий
+		this->_virt = !this->_virt;
+		// Выполняем разблокировку чтения данных
+		this->_init = !this->_virt;
+	// Если производится переключение на виртуальную базу событий но она уже виртуальная
+	} else if(mode && this->_virt)
+		// Выводим сообщение об ошибке
+		this->_core->_log->print("Cannot make the event database virtual because it is already virtual", log_t::flag_t::WARNING);
+	// Если производится переход с виртуальной базы данных на обычную но она уже обычная
+	else if(!mode && !this->_virt)
+		// Выводим сообщение об ошибке
+		this->_core->_log->print("Cannot switch from a virtual event database to a real one, since it is no longer virtual", log_t::flag_t::WARNING);
+}
+/**
+ * rebase Метод пересоздания базы событий
+ */
+void awh::Core::Dispatch::rebase() noexcept {
+	// Если требуется активировать базу событий как виртуальную
+	if(!this->_virt){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Если работа уже запущена
+		if(this->_work){
+			// Выполняем блокировку чтения данных
+			this->_init = false;
+			// Выполняем пинок
+			this->kick();
+		}
+		// Удаляем объект базы событий
+		if(this->base != nullptr)
+			// Удаляем объект базы событий
+			event_base_free(this->base);
+		// Создаем новую базу событий
+		this->base = event_base_new();
+		// Выполняем разблокировку чтения данных
+		this->_init = !this->_virt;
+	}
 }
 /**
  * freeze Метод заморозки чтения данных
  * @param mode флаг активации
  */
 void awh::Core::Dispatch::freeze(const bool mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если база событий проинициализированна
 	if(this->_init){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
 		this->_freeze = mode;
 		// Если запрещено использовать простое чтение базы событий
@@ -204,78 +281,29 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	this->kick();
 }
 /**
- * rebase Метод пересоздания базы событий
- * @param clear флаг очистки предыдущей базы событий
- */
-void awh::Core::Dispatch::rebase(const bool clear) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если работа уже запущена
-	if(this->_work){
-		// Выполняем блокировку чтения данных
-		this->_init = !this->_init;
-		// Выполняем пинок
-		this->kick();
-	}
-	// Удаляем объект базы событий
-	if(clear && (this->base != nullptr))
-		// Удаляем объект базы событий
-		event_base_free(this->base);
-	// Создаем новую базу событий
-	this->base = event_base_new();
-	// Если работа уже запущена
-	if(this->_work)
-		// Выполняем разблокировку чтения данных
-		this->_init = !this->_init;
-}
-/**
- * setBase Метод установки базы событий
- * @param base база событий
- */
-void awh::Core::Dispatch::setBase(struct event_base * base) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если база событий передана
-	if(base != nullptr){
-		// Если работа уже запущена
-		if(this->_work){
-			// Выполняем блокировку получения данных
-			this->_init = !this->_init;
-			// Выполняем пинок
-			this->kick();
-		}
-		// Если база событий проинициализированна
-		if(this->base != nullptr)
-			// Удаляем объект базы событий
-			event_base_free(this->base);
-		// Создаем новую базу
-		this->base = base;
-		// Если работа уже запущена
-		if(this->_work)
-			// Выполняем разблокировку получения данных
-			this->_init = !this->_init;
-	}
-}
-/**
  * frequency Метод установки частоты обновления базы событий
  * @param msec частота обновления базы событий в миллисекундах
  */
 void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если количество миллисекунд передано больше 0
-	if((this->_easy = (msec > 0)))
-		// Устанавливаем частоту обновления базы событий
-		this->_freq = chrono::milliseconds(msec);
-	// Выполняем сброс частоты обновления базы событий
-	else this->_freq = 10ms;
+	// Если база событий проинициализированна
+	if(this->_init){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Если количество миллисекунд передано больше 0
+		if((this->_easy = (msec > 0)))
+			// Устанавливаем частоту обновления базы событий
+			this->_freq = chrono::milliseconds(msec);
+		// Выполняем сброс частоты обновления базы событий
+		else this->_freq = 10ms;
+	}
 }
 /**
  * Dispatch Конструктор
  * @param core объект сетевого ядра
  */
 awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
- _core(core), _easy(false), _work(false), _init(true), _freeze(false), base(nullptr), _freq(10ms) {
+ _core(core), _easy(false), _work(false), _init(false), _virt(false),
+ _freeze(false), _freq(10ms), base(nullptr), _launching(nullptr), _closedown(nullptr) {
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -289,22 +317,22 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 			// Очищаем сетевой контекст
 			WSACleanup();
 			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			::exit(EXIT_FAILURE);
 		}
 		// Выполняем проверку версии WinSocket
 		if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
 			// Очищаем сетевой контекст
 			WSACleanup();
 			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			::exit(EXIT_FAILURE);
 		}
 	#endif
-	// Выполняем установку функции активации базы событий
-	this->_launching = std::bind(&awh::Core::launching, this->_core);
-	// Выполняем установку функции активации базы событий
-	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	// Выполняем инициализацию базы событий
-	this->rebase(false);
+	this->rebase();
+	// Выполняем установку функции активации базы событий
+	this->_launching = std::bind(&awh::Core::launching, this->_core, _1, _2);
+	// Выполняем установку функции активации базы событий
+	this->_closedown = std::bind(&awh::Core::closedown, this->_core, _1, _2);
 }
 /**
  * ~Dispatch Деструктор
@@ -313,9 +341,12 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 	// Выполняем остановку работы
 	this->stop();
 	// Если база событий проинициализированна
-	if(this->base != nullptr)
+	if(this->base != nullptr){
 		// Удаляем объект базы событий
 		event_base_free(this->base);
+		// Выполняем зануление базы событий
+		this->base = nullptr;
+	}
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -323,56 +354,6 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 		// Очищаем сетевой контекст
 		WSACleanup();
 	#endif
-}
-/**
- * launching Метод вызова при активации базы событий
- */
-void awh::Core::launching() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.status);
-	// Устанавливаем статус сетевого ядра
-	this->_status = status_t::START;
-	// Если список схем сети существует
-	if(!this->_schemes.empty()){
-		// Объект работы с функциями обратного вызова
-		fn_t callback(this->_log);
-		// Переходим по всему списку схем сети
-		for(auto & scheme : this->_schemes){
-			// Если функция обратного вызова установлена
-			if(scheme.second->callbacks.is("open"))
-				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callbacks.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
-		}
-		// Выполняем все функции обратного вызова
-		callback.bind();
-	}
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("status"))
-		// Выполняем запуск функции в основном потоке
-		this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
-	// Если разрешено выводить информацию в лог
-	if(!this->_noinfo)
-		// Выводим в консоль информацию
-		this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
-}
-/**
- * closedown Метод вызова при деакцтивации базы событий
- */
-void awh::Core::closedown() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.status);
-	// Устанавливаем статус сетевого ядра
-	this->_status = status_t::STOP;
-	// Выполняем отключение всех брокеров
-	this->close();
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("status"))
-		// Выполняем запуск функции в основном потоке
-		this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
-	// Если разрешено выводить информацию в лог
-	if(!this->_noinfo)
-		// Выводим в консоль информацию
-		this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
  * signal Метод вывода полученного сигнала
@@ -387,7 +368,7 @@ void awh::Core::signal(const int signal) noexcept {
 				// Выводим сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
 				// Выходим из приложения
-				exit(0);
+				::exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
@@ -416,7 +397,7 @@ void awh::Core::signal(const int signal) noexcept {
 			break;
 		}
 		// Выходим принудительно из приложения
-		exit(EXIT_FAILURE);
+		::exit(EXIT_FAILURE);
 	// Если процесс является родительским
 	} else {
 		// Если функция обратного вызова установлена
@@ -424,7 +405,73 @@ void awh::Core::signal(const int signal) noexcept {
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const int)> ("crash", signal);
 		// Выходим из приложения
-		else exit(signal);
+		else ::exit(signal);
+	}
+}
+/**
+ * launching Метод вызова при активации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Core::launching(const bool mode, const bool status) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.status);
+	// Если требуется изменить статус
+	if(status)
+		// Устанавливаем статус сетевого ядра
+		this->_status = status_t::START;
+	// Если список схем сети существует
+	if(mode && !this->_schemes.empty()){
+		// Объект работы с функциями обратного вызова
+		fn_t callback(this->_log);
+		// Переходим по всему списку схем сети
+		for(auto & scheme : this->_schemes){
+			// Если функция обратного вызова установлена
+			if(scheme.second->callbacks.is("open"))
+				// Устанавливаем полученную функцию обратного вызова
+				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callbacks.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
+		}
+		// Выполняем все функции обратного вызова
+		callback.bind();
+	}
+	// Если требуется изменить статус
+	if(status){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("status"))
+			// Выполняем запуск функции в основном потоке
+			this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
+		// Если разрешено выводить информацию в лог
+		if(!this->_noinfo)
+			// Выводим в консоль информацию
+			this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
+	}
+}
+/**
+ * closedown Метод вызова при деакцтивации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Core::closedown(const bool mode, const bool status) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.status);
+	// Если требуется изменить статус
+	if(status)
+		// Устанавливаем статус сетевого ядра
+		this->_status = status_t::STOP;
+	// Если требуется закрыть подключение
+	if(mode)
+		// Выполняем отключение всех брокеров
+		this->close();
+	// Если требуется изменить статус
+	if(status){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("status"))
+			// Выполняем запуск функции в основном потоке
+			this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
+		// Если разрешено выводить информацию в лог
+		if(!this->_noinfo)
+			// Выводим в консоль информацию
+			this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
 	}
 }
 /**
@@ -549,8 +596,10 @@ void awh::Core::bind(core_t * core) noexcept {
 		if(core->_dispatch.base != this->_dispatch.base){
 			// Выполняем остановку базы событий
 			core->stop();
-			// Устанавливаем новую базу событий
-			core->_dispatch.setBase(this->_dispatch.base);
+			// Выполняем перевод базы событий в виртуальную
+			core->_dispatch.virt(true);
+			// Выполняем установку базы событий
+			core->_dispatch.base = this->_dispatch.base;
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
 			// Увеличиваем количество подключённых потоков
@@ -573,7 +622,7 @@ void awh::Core::bind(core_t * core) noexcept {
 			core->_mtx.status.unlock();
 		}
 		// Выполняем запуск управляющей функции
-		core->launching();
+		core->launching(false, true);
 	}
 }
 /**
@@ -598,18 +647,14 @@ void awh::Core::unbind(core_t * core) noexcept {
 		 * Выполняем остановку всех таймеров
 		 */
 		core->clearTimers();
-		// Выполняем блокировку потока
-		core->_mtx.status.lock();
-		// Выполняем разблокировку потока
-		core->_mtx.status.unlock();
 		// Если DNS-резолвер установлен
 		if(core->_dns != nullptr)
 			// Выполняем удаление модуля DNS-резолвера
-			core->_dns->clear();	
+			core->_dns->clear();
+		// Выполняем перевод базы событий в не виртуальную
+		core->_dispatch.virt(false);
 		// Запускаем метод деактивации базы событий
-		core->closedown();
-		// Зануляем базу событий
-		core->_dispatch.base = nullptr;
+		core->closedown(false, true);
 	}
 }
 /**
@@ -629,10 +674,6 @@ void awh::Core::stop() noexcept {
 		 * Выполняем остановку всех таймеров
 		 */
 		this->clearTimers();
-		// Выполняем блокировку потока
-		this->_mtx.status.lock();
-		// Выполняем разблокировку потока
-		this->_mtx.status.unlock();
 		// Выполняем остановку чтения базы событий
 		this->_dispatch.stop();
 	// Выполняем разблокировку потока
@@ -1267,7 +1308,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::OS_BROKEN, "Microsoft Windows does not support Unix sockets");
 		// Выходим принудительно из приложения
-		exit(EXIT_FAILURE);
+		::exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return !this->_settings.filename.empty();
@@ -1338,7 +1379,7 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, "SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system");
 			// Выходим принудительно из приложения
-			exit(EXIT_FAILURE);
+			::exit(EXIT_FAILURE);
 		}
 	#endif
 }

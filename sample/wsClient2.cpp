@@ -25,9 +25,6 @@ class WebClient {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект веб-клиента
-		client::awh_t * _awh;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -56,8 +53,9 @@ class WebClient {
 		 * @param sid   идентификатор потока
 		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
+		 * @param awh   объект web-клиента
 		 */
-		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent){
+		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -177,7 +175,7 @@ class WebClient {
 				// Получаем параметры запроса в виде строки
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
-				this->_awh->sendMessage(vector <char> (query.begin(), query.end()));
+				awh->sendMessage(vector <char> (query.begin(), query.end()));
 			}
 		}
 		/**
@@ -193,12 +191,13 @@ class WebClient {
 		 * message Метод получения сообщений
 		 * @param buffer бинарный буфер сообщения
 		 * @param utf8   тип буфера сообщения
+		 * @param awh    объект web-клиента
 		 */
-		void message(const vector <char> & buffer, const bool utf8){
+		void message(const vector <char> & buffer, const bool utf8, client::awh_t * awh){
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
-			const auto subprotocols = this->_awh->subprotocols();
+			const auto subprotocols = awh->subprotocols();
 			// Если список выбранных сабпротоколов получен
 			if(!subprotocols.empty())
 				// Выполняем получение выбранного сабпротокола
@@ -233,8 +232,9 @@ class WebClient {
 		/**
 		 * active Метод идентификации активности на Web-клиенте
 		 * @param mode режим события подключения
+		 * @param awh  объект web-клиента
 		 */
-		void active(const client::web_t::mode_t mode){
+		void active(const client::web_t::mode_t mode, client::awh_t * awh){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			// Если подключение выполнено
@@ -252,7 +252,7 @@ class WebClient {
 				// Устанавливаем тип компрессии данных
 				req.compressors = {http_t::compress_t::DEFLATE};
 				// Выполняем первый запрос на сервер
-				this->_awh->send(std::move(req));
+				awh->send(std::move(req));
 			}
 		}
 		/**
@@ -262,8 +262,9 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param entity  тело ответа сервера
+		 * @param awh     объект web-клиента
 		 */
-		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -286,7 +287,7 @@ class WebClient {
 			}
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
-			this->_awh->stop();
+			awh->stop();
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
@@ -310,9 +311,8 @@ class WebClient {
 		 * WebClient Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param awh объект WEB-клиента
 		 */
-		WebClient(const fmk_t * fmk, const log_t * log, client::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh) {}
+		WebClient(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -333,7 +333,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект WEB запроса
 	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	WebClient executor(&fmk, &log, &awh);
+	WebClient executor(&fmk, &log);
 	// Устанавливаем активный протокол подключения
 	// core.proto(awh::engine_t::proto_t::HTTP2);
 	core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -397,20 +397,20 @@ int main(int argc, char * argv[]){
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
-	// Устанавливаем метод активации подключения
-	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
 	awh.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
 	// Подписываемся на событие запуска/остановки сервера
 	awh.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&WebClient::status, &executor, _1, _2));
+	// Устанавливаем метод активации подключения
+	awh.callback <void (const client::web_t::mode_t, client::awh_t *)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	// Подписываемся на событие получения сообщения с сервера
-	awh.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2));
+	awh.callback <void (const vector <char> &, const bool, client::awh_t *)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2, &awh));
 	// Устанавливаем метод получения сообщения сервера
 	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Подписываемся на событие рукопожатия
-	awh.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&WebClient::handshake, &executor, _1, _2, _3));
+	awh.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t, client::awh_t *)> ("handshake", std::bind(&WebClient::handshake, &executor, _1, _2, _3, &awh));
 	// Устанавливаем метод получения тела ответа
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, client::awh_t *)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
 	// Устанавливаем метод получения заголовков
 	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем инициализацию подключения	

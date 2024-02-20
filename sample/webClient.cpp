@@ -257,10 +257,9 @@ int main(int argc, char * argv[]){
 	// awh.proxy("http://user:password@anyks.net:2222");
 	// awh.proxy("https://user:password@anyks.net:2222");
 	// awh.proxy("socks5://user:password@anyks.net:2222");
-
 	/*
 	// Устанавливаем тип компрессии
-	awh.compress({
+	awh.compressors({
 		http_t::compress_t::ZSTD,
 		http_t::compress_t::BROTLI,
 		http_t::compress_t::GZIP,

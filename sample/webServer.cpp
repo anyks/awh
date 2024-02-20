@@ -26,9 +26,6 @@ class WebServer {
 		// Создаём объект работы с логами
 		const log_t * _log;
 	private:
-		// Объект веб-сервера
-		server::awh_t * _awh;
-	private:
 		// Метод запроса клиента
 		awh::web_t::method_t _method;
 	public:
@@ -95,14 +92,15 @@ class WebServer {
 		 * @param bid    идентификатор брокера (клиента)
 		 * @param buffer бинарный буфер сообщения
 		 * @param text   тип буфера сообщения
+		 * @param awh    объект веб-сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer, const bool text){
+		void message(const uint64_t bid, const vector <char> & buffer, const bool text, server::awh_t * awh){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
 				string subprotocol = "";
 				// Получаем список выбранных сабпротоколов
-				const auto subprotocols = this->_awh->subprotocols(bid);
+				const auto subprotocols = awh->subprotocols(bid);
 				// Если список выбранных сабпротоколов получен
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
@@ -110,7 +108,7 @@ class WebServer {
 				// Выводим информацию в лог
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
-				this->_awh->sendMessage(bid, buffer, text);
+				awh->sendMessage(bid, buffer, text);
 			}
 		}
 		/**
@@ -118,14 +116,15 @@ class WebServer {
 		 * @param sid   идентификатор потока
 		 * @param bid   идентификатор брокера
 		 * @param agent идентификатор агента клиента
+		 * @param awh   объект веб-сервера
 		 */
-		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent){
+		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent, server::awh_t * awh){
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
-				this->_awh->encrypt(sid, bid, false);
+				awh->encrypt(sid, bid, false);
 				// Извлекаем адрес URL-запроса
-				cout << " URL: " << this->_awh->parser(sid, bid)->request().url << endl;
+				cout << " URL: " << awh->parser(sid, bid)->request().url << endl;
 				// Формируем тело ответа
 				const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 				"<h1>\"Hello, World!\" program</h1>\n"
@@ -138,7 +137,7 @@ class WebServer {
 				"</div>\n</body>\n</html>\n";
 				/*
 				// Если протокол подключения принадлежит к HTTP/2
-				if(this->_awh->proto(bid) == engine_t::proto_t::HTTP2){
+				if(awh->proto(bid) == engine_t::proto_t::HTTP2){
 					// Выполняем отправку заголовковй временного овтета
 					vector <pair <string, string>> headers = {
 						{":method", "GET"},
@@ -149,21 +148,21 @@ class WebServer {
 						{"user-agent", "nghttp2/1.0.1-DEV"}
 					};
 					// Выполняем отправку push-уведомлений
-					if(this->_awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
+					if(awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)
 						// Если запрос не был отправлен выводим сообщение об ошибке
 						this->_log->print("Push message is not send", log_t::flag_t::WARNING);
 				}
 				*/
 				// Если клиент запросил передачу трейлеров
-				if(this->_awh->trailers(sid, bid)){
+				if(awh->trailers(sid, bid)){
 					// Устанавливаем тестовые трейлеры
-					this->_awh->trailer(sid, bid, "Goga", "Hello");
-					this->_awh->trailer(sid, bid, "Hello", "World");
-					this->_awh->trailer(sid, bid, "Anyks", "Best of the best");
-					this->_awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+					awh->trailer(sid, bid, "Goga", "Hello");
+					awh->trailer(sid, bid, "Hello", "World");
+					awh->trailer(sid, bid, "Anyks", "Best of the best");
+					awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
 				}
 				// Отправляем сообщение клиенту
-				this->_awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
+				awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
 			}
 		}
 		/**
@@ -172,14 +171,15 @@ class WebServer {
 		 * @param bid    идентификатор брокера
 		 * @param method метод запроса
 		 * @param url    url-адрес запроса
+		 * @param awh    объект веб-сервера
 		 */
-		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url){
+		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, server::awh_t * awh){
 			// Запоминаем метод запроса
 			this->_method = method;
 			// Если пришёл запрос на фавиконку
 			if(!url.empty() && (!url.path.empty() && url.path.back().compare("favicon.ico") == 0))
 				// Выполняем реджект
-				this->_awh->send(sid, bid, 404);
+				awh->send(sid, bid, 404);
 		}
 		/**
 		 * complete Метод завершения получения запроса клиента
@@ -189,8 +189,9 @@ class WebServer {
 		 * @param url     url-адрес запроса
 		 * @param entity  тело запроса
 		 * @param headers заголовки запроса
+		 * @param awh     объект веб-сервера
 		 */
-		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -201,7 +202,7 @@ class WebServer {
 				// Выводим информацию о входящих данных
 				cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
 				// Отправляем сообщение клиенту
-				this->_awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+				awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 			}
 		}
 	public:
@@ -209,9 +210,8 @@ class WebServer {
 		 * WebServer Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param awh объект WEB-сервера
 		 */
-		WebServer(const fmk_t * fmk, const log_t * log, server::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh), _method(awh::web_t::method_t::NONE) {}
+		WebServer(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
 };
 
 /**
@@ -230,7 +230,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект WEB-клиента
 	server::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	WebServer executor(&fmk, &log, &awh);
+	WebServer executor(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("WEB Server");
 	// Устанавливаем формат времени
@@ -314,9 +314,9 @@ int main(int argc, char * argv[]){
 	*/
 	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Активируем шифрование
-	awh.encryption(true);
+	// awh.encryption(true);
 	// Устанавливаем пароль шифрования
-	awh.encryption(string{"PASS"});
+	// awh.encryption(string{"PASS"});
 	// Устанавливаем разрешённый источник
 	awh.addOrigin("anyks.net");
 	// Устанавливаем альтернативный сервис
@@ -335,13 +335,13 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3));
+	awh.callback <void (const uint64_t, const vector <char> &, const bool, server::awh_t *)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3));
+	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t, server::awh_t *)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
 	// Установливаем функцию обратного вызова на событие получения запроса
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, server::awh_t *)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
 	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &, server::awh_t *)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат
