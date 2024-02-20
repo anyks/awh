@@ -268,6 +268,22 @@ void awh::client::Http1::writeCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
+ * answer Метод получение статуса ответа сервера
+ * @param sid    идентификатор потока
+ * @param rid    идентификатор запроса
+ * @param status статус ответа сервера
+ */
+void awh::client::Http1::answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept {
+	// Если статус входящего сообщения является положительным
+	if(status == awh::http_t::status_t::GOOD)
+		// Выполняем сброс количества попыток
+		this->_attempt = 0;
+	// Если функция обратного вызова получения статуса ответа установлена
+	if(this->_callbacks.is("answer"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, rid, status);
+}
+/**
  * redirect Метод выполнения редиректа если требуется
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
@@ -584,6 +600,15 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Запрещаем выполнять редирект
 				status = awh::http_t::status_t::GOOD;
 	}
+	// Выполняем поиск указанного запроса
+	auto it = this->_requests.find(sid);
+	// Если параметры активного запроса найдены
+	if(it != this->_requests.end()){
+		// Если функция обратного вызова получения статуса ответа установлена
+		if(this->_callbacks.is("answer"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, it->second.id, status);
+	}
 	// Выполняем анализ результата авторизации
 	switch(static_cast <uint8_t> (status)){
 		// Если нужно попытаться ещё раз
@@ -595,7 +620,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			// Если попытки повторить переадресацию ещё не закончились
 			if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 				// Выполняем поиск указанного запроса
-				auto it = this->_requests.find(sid);
+				it = this->_requests.find(sid);
 				// Если параметры активного запроса найдены
 				if(it != this->_requests.end()){
 					// Получаем новый адрес запроса
@@ -672,7 +697,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если запрос выполнен удачно
 		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 			// Выполняем поиск указанного запроса
-			auto it = this->_requests.find(sid);
+			it = this->_requests.find(sid);
 			// Если параметры активного запроса найдены
 			if(it != this->_requests.end()){
 				// Выполняем сброс количества попыток
@@ -703,7 +728,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если запрос неудачный
 		case static_cast <uint8_t> (awh::http_t::status_t::FAULT): {
 			// Выполняем поиск указанного запроса
-			auto it = this->_requests.find(sid);
+			it = this->_requests.find(sid);
 			// Если параметры активного запроса найдены
 			if(it != this->_requests.end()){
 				// Устанавливаем флаг принудительной остановки
@@ -728,7 +753,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		}
 	}
 	// Выполняем поиск указанного запроса
-	auto it = this->_requests.find(sid);
+	it = this->_requests.find(sid);
 	// Если параметры активного запроса найдены
 	if(it != this->_requests.end()){
 		// Выполняем очистку оставшихся данных
@@ -1407,6 +1432,8 @@ void awh::client::Http1::encryption(const string & pass, const string & salt, co
  */
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http1_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1428,6 +1455,8 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http1_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

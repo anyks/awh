@@ -102,6 +102,14 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
+				 * answer Метод получение статуса ответа сервера
+				 * @param sid    идентификатор потока
+				 * @param rid    идентификатор запроса
+				 * @param status статус ответа сервера
+				 */
+				void answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept;
+			private:
+				/**
 				 * redirect Метод выполнения редиректа если требуется
 				 * @param bid  идентификатор брокера
 				 * @param sid  идентификатор схемы сети

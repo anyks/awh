@@ -532,6 +532,10 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 		switch(static_cast <uint8_t> (this->_http.auth())){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (http_t::status_t::RETRY): {
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::RETRY);
 				// Если попытка повторить авторизацию ещё не проводилась
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 					// Если функция обратного вызова на на вывод ошибок установлена
@@ -610,6 +614,10 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 			} break;
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::status_t::GOOD): {
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::GOOD);
 				// Если рукопожатие выполнено
 				if((this->_shake = this->_http.handshake(http_t::process_t::RESPONSE))){
 					// Выполняем сброс количества попыток
@@ -696,6 +704,10 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 				this->_mess = ws::mess_t(response.code, response.message);
 				// Выводим сообщение
 				this->error(this->_mess);
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::FAULT);
 				// Если функция обратного вызова активности потока установлена
 				if(this->_callbacks.is("stream"))
 					// Устанавливаем полученную функцию обратного вызова

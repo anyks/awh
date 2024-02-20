@@ -617,6 +617,22 @@ int awh::client::Websocket2::headerSignal(const int32_t sid, const string & key,
 	return 0;
 }
 /**
+ * answer Метод получение статуса ответа сервера
+ * @param sid    идентификатор потока
+ * @param rid    идентификатор запроса
+ * @param status статус ответа сервера
+ */
+void awh::client::Websocket2::answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept {
+	// Если статус входящего сообщения является положительным
+	if(status == awh::http_t::status_t::GOOD)
+		// Выполняем сброс количества попыток
+		this->_attempt = 0;
+	// Если функция обратного вызова получения статуса ответа установлена
+	if(this->_callbacks.is("answer"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, rid, status);
+}
+/**
  * redirect Метод выполнения редиректа если требуется
  * @param bid  идентификатор брокера
  * @param sid  идентификатор схемы сети
@@ -862,6 +878,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 		switch(static_cast <uint8_t> (this->_http.auth())){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (http_t::status_t::RETRY): {
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::RETRY);
 				// Если попытка повторить авторизацию ещё не проводилась
 				if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 					// Увеличиваем количество попыток
@@ -918,6 +938,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 			} break;
 			// Если запрос выполнен удачно
 			case static_cast <uint8_t> (http_t::status_t::GOOD): {
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::GOOD);
 				// Если рукопожатие выполнено
 				if((this->_shake = this->_http.handshake(http_t::process_t::RESPONSE))){
 					// Выполняем сброс количества попыток
@@ -1000,6 +1024,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				this->_mess = ws::mess_t(response.code, response.message);
 				// Выводим сообщение
 				this->error(this->_mess);
+				// Если функция обратного вызова получения статуса ответа установлена
+				if(this->_callbacks.is("answer"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, this->_rid, http_t::status_t::FAULT);
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
@@ -1887,6 +1915,8 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&ws2_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&ws2_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
@@ -1903,6 +1933,8 @@ awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * f
  _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _proto(engine_t::proto_t::HTTP1_1), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&ws2_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&ws2_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных

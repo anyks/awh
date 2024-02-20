@@ -629,6 +629,22 @@ void awh::client::Http2::end(const int32_t sid, const uint64_t rid, const direct
 		this->_callbacks.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, rid, direct);
 }
 /**
+ * answer Метод получение статуса ответа сервера
+ * @param sid    идентификатор потока
+ * @param rid    идентификатор запроса
+ * @param status статус ответа сервера
+ */
+void awh::client::Http2::answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept {
+	// Если статус входящего сообщения является положительным
+	if(status == awh::http_t::status_t::GOOD)
+		// Выполняем сброс количества попыток
+		this->_attempt = 0;
+	// Если функция обратного вызова получения статуса ответа установлена
+	if(this->_callbacks.is("answer"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, rid, status);
+}
+/**
  * redirect Метод выполнения смены потоков
  * @param from идентификатор предыдущего потока
  * @param to   идентификатор нового потока
@@ -1047,6 +1063,10 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 					// Запрещаем выполнять редирект
 					status = awh::http_t::status_t::GOOD;
 		}
+		// Если функция обратного вызова получения статуса ответа установлена
+		if(this->_callbacks.is("answer"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, it->second->id, status);
 		// Выполняем анализ результата авторизации
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
@@ -2107,8 +2127,12 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
 	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
+	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
+	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова для Websocket-клиента
 	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова перехвата события редиректа
 	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
@@ -2126,8 +2150,12 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
  web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
 	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
+	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
+	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова для Websocket-клиента
 	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
+	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
+	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова перехвата события редиректа
 	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок

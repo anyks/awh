@@ -273,6 +273,10 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 									// Запрещаем выполнять редирект
 									status = awh::http_t::status_t::GOOD;
 							}
+							// Если функция обратного вызова получения статуса ответа установлена
+							if(this->_callbacks.is("answer"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", 1, 0, status);
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (status)){
 								// Если нужно попытаться ещё раз
@@ -533,6 +537,8 @@ void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("origin", callbacks);
 	// Выполняем установку функции обратного вызова при получении альтернативных сервисов
 	this->_callbacks.set("altsvc", callbacks);
+	// Выполняем установку функции обратного вызова при получении ответа сервера
+	this->_callbacks.set("answer", callbacks);
 	// Выполняем установку функции обратного вызова для вывода полученного чанка бинарных данных с сервера
 	this->_callbacks.set("chunks", callbacks);
 	// Выполняем установку функции обратного вызова для вывода полученного заголовка с сервера

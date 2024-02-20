@@ -180,6 +180,13 @@ namespace awh {
 				 * @param direct направление передачи данных
 				 */
 				void end(const int32_t sid, const uint64_t rid, const direct_t direct) noexcept;
+				/**
+				 * answer Метод получение статуса ответа сервера
+				 * @param sid    идентификатор потока
+				 * @param rid    идентификатор запроса
+				 * @param status статус ответа сервера
+				 */
+				void answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept;
 			private:
 				/**
 				 * redirect Метод выполнения смены потоков
