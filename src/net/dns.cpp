@@ -2045,7 +2045,7 @@ void awh::DNS::hosts(const string & filename) noexcept {
 		// Создаём объект для работы с файловой системой
 		fs_t fs(this->_fmk, this->_log);
 		// Выполняем установку адреса файла hosts
-		const string & hostsFilename = fs.realPath(filename);
+		const string & hostsFilename = fs.realPath(filename, false);
 		// Если файл существует в файловой системе
 		if(fs.isFile(hostsFilename)){
 			// Выполняем очистку списка локальных IPv4 адресов из кэша
@@ -2064,8 +2064,12 @@ void awh::DNS::hosts(const string & filename) noexcept {
 					for(size_t i = 0; i < entry.size(); i++){
 						// Выполняем получение текущего символа
 						const u_char c = entry.at(i);
+						// Если символ является комментарием
+						if(c == '#')
+							// Выходим из цикла
+							break;
 						// Если символ является пробелом
-						if(isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v')){
+						if(::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v')){
 							// Если хост уже собран
 							if(!host.empty()){
 								// Выполняем добавление хоста в список хостов
@@ -2098,7 +2102,7 @@ void awh::DNS::hosts(const string & filename) noexcept {
 								// Выполняем добавление в кэш новый IP-адрес
 								this->setToCache(family, hosts.at(i), hosts.front(), true);
 						// Сообщаем, что определить IP-адрес не удалось
-						} else this->_log->print("Entry provided [%s] is not an IP address", log_t::flag_t::WARNING, hosts.front().c_str());
+						} else this->_log->print("Entry provided [%s] is not an IP-address", log_t::flag_t::WARNING, hosts.front().c_str());
 					// Выводим сообщение, что текст передан неверный
 					} else this->_log->print("Hosts in entry %s not found", log_t::flag_t::WARNING, entry.c_str());
 				}

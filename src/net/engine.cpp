@@ -2397,7 +2397,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если каталог получен
 			if(path != nullptr){
 				// Получаем полный адрес
-				const string & dir = this->_fs.realPath(this->_cert.capath);
+				const string & dir = this->_fs.realPath(this->_cert.capath, false);
 				// Если адрес существует
 				if(this->_fs.isDir(dir) && !this->_fs.isFile(this->_cert.ca)){
 					/**
@@ -3747,13 +3747,13 @@ void awh::Engine::ca(const string & ca, const string & path) noexcept {
 	// Если адрес CA-файла передан
 	if(!ca.empty())
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
-		this->_cert.ca = this->_fs.realPath(ca);
+		this->_cert.ca = this->_fs.realPath(ca, false);
 	// Если адрес CA-файла не передан, выполняем очистку ранее установленного CA-файла
 	else this->_cert.ca.clear();
 	// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
 	if(!path.empty() && this->_fs.isDir(path))
 		// Устанавливаем адрес каталога с доверенным сертификатом (CA-файлом)
-		this->_cert.capath = this->_fs.realPath(path);
+		this->_cert.capath = this->_fs.realPath(path, false);
 	// Если путь хранения CA-файлов не передан, выполняем очистку ранее установленного
 	else this->_cert.capath.clear();
 }
@@ -3766,13 +3766,13 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
 	// Если ключ сертификата передан
 	if(!key.empty())
 		// Устанавливаем приватный ключ сертификата
-		this->_cert.key = this->_fs.realPath(key);
+		this->_cert.key = this->_fs.realPath(key, false);
 	// Если ключ не передан, очищаем установленный ключ сертификата
 	else this->_cert.key.clear();
 	// Если сертификат передан
 	if(!chain.empty())
 		// Устанавливаем файл полной цепочки сертификатов
-		this->_cert.chain = this->_fs.realPath(chain);
+		this->_cert.chain = this->_fs.realPath(chain, false);
 	// Если сертификат не передан, очищаем установленный адрес сертификата
 	else this->_cert.chain.clear();
 }
@@ -3785,7 +3785,7 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
  _verify(true), _fs(fmk, log), _cipher{""}, _fmk(fmk), _uri(uri), _log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
-	this->_cert.ca = this->_fs.realPath(this->_cert.ca);
+	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
 	// Выполняем установку алгоритмов шифрования
 	this->ciphers({
 		"ECDHE+AESGCM",
