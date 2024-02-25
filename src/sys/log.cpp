@@ -112,7 +112,7 @@ void awh::Log::rotate() const noexcept {
 			// Выполняем закрытие файла
 			CloseHandle(file);
 			// Если размер файла лога, превышает максимально-установленный
-			if(size >= this->_maxFileSize)
+			if(size >= this->_maxSize)
 				// Удаляем исходный файл логов
 				_wunlink(filename.c_str());
 		#endif
@@ -150,6 +150,8 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			HANDLE file = CreateFileW(this->_fmk->convert(this->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 			// Если открыть файл открыт нормально
 			if(file != INVALID_HANDLE_VALUE){
+				// Текст логирования для записи в файл лога
+				string logData = "";
 				// Определяем тип сообщения
 				switch(static_cast <uint8_t> (payload.flag)){
 					// Выводим сообщение так-как оно есть
