@@ -1,6 +1,6 @@
 /**
  * @file: fs.hpp
- * @date: 2023-02-13
+ * @date: 2024-02-25
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
@@ -8,7 +8,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2023
+ * @copyright: Copyright © 2024
  */
 
 #ifndef __AWH_FS__
@@ -224,22 +224,23 @@ namespace awh {
 			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
+			 * chmod Метод получения метаданных файла или каталога
+			 * @param path полный путь к файлу или каталогу
+			 * @return     запрашиваемые метаданные
+			 */
+			mode_t chmod(const string & path) const noexcept;
+			/**
+			 * chmod Метод изменения метаданных файла или каталога
+			 * @param path полный путь к файлу или каталогу
+			 * @param mode метаданные для установки
+			 * @return     результат работы функции
+			 */
+			bool chmod(const string & path, const mode_t mode) const noexcept;
+		public:
+			/**
 			 * Выполняем работу для Unix
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
-				/**
-				 * chmod Метод получения метаданных файла или каталога
-				 * @param path полный путь к файлу или каталогу
-				 * @return     запрашиваемые метаданные
-				 */
-				mode_t chmod(const string & path) const noexcept;
-				/**
-				 * chmod Метод изменения метаданных файла или каталога
-				 * @param path полный путь к файлу или каталогу
-				 * @param mode метаданные для установки
-				 * @return     результат работы функции
-				 */
-				bool chmod(const string & path, const mode_t mode) const noexcept;
 				/**
 				 * chown Метод установки владельца на каталог
 				 * @param path  путь к файлу или каталогу для установки владельца
@@ -248,6 +249,18 @@ namespace awh {
 				 * @return      результат работы функции
 				 */
 				bool chown(const string & path, const string & user, const string & group) const noexcept;
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#else
+				/**
+				 * seek Метод установки позиции в файле
+				 * @param file     объект открытого файла
+				 * @param distance дистанцию на которую нужно переместить позицию
+				 * @param position текущая позиция в файле
+				 * @return         перенос позиции в файле
+				 */
+				int64_t seek(HANDLE file, const int64_t distance, const DWORD position) const noexcept;
 			#endif
 		public:
 			/**

@@ -74,9 +74,10 @@ namespace awh {
 			 * codepage_t Типы кодировок адресов файлов и каталогов
 			 */
 			enum class codepage_t : uint8_t {
-				NONE   = 0x00, // Кодировка не установлена
-				UTF8   = 0x01, // Кодировка UTF-8
-				CP1251 = 0x02  // Кодировка CP1251
+				NONE        = 0x00, // Кодировка не установлена
+				AUTO        = 0x01, // Автоматическое определение
+				UTF8_CP1251 = 0x02, // Кодировка UTF-8
+				CP1251_UTF8 = 0x03  // Кодировка CP1251
 			};
 			/**
 			 * stamp_t Тип штампа времени
@@ -453,12 +454,18 @@ namespace awh {
 			string hash(const string & key, const string & text, const hash_t hash) const noexcept;
 		public:
 			/**
+			 * isUTF8 Метод проверки состоит ли текст в кодировке UTF-8
+			 * @param text текст для проверки
+			 * @return     результат проверки
+			 */
+			bool isUTF8(const string & text) const noexcept;
+			/**
 			 * iconv Метод конвертирования строки кодировки
 			 * @param text     текст для конвертирования
 			 * @param codepage кодировка в которую необходимо сконвертировать текст
 			 * @return         сконвертированный текст в требуемой кодировке
 			 */
-			string iconv(const string & text, const codepage_t codepage) const noexcept;
+			string iconv(const string & text, const codepage_t codepage = codepage_t::AUTO) const noexcept;
 		public:
 			/**
 			 * transform Метод трансформации одного символа

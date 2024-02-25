@@ -19,52 +19,103 @@
  * rotate Метод выполнения ротации логов
  */
 void awh::Log::rotate() const noexcept {
-	// Структура проверка статистики
-	struct stat info;
-	// Если тип определён
-	if(::stat(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251).c_str(), &info) == 0){
-		// Выводим размер файла
-		const uintmax_t size = static_cast <uintmax_t> (info.st_size);
-		// Если размер файла лога, превышает максимально-установленный
-		if(size >= this->_maxSize){
-			// Создаем буфер для хранения даты
-			char date[80];
-			// Заполняем буфер нулями
-			::memset(date, 0, sizeof(date));
-			// Определяем количество секунд
-			const time_t seconds = time(nullptr);
-			// Получаем структуру локального времени
-			struct tm * timeinfo = localtime(&seconds);
-			// Создаем формат полученного времени
-			const string format = "_%m-%d-%Y_%H-%M-%S";
-			// Копируем в буфер полученную дату и время
-			strftime(date, sizeof(date), format.c_str(), timeinfo);
-			// Открываем файл на чтение
-			ifstream file(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251), ios::in);
-			// Если файл открыт
-			if(file.is_open()){
-				// Прочитанная строка из файла
-				string filedata = "";
-				// Открываем файл на сжатие
-				gzFile gz = gzopen(this->_fmk->iconv(this->_fmk->format("%s.gz", this->_filename.c_str()), fmk_t::codepage_t::CP1251).c_str(), "wb9h");
-				// Считываем до тех пор пока все удачно
-				while(file.good()){
-					// Считываем строку из файла
-					getline(file, filedata);
+	/**
+	 * Выполняем работу для Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Размер файла лога
+		uintmax_t size = 0;
+		// Получаем адрес файла для записи
+		const wstring & filename = this->_fmk->convert(this->_filename);
+		// Создаём объект работы с файлом
+		HANDLE file = CreateFileW(filename.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+		// Если открыть файл открыт нормально
+		if(file != INVALID_HANDLE_VALUE){
+			// Получаем размер файла лога
+			size = static_cast <uintmax_t> (GetFileSize(file, nullptr));
+	/**
+	 * Выполняем работу для Unix
+	 */
+	#else
+		// Структура проверка статистики
+		struct stat info;
+		// Если тип определён
+		if(::stat(this->_filename.c_str(), &info) == 0){
+			// Выводим размер файла
+			const uintmax_t size = static_cast <uintmax_t> (info.st_size);
+	#endif
+			// Если размер файла лога, превышает максимально-установленный
+			if(size >= this->_maxSize){
+				// Создаем буфер для хранения даты
+				char date[80];
+				// Заполняем буфер нулями
+				::memset(date, 0, sizeof(date));
+				// Определяем количество секунд
+				const time_t seconds = ::time(nullptr);
+				// Получаем структуру локального времени
+				struct tm * timeinfo = ::localtime(&seconds);
+				// Создаем формат полученного времени
+				const string format = "_%m-%d-%Y_%H-%M-%S";
+				// Копируем в буфер полученную дату и время
+				::strftime(date, sizeof(date), format.c_str(), timeinfo);
+				/**
+				 * Выполняем работу для Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Прочитанная строка из файла
+					string filedata(size, 0);
+					// Открываем файл на сжатие
+					gzFile gz = gzopen_w(this->_fmk->convert(this->_fmk->format("%s.gz", this->_filename.c_str())).c_str(), "wb9h");
+					// Выполняем чтение из файла в буфер данные
+					ReadFile(file, static_cast <LPVOID> (filedata.data()), static_cast <DWORD> (filedata.size()), 0, nullptr);
 					// Если данные строки получены
 					if(!filedata.empty())
 						// Выполняем сжатие файла
 						gzwrite(gz, filedata.data(), filedata.size());
-				}
-				// Закрываем сжатый файл
-				gzclose(gz);
-				// Закрываем файл
-				file.close();
-				// Удаляем исходный файл логов
-				::unlink(this->_filename.c_str());
+					// Закрываем сжатый файл
+					gzclose(gz);
+				/**
+				 * Выполняем работу для Unix
+				 */
+				#else
+					// Открываем файл на чтение
+					ifstream file(this->_filename, ios::in);
+					// Если файл открыт
+					if(file.is_open()){
+						// Прочитанная строка из файла
+						string filedata = "";
+						// Открываем файл на сжатие
+						gzFile gz = gzopen(this->_fmk->format("%s.gz", this->_filename.c_str()).c_str(), "wb9h");
+						// Считываем до тех пор пока все удачно
+						while(file.good()){
+							// Считываем строку из файла
+							getline(file, filedata);
+							// Если данные строки получены
+							if(!filedata.empty())
+								// Выполняем сжатие файла
+								gzwrite(gz, filedata.data(), filedata.size());
+						}
+						// Закрываем сжатый файл
+						gzclose(gz);
+						// Закрываем файл
+						file.close();
+						// Удаляем исходный файл логов
+						::unlink(this->_filename.c_str());
+					}
+				#endif
 			}
 		}
-	}
+		/**
+		 * Выполняем работу для Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие файла
+			CloseHandle(file);
+			// Если размер файла лога, превышает максимально-установленный
+			if(size >= this->_maxFileSize)
+				// Удаляем исходный файл логов
+				_wunlink(filename.c_str());
+		#endif
 }
 /**
  * receiving Метод получения данных
@@ -78,11 +129,11 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Заполняем буфер нулями
 	::memset(date, 0, sizeof(date));
 	// Определяем количество секунд
-	const time_t seconds = time(nullptr);
+	const time_t seconds = ::time(nullptr);
 	// Получаем структуру локального времени
-	struct tm * timeinfo = localtime(&seconds);
+	struct tm * timeinfo = ::localtime(&seconds);
 	// Копируем в буфер полученную дату и время
-	strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
+	::strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
 	// Если размер буфера меньше 3-х байт
 	if(payload.data.length() < 3)
 		// Проверяем является ли это переводом строки
@@ -91,38 +142,81 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
-		// Открываем файл на запись
-		ofstream file(this->_fmk->iconv(this->_filename, fmk_t::codepage_t::CP1251), ios::out | ios::app);
-		// Если файл открыт
-		if(file.is_open()){
-			// Определяем тип сообщения
-			switch(static_cast <uint8_t> (payload.flag)){
-				// Выводим сообщение так-как оно есть
-				case static_cast <uint8_t> (flag_t::NONE):
-					// Формируем текстовый вид лога
-					file << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим информационное сообщение
-				case static_cast <uint8_t> (flag_t::INFO):
-					// Формируем текстовый вид лога
-					file << this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим сообщение об ошибке
-				case static_cast <uint8_t> (flag_t::CRITICAL):
-					// Формируем текстовый вид лога
-					file << this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим сообщение предупреждения
-				case static_cast <uint8_t> (flag_t::WARNING):
-					// Формируем текстовый вид лога
-					file << this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
+		/**
+		 * Выполняем работу для Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем открытие файла на запись
+			HANDLE file = CreateFileW(this->_fmk->convert(this->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+			// Если открыть файл открыт нормально
+			if(file != INVALID_HANDLE_VALUE){
+				// Определяем тип сообщения
+				switch(static_cast <uint8_t> (payload.flag)){
+					// Выводим сообщение так-как оно есть
+					case static_cast <uint8_t> (flag_t::NONE):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим информационное сообщение
+					case static_cast <uint8_t> (flag_t::INFO):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение об ошибке
+					case static_cast <uint8_t> (flag_t::CRITICAL):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение предупреждения
+					case static_cast <uint8_t> (flag_t::WARNING):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+				}
+				// Выполняем запись в файл
+				WriteFile(file, static_cast <LPCVOID> (logData.data()), static_cast <DWORD> (logData.size()), 0, nullptr);
 			}
-			// Закрываем файл
-			file.close();
+			// Выполняем закрытие файла
+			CloseHandle(file);
 			// Выполняем ротацию логов
 			this->rotate();
-		}
+		/**
+		 * Выполняем работу для Unix
+		 */
+		#else
+			// Открываем файл на запись
+			ofstream file(this->_filename, ios::out | ios::app);
+			// Если файл открыт
+			if(file.is_open()){
+				// Определяем тип сообщения
+				switch(static_cast <uint8_t> (payload.flag)){
+					// Выводим сообщение так-как оно есть
+					case static_cast <uint8_t> (flag_t::NONE):
+						// Формируем текстовый вид лога
+						file << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим информационное сообщение
+					case static_cast <uint8_t> (flag_t::INFO):
+						// Формируем текстовый вид лога
+						file << this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение об ошибке
+					case static_cast <uint8_t> (flag_t::CRITICAL):
+						// Формируем текстовый вид лога
+						file << this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение предупреждения
+					case static_cast <uint8_t> (flag_t::WARNING):
+						// Формируем текстовый вид лога
+						file << this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+				}
+				// Закрываем файл
+				file.close();
+				// Выполняем ротацию логов
+				this->rotate();
+			}
+		#endif
 	}
 	// Если вывод сообщения в консоль разрешён
 	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){

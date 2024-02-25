@@ -1171,6 +1171,81 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 	return result;
 }
 /**
+ * isUTF8 Метод проверки состоит ли текст в кодировке UTF-8
+ * @param text текст для проверки
+ * @return     результат проверки
+ */
+bool awh::Framework::isUTF8(const string & text) const noexcept {
+	// Если текст для проверки передан
+	if(!text.empty()){
+		// Символ для сравнения
+		u_int cp = 0;
+		// Номер позиции для сравнения
+		uint8_t num = 0;
+		// Получаем байты для сравнения
+		const u_char * bytes = reinterpret_cast <const u_char *> (text.c_str());
+		// Выполняем перебор всех символов
+		while((* bytes) != 0x00){
+			// Выполняем проверку первой позиции
+			if(((* bytes) & 0x80) == 0x00){
+				// U+0000 to U+007F
+				// Получаем значение первой части байт
+				cp = ((* bytes) & 0x7F);
+				// Устанавливаем номер позиции
+				num = 1;
+			// Выполняем проверку второй позиции
+			} else if(((* bytes) & 0xE0) == 0xC0) {
+				// U+0080 to U+07FF
+				// Получаем значение второй части байт
+				cp = ((* bytes) & 0x1F);
+				// Устанавливаем номер позиции
+				num = 2;
+			// Выполняем проверку третей позиции
+			} else if(((* bytes) & 0xF0) == 0xE0) {
+				// U+0800 to U+FFFF
+				// Получаем значение третей части байт
+				cp = ((* bytes) & 0x0F);
+				// Устанавливаем номер позиции
+				num = 3;
+			// Выполняем проверку четвёртой позиции
+			} else if(((* bytes) & 0xF8) == 0xF0) {
+				// U+10000 to U+10FFFF
+				// Получаем значение четвёртой части байт
+				cp = ((* bytes) & 0x07);
+				// Устанавливаем номер позиции
+				num = 4;
+			// Выходим из функции
+			} else return false;
+			// Увеличиваем смещение байт
+			bytes++;
+			// Выполняем перебор всех позиций
+			for(uint8_t i = 1; i < num; ++i){
+				// Если байты в первой позиции нельзя сопоставить
+				if(((* bytes) & 0xC0) != 0x80)
+					// Выводим результат проверки
+					return false;
+				// Выполняем смещение в позиции
+				cp = (cp << 6) | ((* bytes) & 0x3F);
+				// Увеличиваем смещение байт
+				bytes++;
+			}
+			// Выполняем проверку смещения
+			if((cp > 0x10FFFF) ||
+			  ((cp <= 0x007F) && (num != 1)) ||
+			  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
+			  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
+			  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
+			  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
+				// Выводим результат проверки
+			 	return false;
+		}
+		// Выводим результат
+		return true;
+	}
+	// Выводим результат проверки
+	return false;
+}
+/**
  * iconv Метод конвертирования строки кодировки
  * @param text     текст для конвертирования
  * @param codepage кодировка в которую необходимо сконвертировать текст
@@ -1187,31 +1262,68 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 		#if defined(_WIN32) || defined(_WIN64)
 			// Определяем кодировку в которую нам нужно сконвертировать текст
 			switch(static_cast <uint8_t> (codepage)){
+				// Если требуется выполнить кодировку в автоматическом режиме
+				case static_cast <uint8_t> (codepage_t::AUTO): {
+					// Если текст передан в кодировке UTF-8
+					if(this->isUTF8(text.c_str()))
+						// Выполняем перекодирование в CP1251
+						return this->iconv(text, codepage_t::UTF8_CP1251);
+					// Выполняем перекодирование в UTF-8
+					else return this->iconv(text, codepage_t::CP1251_UTF8);
+				} break;
 				// Если требуется выполнить кодировку в UTF-8
-				case static_cast <uint8_t> (codepage_t::UTF8): {
-					// Выполняем создание буфера новой строки
-					wstring buffer(text.size() + 1, 0);
-					// Выполняем перекодирование текста
-					MultiByteToWideChar(1251, 0, text.c_str(), -1, buffer.data(), buffer.size());
-					// Выполняем создание результатирующей новой строки
-					result.resize(buffer.size() * 2, 0);
-					// Выполняем перекодирование текста
-					WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, result.data(), result.size(), nullptr, nullptr);
-					// Восстанавливаем размер результирующей строки
-					result.resize(strlen(result.c_str()));
+				case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
+					// Выполняем получение размера буфера данных
+					int size = MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int> (text.size()), 0, 0);
+					// Если размер буфера данных получен
+					if(size > 0){
+						// Создаём буфер данных
+						vector <wchar_t> buffer(static_cast <size_t> (size), 0);
+						// Если конвертация в CP1251 выполнена удачно
+						if(MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int> (text.size()), buffer.data(), static_cast <int> (buffer.size()))){
+							// Получаем размер результирующего буфера данных в кодировке UTF-8
+							size = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int> (buffer.size()), 0, 0, 0, 0);
+							// Если размер буфера данных получен
+							if(size > 0){
+								// Выделяем данные для результирующего буфера данных
+								result.resize(static_cast <size_t> (size), 0);
+								// Если конвертация буфера текстовых данных в UTF-8 не выполнена
+								if(!WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int> (buffer.size()), result.data(), static_cast <int> (result.size()), 0, 0)){
+									// Выполняем удаление результирующего буфера данных
+									result.clear();
+									// Выполняем удаление выделенной памяти
+									string().swap(result);
+								}
+							}
+						}
+					}
 				} break;
 				// Если требуется выполнить кодировку в CP1251
-				case static_cast <uint8_t> (codepage_t::CP1251): {
-					// Выполняем создание буфера новой строки
-					wstring buffer(text.size() + 1, 0);
-					// Выполняем перекодирование текста
-					MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, buffer.data(), buffer.size());
-					// Выполняем создание результатирующей новой строки
-					result.resize(buffer.size() * 2, 0);
-					// Выполняем перекодирование текста
-					WideCharToMultiByte(1251, 0, buffer.data(), -1, result.data(), result.size(), nullptr, nullptr);
-					// Восстанавливаем размер результирующей строки
-					result.resize(strlen(result.c_str()));
+				case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
+					// Выполняем получение размера буфера данных
+					int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int> (text.size()), 0, 0);
+					// Если размер буфера данных получен
+					if(size > 0){
+						// Создаём буфер данных
+						vector <wchar_t> buffer(static_cast <size_t> (size), 0);
+						// Если конвертация в UTF-8 выполнена удачно
+						if(MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int> (text.size()), buffer.data(), static_cast <int> (buffer.size()))){
+							// Получаем размер результирующего буфера данных в кодировке CP1251
+							size = WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int> (buffer.size()), 0, 0, 0, 0);
+							// Если размер буфера данных получен
+							if(size > 0){
+								// Выделяем данные для результирующего буфера данных
+								result.resize(static_cast <size_t> (size), 0);
+								// Если конвертация буфера текстовых данных в CP1251 не выполнена
+								if(!WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int> (buffer.size()), result.data(), static_cast <int> (result.size()), 0, 0)){
+									// Выполняем удаление результирующего буфера данных
+									result.clear();
+									// Выполняем удаление выделенной памяти
+									string().swap(result);
+								}
+							}
+						}
+					}
 				} break;
 				// Если кодировка не установлена
 				default: return text;
