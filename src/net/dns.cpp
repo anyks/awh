@@ -2365,6 +2365,8 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 									cout << "IPv6: " << result << endl;
 								break;
 							}
+							// Выводим переход на новую строку
+							cout << endl;
 						#endif
 						// Выводим полученный результат
 						return result;

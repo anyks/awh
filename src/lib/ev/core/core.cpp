@@ -353,10 +353,8 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 awh::Core::Dispatch::~Dispatch() noexcept {
 	// Если база событий проинициализированна
 	if(this->_init){
-		// Выполняем остановку работы
-		this->stop();
 		// Если база событий не является виртуальной
-		if(!this->_virt){
+		if(!this->_virt && (this->base != nullptr)){
 			// Удаляем объект базы событий
 			ev_loop_destroy(this->base);
 			// Выполняем зануление базы событий

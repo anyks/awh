@@ -338,22 +338,23 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
  * ~Dispatch Деструктор
  */
 awh::Core::Dispatch::~Dispatch() noexcept {
-	// Выполняем остановку работы
-	this->stop();
 	// Если база событий проинициализированна
-	if(this->base != nullptr){
-		// Удаляем объект базы событий
-		event_base_free(this->base);
-		// Выполняем зануление базы событий
-		this->base = nullptr;
+	if(this->_init){
+		// Если база событий не является виртуальной
+		if(!this->_virt && (this->base != nullptr)){
+			// Удаляем объект базы событий
+			event_base_free(this->base);
+			// Выполняем зануление базы событий
+			this->base = nullptr;
+		}
+		/**
+		 * Если операционной системой является MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Очищаем сетевой контекст
+			WSACleanup();
+		#endif
 	}
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		WSACleanup();
-	#endif
 }
 /**
  * signal Метод вывода полученного сигнала
