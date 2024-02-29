@@ -1784,8 +1784,10 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 		for(auto it = (result.end() - 2); it != (result.begin() - 1);){
 			// Если символ не является последним
 			if(it != (result.end() - 2)){
-				// Если символы совпадают, удаляем текущий
-				if((* it) == last) result.erase(it);
+				// Если символы совпадают
+				if((* it) == last)
+					// Выполняем удаление лишних символов
+					result.erase(it);
 				// Если символы не совпадат, выходим
 				else break;
 			}
