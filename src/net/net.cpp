@@ -536,13 +536,13 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 						// Если мы определили IPv6-адрес
 						case 3: return type_t::IPV6;
 						// Если мы определили сеть
-						case 4: return type_t::NETW;
+						case 4: return type_t::NETWORK;
 						// Если мы определили доменное имя
-						case 5: return type_t::DOMN;
-						// Если мы определили HTTP метод
-						case 6: return type_t::HTTP;
+						case 5: return type_t::HOST;
+						// Если мы определили URL-адрес
+						case 6: return type_t::URL;
 						// Если мы определили адрес в файловой системе
-						case 7: return type_t::ADDR;
+						case 7: return type_t::FS;
 					}
 				}
 			}
@@ -695,7 +695,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
-						case static_cast <uint8_t> (addr_t::NETW): {
+						case static_cast <uint8_t> (addr_t::NETWORK): {
 							// Если префикс кратен 8
 							if((prefix % 8) == 0)
 								// Зануляем все остальные биты
@@ -754,7 +754,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
-						case static_cast <uint8_t> (addr_t::NETW): {
+						case static_cast <uint8_t> (addr_t::NETWORK): {
 							// Если префикс кратен 16
 							if((prefix % 16) == 0)
 								// Зануляем все остальные биты
@@ -854,7 +854,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 					// Выполняем парсинг маски
 					if(net.parse("255.255.255.255")){
 						// Выполняем установку префикса
-						net.impose(prefix, addr_t::NETW);
+						net.impose(prefix, addr_t::NETWORK);
 						// Выводим полученный адрес
 						result = net;
 					}
@@ -867,7 +867,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 					// Выполняем парсинг маски
 					if(net.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
 						// Выполняем установку префикса
-						net.impose(prefix, addr_t::NETW);
+						net.impose(prefix, addr_t::NETWORK);
 						// Выводим полученный адрес
 						result = net;
 					}
@@ -1204,22 +1204,22 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 							// Если адрес зарезервирован
 							if(it->second.reserved)
 								// Устанавливаем результат
-								return mode_t::RESERV;
+								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
-							else return mode_t::LOCAL;
+							else return mode_t::LAN;
 						}
 					// Если диапазон адресов для этой проверки не установлен
 					} else {
 						// Устанавливаем префикс сети
-						net.impose(it->second.prefix, net_t::addr_t::NETW);
+						net.impose(it->second.prefix, net_t::addr_t::NETWORK);
 						// Если проверяемые сети совпадают
 						if(net.v4() == it->second.begin->v4()){
 							// Если адрес зарезервирован
 							if(it->second.reserved)
 								// Устанавливаем результат
-								return mode_t::RESERV;
+								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
-							else return mode_t::LOCAL;
+							else return mode_t::LAN;
 						}
 					}
 				} break;
@@ -1234,22 +1234,22 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 							// Если адрес зарезервирован
 							if(it->second.reserved)
 								// Устанавливаем результат
-								return mode_t::RESERV;
+								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
-							else return mode_t::LOCAL;
+							else return mode_t::LAN;
 						}
 					// Если диапазон адресов для этой проверки не установлен
 					} else {
 						// Устанавливаем префикс сети
-						net.impose(it->second.prefix, net_t::addr_t::NETW);
+						net.impose(it->second.prefix, net_t::addr_t::NETWORK);
 						// Если проверяемые сети совпадают
 						if(::memcmp(net.v6().data(), it->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
 							// Если адрес зарезервирован
 							if(it->second.reserved)
 								// Устанавливаем результат
-								return mode_t::RESERV;
+								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
-							else return mode_t::LOCAL;
+							else return mode_t::LAN;
 						}
 					}
 				} break;
@@ -1258,7 +1258,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		// Если результат не определён
 		if(result == mode_t::NONE)
 			// Устанавливаем, что файл ялвяется глобальным
-			result = mode_t::GLOBAL;
+			result = mode_t::WAN;
 	}
 	// Выводим результат
 	return result;

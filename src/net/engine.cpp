@@ -2513,7 +2513,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Если сертификат создан
 							} else if(cert != nullptr) {
 								// Добавляем сертификат в стор
-								X509_STORE_add_cert(store, d2i_X509(&cert, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded));
+								X509_STORE_add_cert(store, d2i_X509(&cert, reinterpret_cast <const u_char **> (&ctx->pbCertEncoded), ctx->cbCertEncoded));
 								// Очищаем выделенную память
 								X509_free(cert);
 							}

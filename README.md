@@ -2338,143 +2338,143 @@ int main(int argc, char * argv[]){
 	cout << " 192.16.0.1 || " << net.get(net_t::format_t::LONG) << " === " << net.get(net_t::format_t::LONG_IPV6) << " === " << net.get(net_t::format_t::SHORT_IPV6) << " === " << net.get(net_t::format_t::MIDDLE_IPV6) << endl;
 
 	net = "2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d";
-	cout << " Составная часть адреса: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d || " << net.v6()[0] << " and " << net.v6()[1] << endl;
+	cout << " Part of the address: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d || " << net.v6()[0] << " and " << net.v6()[1] << endl;
 
 	net = "46.39.230.51";
-	cout << " Составная часть адреса: 46.39.230.51 || " << net.v4() << endl;
+	cout << " Part of the address: 46.39.230.51 || " << net.v4() << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
-	net.impose(53, net_t::addr_t::NETW);
-	cout << " Наложение префикса: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 || " << net << endl;
+	net.impose(53, net_t::addr_t::NETWORK);
+	cout << " Prefix set: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
-	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW);
-	cout << " Наложение префикса: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: || " << net << endl;
+	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETWORK);
+	cout << " Mask set: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: || " << net << endl;
 
 	net = "192.168.3.192";
-	net.impose(9, net_t::addr_t::NETW);
-	cout << " Наложение префикса: 192.168.3.192/9 || " << net << endl;
+	net.impose(9, net_t::addr_t::NETWORK);
+	cout << " Prefix set: 192.168.3.192/9 || " << net << endl;
 
 	net = "192.168.3.192";
-	net.impose("255.128.0.0", net_t::addr_t::NETW);
-	cout << " Наложение префикса: 192.168.3.192/255.128.0.0 || " << net << endl;
+	net.impose("255.128.0.0", net_t::addr_t::NETWORK);
+	cout << " Mask set: 192.168.3.192/255.128.0.0 || " << net << endl;
 
 	net = "192.168.3.192";
-	net.impose("255.255.255.0", net_t::addr_t::NETW);
-	cout << " Наложение префикса: 192.168.3.192/255.255.255.0 || " << net << endl;
+	net.impose("255.255.255.0", net_t::addr_t::NETWORK);
+	cout << " Mask set: 192.168.3.192/255.255.255.0 || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose(53, net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 || " << net << endl;
+	cout << " Get host from IP-address: 53/2001:1234:abcd:5678:9877:3322:5541:aabb || " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: || " << net << endl;
+	cout << " Get host from IP-address: FFFF:FFFF:FFFF:F800::/2001:1234:abcd:5678:9877:3322:5541:aabb || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose(9, net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 192.168.3.192/9 || " << net << endl;
+	cout << " Get host from IP-address: 9/192.168.3.192 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.128.0.0", net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 192.168.3.192/255.128.0.0 || " << net << endl;
+	cout << " Get host from IP-address: 255.128.0.0/192.168.3.192 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose(24, net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 192.168.3.192/24 || " << net << endl;
+	cout << " Get host from IP-address: 24/192.168.3.192 || " << net << endl;
 
 	net = "192.168.3.192";
 	net.impose("255.255.255.0", net_t::addr_t::HOST);
-	cout << " Получаем хост адреса: 192.168.3.192/255.255.255.0 || " << net << endl;
+	cout << " Get host from IP-address: 255.255.255.0/192.168.3.192 || " << net << endl;
 
 	net = "192.168.3.192";
-	cout << " Получаем маску адреса из префикса сети 9 || " << net.prefix2Mask(9) << endl;
-	cout << " Получаем префикс сети из маски адреса 255.128.0.0 || " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
+	cout << " Get address mask from network prefix = 9 || " << net.prefix2Mask(9) << endl;
+	cout << " Get address prefix from network mask = 255.128.0.0 || " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
-	cout << " Получаем маску адреса из префикса сети 53 || " << net.prefix2Mask(53) << endl;
-	cout << " Получаем префикс сети из маски адреса FFFF:FFFF:FFFF:F800:: || " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
+	cout << " Get address mask from network prefix = 53 || " << net.prefix2Mask(53) << endl;
+	cout << " Get address prefix from network mask = FFFF:FFFF:FFFF:F800:: || " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.168.0.0 || " << net.mapping("192.168.0.0") << endl;
+	cout << " Check the address compliance 192.168.3.192 by network 192.168.0.0 || " << net.mapping("192.168.0.0") << endl;
 	
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5678:: || " << net.mapping("2001:1234:abcd:5678::") << endl;
+	cout << " Check the address compliance 2001:1234:abcd:5678:9877:3322:5541:aabb by network 2001:1234:abcd:5678:: || " << net.mapping("2001:1234:abcd:5678::") << endl;
 	
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.128.0.0/9 || " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETW) << endl;
+	cout << " Check the address compliance 192.168.3.192 by network 192.128.0.0/9 || " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETWORK) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5000::/53 || " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETW) << endl;
+	cout << " Check the address compliance 2001:1234:abcd:5678:9877:3322:5541:aabb by network 2001:1234:abcd:5000::/53 || " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETWORK) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 192.168.3.192 сети 192.128.0.0/255.128.0.0 || " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETW) << endl;
+	cout << " Check the address compliance 192.168.3.192 by network 192.128.0.0/255.128.0.0 || " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETWORK) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb сети 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: || " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW) << endl;
+	cout << " Check the address compliance 2001:1234:abcd:5678:9877:3322:5541:aabb by network 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: || " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETWORK) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 192.168.3.192 хосту 9/0.40.3.192 || " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
+	cout << " Check the address compliance 192.168.3.192 by host 9/0.40.3.192 || " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb хосту 53/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
+	cout << " Check the address compliance 2001:1234:abcd:5678:9877:3322:5541:aabb by host 53/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 192.168.3.192 хосту 255.128.0.0/0.40.3.192 || " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
+	cout << " Check the address compliance 192.168.3.192 by host 255.128.0.0/0.40.3.192 || " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << boolalpha;
-	cout << " Выполняем проверку соответствия адреса 2001:1234:abcd:5678:9877:3322:5541:aabb хосту FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
+	cout << " Check the address compliance 2001:1234:abcd:5678:9877:3322:5541:aabb by host FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB || " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;
-	cout << " Выполняем проверку на вхождение адреса в диапазон 192.168.3.192 в диапазон [192.168.3.100 - 192.168.3.200] || " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
+	cout << " Check whether the address 192.168.3.192 is in range [192.168.3.100 - 192.168.3.200] || " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	const auto & dump = net.data <vector <uint16_t>> ();
 	for(auto & item : dump)
-		cout << " Данные чанков адреса IPv6 || " << item << endl;
+		cout << " IPv6 address chunk data || " << item << endl;
 
 	net = "46.39.230.51";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес глобальным 46.39.230.51 || " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
+	cout << " Checking whether IP-address is global 46.39.230.51 || " << (net.mode() == net_t::mode_t::WAN) << endl;
 
 	net = "192.168.31.12";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес локальным 192.168.31.12 || " << (net.mode() == net_t::mode_t::LOCAL) << endl;
+	cout << " Checking whether IP-address is local 192.168.31.12 || " << (net.mode() == net_t::mode_t::LAN) << endl;
 
 	net = "0.0.0.0";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес зарезервированным 0.0.0.0 || " << (net.mode() == net_t::mode_t::RESERV) << endl;
+	cout << " Checking whether IP-address is system 0.0.0.0 || " << (net.mode() == net_t::mode_t::SYS) << endl;
 
 	net = "[2a00:1450:4010:c0a::8b]";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес глобальным [2a00:1450:4010:c0a::8b] || " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
+	cout << " Checking whether IP-address is global [2a00:1450:4010:c0a::8b] || " << (net.mode() == net_t::mode_t::WAN) << endl;
 
 	net = "::1";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес локальным [::1] || " << (net.mode() == net_t::mode_t::LOCAL) << endl;
+	cout << " Checking whether IP-address is local [::1] || " << (net.mode() == net_t::mode_t::LAN) << endl;
 
 	net = "::";
 	cout << boolalpha;
-	cout << " Выполняем проверку является ли IP адрес зарезервированным [::] || " << (net.mode() == net_t::mode_t::RESERV) << endl;
+	cout << " Checking whether IP-address is system [::] || " << (net.mode() == net_t::mode_t::SYS) << endl;
 
 	string ip = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
-	cout << " Длинная запись адреса || " << ip << endl;
+	cout << " Long record address || " << ip << endl;
 	ip = net = ip;
-	cout << " Короткая запись адреса || " << ip << endl;
+	cout << " Short record address || " << ip << endl;
 
 	net = "73:0b:04:0d:db:79";
-	cout << " 73:0b:04:0d:db:79 || " << net << endl;
+	cout << " MAC: 73:0b:04:0d:db:79 || " << net << endl;
 
 	return 0;
 }

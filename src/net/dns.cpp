@@ -74,8 +74,10 @@ string awh::DNS::Worker::join(const vector <u_char> & domain) const noexcept {
 			}
 			// Запоминаем значение смещения
 			offset = (i + 1);
-			// Если получили нулевой символ, выходим
-			if(domain[i + 1] == 0) break;
+			// Если получили нулевой символ
+			if(domain[i + 1] == 0)
+				// Выходим из цикла
+				break;
 			// Добавляем разделительную точку
 			result.append(1, '.');
 		}
@@ -232,18 +234,18 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем адрес для подключения
 						::memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
 						// Устанавливаем адрес для локальго подключения
-						inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
+						::inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
 						// Выполняем копирование объекта подключения клиента
 						::memcpy(&this->_peer.client, &client, this->_peer.size);
 						// Выполняем копирование объекта подключения сервера
 						::memcpy(&this->_peer.server, &server, this->_peer.size);
 						// Обнуляем серверную структуру
-						::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+						::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 						{
 							// Временный буфер данных для преобразования IP-адреса
 							char buffer[INET_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
-							result = this->send(host, inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
+							result = this->send(host, ::inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -281,7 +283,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем адрес для подключения
 						::memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
 						// Устанавливаем адрес для локальго подключения
-						inet_pton(this->_family, host.c_str(), &client.sin6_addr);
+						::inet_pton(this->_family, host.c_str(), &client.sin6_addr);
 						// Выполняем копирование объекта подключения клиента
 						::memcpy(&this->_peer.client, &client, this->_peer.size);
 						// Выполняем копирование объекта подключения сервера
@@ -290,7 +292,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 							// Временный буфер данных для преобразования IP-адреса
 							char buffer[INET6_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
-							result = this->send(host, inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
+							result = this->send(host, ::inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -388,14 +390,14 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
 			// Выполняем бинд на сокет
-			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0){
+			if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
 				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выходим из функции
 				return result;
 			}
 			// Если запрос на сервер DNS успешно отправлен
-			if((bytes = ::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_peer.server, this->_peer.size)) > 0){
+			if((bytes = ::sendto(this->_fd, (const char *) buffer, size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 				// Буфер пакета данных
 				u_char buffer[65536];
 				// Получаем объект DNS-сервера
@@ -403,7 +405,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 				// Выполняем зануление буфера данных
 				::memset(buffer, 0, sizeof(buffer));
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_peer.server, &this->_peer.size);
+				const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -530,7 +532,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 											// Зануляем буфер данных
 											::memset(buffer, 0, sizeof(buffer));
 											// Получаем IP-адрес принадлежащий доменному имени
-											const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+											const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 											// Если IP-адрес получен
 											if(!ip.empty()){
 												// Если чёрный список IP-адресов получен
@@ -561,7 +563,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 										// Зануляем буфер данных
 										::memset(buffer, 0, sizeof(buffer));
 										// Получаем IP-адрес принадлежащий доменному имени
-										const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+										const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 										// Если IP-адрес получен
 										if(!ip.empty()){
 											// Если чёрный список IP-адресов получен
@@ -698,7 +700,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
-				wchar_t buffer[255];
+				wchar_t buffer[_MAX_PATH];
 				// Выполняем кодирования доменного имени
 				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
@@ -746,7 +748,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
-				wchar_t buffer[255];
+				wchar_t buffer[_MAX_PATH];
 				// Выполняем кодирования доменного имени
 				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
@@ -919,7 +921,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 							// Если время жизни кэша ещё не вышло
 							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов
-								ips.push_back(inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								ips.push_back(::inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
 								// Выполняем смещение итератора
 								++it;
 							// Если время жизни кэша уже вышло
@@ -949,7 +951,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 							// Если время жизни кэша ещё не вышло
 							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов
-								ips.push_back(inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								ips.push_back(::inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
 								// Выполняем смещение итератора
 								++it;
 							// Если время жизни кэша уже вышло
@@ -1135,11 +1137,13 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[1];
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &buffer);
+					::inet_pton(family, ip.c_str(), &buffer);
 					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
-					result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
-					// Если IP-адрес соответствует переданному адресу, выходим
-					if(result) break;
+					result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					// Если IP-адрес соответствует переданному адресу
+					if(result)
+						// Выходим из условия
+						break;
 				}
 				// Если IP-адрес в кэше не найден
 				if(!result){
@@ -1150,7 +1154,7 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 					// Устанавливаем время создания кэша
 					cache.create = (this->_ttl > 0 ? this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) : this->_ttl);
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &cache.ip);
+					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
 					this->_cacheIPv4.emplace(domain, std::move(cache));
 				}
@@ -1164,11 +1168,13 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[4];
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &buffer);
+					::inet_pton(family, ip.c_str(), &buffer);
 					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
-					result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
-					// Если IP-адрес соответствует переданному адресу, выходим
-					if(result) break;
+					result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					// Если IP-адрес соответствует переданному адресу
+					if(result)
+						// Выходим из условия
+						break;
 				}
 				// Если IP-адрес в кэше не найден
 				if(!result){
@@ -1179,7 +1185,7 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 					// Устанавливаем время жизни кэша
 					cache.create = (this->_ttl > 0 ? this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) : this->_ttl);
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &cache.ip);
+					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
 					this->_cacheIPv6.emplace(domain, std::move(cache));
 				}
@@ -1292,9 +1298,9 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
 							// Снимаем флаг запрещённого IP-адреса
 							it->second.forbidden = !it->second.forbidden;
 					}
@@ -1311,9 +1317,9 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
 							// Снимаем флаг запрещённого IP-адреса
 							it->second.forbidden = !it->second.forbidden;
 					}
@@ -1369,7 +1375,7 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 				// Устанавливаем флаг запрещённого домена
 				cache.forbidden = true;
 				// Выполняем копирование полученных данных в переданный буфер
-				inet_pton(family, ip.c_str(), &cache.ip);
+				::inet_pton(family, ip.c_str(), &cache.ip);
 				// Если список кэша является пустым
 				if(this->_cacheIPv4.empty())
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
@@ -1385,9 +1391,9 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
 							// Выполняем блокировку IP-адреса
 							it->second.forbidden = result;
 							// Выходим из цикла
@@ -1407,7 +1413,7 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 				// Устанавливаем флаг запрещённого домена
 				cache.forbidden = true;
 				// Выполняем копирование полученных данных в переданный буфер
-				inet_pton(family, ip.c_str(), &cache.ip);
+				::inet_pton(family, ip.c_str(), &cache.ip);
 				// Если список кэша является пустым
 				if(this->_cacheIPv6.empty())
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
@@ -1423,9 +1429,9 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
 							// Выполняем блокировку IP-адреса
 							it->second.forbidden = result;
 							// Выходим из цикла
@@ -1494,9 +1500,9 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
 							// Выводим результат проверки
 							return result;
 					}
@@ -1513,9 +1519,9 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
-						inet_pton(family, ip.c_str(), &buffer);
+						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
 							// Выводим результат проверки
 							return result;
 					}
@@ -1555,7 +1561,7 @@ string awh::DNS::server(const int family) noexcept {
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
 			advance(it, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
@@ -1572,7 +1578,7 @@ string awh::DNS::server(const int family) noexcept {
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
 			advance(it, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
 		} break;
 	}
 	// Выводим результат
@@ -1622,15 +1628,15 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 			string host = "";
 			// Определяем тип передаваемого сервера
 			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::FS):
 				// Если домен является аппаратным адресом сетевого интерфейса
 				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является URL-адресом
+				case static_cast <uint8_t> (net_t::type_t::URL):
 				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-				// Если хост является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+				// Если хост является IPv4-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
@@ -1643,7 +1649,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 					// Извлекаем хост сервера имён
 					} else host = server;
 				} break;
-				// Если хост является IPv6 адресом
+				// Если хост является IPv6-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6): {
 					// Если первый символ является разделителем
 					if(server.front() == '['){
@@ -1665,7 +1671,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 						host = server;
 				} break;
 				// Если хост является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::DOMN): {
+				case static_cast <uint8_t> (net_t::type_t::HOST): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
@@ -1712,7 +1718,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 						// Запоминаем полученный порт
 						server.port = port;
 						// Запоминаем полученный сервер
-						inet_pton(family, host.c_str(), &server.ip);
+						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
 						if(std::find_if(this->_serversIPv4.begin(), this->_serversIPv4.end(), [&server](const server_t <1> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
@@ -1738,7 +1744,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 						// Запоминаем полученный порт
 						server.port = port;
 						// Запоминаем полученный сервер
-						inet_pton(family, host.c_str(), &server.ip);
+						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
 						if(std::find_if(this->_serversIPv6.begin(), this->_serversIPv6.end(), [&server](const server_t <4> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
@@ -1780,22 +1786,22 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
 			for(auto & server : servers){
 				// Определяем тип передаваемого IP-адреса
 				switch(static_cast <uint8_t> (this->_net.host(server))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
-					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+					// Если IP-адрес является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
-						// Выполняем добавление IPv4 адреса в список серверов
+						// Выполняем добавление IPv4-адреса в список серверов
 						this->server(AF_INET, server);
 					break;
-					// Если IP-адрес является IPv6 адресом
+					// Если IP-адрес является IPv6-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV6):
-						// Выполняем добавление IPv6 адреса в список серверов
+						// Выполняем добавление IPv6-адреса в список серверов
 						this->server(AF_INET6, server);
 					break;
 					// Для всех остальных адресов
@@ -1848,29 +1854,29 @@ void awh::DNS::replace(const vector <string> & servers) noexcept {
 		for(auto & server : servers){
 			// Определяем тип передаваемого IP-адреса
 			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::FS):
 				// Если домен является аппаратным адресом сетевого интерфейса
 				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является URL-адресом
+				case static_cast <uint8_t> (net_t::type_t::URL):
 				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+				// Если IP-адрес является IPv4-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление IPv4 адреса в список серверов
+					// Выполняем добавление IPv4-адреса в список серверов
 					ipv4.push_back(server);
 				break;
-				// Если IP-адрес является IPv6 адресом
+				// Если IP-адрес является IPv6-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление IPv6 адреса в список серверов
+					// Выполняем добавление IPv6-адреса в список серверов
 					ipv6.push_back(server);
 				break;
 				// Для всех остальных адресов
 				default: {
-					// Выполняем добавление IPv4 адреса в список серверов
+					// Выполняем добавление IPv4-адреса в список серверов
 					ipv4.push_back(server);
-					// Выполняем добавление IPv6 адреса в список серверов
+					// Выполняем добавление IPv6-адреса в список серверов
 					ipv6.push_back(server);
 				}
 			}
@@ -1949,20 +1955,20 @@ void awh::DNS::network(const vector <string> & network) noexcept {
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
 				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
-					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+					// Если IP-адрес является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv4->_network.push_back(host);
 					break;
-					// Если IP-адрес является IPv6 адресом
+					// Если IP-адрес является IPv6-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV6):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv6->_network.push_back(host);
@@ -1975,7 +1981,7 @@ void awh::DNS::network(const vector <string> & network) noexcept {
 						if(!ip.empty())
 							// Выполняем добавление полученного хоста в список
 							this->_workerIPv6->_network.push_back(ip);
-						// Если результат не получен, выполняем получение IPv4 адреса
+						// Если результат не получен, выполняем получение IPv4-адреса
 						else {
 							// Выполняем получение IP-адреса для IPv4
 							ip = this->host(AF_INET, host);
@@ -2232,7 +2238,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Выполняем копирование данных типа подключения
 							::memcpy(&server.sin_addr.s_addr, domain->h_addr_list[index++], domain->h_length);
 							// Копируем полученные данные IP-адреса
-							ips.push_back(inet_ntop(family, &server.sin_addr, buffer, sizeof(buffer)));
+							ips.push_back(::inet_ntop(family, &server.sin_addr, buffer, sizeof(buffer)));
 						}
 					} break;
 					// Если тип протокола подключения IPv6
@@ -2252,7 +2258,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Выполняем копирование данных типа подключения
 							::memcpy(&server.sin6_addr.s6_addr, domain->h_addr_list[index++], domain->h_length);
 							// Копируем полученные данные IP-адреса
-							ips.push_back(inet_ntop(family, &server.sin6_addr, buffer, sizeof(buffer)));
+							ips.push_back(::inet_ntop(family, &server.sin6_addr, buffer, sizeof(buffer)));
 						}
 					} break;
 				}
@@ -2320,26 +2326,24 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 			#endif
 			// Определяем тип передаваемого сервера
 			switch(static_cast <uint8_t> (this->_net.host(domain))){
-				// Если домен является IPv4 адресом
+				// Если домен является IPv4-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
-				// Если домен является IPv6 адресом
+				// Если домен является IPv6-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
 					// Выводим переданый хост обратно
 					return host;
-				break;
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::FS):
 				// Если домен является аппаратным адресом сетевого интерфейса
 				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является URL-адресом
+				case static_cast <uint8_t> (net_t::type_t::URL):
 				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP):
+				case static_cast <uint8_t> (net_t::type_t::NETWORK):
 					// Сообщаем, что адрес нам не подходит
 					return result;
-				break;
 				// Если домен является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::DOMN): {
+				case static_cast <uint8_t> (net_t::type_t::HOST): {
 					// Выполняем поиск IP-адреса в кэше DNS
 					result = this->cache(family, domain);
 					// Если IP-адрес получен
@@ -2493,9 +2497,9 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[1];
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &buffer);
+					::inet_pton(family, ip.c_str(), &buffer);
 					// Если IP-адрес соответствует переданному адресу
-					if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+					if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
 						// Выполняем добавление доменное имя в список
 						result.push_back(it->first);
 				}
@@ -2507,9 +2511,9 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[4];
 					// Выполняем копирование полученных данных в переданный буфер
-					inet_pton(family, ip.c_str(), &buffer);
+					::inet_pton(family, ip.c_str(), &buffer);
 					// Если IP-адрес соответствует переданному адресу
-					if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+					if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
 						// Выполняем добавление доменное имя в список
 						result.push_back(it->first);
 				}

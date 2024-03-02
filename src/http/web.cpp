@@ -370,9 +370,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 		if((this->_state == state_t::HEADERS) || (this->_state == state_t::QUERY)){
 			// Определяем статус режима работы
 			switch(static_cast <uint8_t> (this->_state)){
-				// Если - это режим ожидания получения запроса
+				// Если передан режим ожидания получения запроса
 				case static_cast <uint8_t> (state_t::QUERY): this->_separator = ' '; break;
-				// Если - это режим получения заголовков
+				// Если передан режим получения заголовков
 				case static_cast <uint8_t> (state_t::HEADERS): this->_separator = ':'; break;
 			}
 			/**
@@ -451,7 +451,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				} else {
 					// Определяем статус режима работы
 					switch(static_cast <uint8_t> (this->_state)){
-						// Если - это режим ожидания получения запроса
+						// Если передан режим ожидания получения запроса
 						case static_cast <uint8_t> (state_t::QUERY): {
 							// Определяем тип HTTP-модуля
 							switch(static_cast <uint8_t> (this->_hid)){
@@ -575,7 +575,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								} break;
 							}
 						} break;
-						// Если - это режим получения заголовков
+						// Если передан режим получения заголовков
 						case static_cast <uint8_t> (state_t::HEADERS): {
 							// Получаем ключ заголовка
 							string key(buffer, this->_pos[0]);
@@ -613,22 +613,22 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									}
 									// Определяем тип домена
 									switch(static_cast <uint8_t> (net.host(this->_req.url.host))){
-										// Если - это IP-адрес сети IPv4
+										// Если передан IP-адрес сети IPv4
 										case static_cast <uint8_t> (net_t::type_t::IPV4): {
 											// Выполняем установку семейства IP-адресов
 											this->_req.url.family = AF_INET;
 											// Выполняем установку IPv4 адреса
 											this->_req.url.ip = this->_req.url.host;
 										} break;
-										// Если - это IP-адрес сети IPv6
+										// Если передан IP-адрес сети IPv6
 										case static_cast <uint8_t> (net_t::type_t::IPV6): {
 											// Выполняем установку семейства IP-адресов
 											this->_req.url.family = AF_INET6;
 											// Выполняем установку IPv6 адреса
 											this->_req.url.ip = net = this->_req.url.host;
 										} break;
-										// Если - это доменное имя
-										case static_cast <uint8_t> (net_t::type_t::DOMN):
+										// Если передан доменное имя
+										case static_cast <uint8_t> (net_t::type_t::HOST):
 											// Выполняем установку IPv6 адреса
 											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
 										break;

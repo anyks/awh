@@ -168,7 +168,7 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 								options->scheme.url.ip = this->_host;
 							} break;
 							// Если хост является доменным именем
-							case static_cast <uint8_t> (net_t::type_t::DOMN):
+							case static_cast <uint8_t> (net_t::type_t::HOST):
 								// Устанавливаем хост сервера
 								options->scheme.url.domain = this->_host;
 							break;
@@ -319,7 +319,7 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 										options->scheme.url.ip = net = server.host;
 									} break;
 									// Если хост является доменным именем
-									case static_cast <uint8_t> (net_t::type_t::DOMN): {
+									case static_cast <uint8_t> (net_t::type_t::HOST): {
 										// Выполняем очистку IP-адреса
 										options->scheme.url.ip.clear();
 										// Устанавливаем доменное имя

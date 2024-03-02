@@ -201,16 +201,16 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				result.host = std::forward <const string> (it->second);
 				// Определяем тип домена
 				switch(static_cast <uint8_t> (this->_net.host(result.host))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
-					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
 					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
+					case static_cast <uint8_t> (net_t::type_t::URL):
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
 					// Если - это доменное имя
-					case static_cast <uint8_t> (net_t::type_t::DOMN):
+					case static_cast <uint8_t> (net_t::type_t::HOST):
 						// Устанавливаем доменное имя
 						result.domain = result.host;
 					break;
@@ -770,7 +770,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 										result.emplace(flag_t::HOST, data);
 									break;
 									// Если - это доменное имя
-									case static_cast <uint8_t> (net_t::type_t::DOMN):
+									case static_cast <uint8_t> (net_t::type_t::HOST):
 										// Устанавливаем результат хоста
 										result.emplace(flag_t::HOST, this->_fmk->transform(data, fmk_t::transform_t::LOWER));
 									break;

@@ -124,18 +124,18 @@ time_t awh::NTP::Worker::request() noexcept {
 					// Устанавливаем адрес для подключения
 					::memcpy(&server.sin_addr.s_addr, addr.ip, sizeof(addr.ip));
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
+					::inet_pton(this->_family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					{
 						// Временный буфер данных для преобразования IP-адреса
 						char buffer[INET_ADDRSTRLEN];
 						// Выполняем запрос на удалённый NTP-сервер
-						result = this->send(host, inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
+						result = this->send(host, ::inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
 						// Если результат получен или получение данных закрыто, тогда выходим из цикла
 						if((result > 0) || !this->_mode)
 							// Выходим из цикла
@@ -171,7 +171,7 @@ time_t awh::NTP::Worker::request() noexcept {
 					// Устанавливаем адрес для подключения
 					::memcpy(&server.sin6_addr, addr.ip, sizeof(addr.ip));
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(this->_family, host.c_str(), &client.sin6_addr);
+					::inet_pton(this->_family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
@@ -180,7 +180,7 @@ time_t awh::NTP::Worker::request() noexcept {
 						// Временный буфер данных для преобразования IP-адреса
 						char buffer[INET6_ADDRSTRLEN];
 						// Выполняем запрос на удалённый NTP-сервер
-						result = this->send(host, inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
+						result = this->send(host, ::inet_ntop(this->_family, &addr.ip, buffer, sizeof(buffer)));
 						// Если результат получен или получение данных закрыто, тогда выходим из цикла
 						if((result > 0) || !this->_mode)
 							// Выходим из цикла
@@ -233,18 +233,18 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
 			// Выполняем бинд на сокет
-			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0){
+			if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
 				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выходим из функции
 				return result;
 			}
 			// Если запрос на NTP-сервер успешно отправлен
-			if((bytes = ::sendto(this->_fd, (const char *) &packet, sizeof(packet), 0, (struct sockaddr *) &this->_peer.server, this->_peer.size)) > 0){
+			if((bytes = ::sendto(this->_fd, (const char *) &packet, sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 				// Получаем объект NTP-клиента
 				ntp_t * self = const_cast <ntp_t *> (this->_self);
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, (char *) &packet, sizeof(packet), 0, (struct sockaddr *) &this->_peer.server, &this->_peer.size);
+				const int64_t bytes = ::recvfrom(this->_fd, (char *) &packet, sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -458,9 +458,9 @@ string awh::NTP::server(const int family) noexcept {
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(it, dist6(generator));
+			std::advance(it, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
@@ -475,9 +475,9 @@ string awh::NTP::server(const int family) noexcept {
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(it, dist6(generator));
+			std::advance(it, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
 		} break;
 	}
 	// Выводим результат
@@ -527,15 +527,15 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 			string host = "";
 			// Определяем тип передаваемого сервера
 			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::FS):
 				// Если домен является аппаратным адресом сетевого интерфейса
 				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является URL-адресом
+				case static_cast <uint8_t> (net_t::type_t::URL):
 				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-				// Если хост является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+				// Если хост является IPv4-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
@@ -548,7 +548,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 					// Извлекаем хост сервера имён
 					} else host = server;
 				} break;
-				// Если хост является IPv6 адресом
+				// Если хост является IPv6-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6): {
 					// Если первый символ является разделителем
 					if(server.front() == '['){
@@ -570,7 +570,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						host = server;
 				} break;
 				// Если хост является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::DOMN): {
+				case static_cast <uint8_t> (net_t::type_t::HOST): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
@@ -615,7 +615,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Запоминаем полученный порт
 						server.port = port;
 						// Запоминаем полученный сервер
-						inet_pton(family, host.c_str(), &server.ip);
+						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
 						if(std::find_if(this->_serversIPv4.begin(), this->_serversIPv4.end(), [&server](const server_t <1> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
@@ -641,7 +641,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Запоминаем полученный порт
 						server.port = port;
 						// Запоминаем полученный сервер
-						inet_pton(family, host.c_str(), &server.ip);
+						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
 						if(std::find_if(this->_serversIPv6.begin(), this->_serversIPv6.end(), [&server](const server_t <4> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
@@ -683,29 +683,29 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 			for(auto & server : servers){
 				// Определяем тип передаваемого IP-адреса
 				switch(static_cast <uint8_t> (this->_net.host(server))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
-					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+					// Если IP-адрес является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
-						// Выполняем добавление IPv4 адреса в список серверов
+						// Выполняем добавление IPv4-адреса в список серверов
 						this->server(AF_INET, server);
 					break;
-					// Если IP-адрес является IPv6 адресом
+					// Если IP-адрес является IPv6-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV6):
-						// Выполняем добавление IPv6 адреса в список серверов
+						// Выполняем добавление IPv6-адреса в список серверов
 						this->server(AF_INET6, server);
 					break;
 					// Для всех остальных адресов
 					default: {
-						// Выполняем добавление IPv4 адреса в список серверов
+						// Выполняем добавление IPv4-адреса в список серверов
 						this->server(AF_INET, server);
-						// Выполняем добавление IPv6 адреса в список серверов
+						// Выполняем добавление IPv6-адреса в список серверов
 						this->server(AF_INET6, server);
 					}
 				}
@@ -751,29 +751,29 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
 		for(auto & server : servers){
 			// Определяем тип передаваемого IP-адреса
 			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::FS):
 				// Если домен является аппаратным адресом сетевого интерфейса
 				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является URL-адресом
+				case static_cast <uint8_t> (net_t::type_t::URL):
 				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+				// Если IP-адрес является IPv4-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление IPv4 адреса в список серверов
+					// Выполняем добавление IPv4-адреса в список серверов
 					ipv4.push_back(server);
 				break;
-				// Если IP-адрес является IPv6 адресом
+				// Если IP-адрес является IPv6-адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление IPv6 адреса в список серверов
+					// Выполняем добавление IPv6-адреса в список серверов
 					ipv6.push_back(server);
 				break;
 				// Для всех остальных адресов
 				default: {
-					// Выполняем добавление IPv4 адреса в список серверов
+					// Выполняем добавление IPv4-адреса в список серверов
 					ipv4.push_back(server);
-					// Выполняем добавление IPv6 адреса в список серверов
+					// Выполняем добавление IPv6-адреса в список серверов
 					ipv6.push_back(server);
 				}
 			}
@@ -854,20 +854,20 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
 				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
-					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+					// Если IP-адрес является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv4->_network.push_back(host);
 					break;
-					// Если IP-адрес является IPv6 адресом
+					// Если IP-адрес является IPv6-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV6):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv6->_network.push_back(host);
@@ -880,7 +880,7 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 						if(!ip.empty())
 							// Выполняем добавление полученного хоста в список
 							this->_workerIPv6->_network.push_back(ip);
-						// Если результат не получен, выполняем получение IPv4 адреса
+						// Если результат не получен, выполняем получение IPv4-адреса
 						else {
 							// Выполняем получение IP-адреса для IPv4
 							ip = this->_dns.host(AF_INET, host);

@@ -159,15 +159,15 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 	// Выполняем подсчёт контрольной суммы
 	icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 	// Если запрос на сервер успешно отправлен
-	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_peer.server, this->_peer.size)) > 0){
+	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 		// Метка повторного получения данных
 		Read:
 		// Буфер для получения данных
 		char buffer[1024];
 		// Результат полученных данных
-		auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
+		auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer);
 		// Выполняем чтение ответа сервера
-		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_peer.server, &this->_peer.size);
+		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Если сокет находится в блокирующем режиме
@@ -314,20 +314,20 @@ void awh::Ping::ping(const string & host) noexcept {
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::FS):
 			// Если домен является аппаратным адресом сетевого интерфейса
 			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является URL-адресом
+			case static_cast <uint8_t> (net_t::type_t::URL):
 			// Если домен является адресом/Маски сети
-			case static_cast <uint8_t> (net_t::type_t::NETW):
-			// Если домен является адресом в файловой системе
-			case static_cast <uint8_t> (net_t::type_t::ADDR):
-			// Если домен является HTTP адресом
-			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+			// Если IP-адрес является IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
 				std::thread(&ping_t::_work, this, AF_INET, host).detach();
 			break;
-			// Если IP-адрес является IPv6 адресом
+			// Если IP-адрес является IPv6-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
 				std::thread(&ping_t::_work, this, AF_INET6, host).detach();
@@ -340,7 +340,7 @@ void awh::Ping::ping(const string & host) noexcept {
 				if(!ip.empty())
 					// Выполняем пинг указанного адреса
 					std::thread(&ping_t::_work, this, AF_INET6, ip).detach();
-				// Если результат не получен, выполняем получение IPv4 адреса
+				// Если результат не получен, выполняем получение IPv4-адреса
 				else {
 					// Выполняем получение IP-адреса для IPv4
 					ip = this->_dns.resolve(AF_INET, host);
@@ -377,20 +377,20 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::FS):
 			// Если домен является аппаратным адресом сетевого интерфейса
 			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является URL-адресом
+			case static_cast <uint8_t> (net_t::type_t::URL):
 			// Если домен является адресом/Маски сети
-			case static_cast <uint8_t> (net_t::type_t::NETW):
-			// Если домен является адресом в файловой системе
-			case static_cast <uint8_t> (net_t::type_t::ADDR):
-			// Если домен является HTTP адресом
-			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+			// Если IP-адрес является IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
 				std::thread(&ping_t::_work, this, AF_INET, host).detach();
 			break;
-			// Если IP-адрес является IPv6 адресом
+			// Если IP-адрес является IPv6-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
 				std::thread(&ping_t::_work, this, AF_INET6, host).detach();
@@ -450,15 +450,15 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Устанавливаем порт для локального подключения
 					server.sin_port = htons(0);
 					// Устанавливаем IP-адрес для подключения
-					inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+					::inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
+					::inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -498,9 +498,9 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Устанавливаем порт для локального подключения
 					server.sin6_port = htons(0);
 					// Устанавливаем IP-адрес для подключения
-					inet_pton(family, ip.c_str(), &server.sin6_addr);
+					::inet_pton(family, ip.c_str(), &server.sin6_addr);
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(family, host.c_str(), &client.sin6_addr);
+					::inet_pton(family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
@@ -549,7 +549,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Устанавливаем таймаут на запись данных в сокет
 				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
 				// Выполняем бинд на сокет
-				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				// Выполняем отправку отправку запросов до тех пор пока не остановят
@@ -612,20 +612,20 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::FS):
 			// Если домен является аппаратным адресом сетевого интерфейса
 			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является URL-адресом
+			case static_cast <uint8_t> (net_t::type_t::URL):
 			// Если домен является адресом/Маски сети
-			case static_cast <uint8_t> (net_t::type_t::NETW):
-			// Если домен является адресом в файловой системе
-			case static_cast <uint8_t> (net_t::type_t::ADDR):
-			// Если домен является HTTP адресом
-			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+			// Если IP-адрес является IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
 				result = this->_ping(AF_INET, host, count);
 			break;
-			// Если IP-адрес является IPv6 адресом
+			// Если IP-адрес является IPv6-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
 				result = this->_ping(AF_INET6, host, count);
@@ -638,7 +638,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 				if(!ip.empty())
 					// Выполняем пинг указанного адреса
 					result = this->_ping(AF_INET6, ip, count);
-				// Если результат не получен, выполняем получение IPv4 адреса
+				// Если результат не получен, выполняем получение IPv4-адреса
 				else {
 					// Выполняем получение IP-адреса для IPv4
 					ip = this->_dns.resolve(AF_INET, host);
@@ -682,20 +682,20 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::FS):
 			// Если домен является аппаратным адресом сетевого интерфейса
 			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является URL-адресом
+			case static_cast <uint8_t> (net_t::type_t::URL):
 			// Если домен является адресом/Маски сети
-			case static_cast <uint8_t> (net_t::type_t::NETW):
-			// Если домен является адресом в файловой системе
-			case static_cast <uint8_t> (net_t::type_t::ADDR):
-			// Если домен является HTTP адресом
-			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+			// Если IP-адрес является IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
 				result = this->_ping(AF_INET, host, count);
 			break;
-			// Если IP-адрес является IPv6 адресом
+			// Если IP-адрес является IPv6-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
 				result = this->_ping(AF_INET6, host, count);
@@ -761,15 +761,15 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Устанавливаем порт для локального подключения
 					server.sin_port = htons(0);
 					// Устанавливаем IP-адрес для подключения
-					inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+					::inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
+					::inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					// Обнуляем серверную структуру
-					::memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -809,9 +809,9 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Устанавливаем порт для локального подключения
 					server.sin6_port = htons(0);
 					// Устанавливаем IP-адрес для подключения
-					inet_pton(family, ip.c_str(), &server.sin6_addr);
+					::inet_pton(family, ip.c_str(), &server.sin6_addr);
 					// Устанавливаем адрес для локальго подключения
-					inet_pton(family, host.c_str(), &client.sin6_addr);
+					::inet_pton(family, host.c_str(), &client.sin6_addr);
 					// Выполняем копирование объекта подключения клиента
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 					// Выполняем копирование объекта подключения сервера
@@ -858,7 +858,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Устанавливаем таймаут на запись данных в сокет
 				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
 				// Выполняем бинд на сокет
-				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				// Выполняем отправку указанного количества запросов
@@ -958,20 +958,20 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
 				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS):
 					// Если домен является аппаратным адресом сетевого интерфейса
 					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
-					case static_cast <uint8_t> (net_t::type_t::NETW):
-					// Если домен является адресом в файловой системе
-					case static_cast <uint8_t> (net_t::type_t::ADDR):
-					// Если домен является HTTP адресом
-					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
+					// Если IP-адрес является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
 						this->_networkIPv4.push_back(host);
 					break;
-					// Если IP-адрес является IPv6 адресом
+					// Если IP-адрес является IPv6-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV6):
 						// Выполняем добавление полученного хоста в список
 						this->_networkIPv6.push_back(host);
@@ -984,7 +984,7 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 						if(!ip.empty())
 							// Выполняем добавление полученного хоста в список
 							this->_networkIPv6.push_back(ip);
-						// Если результат не получен, выполняем получение IPv4 адреса
+						// Если результат не получен, выполняем получение IPv4-адреса
 						else {
 							// Выполняем получение IP-адреса для IPv4
 							ip = this->_dns.host(AF_INET, host);
