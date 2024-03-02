@@ -2503,17 +2503,19 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Выполняем создание сертификата
 							X509 * cert = X509_new();
 							// Если сертификат не создан
-							if(cert != nullptr){
+							if(cert == nullptr){
 								// Формируем результат ответа
 								result = -1;
 								// Выводим в лог сообщение
 								this->_log->print("%s failed", log_t::flag_t::CRITICAL, "d2i_X509");
 								// Выходим из цикла
 								break;
-							// Если сертификат создан
-							} else if(cert != nullptr) {
+							// Если сертификат создан удачно
+							} else {
+								// Получаем объект закодированного сертификата
+								const BYTE * encoded = ctx->pbCertEncoded;
 								// Добавляем сертификат в стор
-								X509_STORE_add_cert(store, d2i_X509(&cert, reinterpret_cast <const u_char **> (&ctx->pbCertEncoded), ctx->cbCertEncoded));
+								X509_STORE_add_cert(store, d2i_X509(&cert, reinterpret_cast <const u_char **> (&encoded), ctx->cbCertEncoded));
 								// Очищаем выделенную память
 								X509_free(cert);
 							}
