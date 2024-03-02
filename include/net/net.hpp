@@ -167,7 +167,7 @@ namespace awh {
 			void clear() noexcept;
 		public:
 			/**
-			 * type Метод извлечение типа IP-адреса
+			 * type Метод извлечения типа IP-адреса
 			 * @return тип IP-адреса
 			 */
 			type_t type() const noexcept;

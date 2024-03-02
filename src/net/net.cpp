@@ -502,7 +502,7 @@ void awh::Net::clear() noexcept {
 	this->_type = type_t::NONE;
 }
 /**
- * type Метод извлечение типа IP-адреса
+ * type Метод извлечения типа IP-адреса
  * @return тип IP-адреса
  */
 awh::Net::type_t awh::Net::type() const noexcept {
