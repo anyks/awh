@@ -398,13 +398,15 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 	// Если данные переданы
 	if((radix > 0) && (radix < 37)){
 		// Убираем отрицательное значение
-		int64_t num = abs(value);
+		int64_t num = ::abs(value);
 		// Запоминаем являлось ли число отрицательным
 		const bool sign = (value < 0);
 		// Устанавливаем числовые обозначения
 		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		// Особый случай: нулю соответствует не пустая строка, а "0"
-		if(num == 0) result.insert(result.begin(), digits[0]);
+		if(num == 0)
+			// Выполняем установку начальных нолей
+			result.insert(result.begin(), digits[0]);
 		// Раскладываем число на цифры (младшими разрядами вперёд)
 		while(num != 0){
 			// Добавляем идентификатор числа
@@ -413,7 +415,9 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 			num /= radix;
 		}
 		// Дописываем после старшего разряда знак
-		if(sign) result.insert(result.begin(), '-');
+		if(sign)
+			// Устанавливаем знак минуса
+			result.insert(result.begin(), '-');
 	}
 	// Выводим результат
 	return result;
@@ -454,12 +458,12 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 		// Выполняем удаление пробелов в начале текста
 		result.erase(result.begin(), find_if_not(result.begin(),result.end(), [](char c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return isspace(c);
+			return ::isspace(c);
 		}));
 		// Выполняем удаление пробелов в конце текста
 		result.erase(find_if_not(result.rbegin(), result.rend(), [](char c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return isspace(c);
+			return ::isspace(c);
 		}).base(), result.end());
 		// Выводим результат
 		return result;
@@ -908,8 +912,10 @@ bool awh::Net::mapping(const string & network) const noexcept {
 						for(uint8_t i = 0; i < 4; i++){
 							// Если октет адреса соответствует октету сети
 							result = ((addr[i] == nwk[i]) || (nwk[i] == 0));
-							// Если проверка не вышла, выходим
-							if(!result) break;
+							// Если проверка не вышла
+							if(!result)
+								// Выходим из цикла
+								break;
 						}
 					} break;
 					// Если IP-адрес определён как IPv6
@@ -928,8 +934,10 @@ bool awh::Net::mapping(const string & network) const noexcept {
 						for(uint8_t i = 0; i < 8; i++){
 							// Если хексет адреса соответствует хексет сети
 							result = ((addr[i] == nwk[i]) || (nwk[i] == 0));
-							// Если проверка не вышла, выходим
-							if(!result) break;
+							// Если проверка не вышла
+							if(!result)
+								// Выходим из цикла
+								break;
 						}
 					} break;
 				}
@@ -1312,14 +1320,14 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 				// Выполняем поиск разделителя
 				while((stop = addr.find('.', start)) != string::npos){
 					// Извлекаем полученное число
-					this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start, stop - start)));
+					this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start, stop - start)));
 					// Выполняем смещение
 					start = (stop + 1);
 					// Увеличиваем смещение индекса
 					index++;
 				}
 				// Выполняем установку последнего октета
-				this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start)));
+				this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start)));
 			} break;
 			// Если IP-адрес является адресом IPv6
 			case static_cast <uint8_t> (type_t::IPV6): {
@@ -1361,14 +1369,14 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Выполняем поиск разделителя
 							while((stop = addr.find('.', start)) != string::npos){
 								// Извлекаем полученное число
-								this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start, stop - start)));
+								this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start, stop - start)));
 								// Выполняем смещение
 								start = (stop + 1);
 								// Увеличиваем смещение индекса
 								index++;
 							}
 							// Выполняем установку последнего октета
-							this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start)));
+							this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start)));
 						// Если IP-адрес состоит из нормальных хексетов
 						} else if((result = ((length >= 1) && (length <= 4)))) {
 							// Устанавливаем индекс последнего элемента
@@ -1442,7 +1450,7 @@ string awh::Net::get(const format_t format) const noexcept {
 					// Перераспределяем объект результата
 					result.resize(17, 0);
 					// Выполняем получение MAC адреса
-					sprintf(
+					::sprintf(
 						result.data(),
 						"%02X:%02X:%02X:%02X:%02X:%02X",
 						this->_buffer[0], this->_buffer[1],
