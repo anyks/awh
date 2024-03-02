@@ -51,7 +51,7 @@ namespace awh {
 	typedef class Net {
 		public:
 			/**
-			 * Режим дислокации IP адреса
+			 * Режим дислокации IP-адреса
 			 */
 			enum class mode_t : uint8_t {
 				NONE   = 0x00, // Адрес не установлен
@@ -60,7 +60,7 @@ namespace awh {
 				RESERV = 0x03  // Адрес является зарезервированным
 			};
 			/**
-			 * Составная часть IP адреса
+			 * Составная часть IP-адреса
 			 */
 			enum class addr_t : uint8_t {
 				NONE = 0x00, // Адрес не установлен
@@ -68,19 +68,19 @@ namespace awh {
 				NETW = 0x02  // Адрес сети
 			};
 			/**
-			 * Форматирование IP адреса
+			 * Форматирование IP-адреса
 			 */
 			enum class format_t : uint8_t {
-				NONE        = 0x00, // Формат IP адреса не указан
-				LONG        = 0x01, // Полный формат IP адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
-				SHORT       = 0x02, // Короткий формат IP адреса [::ae21:ad12 / 192.168.0.1]
-				MIDDLE      = 0x03, // Средний формат IP адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
-				LONG_IPV4   = 0x04, // Полный формат IP адреса для IPv4
-				LONG_IPV6   = 0x05, // Полный формат IP адреса для IPv6
-				SHORT_IPV4  = 0x06, // Короткий формат IP адреса для IPv4
-				SHORT_IPV6  = 0x07, // Короткий формат IP адреса для IPv6
-				MIDDLE_IPV4 = 0x08, // Средний формат IP адреса для IPv4
-				MIDDLE_IPV6 = 0x09  // Средний формат IP адреса для IPv6
+				NONE        = 0x00, // Формат IP-адреса не указан
+				LONG        = 0x01, // Полный формат IP-адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
+				SHORT       = 0x02, // Короткий формат IP-адреса [::ae21:ad12 / 192.168.0.1]
+				MIDDLE      = 0x03, // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
+				LONG_IPV4   = 0x04, // Полный формат IP-адреса для IPv4
+				LONG_IPV6   = 0x05, // Полный формат IP-адреса для IPv6
+				SHORT_IPV4  = 0x06, // Короткий формат IP-адреса для IPv4
+				SHORT_IPV6  = 0x07, // Короткий формат IP-адреса для IPv6
+				MIDDLE_IPV4 = 0x08, // Средний формат IP-адреса для IPv4
+				MIDDLE_IPV6 = 0x09  // Средний формат IP-адреса для IPv6
 			};
 			/**
 			 * Идентификаторы разновидностей адресов
@@ -103,7 +103,7 @@ namespace awh {
 				bool reserved;          // Адрес является зарезервированным
 				uint8_t prefix;         // Префикс сети
 				unique_ptr <Net> end;   // Конечный диапазон адреса
-				unique_ptr <Net> begin; // Начальный IP адрес
+				unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
 				 */
@@ -162,13 +162,13 @@ namespace awh {
 			vector <string> & split(const string & str, const string & delim, vector <string> & result) const noexcept;
 		public:
 			/**
-			 * clear Метод очистки данных IP адреса
+			 * clear Метод очистки данных IP-адреса
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * type Метод извлечение типа IP адреса
-			 * @return тип IP адреса
+			 * type Метод извлечение типа IP-адреса
+			 * @return тип IP-адреса
 			 */
 			type_t type() const noexcept;
 			/**
@@ -226,7 +226,7 @@ namespace awh {
 				if(!this->_buffer.empty() && is_class <T>::value){
 					// Выполняем выделение памяти
 					result.resize(this->_buffer.size() / sizeof(result[0]), 0);
-					// Выполняем копирование IP адреса
+					// Выполняем копирование IP-адреса
 					memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
 				}
 				// Выводим результат
@@ -266,7 +266,7 @@ namespace awh {
 			bool broadcastIPv6ToIPv4() const noexcept;
 		public:
 			/**
-			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * range Метод проверки вхождения IP-адреса в диапазон адресов
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -274,7 +274,7 @@ namespace awh {
 			 */
 			bool range(const Net & begin, const Net & end, const string & mask) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * range Метод проверки вхождения IP-адреса в диапазон адресов
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -282,7 +282,7 @@ namespace awh {
 			 */
 			bool range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * range Метод проверки вхождения IP-адреса в диапазон адресов
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -290,7 +290,7 @@ namespace awh {
 			 */
 			bool range(const string & begin, const string & end, const string & mask) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * range Метод проверки вхождения IP-адреса в диапазон адресов
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -299,13 +299,13 @@ namespace awh {
 			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
 		public:
 			/**
-			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * mapping Метод проверки соотвествия IP-адреса указанной сети
 			 * @param network сеть для проверки соответствия
 			 * @return        результат проверки
 			 */
 			bool mapping(const string & network) const noexcept;
 			/**
-			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * mapping Метод проверки соотвествия IP-адреса указанной сети
 			 * @param network сеть для проверки соответствия
 			 * @param mask    маска сети для наложения
 			 * @param addr    тип получаемого адреса
@@ -313,7 +313,7 @@ namespace awh {
 			 */
 			bool mapping(const string & network, const string & mask, const addr_t addr) const noexcept;
 			/**
-			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * mapping Метод проверки соотвествия IP-адреса указанной сети
 			 * @param network сеть для проверки соответствия
 			 * @param prefix  префикс для наложения
 			 * @param addr    тип получаемого адреса
@@ -322,7 +322,7 @@ namespace awh {
 			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
 		public:
 			/**
-			 * mode Метод определения режима дислокации IP адреса
+			 * mode Метод определения режима дислокации IP-адреса
 			 * @return режим дислокации
 			 */
 			mode_t mode() const noexcept;
@@ -342,75 +342,75 @@ namespace awh {
 			bool parse(const string & addr, const type_t type) noexcept;
 		public:
 			/**
-			 * get Метод извлечения данных IP адреса
-			 * @param format формат формирования IP адреса
-			 * @return       сформированная строка IP адреса
+			 * get Метод извлечения данных IP-адреса
+			 * @param format формат формирования IP-адреса
+			 * @return       сформированная строка IP-адреса
 			 */
 			string get(const format_t format = format_t::SHORT) const noexcept;
 		public:
 			/**
-			 * Оператор вывода IP адреса в качестве строки
-			 * @return IP адрес в качестве строки
+			 * Оператор вывода IP-адреса в качестве строки
+			 * @return IP-адрес в качестве строки
 			 */
 			operator std::string() const noexcept;
 		public:
 			/**
-			 * Оператор [<] сравнения IP адреса
+			 * Оператор [<] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator < (const Net & addr) const noexcept;
 			/**
-			 * Оператор [>] сравнения IP адреса
+			 * Оператор [>] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator > (const Net & addr) const noexcept;
 			/**
-			 * Оператор [<=] сравнения IP адреса
+			 * Оператор [<=] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator <= (const Net & addr) const noexcept;
 			/**
-			 * Оператор [>=] сравнения IP адреса
+			 * Оператор [>=] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator >= (const Net & addr) const noexcept;
 			/**
-			 * Оператор [!=] сравнения IP адреса
+			 * Оператор [!=] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator != (const Net & addr) const noexcept;
 			/**
-			 * Оператор [==] сравнения IP адреса
+			 * Оператор [==] сравнения IP-адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator == (const Net & addr) const noexcept;
 		public:
 			/**
-			 * Оператор [=] присвоения IP адреса
+			 * Оператор [=] присвоения IP-адреса
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const Net & addr) noexcept;
 			/**
-			 * Оператор [=] присвоения IP адреса
+			 * Оператор [=] присвоения IP-адреса
 			 * @param ip адрес для присвоения
 			 * @return   текущий объект
 			 */
 			Net & operator = (const string & ip) noexcept;
 			/**
-			 * Оператор [=] присвоения IP адреса
+			 * Оператор [=] присвоения IP-адреса
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const uint32_t addr) noexcept;
 			/**
-			 * Оператор [=] присвоения IP адреса
+			 * Оператор [=] присвоения IP-адреса
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
@@ -426,13 +426,13 @@ namespace awh {
 			~Net() noexcept {}
 	} net_t;
 	/**
-	 * Оператор [>>] чтения из потока IP адреса
+	 * Оператор [>>] чтения из потока IP-адреса
 	 * @param is   поток для чтения
 	 * @param addr адрес для присвоения
 	 */
 	istream & operator >> (istream & is, net_t & addr) noexcept;
 	/**
-	 * Оператор [<<] вывода в поток IP адреса
+	 * Оператор [<<] вывода в поток IP-адреса
 	 * @param os   поток куда нужно вывести данные
 	 * @param addr адрес для присвоения
 	 */
