@@ -1670,8 +1670,8 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = server;
 				} break;
-				// Если хост является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::HOST): {
+				// Если хост является доменной зоной
+				case static_cast <uint8_t> (net_t::type_t::ZONE): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
@@ -2342,8 +2342,8 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 				case static_cast <uint8_t> (net_t::type_t::NETWORK):
 					// Сообщаем, что адрес нам не подходит
 					return result;
-				// Если домен является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::HOST): {
+				// Если домен является доменной зоной
+				case static_cast <uint8_t> (net_t::type_t::ZONE): {
 					// Выполняем поиск IP-адреса в кэше DNS
 					result = this->cache(family, domain);
 					// Если IP-адрес получен

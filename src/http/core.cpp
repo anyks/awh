@@ -1509,8 +1509,8 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				// Выполняем установку IPv6-адреса
 				request.url.ip = net = request.url.host;
 			} break;
-			// Если передан доменное имя
-			case static_cast <uint8_t> (net_t::type_t::HOST):
+			// Если передана доменная зона
+			case static_cast <uint8_t> (net_t::type_t::ZONE):
 				// Выполняем установку IPv6-адреса
 				request.url.domain = this->_fmk->transform(request.url.host, fmk_t::transform_t::LOWER);
 			break;

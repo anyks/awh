@@ -176,20 +176,20 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 		this->_scheme.url.host = host;
 		// Определяем тип передаваемого сервера
 		switch(static_cast <uint8_t> (this->_net.host(host))){
-			// Если хост является доменом или IPv4 адресом
+			// Если хост является доменом или IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Устанавливаем IP адрес
 				this->_scheme.url.ip = host;
 			break;
-			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+			// Если хост является IPv6-адресом, переводим IP-адрес в полную форму
 			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
 				net_t net{};
-				// Устанавливаем IP адрес
+				// Устанавливаем IP-адрес
 				this->_scheme.url.ip = net = host;
 			} break;
-			// Если хост является доменным именем
-			case static_cast <uint8_t> (net_t::type_t::HOST):
+			// Если хост является доменной зоной
+			case static_cast <uint8_t> (net_t::type_t::ZONE):
 				// Устанавливаем доменное имя
 				this->_scheme.url.domain = host;
 			break;

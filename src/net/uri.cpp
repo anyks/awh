@@ -209,19 +209,19 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 					case static_cast <uint8_t> (net_t::type_t::URL):
 					// Если домен является адресом/Маски сети
 					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
-					// Если - это доменное имя
-					case static_cast <uint8_t> (net_t::type_t::HOST):
+					// Если мы получили доменное имя
+					case static_cast <uint8_t> (net_t::type_t::ZONE):
 						// Устанавливаем доменное имя
 						result.domain = result.host;
 					break;
-					// Если - это IP-адрес сети IPv4
+					// Если мы получили IP-адрес сети IPv4
 					case static_cast <uint8_t> (net_t::type_t::IPV4): {
 						// Устанавливаем IP-адрес
 						result.ip = result.host;
 						// Устанавливаем тип сети
 						result.family = AF_INET;
 					} break;
-					// Если - это IP-адрес сети IPv6
+					// Если мы получили IP-адрес сети IPv6
 					case static_cast <uint8_t> (net_t::type_t::IPV6): {
 						// Устанавливаем IP-адрес
 						result.ip = result.host;
@@ -372,9 +372,9 @@ string awh::URI::url(const url_t & url) const noexcept {
 			if(host.empty()){
 				// Определяем тип хоста
 				switch(url.family){
-					// Если - это IPv4
+					// Если мы получили IPv4
 					case AF_INET: host = url.ip; break;
-					// Если - это IPv6
+					// Если мы получили IPv6
 					case AF_INET6: host = this->_fmk->format("[%s]", url.ip.c_str()); break;
 				}
 			}
@@ -455,9 +455,9 @@ string awh::URI::origin(const url_t & url) const noexcept {
 		if(host.empty()){
 			// Определяем тип хоста
 			switch(url.family){
-				// Если - это IPv4
+				// Если мы получили IPv4
 				case AF_INET: host = url.ip; break;
-				// Если - это IPv6
+				// Если мы получили IPv6
 				case AF_INET6: host = this->_fmk->format("[%s]", url.ip.c_str()); break;
 			}
 		}
@@ -762,15 +762,15 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 							else if(result.count(flag_t::HOST) < 1) {
 								// Определяем тип домена
 								switch(static_cast <uint8_t> (this->_net.host(data))){
-									// Если - это IP-адрес сети IPv4
+									// Если мы получили IP-адрес сети IPv4
 									case static_cast <uint8_t> (net_t::type_t::IPV4):
-									// Если - это IP-адрес сети IPv6
+									// Если мы получили IP-адрес сети IPv6
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Устанавливаем результат хоста
 										result.emplace(flag_t::HOST, data);
 									break;
-									// Если - это доменное имя
-									case static_cast <uint8_t> (net_t::type_t::HOST):
+									// Если мы получили доменное имя
+									case static_cast <uint8_t> (net_t::type_t::ZONE):
 										// Устанавливаем результат хоста
 										result.emplace(flag_t::HOST, this->_fmk->transform(data, fmk_t::transform_t::LOWER));
 									break;

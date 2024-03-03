@@ -569,8 +569,8 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = server;
 				} break;
-				// Если хост является доменным именем
-				case static_cast <uint8_t> (net_t::type_t::HOST): {
+				// Если хост является доменной зоной
+				case static_cast <uint8_t> (net_t::type_t::ZONE): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена

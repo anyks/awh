@@ -627,8 +627,8 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Выполняем установку IPv6 адреса
 											this->_req.url.ip = net = this->_req.url.host;
 										} break;
-										// Если передан доменное имя
-										case static_cast <uint8_t> (net_t::type_t::HOST):
+										// Если передана доменная зона
+										case static_cast <uint8_t> (net_t::type_t::ZONE):
 											// Выполняем установку IPv6 адреса
 											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
 										break;
