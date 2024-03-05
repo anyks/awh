@@ -692,7 +692,9 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 				break;
 			}
 			// Если предыдущий символ был переносом строки а текущий возврат каретки
-			if((old == '\n') && (letter == '\r')) stop = true;
+			if((old == '\n') && (letter == '\r'))
+				// Устанавливаем флаг конца
+				stop = true;
 			// Если сепаратор найден, добавляем его в массив
 			if((this->_separator != '\0') && (letter == this->_separator) && (count < 2)){
 				// Устанавливаем позицию найденного разделителя
@@ -706,7 +708,9 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 				length = ((old == '\r' ? i - 1 : i) - offset);
 				// Если символ является последним и он не является переносом строки
-				if((i == (size - 1)) && (letter != '\n')) length++;
+				if((i == (size - 1)) && (letter != '\n'))
+					// Увеличиваем общий размер обработанных байт
+					length++;
 				// Если длина слова получена, выводим полученную строку
 				callback(buffer + offset, length, i + 1, stop);
 				// Если массив сепараторов получен
