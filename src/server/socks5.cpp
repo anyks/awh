@@ -29,31 +29,6 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
 	}
 }
 /**
- * statusEvents Метод обратного вызова при активации ядра
- * @param status флаг запуска/остановки
- */
-void awh::server::ProxySocks5::statusEvents(const awh::core_t::status_t status) noexcept {
-	// Определяем статус активности сетевого ядра
-	switch(static_cast <uint8_t> (status)){
-		// Если система запущена
-		case static_cast <uint8_t> (awh::core_t::status_t::START): {
-			// Выполняем биндинг базы событий для таймера
-			this->_core.bind(dynamic_cast <awh::core_t *> (&this->_timer));
-			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-			this->_timer.setInterval(3000, std::bind(&proxy_socks5_t::erase, this, _1));
-		} break;
-		// Если система остановлена
-		case static_cast <uint8_t> (awh::core_t::status_t::STOP):
-			// Выполняем анбиндинг базы событий таймера
-			this->_core.unbind(dynamic_cast <awh::core_t *> (&this->_timer));
-		break;
-	}
-	// Если функция получения событий запуска и остановки сетевого ядра установлена
-	if(this->_callbacks.is("status"))
-		// Выводим функцию обратного вызова
-		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
-}
-/**
  * acceptEvents Метод обратного вызова при проверке подключения клиента
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
@@ -232,10 +207,8 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 				auto it = this->_clients.find(bid1);
 				// Если активный клиент найден
 				if(it != this->_clients.end())
-					// Выполняем отключение клиента от сетевого ядра
-					this->_core.unbind(it->second.get());
-				// Добавляем в очередь список отключившихся клиентов
-				this->_disconnected.emplace(bid1, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+					// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
+					it->second->setTimeout(3000, std::bind(&proxy_socks5_t::erase, this, _1, bid1));
 			} break;
 		}
 	}
@@ -385,30 +358,26 @@ void awh::server::ProxySocks5::writeEvents(const broker_t broker, const char * b
 /**
  * erase Метод удаления отключённых клиентов
  * @param tid идентификатор таймера
+ * @param bid идентификатор брокера
  */
-void awh::server::ProxySocks5::erase(const uint16_t tid) noexcept {
-	// Если список отключившихся клиентов не пустой
-	if(!this->_disconnected.empty()){
-		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Выполняем переход по всему списку отключившихся клиентов
-		for(auto it = this->_disconnected.begin(); it != this->_disconnected.end();){
-			// Если брокер уже давно удалился
-			if((date - it->second) >= 5000){
-				// Удаляем активного клиента
-				this->_clients.erase(it->first);
-				// Выполняем удаление параметров брокера
-				this->_scheme.rm(it->first);
-				// Если функция обратного вызова при подключении/отключении установлена
-				if(this->_callbacks.is("active"))
-					// Выводим функцию обратного вызова
-					this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", it->first, mode_t::DISCONNECT);
-				// Выполняем удаление объекта брокеров из списка мусора
-				it = this->_disconnected.erase(it);
-			// Выполняем пропуск брокера
-			} else ++it;
-		}
+void awh::server::ProxySocks5::erase(const uint16_t tid, const uint64_t bid) noexcept {
+	// Зануляем неиспользуемую переменную
+	(void) tid;
+	// Выполняем поиск активного клиента
+	auto it = this->_clients.find(bid);
+	// Если активный клиент найден
+	if(it != this->_clients.end()){
+		// Выполняем отключение клиента от сетевого ядра
+		this->_core.unbind(it->second.get());
+		// Удаляем активного клиента
+		this->_clients.erase(it);
 	}
+	// Выполняем удаление параметров брокера
+	this->_scheme.rm(bid);
+	// Если функция обратного вызова при подключении/отключении установлена
+	if(this->_callbacks.is("active"))
+		// Выводим функцию обратного вызова
+		this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 }
 /**
  * init Метод инициализации брокера
@@ -688,13 +657,9 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
  _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _callbacks(log),
- _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
-	// Выполняем отключение информационных сообщений сетевого ядра таймера
-	this->_timer.noInfo(true);
+ _core(&_dns, fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем протокол интернет-подключения
 	this->_core.sonet(scheme_t::sonet_t::TCP);
-	// Устанавливаем функцию активации ядра сервера
-	this->_core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&proxy_socks5_t::statusEvents, this, _1));
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1));
 	// Устанавливаем событие подключения

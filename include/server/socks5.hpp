@@ -112,14 +112,8 @@ namespace awh {
 				// Объект биндинга TCP/IP для сервера
 				server::core_t _core;
 			private:
-				// Таймер обработки подключения
-				awh::core_t _timer;
-			private:
 				// Объект рабочего для сервера
 				scheme::socks5_t _scheme;
-			private:
-				// Список отключившихся клиентов
-				map <uint64_t, time_t> _disconnected;
 			private:
 				// Список активных клиентов
 				map <uint64_t, unique_ptr <client::core_t>> _clients;
@@ -134,12 +128,6 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void openEvents(const uint16_t sid) noexcept;
-			private:
-				/**
-				 * statusEvents Метод обратного вызова при активации ядра
-				 * @param status флаг запуска/остановки
-				 */
-				void statusEvents(const awh::core_t::status_t status) noexcept;
 			private:
 				/**
 				 * acceptEvents Метод обратного вызова при проверке подключения клиента
@@ -190,8 +178,9 @@ namespace awh {
 				/**
 				 * erase Метод удаления отключённых клиентов
 				 * @param tid идентификатор таймера
+				 * @param bid идентификатор брокера
 				 */
-				void erase(const uint16_t tid) noexcept;
+				void erase(const uint16_t tid, const uint64_t bid) noexcept;
 			public:
 				/**
 				 * init Метод инициализации брокера

@@ -516,9 +516,7 @@ class Executor {
 		const log_t * _log;
 	public:
 
-		void status(const awh::core_t::status_t status, awh::core_t * core){
-			(void) core;
-
+		void status(const awh::core_t::status_t status){
 			switch(static_cast <uint8_t> (status)){
 				case static_cast <uint8_t> (awh::core_t::status_t::START):
 					this->_log->print("START", log_t::flag_t::INFO);
@@ -611,8 +609,8 @@ int main(int argc, char * argv[]){
 	ws.subprotocols({"test2", "test8", "test9"});
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 
+	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
 	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
-	ws.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
 	ws.callback <void (const vector <char> &, const bool, client::websocket_t *)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
 	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t, client::websocket_t *)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3, &ws));
 
@@ -1147,9 +1145,8 @@ class Executor {
 			}
 		}
 
-		void timeout(const u_short id, core_t * core){
+		void timeout(const u_short id){
 			(void) id;
-			(void) core;
 
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
 		}
@@ -1162,8 +1159,8 @@ class Executor {
 
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 
-					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1, _2));
-					core->setInterval(5000, std::bind(&Executor::interval, this, _1, _2));
+					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1));
+					core->setInterval(5000, std::bind(&Executor::interval, this, _1, core));
 				} break;
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
@@ -1184,7 +1181,7 @@ int main(int argc, char * argv[]){
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
+	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &core));
 
 	core.start();
 
@@ -2241,9 +2238,7 @@ class Executor {
 			}
 		}
 
-		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
-			(void) core;
-
+		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size){
 			switch(static_cast <uint8_t> (worker)){
 				case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 					this->_log->print("Message from children [%u]: %s", log_t::flag_t::INFO, pid, string(buffer, size).c_str());
@@ -2254,9 +2249,7 @@ class Executor {
 			}
 		}
 
-		void run(const awh::core_t::status_t status, core_t * core){
-			(void) core;
-
+		void run(const awh::core_t::status_t status){
 			switch(static_cast <uint8_t> (status)){
 				case static_cast <uint8_t> (awh::core_t::status_t::START):
 					this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
@@ -2283,9 +2276,9 @@ int main(int argc, char * argv[]){
 	core.size();
 	core.autoRestart(true);
 
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
-	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, _4));
-	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t, cluster::core_t *)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::run, &executor, _1));
+	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
+	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
 
 	core.start();
 

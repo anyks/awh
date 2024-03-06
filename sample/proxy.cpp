@@ -112,7 +112,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Активируем максимальное количество рабочих процессов
-	// proxy.cluster();
+	proxy.cluster();
 	// Устанавливаем название сервера
 	// proxy.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -142,8 +142,8 @@ int main(int argc, char * argv[]){
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию прокси-сервера
-	proxy.init(2222, "", http_t::compress_t::GZIP);
-	// proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+	// proxy.init(2222, "", http_t::compress_t::GZIP);
+	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
@@ -154,7 +154,7 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	proxy.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	// proxy.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
 	// Устанавливаем функцию извлечения пароля
