@@ -840,13 +840,11 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 					// Выводим результат как он был передан
 					return path;
 				// Получаем размер полученного адреса
-				size_t length = ::strlen(buffer);
+				const size_t length = ::strlen(buffer);
 				// Выполняем выделение памяти для результирующего адреса
-				result.resize(length + 1, 0);
+				result.resize(length, 0);
 				// Выполняем получение полного адреса до текущего каталога
 				::memcpy(result.data(), buffer, length);
-				// Выполняем установку конца строки
-				result.back() = '\0';
 			}
 			// Название кталога для перебора адреса
 			string folder = "";
