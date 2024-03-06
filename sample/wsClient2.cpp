@@ -29,11 +29,8 @@ class WebClient {
 		/**
 		 * status Метод статуса запуска/остановки сервера
 		 * @param status статус события сервера
-		 * @param core   объект сетевого ядра
 		 */
-		void status(const awh::core_t::status_t status, awh::core_t * core){
-			// Блокируем неиспользуемую переменную
-			(void) core;
+		void status(const awh::core_t::status_t status){
 			// Определяем флаг статуса сервера
 			switch(static_cast <uint8_t> (status)){
 				// Если сервер запущен
@@ -397,10 +394,10 @@ int main(int argc, char * argv[]){
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// Подписываемся на событие запуска/остановки сервера
+	awh.callback <void (const awh::core_t::status_t)> ("status", std::bind(&WebClient::status, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
 	awh.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
-	// Подписываемся на событие запуска/остановки сервера
-	awh.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&WebClient::status, &executor, _1, _2));
 	// Устанавливаем метод активации подключения
 	awh.callback <void (const client::web_t::mode_t, client::awh_t *)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	// Подписываемся на событие получения сообщения с сервера

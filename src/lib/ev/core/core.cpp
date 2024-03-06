@@ -87,22 +87,20 @@ void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
 	timer.stop();
 	// Получаем функцияю обратного вызова
 	auto callback = this->fn;
-	// Получаем объект сетевого ядра
-	core_t * core = this->core;
 	// Получаем идентификатор таймера
 	const uint16_t id = this->id;
 	// Если персистентная работа не установлена, удаляем таймер
 	if(!this->persist){
 		// Если родительский объект установлен
-		if(core != nullptr)
+		if(this->core != nullptr)
 			// Удаляем объект таймера
-			core->_timers.erase(id);
+			this->core->_timers.erase(id);
 	// Если нужно продолжить работу таймера
 	} else timer.start(this->delay);
 	// Если функция обратного вызова установлена
 	if(callback != nullptr)
 		// Если функция обратного вызова установлена
-		callback(id, core);
+		callback(id);
 }
 /**
  * kick Метод отправки пинка
@@ -374,40 +372,40 @@ awh::Core::Dispatch::~Dispatch() noexcept {
  */
 void awh::Core::signal(const int signal) noexcept {
 	// Если процесс является дочерним
-	if(this->_pid != getpid()){
+	if(this->_pid != ::getpid()){
 		// Определяем тип сигнала
 		switch(signal){
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
+				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, ::getpid());
 				// Выходим из приложения
 				::exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
+				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGABRT");
 			break;
 		}
 		// Выходим принудительно из приложения
@@ -443,7 +441,7 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
 			// Если функция обратного вызова установлена
 			if(scheme.second->callbacks.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const uint16_t, core_t *)> (scheme.first, scheme.second->callbacks.get <void (const uint16_t, core_t *)> ("open"), scheme.first, this);
+				callback.set <void (const uint16_t)> (scheme.first, scheme.second->callbacks.get <void (const uint16_t)> ("open"), scheme.first);
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind();
@@ -453,11 +451,11 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("status"))
 			// Выполняем запуск функции в основном потоке
-			this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
+			this->_callbacks.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
 		if(!this->_noinfo)
 			// Выводим в консоль информацию
-			this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, getpid());
+			this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, ::getpid());
 	}
 }
 /**
@@ -481,11 +479,11 @@ void awh::Core::closedown(const bool mode, const bool status) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("status"))
 			// Выполняем запуск функции в основном потоке
-			this->_callbacks.call <void (const status_t, core_t *)> ("status", this->_status, this);
+			this->_callbacks.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
 		if(!this->_noinfo)
 			// Выводим в консоль информацию
-			this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, getpid());
+			this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, ::getpid());
 	}
 }
 /**
@@ -521,9 +519,9 @@ void awh::Core::rebase() noexcept {
 		 * Timer Структура таймера
 		 */
 		typedef struct Timer {
-			bool persist;                                  // Таймер является персистентным
-			time_t delay;                                  // Задержка времени в миллисекундах
-			function <void (const uint16_t, core_t *)> fn; // Функция обратного вызова
+			bool persist;                        // Таймер является персистентным
+			time_t delay;                        // Задержка времени в миллисекундах
+			function <void (const uint16_t)> fn; // Функция обратного вызова
 			/**
 			 * Timer Конструктор
 			 */
@@ -1116,7 +1114,7 @@ void awh::Core::clearTimer(const uint16_t id) noexcept {
  * @param callback функция обратного вызова
  * @return         идентификатор созданного таймера
  */
-uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_t, core_t *)> callback) noexcept {
+uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_t)> callback) noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если данные переданы
@@ -1166,7 +1164,7 @@ uint16_t awh::Core::setTimeout(const time_t delay, function <void (const uint16_
  * @param callback функция обратного вызова
  * @return         идентификатор созданного таймера
  */
-uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16_t, core_t *)> callback) noexcept {
+uint16_t awh::Core::setInterval(const time_t delay, function <void (const uint16_t)> callback) noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если данные переданы
@@ -1605,7 +1603,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
+ _pid(::getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
  _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base),
  _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _dns(nullptr), _fmk(fmk), _log(log) {
@@ -1627,7 +1625,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
  * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
  */
 awh::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- _pid(getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
+ _pid(::getpid()), _mode(false), _noinfo(false), _cores(0), _fs(fmk, log), _callbacks(log),
  _uri(fmk), _engine(fmk, log, &_uri), _dispatch(this), _sig(_dispatch.base),
  _signals(mode_t::DISABLED), _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _dns(const_cast <dns_t *> (dns)), _fmk(fmk), _log(log) {

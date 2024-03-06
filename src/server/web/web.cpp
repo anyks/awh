@@ -17,50 +17,45 @@
 
 /**
  * openEvents Метод обратного вызова при запуске работы
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Web::openEvents(const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Web::openEvents(const uint16_t sid) noexcept {
 	// Если данные существуют
-	if((sid > 0) && (core != nullptr)){
+	if(sid > 0){
 		// Устанавливаем хост сервера
-		dynamic_cast <server::core_t *> (core)->init(sid, this->_service.port, this->_service.host);
+		const_cast <server::core_t *> (this->_core)->init(sid, this->_service.port, this->_service.host);
 		// Выполняем запуск сервера
-		dynamic_cast <server::core_t *> (core)->run(sid);
+		const_cast <server::core_t *> (this->_core)->run(sid);
 	}
 }
 /**
  * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
- * @param core   объект сетевого ядра
  */
-void awh::server::Web::statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if(core != nullptr){
-		// Определяем статус активности сетевого ядра
-		switch(static_cast <uint8_t> (status)){
-			// Если система запущена
-			case static_cast <uint8_t> (awh::core_t::status_t::START): {
-				// Выполняем биндинг ядра локального таймера
-				core->bind(&this->_timer);
-				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 5 секунд
-				this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1, _2));
-				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
-				this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1, _2));
-			} break;
-			// Если система остановлена
-			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
-				// Останавливаем все установленные таймеры
-				this->_timer.clearTimers();
-				// Выполняем анбиндинг ядра локального таймера
-				core->unbind(&this->_timer);
-			} break;
-		}
-		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callbacks.is("status"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
+void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept {
+	// Определяем статус активности сетевого ядра
+	switch(static_cast <uint8_t> (status)){
+		// Если система запущена
+		case static_cast <uint8_t> (awh::core_t::status_t::START): {
+			// Выполняем биндинг ядра локального таймера
+			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 5 секунд
+			this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1));
+			// Устанавливаем интервал времени на выполнения пинга удалённого сервера
+			this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1));
+		} break;
+		// Если система остановлена
+		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+			// Останавливаем все установленные таймеры
+			this->_timer.clearTimers();
+			// Выполняем анбиндинг ядра локального таймера
+			const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+		} break;
 	}
+	// Если функция получения событий запуска и остановки сетевого ядра установлена
+	if(this->_callbacks.is("status"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
  * acceptEvents Метод обратного вызова при проверке подключения брокера
@@ -68,14 +63,13 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status, awh::cor
  * @param mac  мак-адрес подключившегося брокера
  * @param port порт подключившегося брокера
  * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
  * @return     результат разрешения к подключению брокера
  */
-bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept {
+bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
+	if(!ip.empty() && !mac.empty() && (sid > 0)){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("accept"))
 			// Выполняем функцию обратного вызова
@@ -121,13 +115,12 @@ void awh::server::Web::callbacksEvents(const fn_t::event_t event, const uint64_t
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param event  идентификатор события
- * @param core   объект сетевого ядра
  */
-void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event, awh::core_t * core) noexcept {
+void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("cluster"))
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", family, sid, pid, event, core);
+		this->_callbacks.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", family, sid, pid, event);
 }
 /**
  * erase Метод удаления отключившихся брокеров
@@ -170,10 +163,9 @@ void awh::server::Web::disconnect(const uint64_t bid) noexcept {
 }
 /**
  * disconected Метод удаления отключившихся брокеров
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
+ * @param tid идентификатор таймера
  */
-void awh::server::Web::disconected(const uint16_t tid, awh::core_t * core) noexcept {
+void awh::server::Web::disconected(const uint16_t tid) noexcept {
 	// Выполняем удаление отключившихся брокеров
 	this->erase();
 }
@@ -296,9 +288,9 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(this->_core != nullptr){
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvents, this, _1));
 		// Устанавливаем функцию обратного вызова на перехват событий кластера
-		const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4, _5));
+		const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
 	}
 }
 /**
@@ -308,7 +300,7 @@ void awh::server::Web::stop() noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Если завершить работу разрешено
-		if(this->_unbind)
+		if(this->_unbind && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <server::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
@@ -430,7 +422,7 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
 	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&web_t::statusEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvents, this, _1));
 	// Устанавливаем функцию обратного вызова на перехват событий кластера
-	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4, _5));
+	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
 }

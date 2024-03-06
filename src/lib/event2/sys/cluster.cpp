@@ -52,7 +52,7 @@
 				// Выполняем остановку работы
 				this->cluster->stop(this->wid);
 				// Выполняем завершение работы
-				exit(status);
+				::exit(status);
 			}
 		}
 	}
@@ -82,13 +82,13 @@
 						// Выполняем остановку работы
 						this->cluster->stop(this->wid);
 						// Выходим из приложения
-						exit(SIGINT);
+						::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
 					} else if((this->cluster->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - jack->date) <= 180000) {
 						// Выполняем остановку работы
 						this->cluster->stop(this->wid);
 						// Выходим из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
@@ -125,7 +125,7 @@
 		// Заполняем буфер нулями
 		::memset(buffer, 0, sizeof(buffer));
 		// Если процесс является родительским
-		if(this->cluster->_pid == static_cast <pid_t> (getpid())){
+		if(this->cluster->_pid == static_cast <pid_t> (::getpid())){
 			// Идентификатор процесса приславший сообщение
 			pid_t pid = 0;
 			// Выполняем поиск текущего работника
@@ -209,17 +209,17 @@
 				 */
 				#else
 					// Выходим из приложения
-					exit(EXIT_FAILURE);
+					::exit(EXIT_FAILURE);
 				#endif
 			}
 		// Если процесс является дочерним
-		} else if(this->cluster->_pid == static_cast <pid_t> (getppid())) {
+		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
 			// Выполняем поиск текущего работника
 			auto jt = this->cluster->_jacks.find(this->wid);
 			// Если текущий работник найден
 			if(jt != this->cluster->_jacks.end()){
 				// Получаем индекс текущего процесса
-				const uint16_t index = this->cluster->_pids.at(getpid());
+				const uint16_t index = this->cluster->_pids.at(::getpid());
 				// Получаем объект текущего работника
 				jack_t * jack = jt->second.at(index).get();
 				// Если файловый дескриптор не соответствует родительскому
@@ -273,7 +273,7 @@
 							// Останавливаем чтение данных с родительского процесса
 							this->cluster->stop(this->wid);
 							// Выходим из приложения
-							exit(SIGCHLD);
+							::exit(SIGCHLD);
 						// Если передана последняя порция
 						} else if(message.end) {
 							// Создаём объект передаваемых данных
@@ -305,14 +305,14 @@
 							// Останавливаем чтение данных с родительского процесса
 							this->cluster->stop(this->wid);
 							// Выходим из приложения
-							exit(SIGCHLD);
+							::exit(SIGCHLD);
 						// Выводим сообщение что данные пришли битые
-						} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, getpid());
+						} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
 					}
 				// Если данные не прочитаны
 				} else {
 					// Выводим сообщение об ошибке в лог
-					this->_log->print("[%u] Data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
+					this->_log->print("[%u] Data from main process could not be received", log_t::flag_t::CRITICAL, ::getpid());
 					/**
 					 * Если включён режим отладки
 					 */
@@ -324,14 +324,14 @@
 					 */
 					#else
 						// Выходим из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					#endif
 				}
 			}
 		// Если процесс превратился в зомби
 		} else {
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			// Останавливаем чтение данных с родительского процесса
 			this->cluster->stop(this->wid);
 			/**
@@ -345,7 +345,7 @@
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 	}
@@ -428,16 +428,16 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем подписку на основной канал передачи данных
 						if(::pipe(jack->mfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							// Выходим принудительно из приложения
-							exit(EXIT_FAILURE);
+							::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
 						if(::pipe(jack->cfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							// Выходим принудительно из приложения
-							exit(EXIT_FAILURE);
+							::exit(EXIT_FAILURE);
 						}
 						// Выполняем добавление работника в список работников
 						jt->second.push_back(std::move(jack));
@@ -450,7 +450,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					// Выполняем подписку на основной канал передачи данных
 					if(::pipe(jack->mfds) != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
 						for(auto & jack : jt->second)
 							// Выполняем остановку чтение сообщений
@@ -458,12 +458,12 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем остановку работы
 						this->stop(it->first);
 						// Выходим принудительно из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					}
 					// Выполняем подписку на дочерний канал передачи данных
 					if(::pipe(jack->cfds) != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
 						for(auto & jack : jt->second)
 							// Выполняем остановку чтение сообщений
@@ -471,7 +471,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем остановку работы
 						this->stop(it->first);
 						// Выходим принудительно из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					}
 					// Устанавливаем нового работника
 					jt->second.at(index) = std::move(jack);
@@ -495,15 +495,15 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						 */
 						#else
 							// Выходим из приложения
-							exit(EXIT_FAILURE);
+							::exit(EXIT_FAILURE);
 						#endif
 					} break;
 					// Если - это дочерний поток значит все нормально
 					case 0: {
 						// Если процесс является дочерним
-						if((it->second->working = (this->_pid == static_cast <pid_t> (getppid())))){
+						if((it->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
 							// Получаем идентификатор текущего процесса
-							const pid_t pid = getpid();
+							const pid_t pid = ::getpid();
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, index);
 							{
@@ -549,7 +549,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Если процесс превратился в зомби
 						} else {
 							// Процесс превратился в зомби, самоликвидируем его
-							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 							/**
 							 * Если включён режим отладки
 							 */
@@ -561,7 +561,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							 */
 							#else
 								// Выходим из приложения
-								exit(EXIT_FAILURE);
+								::exit(EXIT_FAILURE);
 							#endif
 						}
 					} break;
@@ -650,9 +650,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем идентификатор текущего процесса
-		const pid_t pid = getpid();
+		const pid_t pid = ::getpid();
 		// Если процесс превратился в зомби
-		if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (getppid()))){
+		if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (::getppid()))){
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
 			// Выполняем остановку работы
@@ -668,7 +668,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
@@ -720,7 +720,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
-		if((this->_pid == static_cast <pid_t> (getpid())) && (size > 0)){
+		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск работников
 			auto jt = this->_jacks.find(wid);
 			// Если работник найден
@@ -748,11 +748,11 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				} while(offset < size);
 			}
 		// Если процесс превратился в зомби
-		} else if((this->_pid != static_cast <pid_t> (getpid())) && (this->_pid != static_cast <pid_t> (getppid()))) {
+		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -764,7 +764,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 	/**
@@ -787,7 +787,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
-		if((this->_pid == static_cast <pid_t> (getpid())) && (size > 0)){
+		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск работников
 			auto jt = this->_jacks.find(wid);
 			// Если работник найден
@@ -820,11 +820,11 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 				} while(offset < size);
 			}
 		// Если процесс превратился в зомби
-		} else if((this->_pid != getpid()) && (this->_pid != static_cast <pid_t> (getppid()))) {
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -836,7 +836,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 	/**
@@ -933,7 +933,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 		// Выполняем поиск воркера
 		auto it = this->_workers.find(jt->first);
 		// Если процесс является родительским
-		if(this->_pid == static_cast <pid_t> (getpid())){
+		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Флаг перезапуска
 			bool restart = false;
 			// Если воркер найден, получаем флаг перезапуска
@@ -967,7 +967,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				// Возвращаем значение флага автоматического перезапуска процесса
 				it->second->restart = restart;
 		// Если процесс является дочерним
-		} else if(this->_pid == static_cast <pid_t> (getppid()))
+		} else if(this->_pid == static_cast <pid_t> (::getppid()))
 			// Выполняем закрытие подключения передачи сообщений
 			this->close(wid);
 		// Если процесс превратился в зомби
@@ -975,7 +975,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			// Выполняем закрытие подключения передачи сообщений
 			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -987,7 +987,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			 */
 			#else
 				// Выходим из приложения
-				exit(EXIT_FAILURE);
+				::exit(EXIT_FAILURE);
 			#endif
 		}
 		// Если воркер найден, снимаем флаг запуска кластера

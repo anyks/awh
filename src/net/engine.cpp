@@ -956,7 +956,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -989,7 +989,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 			// Для остальных ошибок
 			default:
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		}
 		// Выводим результат
 		return (errno != 0);

@@ -17,40 +17,37 @@
 
 /**
  * openCallback Метод обратного вызова при запуске работы
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::openCallback(const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::openCallback(const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((sid > 0) && (core != nullptr)){
+	if(sid > 0){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN))
 			// Выполняем подключение
-			dynamic_cast <client::core_t *> (core)->open(this->_scheme.sid);
+			const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	}
 }
 /**
  * eventsCallback Функция обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
- * @param core   объект сетевого ядра
  */
-void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::client::Sample::eventsCallback(const awh::core_t::status_t status) noexcept {
 	// Если функция получения событий запуска и остановки сетевого ядра установлена
-	if((core != nullptr) && this->_callbacks.is("status"))
+	if(this->_callbacks.is("status"))
 		// Выводим функцию обратного вызова
-		this->_callbacks.call <void (const awh::core_t::status_t, awh::core_t *)> ("status", status, core);
+		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
- * @param bid  идентификатор брокера
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::connectCallback(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((bid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -66,13 +63,12 @@ void awh::client::Sample::connectCallback(const uint64_t bid, const uint16_t sid
 }
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
- * @param bid  идентификатор брокера
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((sid > 0) && (core != nullptr)){
+	if(sid > 0){
 		// Если подключение не является постоянным
 		if(!this->_scheme.alive){
 			// Очищаем адрес сервера
@@ -80,7 +76,7 @@ void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 			// Завершаем работу
 			if(this->_unbind)
 				// Выполняем остановку работы сетевого ядра
-				dynamic_cast <client::core_t *> (core)->stop();
+				const_cast <client::core_t *> (this->_core)->stop();
 		}
 		// Если функция обратного вызова существует
 		if(this->_callbacks.is("active"))
@@ -94,9 +90,8 @@ void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
- * @param core   объект сетевого ядра
  */
-void awh::client::Sample::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::client::Sample::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -313,13 +308,13 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
+	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&sample_t::openCallback, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4));
 	// Выполняем установку функций обратного вызова для клиента
-	const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&sample_t::eventsCallback, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::eventsCallback, this, _1));
 }

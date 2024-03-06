@@ -59,9 +59,8 @@ class Executor {
 		 * @param pid    идентификатор процесса
 		 * @param buffer буфер данных сообщения
 		 * @param size   размер полученных данных
-		 * @param core   объект сетевого ядра
 		 */
-		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
+		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size){
 			// Определяем тип воркера
 			switch(static_cast <uint8_t> (worker)){
 				// Если событие пришло от родительского процесса
@@ -79,9 +78,8 @@ class Executor {
 		/**
 		 * run Метод запуска сетевого ядра
 		 * @param status флаг запуска сетевого ядра
-		 * @param core   объект сетевого ядра
 		 */
-		void run(const awh::core_t::status_t status, core_t * core){
+		void run(const awh::core_t::status_t status){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -128,11 +126,11 @@ int main(int argc, char * argv[]){
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.autoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
-	// Устанавливаем функцию обратного вызова при получении событий
-	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, _4));
+	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::run, &executor, _1));
 	// Устанавливаем функцию обработки входящих сообщений
-	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t, cluster::core_t *)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
+	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
+	// Устанавливаем функцию обратного вызова при получении событий
+	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

@@ -55,11 +55,11 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 					// Выполняем очистку контекста двигателя
 					adj->_ectx.clear();
 					// Если подключение не установлено, выводим сообщение об ошибке
-					this->core->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+					this->core->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, ::getpid());
 					// Если функция обратного вызова установлена
 					if(this->core->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Client address not received, pid = %d", getpid()));
+						this->core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Client address not received, pid = %d", ::getpid()));
 				// Если все данные получены
 				} else {
 					// Получаем адрес подключения клиента
@@ -69,7 +69,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 					// Получаем порт подключения клиента
 					adj->_port = adj->_addr.port;
 					// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-					if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this->core)){
+					if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid)){
 						// Если порт установлен
 						if(adj->_port > 0){
 							// Выводим сообщение об ошибке
@@ -80,7 +80,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 								adj->_port,
 								adj->_mac.c_str(),
 								adj->_addr.fd,
-								getpid()
+								::getpid()
 							);
 							// Если функция обратного вызова установлена
 							if(this->core->_callbacks.is("error"))
@@ -95,7 +95,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 										adj->_port,
 										adj->_mac.c_str(),
 										adj->_addr.fd,
-										getpid()
+										::getpid()
 									)
 								);
 						// Если порт не установлен
@@ -107,7 +107,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 								adj->_ip.c_str(),
 								adj->_mac.c_str(),
 								adj->_addr.fd,
-								getpid()
+								::getpid()
 							);
 							// Если функция обратного вызова установлена
 							if(this->core->_callbacks.is("error"))
@@ -121,7 +121,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 										adj->_ip.c_str(),
 										adj->_mac.c_str(),
 										adj->_addr.fd,
-										getpid()
+										::getpid()
 									)
 								);
 						}
@@ -144,7 +144,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 								adj->_ip.c_str(),
 								adj->_port,
 								adj->_mac.c_str(),
-								adj->_addr.fd, getpid()
+								adj->_addr.fd, ::getpid()
 							);
 						// Если порт не установлен
 						} else {
@@ -154,7 +154,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 								log_t::flag_t::INFO,
 								adj->_ip.c_str(),
 								adj->_mac.c_str(),
-								adj->_addr.fd, getpid()
+								adj->_addr.fd, ::getpid()
 							);
 						}
 					}
@@ -163,16 +163,16 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 					// Если функция обратного вызова установлена
 					if(shm->callbacks.is("connect"))
 						// Выполняем функцию обратного вызова
-						shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", this->bid, shm->sid, this->core);
+						shm->callbacks.call <void (const uint64_t, const uint16_t)> ("connect", this->bid, shm->sid);
 				}
 			// Подключение не установлено
 			} else {
 				// Выводим сообщение об ошибке
-				this->core->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+				this->core->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, ::getpid());
 				// Если функция обратного вызова установлена
 				if(this->core->_callbacks.is("error"))
 					// Выполняем функцию обратного вызова
-					this->core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Accepting failed, pid = %d", getpid()));
+					this->core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->core->_fmk->format("Accepting failed, pid = %d", ::getpid()));
 			}
 		// Запускаем таймер вновь на 100мс
 		} else this->event.start(100);
@@ -199,7 +199,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 		// Получаем объект подключения
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 		// Определяем члена семейства кластера
-		const cluster_t::family_t family = (this->_pid == getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
+		const cluster_t::family_t family = (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
@@ -240,7 +240,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("cluster"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t, awh::core_t *)> ("cluster", family, sid, pid, event, dynamic_cast <awh::core_t *> (this));
+			this->_callbacks.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", family, sid, pid, event);
 	}
 }
 /**
@@ -338,15 +338,15 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
-								shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
+								shm->callbacks.call <void (const uint64_t, const uint16_t)> ("connect", ret.first->first, shm->sid);
 						// Подключение не установлено
 						} else {
 							// Выводим сообщение об ошибке
-							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", ::getpid()));
 						}
 					/**
 					 * Если возникает ошибка
@@ -462,11 +462,11 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Выполняем очистку контекста двигателя
 								adj->_ectx.clear();
 								// Если подключение не установлено, выводим сообщение об ошибке
-								this->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+								this->_log->print("Client address not received, pid = %d", log_t::flag_t::WARNING, ::getpid());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", getpid()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Client address not received, pid = %d", ::getpid()));
 							// Если все данные получены
 							} else {
 								// Получаем адрес подключения клиента
@@ -476,7 +476,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Получаем порт подключения клиента
 								adj->_port = adj->_addr.port;
 								// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-								if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t, awh::core_t *)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid, this)){
+								if((shm->callbacks.is("accept")) && !shm->callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", adj->_ip, adj->_mac, adj->_port, shm->sid)){
 									// Если порт установлен
 									if(adj->_port > 0){
 										// Выводим сообщение об ошибке
@@ -487,7 +487,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											adj->_port,
 											adj->_mac.c_str(),
 											adj->_addr.fd,
-											getpid()
+											::getpid()
 										);
 										// Если функция обратного вызова установлена
 										if(this->_callbacks.is("error"))
@@ -502,7 +502,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 													adj->_port,
 													adj->_mac.c_str(),
 													adj->_addr.fd,
-													getpid()
+													::getpid()
 												)
 											);
 									// Если порт не установлен
@@ -514,7 +514,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											adj->_ip.c_str(),
 											adj->_mac.c_str(),
 											adj->_addr.fd,
-											getpid()
+											::getpid()
 										);
 										// Если функция обратного вызова установлена
 										if(this->_callbacks.is("error"))
@@ -528,7 +528,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 													adj->_ip.c_str(),
 													adj->_mac.c_str(),
 													adj->_addr.fd,
-													getpid()
+													::getpid()
 												)
 											);
 									}
@@ -591,7 +591,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											ret.first->second->_ip.c_str(),
 											ret.first->second->_port,
 											ret.first->second->_mac.c_str(),
-											ret.first->second->_addr.fd, getpid()
+											ret.first->second->_addr.fd, ::getpid()
 										);
 									// Если порт не установлен
 									} else {
@@ -601,7 +601,7 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 											log_t::flag_t::INFO,
 											ret.first->second->_ip.c_str(),
 											ret.first->second->_mac.c_str(),
-											ret.first->second->_addr.fd, getpid()
+											ret.first->second->_addr.fd, ::getpid()
 										);
 									}
 								}
@@ -610,16 +610,16 @@ void awh::server::Core::accept(const int fd, const uint16_t sid) noexcept {
 								// Если функция обратного вызова установлена
 								if(shm->callbacks.is("connect"))
 									// Выполняем функцию обратного вызова
-									shm->callbacks.call <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", ret.first->first, shm->sid, this);
+									shm->callbacks.call <void (const uint64_t, const uint16_t)> ("connect", ret.first->first, shm->sid);
 							}
 						// Если подключение не установлено
 						} else {
 							// Выводим сообщение об ошибке
-							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+							this->_log->print("Accepting failed, pid = %d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", getpid()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, pid = %d", ::getpid()));
 						}
 					/**
 					 * Если возникает ошибка
@@ -674,7 +674,7 @@ void awh::server::Core::close() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (it->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const uint64_t, const uint16_t)> (it->first, shm->callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), it->first, item.first);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -731,7 +731,7 @@ void awh::server::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), jt->first, it->first);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -858,7 +858,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const uint64_t, const uint16_t)> (jt->first, shm->callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), jt->first, it->first);
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(jt->first);
 						// Если список объектов DTLS не пустой
@@ -924,7 +924,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 				// Если функция обратного вызова установлена
 				if(shm->callbacks.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const uint64_t, const uint16_t, awh::core_t *)> (bid, shm->callbacks.get <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect"), bid, shm->sid, this);
+					callback.set <void (const uint64_t, const uint16_t)> (bid, shm->callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, shm->sid);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 				if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
 					// Если функция обратного вызова установлена
@@ -1017,14 +1017,14 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 											// Если функция обратного вызова на получение данных установлена
 											if(shm->callbacks.is("read"))
 												// Выводим функцию обратного вызова
-												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get() + offset, actual, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+												shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get() + offset, actual, bid, shm->sid);
 											// Увеличиваем смещение в буфере
 											offset += actual;
 										}
 									// Если данных достаточно и функция обратного вызова на получение данных установлена
 									} else if(shm->callbacks.is("read"))
 										// Выводим функцию обратного вызова
-										shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", buffer.get(), bytes, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+										shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, shm->sid);
 									// Если флаг ожидания входящих сообщений, активирован
 									if(adj->_timeouts.read > 0){
 										// Определяем тип активного сокета
@@ -1160,7 +1160,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callbacks.is("write"))
 						// Выводим функцию обратного вызова
-						shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", buffer, offset, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, shm->sid);
 				// Если данных недостаточно для записи в сокет
 				} else {
 					// Останавливаем ожидание записи данных
@@ -1168,7 +1168,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					// Если функция обратного вызова на запись данных установлена
 					if(shm->callbacks.is("write"))
 						// Выводим функцию обратного вызова
-						shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", nullptr, 0, bid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						shm->callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", nullptr, 0, bid, shm->sid);
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 				if((this->_settings.sonet == scheme_t::sonet_t::UDP) && (this->_brokers.count(bid) > 0))
@@ -1617,7 +1617,7 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(fmk, log, family, sonet), _pid(getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
+ awh::core_t(fmk, log, family, sonet), _pid(::getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера
@@ -1632,7 +1632,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(dns, fmk, log, family, sonet), _pid(getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
+ awh::core_t(dns, fmk, log, family, sonet), _pid(::getpid()), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения статуса кластера

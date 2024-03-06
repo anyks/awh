@@ -55,10 +55,9 @@ class Executor {
 		}
 		/**
 		 * timeout Метод таймаута
-		 * @param id   идентификатор таймера
-		 * @param core объект сетевого ядра
+		 * @param id идентификатор таймера
 		 */
-		void timeout(const u_short id, core_t * core){
+		void timeout(const u_short id){
 			// Выводим информацию в лог
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
 		}
@@ -79,9 +78,9 @@ class Executor {
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 					// Устанавливаем задержку времени на 10 секунд
-					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1, _2));
+					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1));
 					// Устанавливаем интервал времени времени на 5 секунд
-					core->setInterval(5000, std::bind(&Executor::interval, this, _1, _2));
+					core->setInterval(5000, std::bind(&Executor::interval, this, _1, core));
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -118,7 +117,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, _2));
+	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &core));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

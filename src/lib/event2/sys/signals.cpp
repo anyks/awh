@@ -27,7 +27,7 @@ void awh::Signals::callback(const int sig) noexcept {
 		// Выполняем функцию обратного вызова
 		this->_fn(sig);
 	// Завершаем работу дочернего процесса
-	// exit(sig);
+	// ::exit(sig);
 }
 /**
  * Если операционной системой не является Windows
@@ -198,7 +198,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigAbrt.start();
 			this->_ev.sigSegv.start();
 			// Отправка сигнала для теста
-			// raise(SIGABRT);
+			// ::raise(SIGABRT);
 		/**
 		 * Если операционной системой является MS Windows
 		 */

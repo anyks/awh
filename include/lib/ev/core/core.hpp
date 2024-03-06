@@ -120,7 +120,7 @@ namespace awh {
 					Core * core;
 				public:
 					// Внешняя функция обратного вызова
-					function <void (const uint16_t, Core *)> fn;
+					function <void (const uint16_t)> fn;
 				public:
 					/**
 					 * callback Метод обратного вызова
@@ -474,14 +474,14 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			uint16_t setTimeout(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
+			uint16_t setTimeout(const time_t delay, function <void (const uint16_t)> callback) noexcept;
 			/**
 			 * setInterval Метод установки интервала времени
 			 * @param delay    задержка времени в миллисекундах
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			uint16_t setInterval(const time_t delay, function <void (const uint16_t, Core *)> callback) noexcept;
+			uint16_t setInterval(const time_t delay, function <void (const uint16_t)> callback) noexcept;
 		public:
 			/**
 			 * callbacks Метод установки функций обратного вызова

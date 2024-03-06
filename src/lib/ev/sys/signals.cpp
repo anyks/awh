@@ -27,7 +27,7 @@ void awh::Signals::callback(const int sig) noexcept {
 		// Выполняем функцию обратного вызова
 		this->_fn(sig);
 	// Завершаем работу дочернего процесса
-	// exit(watcher.signum);
+	// ::exit(watcher.signum);
 }
 /**
  * Если операционной системой не является Windows

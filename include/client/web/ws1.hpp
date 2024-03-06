@@ -154,36 +154,32 @@ namespace awh {
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * disconnectEvent Метод обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * readEvent Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * redirect Метод выполнения редиректа если требуется
@@ -239,10 +235,9 @@ namespace awh {
 			private:
 				/**
 				 * pinging Метод таймера выполнения пинга удалённого сервера
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
+				void pinging(const uint16_t tid) noexcept;
 			private:
 				/**
 				 * ping Метод проверки доступности сервера
@@ -257,12 +252,11 @@ namespace awh {
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @param sid  идентификатор запроса
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
-				 * @return     результат препарирования
+				 * @param sid идентификатор запроса
+				 * @param bid идентификатор брокера
+				 * @return    результат препарирования
 				 */
-				status_t prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept;
+				status_t prepare(const int32_t sid, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы клиента

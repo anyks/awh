@@ -67,9 +67,8 @@ namespace awh {
 				/**
 				 * active Метод вывода статуса работы сетевого ядра
 				 * @param status флаг запуска сетевого ядра
-				 * @param core   объект сетевого ядра
 				 */
-				void active(const status_t status, awh::core_t * core) noexcept;
+				void active(const status_t status) noexcept;
 			private:
 				/**
 				 * cluster Метод информирования о статусе кластера

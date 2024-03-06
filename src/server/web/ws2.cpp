@@ -17,17 +17,16 @@
 
 /**
  * connectEvents Метод обратного вызова при подключении к серверу
- * @param bid  идентификатор брокера
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((bid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем активацию HTTP/2 протокола
-		web2_t::connectEvents(bid, sid, core);
+		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto it = this->_sessions.find(bid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
@@ -105,14 +104,14 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 			}
 		// Если протокол HTTP/2 для клиента не инициализирован
 		} else {
+			// Выполняем установку сетевого ядра
+			this->_ws1._core = this->_core;
 			// Устанавливаем флаг перехвата контекста компрессии
 			this->_ws1._server.takeover = this->_server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
 			this->_ws1._client.takeover = this->_client.takeover;
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			this->_ws1._scheme.compressors = this->_scheme.compressors;
-			// Выполняем установку сетевого ядра
-			this->_ws1._core = dynamic_cast <server::core_t *> (core);
 			// Если HTTP-заголовки установлены
 			if(!this->_headers.empty())
 				// Выполняем установку HTTP-заголовков
@@ -133,7 +132,7 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 				this->_ws1.multiThreads(this->_threads);
 			}
 			// Выполняем переброс вызова коннекта на клиент Websocket
-			this->_ws1.connectEvents(bid, sid, core);
+			this->_ws1.connectEvents(bid, sid);
 		}
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callbacks.is("active"))
@@ -143,13 +142,12 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 }
 /**
  * disconnectEvents Метод обратного вызова при отключении клиента
- * @param bid  идентификатор брокера
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Websocket2::disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((bid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0)){
 		// Выполняем поиск брокера в списке активных сессий
 		auto it = this->_sessions.find(bid);
 		// Если активная сессия найдена
@@ -170,9 +168,8 @@ void awh::server::Websocket2::disconnectEvents(const uint64_t bid, const uint16_
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
- * @param core   объект сетевого ядра
  */
-void awh::server::Websocket2::readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -190,12 +187,12 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
 				// Если подключение закрыто
 				if(options->close){
 					// Принудительно выполняем отключение лкиента
-					dynamic_cast <server::core_t *> (core)->close(bid);
+					const_cast <server::core_t *> (this->_core)->close(bid);
 					// Выходим из функции
 					return;
 				}
 				// Выполняем установку протокола подключения
-				options->proto = core->proto(bid);
+				options->proto = this->_core->proto(bid);
 				// Если протокол подключения является HTTP/2
 				if(options->proto == engine_t::proto_t::HTTP2){
 					// Если получение данных не разрешено
@@ -209,13 +206,13 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
 						// Если прочитать данные фрейма не удалось, выходим из функции
 						if(!it->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
 							// Выполняем закрытие подключения
-							web2_t::close(bid, dynamic_cast <server::core_t *> (core));
+							web2_t::close(bid);
 							// Выходим из функции
 							return;
 						}
 					}
 				// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент Websocket
-				} else this->_ws1.readEvents(buffer, size, bid, sid, core);
+				} else this->_ws1.readEvents(buffer, size, bid, sid);
 			}
 		}
 	}
@@ -226,11 +223,10 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
  * @param size   размер записанных в сокет байт
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
- * @param core   объект сетевого ядра
  */
-void awh::server::Websocket2::writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
-	if((bid > 0) && (sid > 0) && (core != nullptr)){
+	if((bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -238,7 +234,7 @@ void awh::server::Websocket2::writeEvents(const char * buffer, const size_t size
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(options->proto != engine_t::proto_t::HTTP2)
 				// Выполняем переброс вызова записи клиенту Websocket
-				this->_ws1.writeEvents(buffer, size, bid, sid, core);
+				this->_ws1.writeEvents(buffer, size, bid, sid);
 		}
 	}
 }
@@ -306,7 +302,7 @@ int awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t bid,
 	// Если разрешено выполнить остановку
 	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE))
 		// Выполняем закрытие подключения
-		web2_t::close(bid, const_cast <server::core_t *> (this->_core));
+		web2_t::close(bid);
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callbacks.is("stream"))
 		// Выполняем функцию обратного вызова
@@ -411,7 +407,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							// Выполняем закрытие подключения
 							it->second->close();
 							// Выполняем закрытие подключения
-							web2_t::close(bid, const_cast <server::core_t *> (this->_core));
+							web2_t::close(bid);
 						// Принудительно выполняем отключение лкиента
 						} else const_cast <server::core_t *> (this->_core)->close(bid);
 					}
@@ -478,7 +474,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Если ответом является PING
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 												// Отправляем ответ брокеру
-												this->pong(bid, const_cast <server::core_t *> (this->_core), string(data.begin(), data.end()));
+												this->pong(bid, string(data.begin(), data.end()));
 											break;
 											// Если ответом является PONG
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
@@ -830,7 +826,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								}
 							}
 							// Выполняем закрытие подключения
-							web2_t::close(bid, const_cast <server::core_t *> (this->_core));
+							web2_t::close(bid);
 							// Если мы получили флаг завершения потока
 							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
 								// Если установлена функция отлова завершения запроса
@@ -995,13 +991,12 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char>
 }
 /**
  * pong Метод ответа на проверку о доступности сервера
- * @param bid  идентификатор брокера
- * @param core объект сетевого ядра
- * @param      message сообщение для отправки
+ * @param bid идентификатор брокера
+ * @param     message сообщение для отправки
  */
-void awh::server::Websocket2::pong(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
+void awh::server::Websocket2::pong(const uint64_t bid, const string & message) noexcept {
 	// Если необходимые данные переданы
-	if((bid > 0) && (core != nullptr)){
+	if((bid > 0) && this->_core->working()){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
@@ -1017,13 +1012,12 @@ void awh::server::Websocket2::pong(const uint64_t bid, awh::core_t * core, const
 }
 /**
  * ping Метод проверки доступности сервера
- * @param bid  идентификатор брокера
- * @param core объект сетевого ядра
- * @param      message сообщение для отправки
+ * @param bid идентификатор брокера
+ * @param     message сообщение для отправки
  */
-void awh::server::Websocket2::ping(const uint64_t bid, awh::core_t * core, const string & message) noexcept {
+void awh::server::Websocket2::ping(const uint64_t bid, const string & message) noexcept {
 	// Если необходимые данные переданы
-	if((bid > 0) && (core != nullptr) && core->working()){
+	if((bid > 0) && this->_core->working()){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
@@ -1122,18 +1116,17 @@ void awh::server::Websocket2::disconnect(const uint64_t bid) noexcept {
 }
 /**
  * pinging Метод таймера выполнения пинга клиента
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
+ * @param tid идентификатор таймера
  */
-void awh::server::Websocket2::pinging(const uint16_t tid, awh::core_t * core) noexcept {
+void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
-	if((tid > 0) && (core != nullptr) && (this->_core != nullptr)){
+	if((tid > 0) && (this->_core != nullptr)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Если переключение протокола на HTTP/2 не выполнено
 			if(item.second->proto != engine_t::proto_t::HTTP2)
 				// Выполняем переброс события пинга в модуль Websocket
-				this->_ws1.pinging(tid, core);
+				this->_ws1.pinging(tid);
 			// Если переключение протокола на HTTP/2 выполнено
 			else if(item.second->allow.receive) {
 				// Если рукопожатие выполнено
@@ -1145,11 +1138,11 @@ void awh::server::Websocket2::pinging(const uint16_t tid, awh::core_t * core) no
 						// Завершаем работу
 						const_cast <server::core_t *> (this->_core)->close(item.first);
 					// Отправляем запрос брокеру
-					else this->ping(item.first, const_cast <server::core_t *> (this->_core), ::to_string(item.first));
+					else this->ping(item.first, ::to_string(item.first));
 				// Если рукопожатие не выполнено и пинг не прошёл
 				} else if(!web2_t::ping(item.first))
 					// Выполняем закрытие подключения
-					web2_t::close(item.first, const_cast <server::core_t *> (this->_core));
+					web2_t::close(item.first);
 			}
 		}
 	}
@@ -1495,7 +1488,7 @@ void awh::server::Websocket2::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <server::core_t *> (this->_core)->start();
 		// Если биндинг уже запущен, выполняем запуск
-		else this->openEvents(this->_scheme.sid, dynamic_cast <awh::core_t *> (const_cast <server::core_t *> (this->_core)));
+		else this->openEvents(this->_scheme.sid);
 	}
 }
 /**
@@ -1522,7 +1515,7 @@ void awh::server::Websocket2::close(const uint64_t bid) noexcept {
 				// Выполняем закрытие подключения
 				it->second->close();
 				// Выполняем закрытие подключения
-				web2_t::close(bid, const_cast <server::core_t *> (this->_core));
+				web2_t::close(bid);
 			// Выполняем отключение брокера
 			} else const_cast <server::core_t *> (this->_core)->close(bid);
 		}
@@ -1949,17 +1942,17 @@ awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws2_t::openEvents, this, _1, _2));
+	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * Websocket2 Конструктор
@@ -1973,17 +1966,17 @@ awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * f
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t, awh::core_t *)> ("open", std::bind(&ws2_t::openEvents, this, _1, _2));
+	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t, awh::core_t *)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2, _3));
+	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t, awh::core_t *)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t, awh::core_t *)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4, _5));
+	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * ~Websocket2 Деструктор

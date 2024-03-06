@@ -18,37 +18,32 @@
 /**
  * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
- * @param core   объект сетевого ядра
  */
-void awh::server::Web2::statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if(core != nullptr){
-		// Если система была остановлена
-		if(status == awh::core_t::status_t::STOP){
-			// Если список сессий не пустой
-			if(!this->_sessions.empty())
-				// Выполняем очистку списка активных сессий
-				this->_sessions.clear();
-		}
-		// Выполняем переадресацию выполняемого события в родительский модуль
-		web_t::statusEvents(status, core);
+void awh::server::Web2::statusEvents(const awh::core_t::status_t status) noexcept {
+	// Если система была остановлена
+	if(status == awh::core_t::status_t::STOP){
+		// Если список сессий не пустой
+		if(!this->_sessions.empty())
+			// Выполняем очистку списка активных сессий
+			this->_sessions.clear();
 	}
+	// Выполняем переадресацию выполняемого события в родительский модуль
+	web_t::statusEvents(status);
 }
 /**
  * connectEvents Метод обратного вызова при подключении к серверу
- * @param bid  идентификатор брокера
- * @param sid  идентификатор схемы сети
- * @param core объект сетевого ядра
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept {
+void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован
 	if(this->_sessions.find(bid) == this->_sessions.end()){
 		// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером
-		if(!this->_settings.empty() && (core->proto(bid) == engine_t::proto_t::HTTP2)){
+		if(!this->_settings.empty() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
 			/**
 			 * Я не знаю что за хуйня, но каким-то образом изначально эта проверка не работает и приходится проверять второй раз
 			 */
-			if(core->proto(bid) != engine_t::proto_t::HTTP2)
+			if(this->_core->proto(bid) != engine_t::proto_t::HTTP2)
 				// Выходим из функции
 				return;
 			// Создаём локальный контейнер функций обратного вызова
@@ -101,6 +96,23 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
 		const_cast <server::core_t *> (this->_core)->write(reinterpret_cast <const char *> (buffer), size, bid);
 }
 /**
+ * close Метод выполнения закрытия подключения
+ * @param bid идентификатор брокера
+ */
+void awh::server::Web2::close(const uint64_t bid) noexcept {
+	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск брокера в списке активных сессий
+		auto it = this->_sessions.find(bid);
+		// Если активная сессия найдена
+		if(it != this->_sessions.end())
+			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
+			it->second->callback <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+		// Завершаем работу
+		else const_cast <server::core_t *> (this->_core)->close(bid);
+	}
+}
+/**
  * ping Метод выполнения пинга клиента
  * @param bid идентификатор брокера
  * @return    результат работы пинга
@@ -140,24 +152,6 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * close Метод выполнения закрытия подключения
- * @param bid  идентификатор брокера
- * @param core объект сетевого ядра
- */
-void awh::server::Web2::close(const uint64_t bid, server::core_t * core) noexcept {
-	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-	if((this->_core != nullptr) && this->_core->working()){
-		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
-		// Если активная сессия найдена
-		if(it != this->_sessions.end())
-			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			it->second->callback <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), core, bid));
-		// Завершаем работу
-		else core->close(bid);
-	}
 }
 /**
  * reject Метод выполнения сброса подключения

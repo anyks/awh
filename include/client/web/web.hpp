@@ -174,6 +174,8 @@ namespace awh {
 				// Объект параметров шифрования
 				encryption_t _encryption;
 			protected:
+				// Флаг запрещающий переключение контекста SSL
+				bool _nossl;
 				// Выполнять анбиндинг после завершения запроса
 				bool _unbind;
 				// Флаг принудительного отключения
@@ -182,8 +184,6 @@ namespace awh {
 				bool _stopped;
 				// Флаг выполнения редиректов
 				bool _redirects;
-				// Флаг запрещающий переключение контекста SSL
-				bool _noinitssl;
 			protected:
 				// Количество попыток
 				uint8_t _attempt;
@@ -211,67 +211,59 @@ namespace awh {
 			protected:
 				/**
 				 * openEvent Метод обратного вызова при запуске работы
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param sid идентификатор схемы сети
 				 */
-				void openEvent(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvent(const uint16_t sid) noexcept;
 				/**
 				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				virtual void statusEvent(const awh::core_t::status_t status) noexcept;
 			protected:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectEvent(const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
 				 * disconnectEvent Метод обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void disconnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
 				 * readEvent Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept = 0;
 			protected:
 				/**
 				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * enableSSLEvent Метод активации зашифрованного канала SSL
-				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала SSL
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
-				 * @return     результат активации зашифрованного канала SSL
+				 * @param url адрес сервера для которого выполняется активация зашифрованного канала SSL
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 * @return    результат активации зашифрованного канала SSL
 				 */
-				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -306,19 +298,17 @@ namespace awh {
 			protected:
 				/**
 				 * pinging Метод таймера выполнения пинга удалённого сервера
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				virtual void pinging(const uint16_t tid, awh::core_t * core) noexcept = 0;
+				virtual void pinging(const uint16_t tid) noexcept = 0;
 			protected:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
-				 * @param sid  идентификатор запроса
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
-				 * @return     результат препарирования
+				 * @param sid идентификатор запроса
+				 * @param bid идентификатор брокера
+				 * @return    результат препарирования
 				 */
-				virtual status_t prepare(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept = 0;
+				virtual status_t prepare(const int32_t sid, const uint64_t bid) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации клиента
@@ -625,33 +615,29 @@ namespace awh {
 				/**
 				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				void statusEvent(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvent(const awh::core_t::status_t status) noexcept;
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void connectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void proxyConnectEvent(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * originCallback Метод вывода полученного списка разрешённых ресурсов для подключения
@@ -667,19 +653,17 @@ namespace awh {
 			private:
 				/**
 				 * implementation Метод выполнения активации сессии HTTP/2
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
 				 */
-				void implementation(const uint64_t bid, client::core_t * core) noexcept;
+				void implementation(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * prepareProxy Метод выполнения препарирования полученных данных
-				 * @param sid  идентификатор потока
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
-				 * @return     результат препарирования
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @return    результат препарирования
 				 */
-				status_t prepareProxy(const int32_t sid, const uint64_t bid, client::core_t * core) noexcept;
+				status_t prepareProxy(const int32_t sid, const uint64_t bid) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга сервера
@@ -689,10 +673,9 @@ namespace awh {
 			public:
 				/**
 				 * close Метод выполнения закрытия подключения
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid, client::core_t * core) noexcept;
+				void close(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * windowUpdate Метод обновления размера окна фрейма

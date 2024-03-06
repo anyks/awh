@@ -18,9 +18,8 @@
 /**
  * active Метод вывода статуса работы сетевого ядра
  * @param status флаг запуска сетевого ядра
- * @param core   объект сетевого ядра
  */
-void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexcept {
+void awh::cluster::Core::active(const status_t status) noexcept {
 	// Определяем статус активности сетевого ядра
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
@@ -35,7 +34,7 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_callbacks.get <void (const status_t, awh::core_t *)> ("statusCluster"), status_t::STOP, this).detach();
+				std::thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
 			// Выполняем остановку кластера
 			this->_cluster.stop(0);
 		} break;
@@ -51,15 +50,15 @@ void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const clus
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("events")){
 		// Определяем производится ли инициализация кластера
-		if(this->_pid == getpid()){
+		if(this->_pid == ::getpid()){
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_callbacks.get <void (const status_t, awh::core_t *)> ("statusCluster"), status_t::START, const_cast <core_t *> (this)).detach();
+				std::thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::START).detach();
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)> ("events", cluster_t::family_t::MASTER, pid, event, const_cast <core_t *> (this));
+			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", cluster_t::family_t::MASTER, pid, event);
 		// Если производится запуск воркера, выполняем функцию обратного вызова
-		} else this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, core_t *)> ("events", cluster_t::family_t::CHILDREN, pid, event, const_cast <core_t *> (this));
+		} else this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", cluster_t::family_t::CHILDREN, pid, event);
 	}
 }
 /**
@@ -73,11 +72,11 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("message")){
 		// Определяем производится ли инициализация кластера
-		if(this->_pid == getpid())
+		if(this->_pid == ::getpid())
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", cluster_t::family_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
+			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", cluster_t::family_t::MASTER, pid, buffer, size);
 		// Если производится запуск воркера, если функция обратного вызова установлена
-		else this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t, core_t *)> ("message", cluster_t::family_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
+		else this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", cluster_t::family_t::CHILDREN, pid, buffer, size);
 	}
 }
 /**
@@ -86,7 +85,7 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
  */
 bool awh::cluster::Core::master() const noexcept {
 	// Выводим результат проверки
-	return (this->_pid == getpid());
+	return (this->_pid == ::getpid());
 }
 /**
  * send Метод отправки сообщение родительскому процессу
@@ -121,7 +120,7 @@ void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const
  */
 void awh::cluster::Core::stop() noexcept {
 	// Если процесс является родительским
-	if(this->_pid == getpid()){
+	if(this->_pid == ::getpid()){
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система уже запущена
@@ -157,7 +156,7 @@ void awh::cluster::Core::stop() noexcept {
  */
 void awh::cluster::Core::start() noexcept {
 	// Если процесс является родительским
-	if(this->_pid == getpid()){
+	if(this->_pid == ::getpid()){
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система ещё не запущена
@@ -171,7 +170,7 @@ void awh::cluster::Core::start() noexcept {
 				// Выполняем получение функции обратного вызова
 				this->_callbacks.set("status", "statusCluster", this->_callbacks);
 			// Устанавливаем функцию обратного вызова на запуск системы
-			this->_callbacks.set <void (const status_t, awh::core_t *)> ("status", std::bind(&cluster::core_t::active, this, _1, _2));
+			this->_callbacks.set <void (const status_t)> ("status", std::bind(&cluster::core_t::active, this, _1));
 			// Выполняем запуск чтения базы событий
 			this->_dispatch.start();
 		// Выполняем разблокировку потока
@@ -291,7 +290,7 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  awh::core_t(fmk, log, family, sonet), _pid(0), _size(1), _autoRestart(false), _cluster(fmk, log), _log(log) {
 	// Устанавливаем идентификатор процесса
-	this->_pid = getpid();
+	this->_pid = ::getpid();
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Выполняем установку базы данных

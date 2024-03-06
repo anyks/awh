@@ -34,11 +34,8 @@ class Executor {
 		/**
 		 * status Метод статуса запуска/остановки сервера
 		 * @param status статус события сервера
-		 * @param core   объект сетевого ядра
 		 */
-		void status(const awh::core_t::status_t status, awh::core_t * core){
-			// Блокируем неиспользуемую переменную
-			(void) core;
+		void status(const awh::core_t::status_t status){
 			// Определяем флаг статуса сервера
 			switch(static_cast <uint8_t> (status)){
 				// Если сервер запущен
@@ -352,10 +349,10 @@ int main(int argc, char * argv[]){
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
 	// Создаём локальный контейнер функций обратного вызова
+	// Подписываемся на событие запуска/остановки сервера
+	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
-	// Подписываемся на событие запуска/остановки сервера
-	ws.callback <void (const awh::core_t::status_t, awh::core_t *)> ("status", std::bind(&Executor::status, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
 	ws.callback <void (const vector <char> &, const bool, client::websocket_t *)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
 	// Подписываемся на событие рукопожатия

@@ -66,18 +66,16 @@ namespace awh {
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * disconnectEvents Метод обратного вызова при отключении клиента
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * readEvents Метод обратного вызова при чтении сообщения с клиента
@@ -85,18 +83,16 @@ namespace awh {
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * writeEvents Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * callbacksEvents Метод отлавливания событий контейнера функций обратного вызова
@@ -109,11 +105,10 @@ namespace awh {
 			private:
 				/**
 				 * websocket Метод инициализации Websocket протокола
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void websocket(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void websocket(const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся брокеров
@@ -123,10 +118,9 @@ namespace awh {
 			private:
 				/**
 				 * pinging Метод таймера выполнения пинга клиента
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				void pinging(const uint16_t tid, awh::core_t * core) noexcept;
+				void pinging(const uint16_t tid) noexcept;
 			public:
 				/**
 				 * parser Метод извлечения объекта HTTP-парсера

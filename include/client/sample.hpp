@@ -99,39 +99,34 @@ namespace awh {
 			private:
 				/**
 				 * openCallback Метод обратного вызова при запуске работы
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param sid идентификатор схемы сети
 				 */
-				void openCallback(const uint16_t sid, awh::core_t * core) noexcept;
+				void openCallback(const uint16_t sid) noexcept;
 				/**
 				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void eventsCallback(const awh::core_t::status_t status) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void connectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectCallback(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectCallback(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectCallback(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента

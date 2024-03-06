@@ -131,17 +131,15 @@ namespace awh {
 			private:
 				/**
 				 * openEvents Метод обратного вызова при запуске работы
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param sid идентификатор схемы сети
 				 */
-				void openEvents(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvents(const uint16_t sid) noexcept;
 			private:
 				/**
 				 * statusEvents Метод обратного вызова при активации ядра
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvents(const awh::core_t::status_t status) noexcept;
 			private:
 				/**
 				 * acceptEvents Метод обратного вызова при проверке подключения клиента
@@ -149,10 +147,9 @@ namespace awh {
 				 * @param mac  мак-адрес подключившегося клиента
 				 * @param port порт подключившегося брокера
 				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению клиента
 				 */
-				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * connectClientEvents Метод обратного вызова при подключении
@@ -160,18 +157,16 @@ namespace awh {
 				 * @param bid1   идентификатор брокера сервера
 				 * @param bid2   идентификатор брокера клиента
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void connectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid, awh::core_t * core) noexcept;
+				void connectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept;
 				/**
 				 * disconnectClientEvents Метод обратного вызова при отключении
 				 * @param broker брокер вызвавший событие
 				 * @param bid1   идентификатор брокера сервера
 				 * @param bid2   идентификатор брокера клиента
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void disconnectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid, awh::core_t * core) noexcept;
+				void disconnectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * readClientEvents Метод обратного вызова при чтении сообщения
@@ -180,9 +175,8 @@ namespace awh {
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void readEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void readEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
 				 * writeServerEvents Метод обратного вызова при записи сообщения на клиенте
 				 * @param broker брокер вызвавший событие
@@ -190,16 +184,14 @@ namespace awh {
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключённых клиентов
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				void erase(const uint16_t tid, awh::core_t * core) noexcept;
+				void erase(const uint16_t tid) noexcept;
 			public:
 				/**
 				 * init Метод инициализации брокера

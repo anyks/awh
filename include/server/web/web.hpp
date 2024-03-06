@@ -175,31 +175,27 @@ namespace awh {
 			protected:
 				/**
 				 * openEvents Метод обратного вызова при запуске работы
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param sid идентификатор схемы сети
 				 */
-				void openEvents(const uint16_t sid, awh::core_t * core) noexcept;
+				void openEvents(const uint16_t sid) noexcept;
 				/**
 				 * statusEvents Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				virtual void statusEvents(const awh::core_t::status_t status) noexcept;
 			protected:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void connectEvents(const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
 				 * disconnectEvents Метод обратного вызова при отключении клиента
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void disconnectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept = 0;
 			protected:
 				/**
 				 * readEvents Метод обратного вызова при чтении сообщения с клиента
@@ -207,18 +203,16 @@ namespace awh {
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
 				 * writeEvents Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
-				 * @param core   объект сетевого ядра
 				 */
-				virtual void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept = 0;
+				virtual void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept = 0;
 			protected:
 				/**
 				 * acceptEvents Метод обратного вызова при проверке подключения брокера
@@ -226,10 +220,9 @@ namespace awh {
 				 * @param mac  мак-адрес подключившегося брокера
 				 * @param port порт подключившегося брокера
 				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid, awh::core_t * core) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -254,9 +247,8 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса
 				 * @param event  идентификатор события
-				 * @param core   объект сетевого ядра
 				 */
-				void clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event, awh::core_t * core) noexcept;
+				void clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 			protected:
 				/**
 				 * erase Метод удаления отключившихся брокеров
@@ -270,17 +262,15 @@ namespace awh {
 				virtual void disconnect(const uint64_t bid) noexcept;
 				/**
 				 * disconected Метод удаления отключившихся брокеров
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				void disconected(const uint16_t tid, awh::core_t * core) noexcept;
+				void disconected(const uint16_t tid) noexcept;
 			protected:
 				/**
 				 * pinging Метод таймера выполнения пинга клиента
-				 * @param tid  идентификатор таймера
-				 * @param core объект сетевого ядра
+				 * @param tid идентификатор таймера
 				 */
-				virtual void pinging(const uint16_t tid, awh::core_t * core) noexcept = 0;
+				virtual void pinging(const uint16_t tid) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB брокера
@@ -522,16 +512,14 @@ namespace awh {
 				/**
 				 * statusEvents Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
 				 */
-				void statusEvents(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void statusEvents(const awh::core_t::status_t status) noexcept;
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
-				 * @param bid  идентификатор брокера
-				 * @param sid  идентификатор схемы сети
-				 * @param core объект сетевого ядра
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
 				 */
-				virtual void connectEvents(const uint64_t bid, const uint16_t sid, awh::core_t * core) noexcept;
+				virtual void connectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
@@ -584,6 +572,12 @@ namespace awh {
 				 * @return       статус полученных данных
 				 */
 				virtual int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+			public:
+				/**
+				 * close Метод выполнения закрытия подключения
+				 * @param bid идентификатор брокера
+				 */
+				void close(const uint64_t bid) noexcept;
 			protected:
 				/**
 				 * ping Метод выполнения пинга клиента
@@ -598,13 +592,6 @@ namespace awh {
 				 * @return    результат выполнения операции
 				 */
 				bool shutdown(const uint64_t bid) noexcept;
-			public:
-				/**
-				 * close Метод выполнения закрытия подключения
-				 * @param bid  идентификатор брокера
-				 * @param core объект сетевого ядра
-				 */
-				void close(const uint64_t bid, server::core_t * core) noexcept;
 			public:
 				/**
 				 * reject Метод выполнения сброса подключения
