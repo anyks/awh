@@ -50,14 +50,15 @@ void awh::Signals::callback(const int sig) noexcept {
  * Если операционной системой является MS Windows
  */
 #else
-	// Функция обратного вызова при получении сигнала
+	/**
+	 * Функция обратного вызова при получении сигнала
+	 */
 	function <void (const int)> callbackFn = nullptr;
 	/**
-	 * winHandler Функция фильтр перехватчика сигналов
-	 * @param except объект исключения
-	 * @return       тип полученного исключения
+	 * signalHandler Функция перехватчика сигналов
+	 * @param signal идентификатор сигнала
 	 */
-	static void SignalHandler(int signal) noexcept {
+	static void signalHandler(int signal) noexcept {
 		// Если функция обратного вызова установлена, выводим её
 		if(callbackFn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -76,29 +77,34 @@ void awh::Signals::stop() noexcept {
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем остановку отслеживания сигналов
-			this->_ev.sint.stop();
-			this->_ev.sfpe.stop();
-			this->_ev.sill.stop();
-			this->_ev.sterm.stop();
-			this->_ev.sabrt.stop();
-			this->_ev.ssegv.stop();
+			// Выполняем остановку перехвата сигнала SIGINT
+			this->_ev.sigint.stop();
+			// Выполняем остановку перехвата сигнала SIGFPE
+			this->_ev.sigfpe.stop();
+			// Выполняем остановку перехвата сигнала SIGILL
+			this->_ev.sigill.stop();
+			// Выполняем остановку перехвата сигнала SIGTERM
+			this->_ev.sigterm.stop();
+			// Выполняем остановку перехвата сигнала SIGABRT
+			this->_ev.sigabrt.stop();
+			// Выполняем остановку перехвата сигнала SIGSEGV
+			this->_ev.sigsegv.stop();
 		/**
 		 * Если операционной системой является MS Windows
 		 */
 		#else
-			// Создаём обработчик сигнала для SIGFPE
-			this->_ev.sfpe = signal(SIGFPE, nullptr);
-			// Создаём обработчик сигнала для SIGILL
-			this->_ev.sill = signal(SIGILL, nullptr);
-			// Создаём обработчик сигнала для SIGINT
-			this->_ev.sint = signal(SIGINT, nullptr);
-			// Создаём обработчик сигнала для SIGABRT
-			this->_ev.sabrt = signal(SIGABRT, nullptr);
-			// Создаём обработчик сигнала для SIGSEGV
-			this->_ev.ssegv = signal(SIGSEGV, nullptr);
-			// Создаём обработчик сигнала для SIGTERM
-			this->_ev.sterm = signal(SIGTERM, nullptr);
+			// Выполняем остановку перехвата сигнала SIGINT
+			this->_ev.sigint = signal(SIGINT, nullptr);
+			// Выполняем остановку перехвата сигнала SIGFPE
+			this->_ev.sigfpe = signal(SIGFPE, nullptr);
+			// Выполняем остановку перехвата сигнала SIGILL
+			this->_ev.sigill = signal(SIGILL, nullptr);
+			// Выполняем остановку перехвата сигнала SIGTERM
+			this->_ev.sigterm = signal(SIGTERM, nullptr);
+			// Выполняем остановку перехвата сигнала SIGABRT
+			this->_ev.sigabrt = signal(SIGABRT, nullptr);
+			// Выполняем остановку перехвата сигнала SIGSEGV
+			this->_ev.sigsegv = signal(SIGSEGV, nullptr);
 		#endif
 	}
 }
@@ -117,44 +123,44 @@ void awh::Signals::start() noexcept {
 			// Выполняем игнорирование сигналов SIGPIPE
 			::signal(SIGPIPE, SIG_IGN);
 			// Устанавливаем базу событий для сигналов
-			this->_ev.sint.set(this->_base);
-			this->_ev.sfpe.set(this->_base);
-			this->_ev.sill.set(this->_base);
-			this->_ev.sterm.set(this->_base);
-			this->_ev.sabrt.set(this->_base);
-			this->_ev.ssegv.set(this->_base);
+			this->_ev.sigint.set(this->_base);
+			this->_ev.sigfpe.set(this->_base);
+			this->_ev.sigill.set(this->_base);
+			this->_ev.sigterm.set(this->_base);
+			this->_ev.sigabrt.set(this->_base);
+			this->_ev.sigsegv.set(this->_base);
 			// Устанавливаем событие на отслеживание сигнала
-			this->_ev.sint.set <sig_t, &sig_t::signal> (this);
-			this->_ev.sfpe.set <sig_t, &sig_t::signal> (this);
-			this->_ev.sill.set <sig_t, &sig_t::signal> (this);
-			this->_ev.sterm.set <sig_t, &sig_t::signal> (this);
-			this->_ev.sabrt.set <sig_t, &sig_t::signal> (this);
-			this->_ev.ssegv.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigint.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigfpe.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigill.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigterm.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigabrt.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigsegv.set <sig_t, &sig_t::signal> (this);
 			// Выполняем отслеживание возникающего сигнала
-			this->_ev.sint.start(SIGINT);
-			this->_ev.sfpe.start(SIGFPE);
-			this->_ev.sill.start(SIGILL);
-			this->_ev.sterm.start(SIGTERM);
-			this->_ev.sabrt.start(SIGABRT);
-			this->_ev.ssegv.start(SIGSEGV);
+			this->_ev.sigint.start(SIGINT);
+			this->_ev.sigfpe.start(SIGFPE);
+			this->_ev.sigill.start(SIGILL);
+			this->_ev.sigterm.start(SIGTERM);
+			this->_ev.sigabrt.start(SIGABRT);
+			this->_ev.sigsegv.start(SIGSEGV);
 			// Отправка сигнала для теста
 			// raise(SIGABRT);
 		/**
 		 * Если операционной системой является MS Windows
 		 */
 		#else
-			// Создаём обработчик сигнала для SIGFPE
-			this->_ev.sfpe = signal(SIGFPE, SignalHandler);
-			// Создаём обработчик сигнала для SIGILL
-			this->_ev.sill = signal(SIGILL, SignalHandler);
 			// Создаём обработчик сигнала для SIGINT
-			this->_ev.sint = signal(SIGINT, SignalHandler);
-			// Создаём обработчик сигнала для SIGABRT
-			this->_ev.sabrt = signal(SIGABRT, SignalHandler);
-			// Создаём обработчик сигнала для SIGSEGV
-			this->_ev.ssegv = signal(SIGSEGV, SignalHandler);
+			this->_ev.sigint = signal(SIGINT, signalHandler);
+			// Создаём обработчик сигнала для SIGFPE
+			this->_ev.sigfpe = signal(SIGFPE, signalHandler);
+			// Создаём обработчик сигнала для SIGILL
+			this->_ev.sigill = signal(SIGILL, signalHandler);
 			// Создаём обработчик сигнала для SIGTERM
-			this->_ev.sterm = signal(SIGTERM, SignalHandler);
+			this->_ev.sigterm = signal(SIGTERM, signalHandler);
+			// Создаём обработчик сигнала для SIGABRT
+			this->_ev.sigabrt = signal(SIGABRT, signalHandler);
+			// Создаём обработчик сигнала для SIGSEGV
+			this->_ev.sigsegv = signal(SIGSEGV, signalHandler);
 		#endif
 	}
 }

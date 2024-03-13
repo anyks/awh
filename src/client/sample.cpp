@@ -27,7 +27,7 @@ void awh::client::Sample::openCallback(const uint16_t sid) noexcept {
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN))
 			// Выполняем подключение
-			const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+			const_cast <client::core_t *> (this->_core)->open(this->_scheme.id);
 	}
 }
 /**
@@ -126,7 +126,7 @@ void awh::client::Sample::start() noexcept {
 		// Выполняем запуск биндинга
 		const_cast <client::core_t *> (this->_core)->start();
 	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+	else const_cast <client::core_t *> (this->_core)->open(this->_scheme.id);
 }
 /**
  * close Метод закрытия подключения клиента
@@ -153,7 +153,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем установку unix-сокет
-			const_cast <client::core_t *> (this->_core)->unixSocket(socket);
+			const_cast <client::core_t *> (this->_core)->sockname(socket);
 		#endif
 	}
 }
@@ -190,13 +190,6 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 			break;
 		}
 	}
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Удаляем unix-сокет ранее установленный
-		const_cast <client::core_t *> (this->_core)->removeUnixSocket();
-	#endif
 }
 /**
  * callbacks Метод установки функций обратного вызова
@@ -279,9 +272,7 @@ void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -306,15 +297,15 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _callbacks(log), _scheme(fmk, log), _bid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Добавляем схему сети в сетевое ядро
-	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
+	const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&sample_t::openCallback, this, _1));
+	const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openCallback, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4));
 	// Выполняем установку функций обратного вызова для клиента
 	const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::eventsCallback, this, _1));
 }

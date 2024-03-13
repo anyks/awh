@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2022-09-15
+ * @date: 2022-09-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,27 +12,222 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_LIB_CORE_SERVER__
-#define __AWH_LIB_CORE_SERVER__
+#ifndef __AWH_CORE_SERVER__
+#define __AWH_CORE_SERVER__
 
 /**
- * Если используется модуль LibEvent2
+ * Наши модули
  */
-#if defined(AWH_EVENT2)
-	/**
-	 * Библиотеки LibEvent2
-	 */
-	#include <lib/event2/core/server.hpp>
-#endif
+#include <core/node.hpp>
+#include <core/timer.hpp>
+#include <sys/cluster.hpp>
+#include <scheme/server.hpp>
+
+// Подписываемся на стандартное пространство имён
+using namespace std;
 
 /**
- * Если используется модуль LibEv
+ * awh пространство имён
  */
-#if defined(AWH_EV)
+namespace awh {
 	/**
-	 * Библиотеки LibEv
+	 * server серверное пространство имён
 	 */
-	#include <lib/ev/core/server.hpp>
-#endif
+	namespace server {
+		/**
+		 * Core Класс серверного сетевого ядра
+		 */
+		typedef class Core : public awh::node_t {
+			private:
+				/**
+				 * Mutex Объект основных мютексов
+				 */
+				typedef struct Mutex {
+					recursive_mutex main;   // Для установки системных параметров
+					recursive_mutex timer;  // Для создания нового таймера
+					recursive_mutex close;  // Для закрытия подключения
+					recursive_mutex accept; // Для одобрения подключения
+				} mtx_t;
+			private:
+				// Мютекс для блокировки основного потока
+				mtx_t _mtx;
+			private:
+				// Идентификатор активного дочернего прцоесса
+				pid_t _pid;
+				// Объект кластера
+				cluster_t _cluster;
+			private:
+				// Размер кластера
+				uint16_t _clusterSize;
+				// Флаг автоматического перезапуска упавших процессов
+				bool _clusterAutoRestart;
+			private:
+				// Список активных таймеров для сетевых схем
+				map <uint16_t, unique_ptr <timer_t>> _timers;
+				// Список подключённых брокеров
+				map <uint16_t, unique_ptr <awh::scheme_t::broker_t>> _brokers;
+			private:
+				/**
+				 * accept Метод вызова при подключении к серверу
+				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
+				 * @param sid идентификатор схемы сети
+				 */
+				void accept(const SOCKET fd, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * dtls Метод вызова при активации DTLS-подключения
+				 * @param sid идентификатор схемы сети
+				 * @param bid идентификатор брокера
+				 */
+				void dtls(const uint16_t sid, const uint64_t bid) noexcept;
+			private:
+				/**
+				 * launching Метод вызова при активации базы событий
+				 * @param mode   флаг работы с сетевым протоколом
+				 * @param status флаг вывода события статуса
+				 */
+				void launching(const bool mode, const bool status) noexcept;
+				/**
+				 * closedown Метод вызова при деакцтивации базы событий
+				 * @param mode   флаг работы с сетевым протоколом
+				 * @param status флаг вывода события статуса
+				 */
+				void closedown(const bool mode, const bool status) noexcept;
+			private:
+				/**
+				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+				 * @param sid   идентификатор схемы сети
+				 * @param pid   идентификатор процесса
+				 * @param event идентификатор события
+				 */
+				void cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
+			private:
+				/**
+				 * disable Метод остановки активности брокера подключения
+				 * @param bid идентификатор брокера
+				 */
+				void disable(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * close Метод отключения всех брокеров
+				 */
+				void close() noexcept;
+				/**
+				 * remove Метод удаления всех активных схем сети
+				 */
+				void remove() noexcept;
+			public:
+				/**
+				 * close Метод закрытия подключения брокера
+				 * @param bid идентификатор брокера
+				 */
+				void close(const uint64_t bid) noexcept;
+				/**
+				 * remove Метод удаления схемы сети
+				 * @param sid идентификатор схемы сети
+				 */
+				void remove(const uint16_t sid) noexcept;
+			public:
+				/**
+				 * launch Метод запуска сервера
+				 * @param sid идентификатор схемы сети
+				 */
+				void launch(const uint16_t sid) noexcept;
+			public:
+				/**
+				 * port Метод получения порта сервера
+				 * @param sid идентификатор схемы сети
+				 * @return    порт сервера который он прослушивает
+				 */
+				u_int port(const uint16_t sid) const noexcept;
+				/**
+				 * host Метод получения хоста сервера
+				 * @param sid идентификатор схемы сети
+				 * @return    хост на котором висит сервер
+				 */
+				const string & host(const uint16_t sid) const noexcept;
+			private:
+				/**
+				 * timeout Метод вызова при срабатывании таймаута
+				 * @param bid    идентификатор брокера
+				 * @param method метод режима работы
+				 */
+				void timeout(const uint64_t bid, const engine_t::method_t method) noexcept;
+			private:
+				/**
+				 * read Метод чтения данных для брокера
+				 * @param bid идентификатор брокера
+				 */
+				void read(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * write Метод записи буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
+				 * @param bid    идентификатор брокера
+				 */
+				void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+			private:
+				/**
+				 * work Метод активации параметров запуска сервера
+				 * @param sid    идентификатор схемы сети
+				 * @param ip     адрес интернет-подключения
+				 * @param family тип интернет-протокола AF_INET, AF_INET6
+				 */
+				void work(const uint16_t sid, const string & ip, const int family) noexcept;
+			public:
+				/**
+				 * init Метод инициализации сервера
+				 * @param sid  идентификатор схемы сети
+				 * @param port порт сервера
+				 * @param host хост сервера
+				 */
+				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
+			public:
+				/**
+				 * callbacks Метод установки функций обратного вызова
+				 * @param callbacks функции обратного вызова
+				 */
+				void callbacks(const fn_t & callbacks) noexcept;
+			public:
+				/**
+				 * total Метод установки максимального количества одновременных подключений
+				 * @param sid   идентификатор схемы сети
+				 * @param total максимальное количество одновременных подключений
+				 */
+				void total(const uint16_t sid, const u_short total) noexcept;
+			public:
+				/**
+				 * cluster Метод установки количества процессов кластера
+				 * @param size количество рабочих процессов
+				 */
+				void cluster(const uint16_t size = 0) noexcept;
+				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param sid  идентификатор схемы сети
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const uint16_t sid, const bool mode) noexcept;
+			public:
+				/**
+				 * Core Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Core(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * Core Конструктор
+				 * @param dns объект DNS-резолвера
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * ~Core Деструктор
+				 */
+				~Core() noexcept {}
+		} core_t;
+	};
+};
 
-#endif // __AWH_LIB_CORE_SERVER__
+#endif // __AWH_CORE_SERVER__

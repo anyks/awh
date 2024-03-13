@@ -1521,11 +1521,18 @@ void awh::client::Core::activation(const uint16_t sid, const string & ip, const 
 			// Если IP-адрес получен
 			if(!ip.empty()){
 				// Если прокси-сервер активен
-				if(shm->isProxy())
+				if(shm->isProxy()){
 					// Запоминаем полученный IP-адрес для прокси-сервера
 					shm->proxy.url.ip = ip;
-				// Запоминаем полученный IP-адрес
-				else shm->url.ip = ip;
+					// Устанавливаем тип интернет-протокола AF_INET, AF_INET6
+					shm->proxy.url.family = family;
+				// Если прокси-сервер не активен
+				} else {
+					// Запоминаем полученный IP-адрес
+					shm->url.ip = ip;
+					// Устанавливаем тип интернет-протокола AF_INET, AF_INET6
+					shm->url.family = family;
+				}
 				// Определяем режим работы клиента
 				switch(static_cast <uint8_t> (shm->status.wait)){
 					// Если режим работы клиента - это подключение

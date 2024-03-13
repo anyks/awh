@@ -63,12 +63,12 @@ namespace awh {
 				 * Event Структура событий сигналов
 				 */
 				typedef struct Events {
-					ev::sig sint;  // Перехватчик сигнала SIGINT
-					ev::sig sfpe;  // Перехватчик сигнала SIGFPE
-					ev::sig sill;  // Перехватчик сигнала SIGILL
-					ev::sig sterm; // Перехватчик сигнала SIGTERM
-					ev::sig sabrt; // Перехватчик сигнала SIGABRT
-					ev::sig ssegv; // Перехватчик сигнала SIGSEGV
+					ev::sig sigint;  // Перехватчик сигнала SIGINT
+					ev::sig sigfpe;  // Перехватчик сигнала SIGFPE
+					ev::sig sigill;  // Перехватчик сигнала SIGILL
+					ev::sig sigterm; // Перехватчик сигнала SIGTERM
+					ev::sig sigabrt; // Перехватчик сигнала SIGABRT
+					ev::sig sigsegv; // Перехватчик сигнала SIGSEGV
 				} ev_t;
 			/**
 			 * Если операционной системой является MS Windows
@@ -80,12 +80,12 @@ namespace awh {
 				 * Events Структура событий сигналов
 				 */
 				typedef struct Events {
-					SignalHandlerPointer sint;  // Перехватчик сигнала SIGINT
-					SignalHandlerPointer sfpe;  // Перехватчик сигнала SIGFPE
-					SignalHandlerPointer sill;  // Перехватчик сигнала SIGILL
-					SignalHandlerPointer sabrt; // Перехватчик сигнала SIGABRT
-					SignalHandlerPointer sterm; // Перехватчик сигнала SIGTERM
-					SignalHandlerPointer ssegv; // Перехватчик сигнала SIGSEGV
+					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
+					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
+					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
+					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
+					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
+					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV
 				} ev_t;
 			#endif
 		private:
@@ -144,7 +144,8 @@ namespace awh {
 			 * Signals Конструктор
 			 * @param base база событий
 			 */
-			Signals(struct ev_loop * base) noexcept : _mode(false), _fn(nullptr), _base(base) {}
+			Signals(struct ev_loop * base) noexcept :
+			 _mode(false), _fn(nullptr), _base(base) {}
 	} sig_t;
 };
 

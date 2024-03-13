@@ -1,0 +1,140 @@
+/**
+ * @file: timer.hpp
+ * @date: 2024-03-10
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2024
+ */
+
+#ifndef __AWH_CORE_TIMER__
+#define __AWH_CORE_TIMER__
+
+/**
+ * Наши модули
+ */
+#include <core/core.hpp>
+
+// Подписываемся на стандартное пространство имён
+using namespace std;
+
+/**
+ * awh пространство имён
+ */
+namespace awh {
+	/**
+	 * Timer Класс таймера ядра биндинга
+	 */
+	typedef class Timer : public awh::core_t {
+		private:
+			/**
+			 * Broker Класс брокера
+			 */
+			typedef class Broker {
+				public:
+					// Флаг персистентной работы
+					bool persist;
+				public:
+					// Задержка времени в секундах
+					time_t delay;
+				public:
+					// Объект события таймера
+					event_t event;
+				public:
+					/**
+					 * Broker Конструктор
+					 * @param log объект для работы с логами
+					 */
+					Broker(const log_t * log) noexcept :
+					 persist(false), delay(0), event(event_t::type_t::TIMER, log) {}
+					/**
+					 * ~Broker Деструктор
+					 */
+					~Broker() noexcept;
+			} broker_t;
+		private:
+			// Мютекс для блокировки основного потока
+			mutex _mtx;
+		private:
+			// Хранилище функций обратного вызова
+			fn_t _callbacks;
+		private:
+			// Список активных брокеров
+			map <uint16_t, unique_ptr <broker_t>> _brokers;
+		private:
+			/**
+			 * callback Метод обратного вызова
+			 * @param tid   идентификатор таймера
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 */
+			void callback(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept;
+		public:
+			/**
+			 * clear Метод очистки всех таймеров
+			 */
+			void clear() noexcept;
+			/**
+			 * clear Метод очистки таймера
+			 * @param tid идентификатор таймера для очистки
+			 */
+			void clear(const uint16_t tid) noexcept;
+		public:
+			/**
+			 * callbacks Метод установки функций обратного вызова
+			 * @param callbacks функции обратного вызова
+			 */
+			void callbacks(const fn_t & callbacks) noexcept;
+		public:
+			/**
+			 * callback Шаблон метода установки финкции обратного вызова
+			 * @tparam A тип функции обратного вызова
+			 */
+			template <typename A>
+			/**
+			 * set Метод установки функции обратного вызова
+			 * @param tid идентификатор таймера для установки
+			 * @param fn  функция обратного вызова для установки
+			 */
+			void set(const uint16_t tid, function <A> fn) noexcept {
+				// Если функция обратного вызова передана
+				if((tid > 0) && (fn != nullptr)){
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx);
+					// Выполняем установку функции обратного вызова
+					this->_callbacks.set <A> (static_cast <uint64_t> (tid), fn);
+				}
+			}
+		public:
+			/**
+			 * timeout Метод создания таймаута
+			 * @param delay задержка времени в миллисекундах
+			 * @return      идентификатор таймера
+			 */
+			uint16_t timeout(const time_t delay) noexcept;
+			/**
+			 * interval Метод создания интервала
+			 * @param delay задержка времени в миллисекундах
+			 * @return      идентификатор таймера
+			 */
+			uint16_t interval(const time_t delay) noexcept;
+		public:
+			/**
+			 * Timer Конструктор
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 */
+			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _callbacks(log) {}
+			/**
+			 * ~Timer Деструктор
+			 */
+			~Timer() noexcept;
+	} timer_t;
+};
+
+#endif // __AWH_CORE_TIMER__

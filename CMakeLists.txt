@@ -180,9 +180,9 @@ if(CMAKE_BUILD_EVENT2)
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/events.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/scheme/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/client.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/server.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/timer.cpp"
     )
 # Сборка модуля AWH_EV
 else(CMAKE_BUILD_EVENT2)
@@ -190,9 +190,9 @@ else(CMAKE_BUILD_EVENT2)
     set(SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/scheme/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/timer.cpp"
     )
 endif(CMAKE_BUILD_EVENT2)
 
@@ -228,6 +228,9 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/cluster/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/awh.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"

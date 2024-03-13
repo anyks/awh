@@ -61,9 +61,6 @@ namespace awh {
 				// Объект кластера
 				cluster_t _cluster;
 			private:
-				// Объект для работы с логами
-				const log_t * _log;
-			private:
 				/**
 				 * active Метод вывода статуса работы сетевого ядра
 				 * @param status флаг запуска сетевого ядра
@@ -152,12 +149,10 @@ namespace awh {
 			public:
 				/**
 				 * Core Конструктор
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
-				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-				 * @param sonet  тип сокета подключения (TCP / UDP)
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+				Core(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * ~Core Деструктор
 				 */

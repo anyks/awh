@@ -25,7 +25,7 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 		// Если система запущена
 		case static_cast <uint8_t> (status_t::START): {
 			// Устанавливаем перехват сигналов падения процессов
-			this->_cluster.trackCrash(this->_signals == mode_t::ENABLED);
+			this->_cluster.trackCrash(this->_signals == scheme_t::mode_t::ENABLED);
 			// Выполняем запуск кластера
 			this->_cluster.start(0);
 		} break;
@@ -129,17 +129,6 @@ void awh::cluster::Core::stop() noexcept {
 			this->_mode = !this->_mode;
 			// Выполняем разблокировку потока
 			this->_mtx.status.unlock();
-			/**
-			 * Если запрещено использовать простое чтение базы событий
-			 * Выполняем остановку всех таймеров
-			 */
-			this->clearTimers();
-			// Выполняем блокировку потока
-			this->_mtx.status.lock();
-			// Выполняем разблокировку потока
-			this->_mtx.status.unlock();
-			// Выполняем отключение всех клиентов
-			this->close();
 			// Выполняем остановку чтения базы событий
 			this->_dispatch.stop();
 			// Если функция обратного вызова установлена
@@ -282,15 +271,11 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 }
 /**
  * Core Конструктор
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
- * @param sonet  тип сокета подключения (TCP / UDP)
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
-awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(fmk, log, family, sonet), _pid(0), _size(1), _autoRestart(false), _cluster(fmk, log), _log(log) {
-	// Устанавливаем идентификатор процесса
-	this->_pid = ::getpid();
+awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::core_t(fmk, log), _pid(::getpid()), _size(1), _autoRestart(false), _cluster(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Выполняем установку базы данных

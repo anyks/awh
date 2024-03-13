@@ -59,20 +59,23 @@ namespace awh {
 				 * Event Структура событий сигналов
 				 */
 				typedef struct Events {
-					event_t sigInt;  // Перехватчик сигнала SIGINT
-					event_t sigFpe;  // Перехватчик сигнала SIGFPE
-					event_t sigIll;  // Перехватчик сигнала SIGILL
-					event_t sigTerm; // Перехватчик сигнала SIGTERM
-					event_t sigAbrt; // Перехватчик сигнала SIGABRT
-					event_t sigSegv; // Перехватчик сигнала SIGSEGV
+					event_t sigint;  // Перехватчик сигнала SIGINT
+					event_t sigfpe;  // Перехватчик сигнала SIGFPE
+					event_t sigill;  // Перехватчик сигнала SIGILL
+					event_t sigterm; // Перехватчик сигнала SIGTERM
+					event_t sigabrt; // Перехватчик сигнала SIGABRT
+					event_t sigsegv; // Перехватчик сигнала SIGSEGV
 					/**
 					 * Events Конструктор
 					 * @param log объект для работы с логами
 					 */
 					Events(const log_t * log) noexcept :
-					 sigInt(event_t::type_t::SIGNAL, log), sigFpe(event_t::type_t::SIGNAL, log),
-					 sigIll(event_t::type_t::SIGNAL, log), sigTerm(event_t::type_t::SIGNAL, log),
-					 sigAbrt(event_t::type_t::SIGNAL, log), sigSegv(event_t::type_t::SIGNAL, log) {}
+					 sigint(event_t::type_t::SIGNAL, log),
+					 sigfpe(event_t::type_t::SIGNAL, log),
+					 sigill(event_t::type_t::SIGNAL, log),
+					 sigterm(event_t::type_t::SIGNAL, log),
+					 sigabrt(event_t::type_t::SIGNAL, log),
+					 sigsegv(event_t::type_t::SIGNAL, log) {}
 				} ev_t;
 			/**
 			 * Если операционной системой является MS Windows
@@ -84,12 +87,12 @@ namespace awh {
 				 * Events Структура событий сигналов
 				 */
 				typedef struct Events {
-					SignalHandlerPointer sint;  // Перехватчик сигнала SIGINT
-					SignalHandlerPointer sfpe;  // Перехватчик сигнала SIGFPE
-					SignalHandlerPointer sill;  // Перехватчик сигнала SIGILL
-					SignalHandlerPointer sabrt; // Перехватчик сигнала SIGABRT
-					SignalHandlerPointer sterm; // Перехватчик сигнала SIGTERM
-					SignalHandlerPointer ssegv; // Перехватчик сигнала SIGSEGV
+					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
+					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
+					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
+					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
+					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
+					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV
 					/**
 					 * Events Конструктор
 					 * @param log объект для работы с логами
@@ -184,7 +187,8 @@ namespace awh {
 			 * @param base база событий
 			 * @param log  объект для работы с логами
 			 */
-			Signals(struct event_base * base, const log_t * log) noexcept : _mode(false), _ev(log), _fn(nullptr), _base(base) {}
+			Signals(struct event_base * base, const log_t * log) noexcept :
+			 _mode(false), _ev(log), _fn(nullptr), _base(base) {}
 			/**
 			 * ~Signals Деструктор
 			 */
