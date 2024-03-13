@@ -325,6 +325,8 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Создаём биндинг
 	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
@@ -351,7 +353,6 @@ int main(int argc, char * argv[]){
 		// client::web_t::flag_t::NOT_INFO,
 		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
-		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::WEBSOCKET_ENABLE,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,
@@ -359,8 +360,17 @@ int main(int argc, char * argv[]){
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Отключаем валидацию сертификата
+	ssl.verify = true;
 	// Устанавливаем адрес сертификата
-	core.ca("./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	/*
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/client-key.pem";
+	ssl.cert = "./certs/certificates/client-cert.pem";
+	*/
+	// Выполняем установку параметров SSL-шифрования
+	core.ssl(ssl);
 	// Устанавливаем логин и пароль пользователя
 	// awh.user("user", "password");
 	// Устанавливаем длительное подключение

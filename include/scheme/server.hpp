@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2022-09-15
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,27 +12,68 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_LIB_SCHEME_SERVER__
-#define __AWH_LIB_SCHEME_SERVER__
+#ifndef __AWH_SCHEME_SERVER__
+#define __AWH_SCHEME_SERVER__
 
 /**
- * Если используется модуль LibEvent2
+ * Наши модули
  */
-#if defined(AWH_EVENT2)
-	/**
-	 * Библиотеки LibEvent2
-	 */
-	#include <lib/event2/scheme/server.hpp>
-#endif
+#include <net/engine.hpp>
+#include <scheme/core.hpp>
+
+// Подписываемся на стандартное пространство имён
+using namespace std;
 
 /**
- * Если используется модуль LibEv
+ * awh пространство имён
  */
-#if defined(AWH_EV)
+namespace awh {
 	/**
-	 * Библиотеки LibEv
+	 * server серверное пространство имён
 	 */
-	#include <lib/ev/scheme/server.hpp>
-#endif
+	namespace server {
+		/**
+		 * Scheme Структура схемы сети сервера
+		 */
+		typedef struct Scheme : public awh::scheme_t {
+			private:
+				/**
+				 * Server Core Устанавливаем дружбу с серверным классом ядра
+				 */
+				friend class Core;
+			protected:
+				// Контекст двигателя для работы с передачей данных
+				engine_t::ctx_t _ectx;
+				// Объект подключения
+				engine_t::addr_t _addr;
+			protected:
+				// Максимальное количество одновременных подключений
+				u_int _total;
+			protected:
+				// Порт сервера
+				u_int _port;
+				// Хост сервера
+				string _host;
+			public:
+				/**
+				 * clear Метод очистки
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * Scheme Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::scheme_t(fmk, log), _ectx(fmk, log), _addr(fmk, log),
+				 _total(SERVER_TOTAL_CONNECT), _port(SERVER_PORT), _host(SERVER_HOST) {}
+				/**
+				 * ~Scheme Деструктор
+				 */
+				~Scheme() noexcept {}
+		} scheme_t;
+	};
+};
 
-#endif // __AWH_LIB_SCHEME_SERVER__
+#endif // __AWH_SCHEME_SERVER__

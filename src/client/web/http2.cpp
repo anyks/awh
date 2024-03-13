@@ -1456,7 +1456,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Устанавливаем новый адрес запроса
 					this->_uri.combine(this->_ws2._scheme.url, request.url);
 					// Выполняем установку подключения с Websocket-сервером
-					this->_ws2.connectEvent(this->_bid, this->_scheme.sid);
+					this->_ws2.connectEvent(this->_bid, this->_scheme.id);
 					// Выводим идентификатор подключения
 					result = this->_ws2._sid;
 				} break;
@@ -1924,6 +1924,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 		if(this->_threads > 0)
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
+		// Устанавливаем функцию записи данных
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -2130,8 +2132,6 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
-	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * Http2 Конструктор
@@ -2154,7 +2154,7 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * ~Http2 Деструктор

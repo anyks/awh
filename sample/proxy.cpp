@@ -103,6 +103,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Создаём объект исполнителя
 	Proxy executor(&log);
 	// Создаём объект PROXY сервера
@@ -118,11 +120,21 @@ int main(int argc, char * argv[]){
 	// Устанавливаем временный ключ сессии
 	// proxy.opaque("keySession");
 	// Отключаем валидацию сертификата
-	proxy.verifySSL(server::proxy_t::broker_t::CLIENT, false);
-	proxy.verifySSL(server::proxy_t::broker_t::SERVER, false);
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
-	proxy.ca(server::proxy_t::broker_t::CLIENT, "./certs/ca.pem");
-	proxy.ca(server::proxy_t::broker_t::SERVER, "./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	/*
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/server-key.pem";
+	ssl.cert = "./certs/certificates/server-cert.pem";
+	*/
+	/*
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem";
+	ssl.cert = "/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem";
+	*/
+	// Выполняем установку параметров SSL-шифрования
+	proxy.ssl(ssl);
 	/**
 	 * 1. Устанавливаем синхронизацию протоколов клиента и сервера
 	 * 2. Устанавливаем разрешение на выполнение автоматических редиректов
@@ -147,14 +159,6 @@ int main(int argc, char * argv[]){
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-	// Устанавливаем SSL сертификаты сервера
-	/*
-	proxy.certificate(
-		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
-	);
-	*/
-	// proxy.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
 	// Устанавливаем функцию извлечения пароля

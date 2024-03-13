@@ -161,6 +161,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
@@ -180,7 +182,6 @@ int main(int argc, char * argv[]){
 		// server::web_t::flag_t::NOT_STOP,
 		// server::web_t::flag_t::NOT_INFO,
 		// server::web_t::flag_t::WAIT_MESS,
-		server::web_t::flag_t::VERIFY_SSL,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER
 	});
@@ -200,7 +201,19 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	core.cluster();
 	// Отключаем валидацию сертификата
-	// core.verifySSL(false);
+	ssl.verify = false;
+	// Устанавливаем адрес сертификата
+	ssl.ca = "./certs/ca.pem";
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/server-key.pem";
+	ssl.cert = "./certs/certificates/server-cert.pem";
+	/*
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem";
+	ssl.cert = "/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem";
+	*/
+	// Выполняем установку параметров SSL-шифрования
+	core.ssl(ssl);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	// ws.clusterAutoRestart(true);
 	// Выполняем активацию многопоточности
@@ -218,14 +231,6 @@ int main(int argc, char * argv[]){
 	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
-	// Устанавливаем SSL сертификаты сервера
-	/*
-	core.certificate(
-		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
-	);
-	*/
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Активируем шифрование
 	// ws.encryption(true);
 	// Устанавливаем пароль шифрования

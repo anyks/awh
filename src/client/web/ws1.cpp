@@ -1031,7 +1031,7 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 			// Получаем объект биндинга ядра TCP/IP
 			client::core_t * core = const_cast <client::core_t *> (this->_core);
 			// Выполняем остановку получения данных
-			core->events(core_t::mode_t::DISABLED, engine_t::method_t::READ, this->_bid);
+			core->events(this->_bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 			// Если код ошибки относится к Websocket
 			if(mess.code >= 1000){
 				// Получаем буфер сообщения
@@ -1364,12 +1364,9 @@ void awh::client::Websocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
 	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
-	if(this->_core != nullptr){
+	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-		// Выполняем установку флага проверки домена
-		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	}
+		const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * core Метод установки сетевого ядра
@@ -1384,6 +1381,8 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 		if(this->_thr.is())
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
+		// Устанавливаем функцию записи данных
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1543,8 +1542,6 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&ws1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&ws1_t::headers, this, _1, _2, _3, _4));
-	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * Websocket1 Конструктор
@@ -1566,7 +1563,7 @@ awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * f
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&ws1_t::headers, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws1_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * ~Websocket1 Деструктор

@@ -11,7 +11,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <chrono>
-#include <core/core.hpp>
+#include <core/timer.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -35,10 +35,10 @@ class Executor {
 	public:
 		/**
 		 * interval Метод интервала
-		 * @param id   идентификатор таймера
-		 * @param core объект сетевого ядра
+		 * @param tid   идентификатор таймера
+		 * @param timer объект таймера
 		 */
-		void interval(const u_short id, core_t * core){
+		void interval(const u_short tid, timer_t * timer){
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Выводим информацию в лог
@@ -48,9 +48,9 @@ class Executor {
 			// Если таймер отработал 10 раз, выходим
 			if((this->count++) >= 10){
 				// Останавливаем работу таймера
-				core->clearTimer(id);
+				timer->clear(tid);
 				// Останавливаем работу модуля
-				core->stop();
+				timer->stop();
 			}
 		}
 		/**
@@ -64,9 +64,9 @@ class Executor {
 		/**
 		 * run Метод запуска сетевого ядра
 		 * @param status флаг запуска сетевого ядра
-		 * @param core   объект сетевого ядра
+		 * @param timer  объект таймера
 		 */
-		void run(const awh::core_t::status_t status, core_t * core){
+		void run(const awh::core_t::status_t status, timer_t * timer){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -78,9 +78,13 @@ class Executor {
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 					// Устанавливаем задержку времени на 10 секунд
-					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1));
+					uint16_t tid = timer->timeout(10000);
+					// Выполняем добавление функции обратного вызова
+					timer->set <void (const uint16_t)> (tid, std::bind(&Executor::timeout, this, tid));
+					// Устанавливаем задержку времени на 5 секунд
+					tid = timer->interval(5000);
 					// Устанавливаем интервал времени времени на 5 секунд
-					core->setInterval(5000, std::bind(&Executor::interval, this, _1, core));
+					timer->set <void (const uint16_t, timer_t *)> (tid, std::bind(&Executor::interval, this, tid, timer));
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -110,16 +114,16 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект исполнителя
 	Executor executor(&log);
-	// Создаём биндинг
-	core_t core(&fmk, &log);
+	// Создаём объект таймера
+	timer_t timer(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Timer");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &core));
+	timer.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &timer));
 	// Выполняем запуск таймера
-	core.start();
+	timer.start();
 	// Выводим результат
 	return 0;
 }

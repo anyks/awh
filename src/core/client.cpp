@@ -569,6 +569,8 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 				const uint16_t tid = ret.first->second->timeout(5000);
 				// Выполняем добавление функции обратного вызова
 				ret.first->second->set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				ret.first->second->verbose(false);
 				// Выполняем биндинг сетевого ядра таймера
 				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 			}

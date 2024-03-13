@@ -204,10 +204,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			if(!this->_settings.compressors.empty())
 				// Устанавливаем список поддерживаемых компрессоров
 				ret.first->second->awh.compressors(this->_settings.compressors);
-			// Если список алгоритмов шифрования установлен
-			if(!this->_settings.encryption.ciphers.empty())
-				// Устанавливаем список алгоритмов шифрования
-				ret.first->second->core.ciphers(this->_settings.encryption.ciphers);
 			// Если флаг активации механизма шифрования установлен
 			if(this->_settings.encryption.mode)
 				// Выполняем установку флага активации механизма шифрования
@@ -229,7 +225,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 				// Устанавливаем параметры шифрования
 				ret.first->second->awh.encryption(this->_settings.encryption.pass, this->_settings.encryption.salt, this->_settings.encryption.cipher);
 			// Устанавливаем флаг запрещающий вывод информационных сообщений
-			ret.first->second->core.noInfo(true);
+			ret.first->second->core.verbose(false);
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
 			// Если флаг синхронизации протоколов клиента и сервера установлен
@@ -238,10 +234,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 				ret.first->second->core.proto(this->_core.proto(bid));
 			// Устанавливаем тип протокола интернета HTTP/2
 			else ret.first->second->core.proto(awh::engine_t::proto_t::HTTP2);
-			// Устанавливаем флаг верификации доменного имени
-			ret.first->second->core.verifySSL(this->_settings.encryption.verify);
-			// Выполняем установку CA-файлов сертификата
-			ret.first->second->core.ca(this->_settings.ca.trusted, this->_settings.ca.path);
+			// Устанавливаем параметры SSL-шифрования
+			ret.first->second->core.ssl(this->_settings.ssl);
 			// Устанавливаем параметры идентификатора Web-клиента
 			ret.first->second->awh.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 			// Устанавливаем параметры авторизации на удалённом сервере
@@ -762,10 +756,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							if(this->_flags.count(flag_t::REDIRECTS) > 0)
 								// Устанавливаем флаг разрешения выполнения редиректов
 								flags.emplace(client::web_t::flag_t::REDIRECTS);
-							// Если флаг проверки домена установлен
-							if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
-								// Выполняем установку флага проверки домена
-								flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 							// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
 							if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 								// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
@@ -867,10 +857,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									if(this->_flags.count(flag_t::REDIRECTS) > 0)
 										// Устанавливаем флаг разрешения выполнения редиректов
 										flags.emplace(client::web_t::flag_t::REDIRECTS);
-									// Если флаг проверки домена установлен
-									if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
-										// Выполняем установку флага проверки домена
-										flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 									// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
 									if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 										// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
@@ -976,10 +962,6 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									if(this->_flags.count(flag_t::REDIRECTS) > 0)
 										// Устанавливаем флаг разрешения выполнения редиректов
 										flags.emplace(client::web_t::flag_t::REDIRECTS);
-									// Если флаг проверки домена установлен
-									if(this->_flags.count(flag_t::VERIFY_SSL) > 0)
-										// Выполняем установку флага проверки домена
-										flags.emplace(client::web_t::flag_t::VERIFY_SSL);
 									// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
 									if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
 										// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
@@ -1075,8 +1057,12 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 	const awh::http_t * http = this->_server.parser(sid, bid);
 	// Если объект HTTP-парсера получен
 	if(http != nullptr){
-		// Получаем параметры хоста сервера
-		const auto & host = this->_core.host();
+		// Выполняем получение идентификатора сети
+		const uint16_t sid = this->_core.sid(bid);
+		// Получаем порт сервера
+		const u_int port = this->_core.port(sid);
+		// Получаем хост сервера
+		const string & host = this->_core.host(sid);
 		// Если посредники найдены
 		if(!mediators.empty()){
 			// Если список посредников содержит больше 1-го элемента
@@ -1098,7 +1084,7 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 		// Если unix-сокет активирован
 		if(this->_core.family() == scheme_t::family_t::NIX)
 			// Выполняем формирование заголовка
-			result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.sock.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+			result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 		// Если активирован хост и порт
 		else {
 			// Определяем протокола подключения
@@ -1106,20 +1092,20 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Если порт установлен не стандартный
-					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
+					if(port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
 						// Формируем заголовок Via
-						result.append(this->_fmk->format("HTTP/%.1f %s:%u (%s)", 1.1f, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+						result.append(this->_fmk->format("HTTP/%.1f %s:%u (%s)", 1.1f, host.c_str(), port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 					// Будем считать, что порт установлен стандартный
-					else result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.addr.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					else result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 				} break;
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Если порт установлен не стандартный
-					if(host.port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
+					if(port != (this->_core.sonet() == awh::scheme_t::sonet_t::TLS ? SERVER_PROXY_SEC_PORT : SERVER_PROXY_PORT))
 						// Формируем заголовок Via
-						result.append(this->_fmk->format("HTTP/%u %s:%u (%s)", 2, host.addr.c_str(), host.port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+						result.append(this->_fmk->format("HTTP/%u %s:%u (%s)", 2, host.c_str(), port, http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 					// Будем считать, что порт установлен стандартный
-					else result.append(this->_fmk->format("HTTP/%u %s (%s)", 2, host.addr.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
+					else result.append(this->_fmk->format("HTTP/%u %s (%s)", 2, host.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 				} break;
 			}
 		}
@@ -1336,10 +1322,6 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 	if(flags.count(flag_t::NOT_INFO) > 0)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
 		server.emplace(server::web_t::flag_t::NOT_INFO);
-	// Если флаг проверки домена установлен
-	if(flags.count(flag_t::VERIFY_SSL) > 0)
-		// Выполняем установку флага проверки домена
-		server.emplace(server::web_t::flag_t::VERIFY_SSL);
 	// Если флаг разрешающий метод CONNECT установлен
 	if(flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) > 0)
 		// Выполняем установку флага сервера
@@ -1413,6 +1395,23 @@ void awh::server::Proxy::maxRequests(const size_t max) noexcept {
 	this->_server.maxRequests(max);
 }
 /**
+ * ssl Метод установки параметров SSL-шифрования
+ * @param ssl объект параметров SSL-шифрования
+ */
+void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
+	// Выполняем установку параметров SSL-шифрования
+	this->_core.ssl(ssl);
+	// Запоминаем параметры SSL-шифрования
+	this->_settings.ssl = ssl;
+	// Если адрес файла сертификата и ключа передан
+	if(!ssl.cert.empty() && !ssl.key.empty()){
+		// Устанавливаем тип сокета TLS
+		this->_core.sonet(awh::scheme_t::sonet_t::TLS);
+		// Устанавливаем активный протокол подключения
+		this->_core.proto(awh::engine_t::proto_t::HTTP2);
+	}
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -1446,14 +1445,14 @@ void awh::server::Proxy::ipV6only(const bool mode) noexcept {
 	this->_core.ipV6only(mode);
 }
 /**
- * bandWidth Метод установки пропускной способности сети
+ * bandwidth Метод установки пропускной способности сети
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::server::Proxy::bandWidth(const size_t bid, const string & read, const string & write) noexcept {
+void awh::server::Proxy::bandwidth(const size_t bid, const string & read, const string & write) noexcept {
 	// Выполняем установку пропускной способности сети
-	this->_core.bandWidth(bid, read, write);
+	this->_core.bandwidth(bid, read, write);
 }
 /**
  * chunk Метод установки размера чанка
@@ -1492,85 +1491,6 @@ void awh::server::Proxy::hosts(const broker_t broker, const string & filename) n
 		case static_cast <uint8_t> (broker_t::SERVER):
 			// Выполняем загрузку файла со списком хостов
 			this->_server.hosts(filename);
-		break;
-	}
-}
-/**
- * certificate Метод установки файлов сертификата
- * @param chain файл цепочки сертификатов
- * @param key   приватный ключ сертификата
- */
-void awh::server::Proxy::certificate(const string & chain, const string & key) noexcept {
-	// Если адрес файла сертификата и ключа передан
-	if(!chain.empty() && !key.empty()){
-		// Устанавливаем тип сокета TLS
-		this->_core.sonet(awh::scheme_t::sonet_t::TLS);
-		// Устанавливаем активный протокол подключения
-		this->_core.proto(awh::engine_t::proto_t::HTTP2);
-		// Устанавливаем SSL сертификаты сервера
-		this->_core.certificate(chain, key);
-	}
-}
-/**
- * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
- * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param mode   флаг состояния разрешения проверки
- */
-void awh::server::Proxy::verifySSL(const broker_t broker, const bool mode) noexcept {
-	// Определяем переданного брокера
-	switch(static_cast <uint8_t> (broker)){
-		// Если брокером является клиент
-		case static_cast <uint8_t> (broker_t::CLIENT):
-			// Устанавливаем флаг верификации доменного имени
-			this->_settings.encryption.verify = mode;
-		break;
-		// Если брокером является сервер
-		case static_cast <uint8_t> (broker_t::SERVER):
-			// Выполняем установку  разрешения выполнения проверки соответствия, сертификата домену
-			this->_core.verifySSL(mode);
-		break;
-	}
-}
-/**
- * ciphers Метод установки алгоритмов шифрования
- * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param ciphers список алгоритмов шифрования для установки
- */
-void awh::server::Proxy::ciphers(const broker_t broker, const vector <string> & ciphers) noexcept {
-	// Определяем переданного брокера
-	switch(static_cast <uint8_t> (broker)){
-		// Если брокером является клиент
-		case static_cast <uint8_t> (broker_t::CLIENT):
-			// Устанавливаем алгоритмы шифрования
-			this->_settings.encryption.ciphers = ciphers;
-		break;
-		// Если брокером является сервер
-		case static_cast <uint8_t> (broker_t::SERVER):
-			// Выполняем установку алгоритмов шифрования
-			this->_core.ciphers(ciphers);
-		break;
-	}
-}
-/**
- * ca Метод установки доверенного сертификата (CA-файла)
- * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param trusted адрес доверенного сертификата (CA-файла)
- * @param path    адрес каталога где находится сертификат (CA-файл)
- */
-void awh::server::Proxy::ca(const broker_t broker, const string & trusted, const string & path) noexcept {
-	// Определяем переданного брокера
-	switch(static_cast <uint8_t> (broker)){
-		// Если брокером является клиент
-		case static_cast <uint8_t> (broker_t::CLIENT): {
-			// Устанавливаем адрес каталога где находится сертификат (CA-файл)
-			this->_settings.ca.path = path;
-			// Устанавливаем адрес доверенного сертификата (CA-файла)
-			this->_settings.ca.trusted = trusted;
-		} break;
-		// Если брокером является сервер
-		case static_cast <uint8_t> (broker_t::SERVER):
-			// Выполняем установку доверенного сертификата (CA-файла)
-			this->_core.ca(trusted, path);
 		break;
 	}
 }
@@ -1999,8 +1919,8 @@ void awh::server::Proxy::encryption(const broker_t broker, const string & pass, 
  * @param log объект для работы с логами
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _core(fmk, log), _server(&_core, fmk, log),
- _callbacks(log), _compressor(http_t::compress_t::NONE), _fmk(fmk), _log(log) {
+ _uri(fmk), _callbacks(log), _core(fmk, log), _server(&_core, fmk, log),
+ _compressor(http_t::compress_t::NONE), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета TCP
 	this->_core.sonet(awh::scheme_t::sonet_t::TCP);
 	// Устанавливаем активный протокол подключения

@@ -33,6 +33,7 @@
 #include <net/uri.hpp>
 #include <http/http2.hpp>
 #include <http/client.hpp>
+#include <core/timer.hpp>
 #include <core/client.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -85,13 +86,12 @@ namespace awh {
 					NOT_INFO              = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP              = 0x03, // Флаг запрета остановки биндинга
 					WAIT_MESS             = 0x04, // Флаг ожидания входящих сообщений
-					VERIFY_SSL            = 0x05, // Флаг выполнения проверки сертификата SSL
-					REDIRECTS             = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
-					NO_INIT_SSL           = 0x07, // Флаг запрещающий переключение контекста SSL
-					TAKEOVER_CLIENT       = 0x08, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER       = 0x09, // Флаг ожидания входящих сообщений для сервера
-					WEBSOCKET_ENABLE      = 0x0A, // Флаг разрешения использования Websocket-клиента
-					CONNECT_METHOD_ENABLE = 0x0B  // Флаг разрешающий метод CONNECT для прокси-сервера
+					REDIRECTS             = 0x05, // Флаг разрешающий автоматическое перенаправление запросов
+					NO_INIT_SSL           = 0x06, // Флаг запрещающий переключение контекста SSL
+					TAKEOVER_CLIENT       = 0x07, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER       = 0x08, // Флаг ожидания входящих сообщений для сервера
+					WEBSOCKET_ENABLE      = 0x09, // Флаг разрешения использования Websocket-клиента
+					CONNECT_METHOD_ENABLE = 0x0A  // Флаг разрешающий метод CONNECT для прокси-сервера
 				};
 			public:
 				/**
@@ -190,8 +190,8 @@ namespace awh {
 				// Общее количество попыток
 				uint8_t _attempts;
 			private:
-				// Ядро для локального таймера
-				awh::core_t _timer;
+				// Объект локального таймера
+				awh::timer_t _timer;
 			protected:
 				// Объект буфера данных
 				vector <char> _buffer;

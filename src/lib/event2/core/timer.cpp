@@ -16,12 +16,12 @@
 #include <lib/event2/core/timer.hpp>
 
 /**
- * callback Метод обратного вызова
+ * event Метод события таймера
  * @param tid   идентификатор таймера
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::Timer::callback(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept {
+void awh::Timer::event(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept {
 	// Выполняем поиск активного брокера
 	auto it = this->_brokers.find(tid);
 	// Если активный брокер найден
@@ -115,16 +115,6 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	}
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
- */
-void awh::Timer::callbacks(const fn_t & callbacks) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
-	// Выполняем копирование функций обратного вызова
-	this->_callbacks = callbacks;
-}
-/**
  * timeout Метод создания таймаута
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
@@ -153,7 +143,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Устанавливаем базу данных событий
 			ret.first->second->event.set(this->_dispatch.base);
 			// Устанавливаем функцию обратного вызова
-			ret.first->second->event.set(std::bind(&timer_t::callback, this, result, _1, _2));
+			ret.first->second->event.set(std::bind(&timer_t::event, this, result, _1, _2));
 			// Выполняем запуск работы таймера
 			ret.first->second->event.start(ret.first->second->delay);
 		/**
@@ -198,7 +188,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Устанавливаем базу данных событий
 			ret.first->second->event.set(this->_dispatch.base);
 			// Устанавливаем функцию обратного вызова
-			ret.first->second->event.set(std::bind(&timer_t::callback, this, result, _1, _2));
+			ret.first->second->event.set(std::bind(&timer_t::event, this, result, _1, _2));
 			// Выполняем запуск работы таймера
 			ret.first->second->event.start(ret.first->second->delay);
 		/**

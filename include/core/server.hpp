@@ -177,12 +177,10 @@ namespace awh {
 				void work(const uint16_t sid, const string & ip, const int family) noexcept;
 			public:
 				/**
-				 * init Метод инициализации сервера
-				 * @param sid  идентификатор схемы сети
-				 * @param port порт сервера
-				 * @param host хост сервера
+				 * ipV6only Метод установки флага использования только сети IPv6
+				 * @param mode флаг для установки
 				 */
-				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
+				void ipV6only(const bool mode) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -208,6 +206,14 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const uint16_t sid, const bool mode) noexcept;
+			public:
+				/**
+				 * init Метод инициализации сервера
+				 * @param sid  идентификатор схемы сети
+				 * @param port порт сервера
+				 * @param host хост сервера
+				 */
+				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

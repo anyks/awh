@@ -57,7 +57,7 @@ u_int awh::Scheme::port(const uint64_t bid) const noexcept {
 		// Если брокер найден, выводим
 		if(it != this->_brokers.end())
 			// Выводим полученный порт
-			return it->second->_port;
+			return it->second->port();
 	}
 	// Выводим результат
 	return result;
@@ -77,7 +77,7 @@ const string & awh::Scheme::ip(const uint64_t bid) const noexcept {
 		// Если брокер найден, выводим
 		if(it != this->_brokers.end())
 			// Выводим полученный IP-адрес
-			return it->second->_ip;
+			return it->second->ip();
 	}
 	// Выводим результат
 	return result;
@@ -97,7 +97,7 @@ const string & awh::Scheme::mac(const uint64_t bid) const noexcept {
 		// Если брокер найден, выводим MAC адрес
 		if(it != this->_brokers.end())
 			// Выводим полученный MAC-адрес
-			return it->second->_mac;
+			return it->second->mac();
 	}
 	// Выводим результат
 	return result;

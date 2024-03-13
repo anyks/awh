@@ -70,22 +70,11 @@ namespace awh {
 				};
 			private:
 				/**
-				 * CA Структура параметров CA-файла
-				 */
-				typedef struct CA {
-					string path;    // Адрес каталога где находится сертификат (CA-файл)
-					string trusted; // Адрес доверенного сертификата (CA-файла)
-					/**
-					 * CA Конструктор
-					 */
-					CA() noexcept : path{""}, trusted{""} {}
-				} ca_t;
-				/**
 				 * Структура параметров клиента
 				 */
 				typedef struct Settings {
 					bool verify;         // Флаг выполнение верификации доменного имени
-					ca_t cacert;         // Параметры CA-файла (центра сертификации)
+					node_t::ssl_t ssl;   // Параметры SSL-шифрования
 					vector <string> ips; // Список IP-адресов компьютера с которых разрешено выходить в интернет
 					/**
 					 * Settings Конструктор
@@ -111,6 +100,9 @@ namespace awh {
 			private:
 				// Объект биндинга TCP/IP для сервера
 				server::core_t _core;
+			private:
+				// Объект работы таймера
+				timer_t _timer;
 			private:
 				// Объект рабочего для сервера
 				scheme::socks5_t _scheme;
@@ -326,12 +318,12 @@ namespace awh {
 				 */
 				void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 				/**
-				 * bandWidth Метод установки пропускной способности сети
+				 * bandwidth Метод установки пропускной способности сети
 				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
+				void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
 				/**
 				 * network Метод установки параметров сети
 				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
@@ -345,25 +337,13 @@ namespace awh {
 				 * signalInterception Метод активации перехвата сигналов
 				 * @param mode флаг активации
 				 */
-				void signalInterception(const awh::core_t::mode_t mode) noexcept;
+				void signalInterception(const scheme_t::mode_t mode) noexcept;
 			public:
 				/**
-				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
-				 * @param mode флаг состояния разрешения проверки
+				 * ssl Метод установки параметров SSL-шифрования
+				 * @param ssl объект параметров SSL-шифрования
 				 */
-				void verifySSL(const bool mode) noexcept;
-				/**
-				 * ca Метод установки доверенного сертификата (CA-файла)
-				 * @param trusted адрес доверенного сертификата (CA-файла)
-				 * @param path    адрес каталога где находится сертификат (CA-файл)
-				 */
-				void ca(const string & trusted, const string & path = "") noexcept;
-				/**
-				 * certificate Метод установки файлов сертификата
-				 * @param chain файл цепочки сертификатов
-				 * @param key   приватный ключ сертификата
-				 */
-				void certificate(const string & chain, const string & key) noexcept;
+				void ssl(const node_t::ssl_t & ssl) noexcept;
 			public:
 				/**
 				 * ProxySocks5 Конструктор

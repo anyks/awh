@@ -83,11 +83,10 @@ namespace awh {
 					NOT_INFO              = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP              = 0x03, // Флаг запрета остановки биндинга
 					WAIT_MESS             = 0x04, // Флаг ожидания входящих сообщений
-					VERIFY_SSL            = 0x05, // Флаг выполнения проверки сертификата SSL
-					TAKEOVER_CLIENT       = 0x06, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER       = 0x07, // Флаг ожидания входящих сообщений для сервера
-					WEBSOCKET_ENABLE      = 0x08, // Флаг разрешения использования Websocket-сервера
-					CONNECT_METHOD_ENABLE = 0x09  // Флаг разрешающий метод CONNECT для сервера
+					TAKEOVER_CLIENT       = 0x05, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER       = 0x06, // Флаг ожидания входящих сообщений для сервера
+					WEBSOCKET_ENABLE      = 0x07, // Флаг разрешения использования Websocket-сервера
+					CONNECT_METHOD_ENABLE = 0x08  // Флаг разрешающий метод CONNECT для сервера
 				};
 			protected:
 				/**
@@ -151,7 +150,7 @@ namespace awh {
 				encryption_t _encryption;
 			private:
 				// Ядро для локального таймера
-				awh::core_t _timer;
+				timer_t _timer;
 			protected:
 				// Выполнять анбиндинг после завершения запроса
 				bool _unbind;

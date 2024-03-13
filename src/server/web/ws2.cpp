@@ -1488,7 +1488,7 @@ void awh::server::Websocket2::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <server::core_t *> (this->_core)->start();
 		// Если биндинг уже запущен, выполняем запуск
-		else this->openEvents(this->_scheme.sid);
+		else this->openEvents(this->_scheme.id);
 	}
 }
 /**
@@ -1629,7 +1629,7 @@ void awh::server::Websocket2::total(const u_short total) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Устанавливаем максимальное количество одновременных подключений
-		const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
+		const_cast <server::core_t *> (this->_core)->total(this->_scheme.id, total);
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма
@@ -1653,7 +1653,7 @@ void awh::server::Websocket2::clusterAutoRestart(const bool mode) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Выполняем установку флага автоматического перезапуска
-		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.id, mode);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -1695,12 +1695,9 @@ void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
 	// Если сетевое ядро установлено
-	if(this->_core != nullptr){
+	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <server::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-		// Выполняем установку флага проверки домена
-		const_cast <server::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	}
+		const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * settings Модуль установки настроек протокола HTTP/2
@@ -1744,11 +1741,23 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 		// Выполняем установку сетевого ядра
 		web_t::core(core);
 		// Добавляем схемы сети в сетевое ядро
-		const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
+		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Если многопоточность активированна
 		if(this->_thr.is() || this->_ws1._thr.is())
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
+		// Устанавливаем событие на запуск системы
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
+		// Устанавливаем событие подключения
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
+		// Устанавливаем событие отключения
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
+		// Устанавливаем функцию чтения данных
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
+		// Устанавливаем функцию записи данных
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
+		// Добавляем событие аццепта брокера
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1761,7 +1770,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 			const_cast <server::core_t *> (this->_core)->easily(false);
 		}
 		// Удаляем схему сети из сетевого ядра
-		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.sid);
+		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.id);
 		// Выполняем удаление объекта сетевого ядра
 		web_t::core(core);
 	}
@@ -1941,18 +1950,6 @@ void awh::server::Websocket2::encryption(const string & pass, const string & sal
 awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _threads(0), _frameSize(0xFA000), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
-	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
-	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
-	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
-	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
-	// Добавляем событие аццепта брокера
-	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * Websocket2 Конструктор
@@ -1964,19 +1961,19 @@ awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * f
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Добавляем схему сети в сетевое ядро
-	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
+	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * ~Websocket2 Деструктор

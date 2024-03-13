@@ -63,23 +63,11 @@ namespace awh {
 					SYNCPROTO                    = 0x04, // Флаг синхронизации протоколов клиента и сервера
 					WAIT_MESS                    = 0x05, // Флаг ожидания входящих сообщений
 					REDIRECTS                    = 0x06, // Флаг разрешающий автоматическое перенаправление запросов
-					VERIFY_SSL                   = 0x07, // Флаг выполнения проверки сертификата SSL
-					RECOMPRESS                   = 0x08, // Флаг выполнения рекомпрессинга передаваемых данных
-					CONNECT_METHOD_CLIENT_ENABLE = 0x09, // Флаг разрешающий метод CONNECT на прокси-клиенте
-					CONNECT_METHOD_SERVER_ENABLE = 0x0A  // Флаг разрешающий метод CONNECT на сервере
+					RECOMPRESS                   = 0x07, // Флаг выполнения рекомпрессинга передаваемых данных
+					CONNECT_METHOD_CLIENT_ENABLE = 0x08, // Флаг разрешающий метод CONNECT на прокси-клиенте
+					CONNECT_METHOD_SERVER_ENABLE = 0x09  // Флаг разрешающий метод CONNECT на сервере
 				};
 			private:
-				/**
-				 * CA Структура параметров CA-файла
-				 */
-				typedef struct CA {
-					string path;    // Адрес каталога где находится сертификат (CA-файл)
-					string trusted; // Адрес доверенного сертификата (CA-файла)
-					/**
-					 * CA Конструктор
-					 */
-					CA() noexcept : path{""}, trusted{""} {}
-				} ca_t;
 				/**
 				 * Request Объект параметров запроса
 				 */
@@ -174,15 +162,13 @@ namespace awh {
 				 */
 				typedef struct Encryption {
 					bool mode;               // Флаг активности механизма шифрования
-					bool verify;             // Флаг выполнение верификации доменного имени
 					string pass;             // Пароль шифрования передаваемых данных
 					string salt;             // Соль шифрования передаваемых данных
 					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
-					vector <string> ciphers; // Список алгоритмов шифрования
 					/**
 					 * Encryption Конструктор
 					 */
-					Encryption() noexcept : mode(false), verify(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+					Encryption() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
 				} encryption_t;
 				/**
 				 * Client Объект клиента
@@ -225,7 +211,6 @@ namespace awh {
 				 */
 				typedef struct Settings {
 					ka_t ka;                                 // Параметры жизни подключения
-					ca_t ca;                                 // Параметры CA-файла сертификата
 					wtd_t wtd;                               // Таймауты на обмен данными
 					dns_t dns;                               // Параметры DNS-резолвера
 					auth_t auth;                             // Параметры авторизации на сервере
@@ -238,6 +223,7 @@ namespace awh {
 					string login;                            // Логин пользователя для авторизации на сервере
 					string password;                         // Пароль пользователя для авторизации на сервере
 					string userAgent;                        // Название заголовка User-Agent для HTTP-запроса
+					node_t::ssl_t ssl;                       // Объект работы с SSL-шифрованием
 					encryption_t encryption;                 // Объект параметров шифрования
 					vector <string> ns;                      // Список серверов имён, через которые необходимо производить резолвинг доменов
 					vector <string> ips;                     // Список IP-адресов компьютера с которых разрешено выходить в интернет
@@ -255,16 +241,18 @@ namespace awh {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
-				// Объект сетевого ядра
-				core_t _core;
-				// Объект активного сервера
-				awh_t _server;
 				// Объект идентификации сервиса
 				ident_t _ident;
 				// Хранилище функций обратного вызова
 				fn_t _callbacks;
 				// Объект параметров клиента
 				settings_t _settings;
+			private:
+				// Объект сетевого ядра
+				server::core_t _core;
+			private:
+				// Объект активного сервера
+				awh_t _server;
 			private:
 				// Компрессор для рекомпрессии пересылаемых данных
 				http_t::compress_t _compressor;
@@ -609,6 +597,12 @@ namespace awh {
 				void maxRequests(const size_t max) noexcept;
 			public:
 				/**
+				 * ssl Метод установки параметров SSL-шифрования
+				 * @param ssl объект параметров SSL-шифрования
+				 */
+				void ssl(const node_t::ssl_t & ssl) noexcept;
+			public:
+				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
@@ -631,12 +625,12 @@ namespace awh {
 				 */
 				void ipV6only(const bool mode) noexcept;
 				/**
-				 * bandWidth Метод установки пропускной способности сети
+				 * bandwidth Метод установки пропускной способности сети
 				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandWidth(const size_t bid, const string & read, const string & write) noexcept;
+				void bandwidth(const size_t bid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
@@ -651,33 +645,6 @@ namespace awh {
 				 * @param filename адрес файла для загрузки
 				 */
 				void hosts(const broker_t broker, const string & filename) noexcept;
-			public:
-				/**
-				 * certificate Метод установки файлов сертификата
-				 * @param chain файл цепочки сертификатов
-				 * @param key   приватный ключ сертификата
-				 */
-				void certificate(const string & chain, const string & key) noexcept;
-			public:
-				/**
-				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
-				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param mode   флаг состояния разрешения проверки
-				 */
-				void verifySSL(const broker_t broker, const bool mode) noexcept;
-				/**
-				 * ciphers Метод установки алгоритмов шифрования
-				 * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param ciphers список алгоритмов шифрования для установки
-				 */
-				void ciphers(const broker_t broker, const vector <string> & ciphers) noexcept;
-				/**
-				 * ca Метод установки доверенного сертификата (CA-файла)
-				 * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param trusted адрес доверенного сертификата (CA-файла)
-				 * @param path    адрес каталога где находится сертификат (CA-файл)
-				 */
-				void ca(const broker_t broker, const string & trusted, const string & path = "") noexcept;
 			public:
 				/**
 				 * keepAlive Метод установки жизни подключения

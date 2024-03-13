@@ -25,7 +25,7 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
 		// Устанавливаем хост сервера
 		this->_core.init(sid, this->_port, this->_host);
 		// Выполняем запуск сервера
-		this->_core.run(sid);
+		this->_core.launch(sid);
 	}
 }
 /**
@@ -101,12 +101,6 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					options->scheme.keepAlive.idle = this->_scheme.keepAlive.idle;
 					// Выполняем установку интервала времени в секундах между попытками
 					options->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
-					// Устанавливаем событие подключения
-					options->scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::CLIENT, bid1, _1, _2));
-					// Устанавливаем событие отключения
-					options->scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::CLIENT, bid1, _1, _2));
-					// Устанавливаем функцию чтения данных
-					options->scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::CLIENT, _1, _2, bid1, _4));
 					// Если функция обратного вызова при выполнении авторизации установлена
 					if(this->_callbacks.is("checkPassword"))
 						// Устанавливаем функцию проверки авторизации
@@ -155,15 +149,19 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					// Выполняем создание нового подключённого клиента
 					auto ret = this->_clients.emplace(bid1, unique_ptr <client::core_t> (new client::core_t(&this->_dns, this->_fmk, this->_log)));
 					// Выполняем отключение информационных сообщений сетевого ядра клиента
-					ret.first->second->noInfo(true);
+					ret.first->second->verbose(false);
+					// Устанавливаем параметры SSL-шифрвоания
+					ret.first->second->ssl(this->_settings.ssl);
 					// Добавляем схему сети в сетевое ядро
-					ret.first->second->add(&options->scheme);
+					ret.first->second->scheme(&options->scheme);
 					// Устанавливаем параметры сети клиента
 					ret.first->second->network(this->_settings.ips);
-					// Разрешаем проверку сертификата для клиента
-					ret.first->second->verifySSL(this->_settings.verify);
-					// Устанавливаем доверенный сертификат
-					ret.first->second->ca(this->_settings.cacert.trusted, this->_settings.cacert.path);
+					// Устанавливаем событие подключения
+					ret.first->second->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::CLIENT, bid1, _1, _2));
+					// Устанавливаем событие отключения
+					ret.first->second->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::CLIENT, bid1, _1, _2));
+					// Устанавливаем функцию чтения данных
+					ret.first->second->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::CLIENT, _1, _2, bid1, _4));
 					// Выполняем подключение клиента к сетевому ядру
 					this->_core.bind(ret.first->second.get());
 				}
@@ -206,9 +204,12 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 				// Выполняем поиск активного клиента
 				auto it = this->_clients.find(bid1);
 				// Если активный клиент найден
-				if(it != this->_clients.end())
+				if(it != this->_clients.end()){
 					// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-					it->second->setTimeout(3000, std::bind(&proxy_socks5_t::erase, this, _1, bid1));
+					const uint16_t tid = this->_timer.interval(3000);
+					// Выполняем добавление функции обратного вызова
+					this->_timer.set <void (const uint16_t)> (tid, std::bind(&proxy_socks5_t::erase, this, tid, bid1));
+				}
 			} break;
 		}
 	}
@@ -295,7 +296,7 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 								// Если сетевое ядро клиента найдено
 								if(it != this->_clients.end())
 									// Выполняем запрос на сервер
-									it->second->open(options->scheme.sid);
+									it->second->open(options->scheme.id);
 								// Выходим из функции
 								return;
 							// Если рукопожатие не выполнено
@@ -391,7 +392,7 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
 		// Устанавливаем unix-сокет сервера
 		this->_socket = socket;
 		// Выполняем установку unix-сокет
-		this->_core.unixSocket(socket);
+		this->_core.sockname(socket);
 		// Устанавливаем тип сокета unix-сокет
 		this->_core.family(scheme_t::family_t::NIX);
 	#endif
@@ -412,8 +413,6 @@ void awh::server::ProxySocks5::init(const u_int port, const string & host) noexc
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Удаляем unix-сокет сервера
 		this->_socket.clear();
-		// Удаляем unix-сокет ранее установленный
-		this->_core.removeUnixSocket();
 	#endif
 }
 /**
@@ -521,7 +520,7 @@ void awh::server::ProxySocks5::bytesDetect(const scheme_t::mark_t read, const sc
  */
 void awh::server::ProxySocks5::total(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
-	this->_core.total(this->_scheme.sid, total);
+	this->_core.total(this->_scheme.id, total);
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
@@ -529,7 +528,7 @@ void awh::server::ProxySocks5::total(const u_short total) noexcept {
  */
 void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 	// Выполняем установку флага автоматического перезапуска
-	this->_core.clusterAutoRestart(this->_scheme.sid, mode);
+	this->_core.clusterAutoRestart(this->_scheme.id, mode);
 }
 /**
  * cluster Метод установки количества процессов кластера
@@ -547,7 +546,7 @@ void awh::server::ProxySocks5::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.noInfo(flags.count(flag_t::NOT_INFO) > 0);
+	this->_core.verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * ipV6only Метод установки флага использования только сети IPv6
@@ -588,14 +587,14 @@ void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept 
 	this->_core.family(family);
 }
 /**
- * bandWidth Метод установки пропускной способности сети
+ * bandwidth Метод установки пропускной способности сети
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::server::ProxySocks5::bandWidth(const uint64_t bid, const string & read, const string & write) noexcept {
+void awh::server::ProxySocks5::bandwidth(const uint64_t bid, const string & read, const string & write) noexcept {
 	// Устанавливаем пропускную способность сети
-	this->_core.bandWidth(bid, read, write);
+	this->_core.bandwidth(bid, read, write);
 }
 /**
  * network Метод установки параметров сети
@@ -616,39 +615,26 @@ void awh::server::ProxySocks5::network(const vector <string> & ips, const vector
  * signalInterception Метод активации перехвата сигналов
  * @param mode флаг активации
  */
-void awh::server::ProxySocks5::signalInterception(const awh::core_t::mode_t mode) noexcept {
+void awh::server::ProxySocks5::signalInterception(const scheme_t::mode_t mode) noexcept {
 	// Выполняем активацию перехвата сигналов
 	this->_core.signalInterception(mode);
 }
 /**
- * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
- * @param mode флаг состояния разрешения проверки
+ * ssl Метод установки параметров SSL-шифрования
+ * @param ssl объект параметров SSL-шифрования
  */
-void awh::server::ProxySocks5::verifySSL(const bool mode) noexcept {
-	// Разрешаем проверку сертификата для сервера
-	this->_core.verifySSL(mode);
-	// Выполняем установку флага разрешающего выполнять валидацию доменного имени
-	this->_settings.verify = mode;
-}
-/**
- * ca Метод установки доверенного сертификата (CA-файла)
- * @param trusted адрес доверенного сертификата (CA-файла)
- * @param path    адрес каталога где находится сертификат (CA-файл)
- */
-void awh::server::ProxySocks5::ca(const string & trusted, const string & path) noexcept {
-	// Устанавливаем путь до каталога сертификатов
-	this->_settings.cacert.path = path;
-	// Устанавливаем путь до файла сертификата
-	this->_settings.cacert.trusted = trusted;
-}
-/**
- * certificate Метод установки файлов сертификата
- * @param chain файл цепочки сертификатов
- * @param key   приватный ключ сертификата
- */
-void awh::server::ProxySocks5::certificate(const string & chain, const string & key) noexcept {
-	// Устанавливаем установки файлов сертификата
-	this->_core.certificate(chain, key);
+void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
+	// Выполняем установку параметров SSL-шифрования
+	this->_core.ssl(ssl);
+	// Запоминаем параметры SSL-шифрования
+	this->_settings.ssl = ssl;
+	// Если адрес файла сертификата и ключа передан
+	if(!ssl.cert.empty() && !ssl.key.empty()){
+		// Устанавливаем тип сокета TLS
+		this->_core.sonet(awh::scheme_t::sonet_t::TLS);
+		// Устанавливаем активный протокол подключения
+		this->_core.proto(awh::engine_t::proto_t::HTTP2);
+	}
 }
 /**
  * ProxySocks5 Конструктор
@@ -657,23 +643,27 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
  _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _callbacks(log),
- _core(&_dns, fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+ _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	this->_timer.verbose(false);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.sonet(scheme_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callbacks.set <void (const uint16_t)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1));
+	this->_core.callback <void (const uint16_t)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::SERVER, _1, 0, _2));
+	this->_core.callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::SERVER, _1, 0, _2));
 	// Устанавливаем событие отключения
-	this->_scheme.callbacks.set <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::SERVER, _1, 0, _2));
+	this->_core.callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::SERVER, _1, 0, _2));
 	// Добавляем событие аццепта брокера
-	this->_scheme.callbacks.set <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4));
+	this->_core.callback <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::SERVER, _1, _2, _3, _4));
+	this->_core.callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::SERVER, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&proxy_socks5_t::writeEvents, this, broker_t::SERVER, _1, _2, _3, _4));
+	this->_core.callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&proxy_socks5_t::writeEvents, this, broker_t::SERVER, _1, _2, _3, _4));
 	// Добавляем схему сети в сетевое ядро
-	this->_core.add(&this->_scheme);
+	this->_core.scheme(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов
-	this->_core.clusterAutoRestart(this->_scheme.sid, true);
+	this->_core.clusterAutoRestart(this->_scheme.id, true);
+	// Выполняем биндинг сетевого ядра таймера
+	this->_core.bind(dynamic_cast <awh::core_t *> (&this->_timer));
 }

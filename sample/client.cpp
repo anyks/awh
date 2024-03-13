@@ -77,6 +77,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Объект DNS-резолвера
 	dns_t dns(&fmk, &log);
 	// Создаём биндинг
@@ -97,12 +99,18 @@ int main(int argc, char * argv[]){
 	sample.mode({
 		// client::sample_t::flag_t::NOT_INFO,
 		client::sample_t::flag_t::WAIT_MESS,
-		// client::sample_t::flag_t::VERIFY_SSL
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Отключаем валидацию сертификата
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
-	core.ca("./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/client-key.pem";
+	ssl.cert = "./certs/certificates/client-cert.pem";
+	// Выполняем установку параметров SSL-шифрования
+	core.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -113,10 +121,6 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
-	// Подключаем сертификаты
-	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
-	// Отключаем валидацию сертификата
-	core.verifySSL(false);
 	// Подписываемся на событие получения сообщения
 	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
 	// Подписываемся на событие коннекта и дисконнекта клиента

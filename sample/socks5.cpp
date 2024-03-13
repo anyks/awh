@@ -87,6 +87,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Создаём объект PROXY сервера
 	proxy_socks5_t proxy(&fmk, &log);
 	// Создаём объект исполнителя
@@ -102,8 +104,12 @@ int main(int argc, char * argv[]){
 		// proxy_socks5_t::flag_t::NOT_INFO,
 		proxy_socks5_t::flag_t::WAIT_MESS
 	});
+	// Отключаем валидацию сертификата
+	ssl.verify = true;
 	// Устанавливаем адрес сертификата
-	// proxy.ca("./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	// Выполняем установку параметров SSL-шифрования
+	proxy.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
 	// proxy.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -112,8 +118,6 @@ int main(int argc, char * argv[]){
 	// proxy.sonet(awh::scheme_t::sonet_t::UDP);
 	// proxy.sonet(awh::scheme_t::sonet_t::TCP);
 	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
-	// Отключаем валидацию сертификата
-	// proxy.verifySSL(true);
 	// Активируем максимальное количество рабочих процессов
 	proxy.cluster();
 	// Устанавливаем таймаут ожидания получения сообщений

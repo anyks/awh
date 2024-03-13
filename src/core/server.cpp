@@ -185,12 +185,19 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								const uint16_t tid = ret.first->second->timeout(10);
 								// Выполняем добавление функции обратного вызова
 								ret.first->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
+								// Устанавливаем флаг запрещающий вывод информационных сообщений
+								ret.first->second->verbose(false);
 								// Выполняем биндинг сетевого ядра таймера
 								this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 							}
+						}{
+							// Выполняем поиск брокера в списке активных брокеров
+							auto it = this->_brokers.find(sid);
+							// Если активный брокер найден
+							if(it != this->_brokers.end())
+								// Деактивируем получение данных с клиента
+								it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 						}
-						// Останавливаем работу сервера
-						shm->_event.stop();
 					/**
 					 * Если возникает ошибка
 					 */
@@ -694,9 +701,14 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 			// Если производится остановка процесса
 			case static_cast <uint8_t> (cluster_t::event_t::STOP): {
 				// Если тип сокета не установлен как UDP
-				if(this->_settings.sonet != scheme_t::sonet_t::UDP)
-					// Останавливаем чтение данных с клиента
-					shm->_event.stop();
+				if(this->_settings.sonet != scheme_t::sonet_t::UDP){
+					// Выполняем поиск брокера в списке активных брокеров
+					auto it = this->_brokers.find(sid);
+					// Если активный брокер найден
+					if(it != this->_brokers.end())
+						// Деактивируем получение данных с клиента
+						it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+				}
 			} break;
 		}
 		// Если функция обратного вызова установлена
@@ -763,11 +775,15 @@ void awh::server::Core::close() noexcept {
 					// Иначе продолжаем дальше
 					} else ++it;
 				}
+				// Выполняем поиск брокера в списке активных брокеров
+				auto it = this->_brokers.find(shm->id);
+				// Если активный брокер найден
+				if(it != this->_brokers.end())
+					// Деактивируем получение данных с клиента
+					it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(shm->id);
 			}
-			// Останавливаем работу сервера
-			shm->_event.stop();
 			// Выполняем закрытие подключение сервера
 			shm->_addr.clear();
 		}
@@ -840,8 +856,6 @@ void awh::server::Core::remove() noexcept {
 				// Останавливаем работу кластера
 				this->_cluster.stop(shm->id);
 			}
-			// Останавливаем работу сервера
-			shm->_event.stop();
 			// Выполняем закрытие подключение сервера
 			shm->_addr.clear();
 			// Выполняем удаление схемы сети
@@ -987,8 +1001,6 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 					} else ++j;
 				}
 			}
-			// Останавливаем работу сервера
-			shm->_event.stop();
 			// Выполняем закрытие подключение сервера
 			shm->_addr.clear();
 			// Выполняем удаление схемы сети
@@ -1632,6 +1644,95 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 	}
 }
 /**
+ * ipV6only Метод установки флага использования только сети IPv6
+ * @param mode флаг для установки
+ */
+void awh::server::Core::ipV6only(const bool mode) noexcept {
+	// Выполняем установку флаг использования только сети IPv6
+	this->_settings.ipV6only = mode;
+}
+/**
+ * callbacks Метод установки функций обратного вызова
+ * @param callbacks функции обратного вызова
+ */
+void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функций обратного вызова
+	awh::core_t::callbacks(callbacks);
+	// Выполняем установку функции обратного вызова на событие запуска и остановки процессов кластера
+	this->_callbacks.set("cluster", callbacks);
+}
+/**
+ * total Метод установки максимального количества одновременных подключений
+ * @param sid   идентификатор схемы сети
+ * @param total максимальное количество одновременных подключений
+ */
+void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept {
+	// Если идентификатор схемы сети передан
+	if(this->has(sid)){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Выполняем поиск идентификатора схемы сети
+		auto it = this->_schemes.find(sid);
+		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
+		if(it != this->_schemes.end())
+			// Устанавливаем максимальное количество одновременных подключений
+			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second)))->_total = total;
+	}
+}
+/**
+ * cluster Метод установки количества процессов кластера
+ * @param size количество рабочих процессов
+ */
+void awh::server::Core::cluster(const uint16_t size) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Устанавливаем количество рабочих процессов кластера
+		this->_clusterSize = size;
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param sid  идентификатор схемы сети
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Разрешаем автоматический перезапуск упавших процессов
+		this->_clusterAutoRestart = mode;
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
  * init Метод инициализации сервера
  * @param sid  идентификатор схемы сети
  * @param port порт сервера
@@ -1741,87 +1842,6 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 			}
 		}
 	}
-}
-/**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
- */
-void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем функций обратного вызова
-	awh::core_t::callbacks(callbacks);
-	// Выполняем установку функции обратного вызова на событие запуска и остановки процессов кластера
-	this->_callbacks.set("cluster", callbacks);
-}
-/**
- * total Метод установки максимального количества одновременных подключений
- * @param sid   идентификатор схемы сети
- * @param total максимальное количество одновременных подключений
- */
-void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept {
-	// Если идентификатор схемы сети передан
-	if(this->has(sid)){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
-		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end())
-			// Устанавливаем максимальное количество одновременных подключений
-			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second)))->_total = total;
-	}
-}
-/**
- * cluster Метод установки количества процессов кластера
- * @param size количество рабочих процессов
- */
-void awh::server::Core::cluster(const uint16_t size) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Устанавливаем количество рабочих процессов кластера
-		this->_clusterSize = size;
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
-}
-/**
- * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param sid  идентификатор схемы сети
- * @param mode флаг перезапуска процессов
- */
-void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Разрешаем автоматический перезапуск упавших процессов
-		this->_clusterAutoRestart = mode;
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
 }
 /**
  * Core Конструктор

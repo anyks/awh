@@ -360,6 +360,21 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 	}
 }
 /**
+ * events Метод активации/деактивации метода события сокета
+ * @param bid    идентификатор брокера
+ * @param mode   сигнал активации сокета
+ * @param method метод режима работы
+ */
+void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept {
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Выполняем активацию/деактивацию метода события сокета
+		broker->events(mode, method);
+	}
+}
+/**
  * network Метод установки параметров сети
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)

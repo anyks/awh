@@ -55,7 +55,7 @@ namespace awh {
 					/**
 					 * ~Broker Деструктор
 					 */
-					~Broker() noexcept;
+					~Broker() noexcept {}
 			} broker_t;
 		private:
 			// Мютекс для блокировки основного потока
@@ -68,12 +68,12 @@ namespace awh {
 			map <uint16_t, unique_ptr <broker_t>> _brokers;
 		private:
 			/**
-			 * callback Метод обратного вызова
+			 * event Метод события таймера
 			 * @param tid   идентификатор таймера
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 */
-			void callback(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept;
+			void event(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех таймеров
@@ -84,12 +84,6 @@ namespace awh {
 			 * @param tid идентификатор таймера для очистки
 			 */
 			void clear(const uint16_t tid) noexcept;
-		public:
-			/**
-			 * callbacks Метод установки функций обратного вызова
-			 * @param callbacks функции обратного вызова
-			 */
-			void callbacks(const fn_t & callbacks) noexcept;
 		public:
 			/**
 			 * callback Шаблон метода установки финкции обратного вызова

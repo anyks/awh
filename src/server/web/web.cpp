@@ -25,7 +25,7 @@ void awh::server::Web::openEvents(const uint16_t sid) noexcept {
 		// Устанавливаем хост сервера
 		const_cast <server::core_t *> (this->_core)->init(sid, this->_service.port, this->_service.host);
 		// Выполняем запуск сервера
-		const_cast <server::core_t *> (this->_core)->run(sid);
+		const_cast <server::core_t *> (this->_core)->launch(sid);
 	}
 }
 /**
@@ -37,17 +37,21 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
+			// Устанавливаем интервал времени на выполнения пинга клиента
+			uint16_t tid = this->_timer.interval(PING_INTERVAL);
+			// Выполняем добавление функции обратного вызова
+			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
+			tid = this->_timer.interval(3000);
+			// Выполняем добавление функции обратного вызова
+			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
 			// Выполняем биндинг ядра локального таймера
 			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
-			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 5 секунд
-			this->_timer.setInterval(5000, std::bind(&web_t::disconected, this, _1));
-			// Устанавливаем интервал времени на выполнения пинга удалённого сервера
-			this->_timer.setInterval(PING_INTERVAL, std::bind(&web_t::pinging, this, _1));
 		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
 			// Останавливаем все установленные таймеры
-			this->_timer.clearTimers();
+			this->_timer.clear();
 			// Выполняем анбиндинг ядра локального таймера
 			const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
 		} break;
@@ -184,7 +188,7 @@ void awh::server::Web::init(const string & socket, const vector <http_t::compres
 		// Если объект сетевого ядра создан
 		if(this->_core != nullptr)
 			// Выполняем установку unix-сокет
-			const_cast <server::core_t *> (this->_core)->unixSocket(socket);
+			const_cast <server::core_t *> (this->_core)->sockname(socket);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -206,15 +210,6 @@ void awh::server::Web::init(const u_int port, const string & host, const vector 
 	this->_service.port = port;
 	// Устанавливаем хост сервера
 	this->_service.host = host;
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если объект сетевого ядра создан
-		if(this->_core != nullptr)
-			// Удаляем unix-сокет ранее установленный
-			const_cast <server::core_t *> (this->_core)->removeUnixSocket();
-	#endif
 }
 /**
  * callbacks Метод установки функций обратного вызова
@@ -404,7 +399,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
-	this->_timer.noInfo(true);
+	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
 	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 }
@@ -418,7 +413,7 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
-	this->_timer.noInfo(true);
+	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
 	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера

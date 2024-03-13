@@ -145,7 +145,7 @@ namespace awh {
 			 * @return    результат проверки
 			 */
 			bool has(const uint64_t bid) const noexcept;
-		protected:
+		public:
 			/**
 			 * sid Метод извлечения идентификатора схемы сети
 			 * @param bid идентификатор брокера
@@ -232,6 +232,14 @@ namespace awh {
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
 			void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
+		public:
+			/**
+			 * events Метод активации/деактивации метода события сокета
+			 * @param bid    идентификатор брокера
+			 * @param mode   сигнал активации сокета
+			 * @param method метод режима работы
+			 */
+			void events(const uint64_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept;
 		public:
 			/**
 			 * network Метод установки параметров сети

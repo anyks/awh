@@ -430,7 +430,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 						// Увеличиваем количество попыток
 						this->_attempt++;
 						// Устанавливаем новый экшен выполнения
-						this->proxyConnectEvent(bid, this->_scheme.sid);
+						this->proxyConnectEvent(bid, this->_scheme.id);
 					// Если соединение не является постоянным, выполняем закрытие подключения
 					} else this->close(bid);
 					// Завершаем работу
@@ -443,7 +443,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 			// Выполняем переключение на работу с сервером
 			this->_scheme.switchConnect();
 			// Выполняем запуск работы основного модуля
-			this->connectEvent(bid, this->_scheme.sid);
+			this->connectEvent(bid, this->_scheme.id);
 			// Переходим к следующему этапу
 			return status_t::NEXT;
 		} break;
@@ -641,12 +641,9 @@ void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
 	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
-	if(this->_core != nullptr){
+	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-		// Выполняем установку флага проверки домена
-		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	}
+		const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * userAgent Метод установки User-Agent для HTTP-запроса

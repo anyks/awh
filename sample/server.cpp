@@ -83,6 +83,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Объект DNS-резолвера
 	dns_t dns(&fmk, &log);
 	// Создаём биндинг
@@ -103,8 +105,15 @@ int main(int argc, char * argv[]){
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
 	// core.cluster();
+	// Отключаем валидацию сертификата
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
-	core.ca("./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/server-key.pem";
+	ssl.cert = "./certs/certificates/server-cert.pem";
+	// Выполняем установку параметров SSL-шифрования
+	core.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -113,8 +122,6 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-	// Отключаем валидацию сертификата
-	core.verifySSL(false);
 	// Выполняем инициализацию Sample сервера
 	// sample.init(2222);
 	// sample.init("anyks");
@@ -122,9 +129,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Разрешаем перехват сигналов
-	core.signalInterception(core_t::mode_t::DISABLED);
-	// Устанавливаем SSL сертификаты сервера
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	core.signalInterception(scheme_t::mode_t::DISABLED);
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

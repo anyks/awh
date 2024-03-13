@@ -951,7 +951,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 								// Выполняем сброс заголовков прокси-сервера
 								this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 							// Выполняем установку подключения с Websocket-сервером
-							this->_ws1.connectEvent(this->_bid, this->_scheme.sid);
+							this->_ws1.connectEvent(this->_bid, this->_scheme.id);
 						} break;
 					}
 					// Выводим результат
@@ -1249,12 +1249,9 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
 	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено
-	if(this->_core != nullptr){
+	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
-		// Выполняем установку флага проверки домена
-		const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
-	}
+		const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
  * core Метод установки сетевого ядра
@@ -1269,6 +1266,8 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 		if(this->_threads > 0)
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
+		// Устанавливаем функцию записи данных
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1437,8 +1436,6 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
-	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * Http1 Конструктор
@@ -1461,7 +1458,7 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callbacks.set <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * ~Http1 Деструктор

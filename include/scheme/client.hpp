@@ -94,10 +94,6 @@ namespace awh {
 				 * Client Core Устанавливаем дружбу с клиентским классом ядра
 				 */
 				friend class Core;
-				/**
-				 * Core Устанавливаем дружбу с классом ядра
-				 */
-				friend class awh::Core;
 			public:
 				/**
 				 * Разрешения на выполнение работы

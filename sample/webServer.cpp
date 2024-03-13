@@ -225,6 +225,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
 	// Создаём объект WEB-клиента
@@ -245,7 +247,6 @@ int main(int argc, char * argv[]){
 		// server::web_t::flag_t::NOT_STOP,
 		// server::web_t::flag_t::NOT_INFO,
 		// server::web_t::flag_t::WAIT_MESS,
-		server::web_t::flag_t::VERIFY_SSL,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER,
 		server::web_t::flag_t::WEBSOCKET_ENABLE,
@@ -253,8 +254,20 @@ int main(int argc, char * argv[]){
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Отключаем валидацию сертификата
+	ssl.verify = true;
 	// Устанавливаем адрес сертификата
-	// core.ca("./certs/ca.pem");
+	ssl.ca = "./certs/ca.pem";
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "./certs/certificates/server-key.pem";
+	ssl.cert = "./certs/certificates/server-cert.pem";
+	/*
+	// Устанавливаем SSL сертификаты сервера
+	ssl.key  = "/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem";
+	ssl.cert = "/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem";
+	*/
+	// Выполняем установку параметров SSL-шифрования
+	core.ssl(ssl);
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -265,8 +278,6 @@ int main(int argc, char * argv[]){
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
-	// Отключаем валидацию сертификата
-	// core.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
 	core.cluster();
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
@@ -305,14 +316,6 @@ int main(int argc, char * argv[]){
 	*/
 	// Устанавливаем длительное подключение
 	// awh.keepAlive(100, 30, 10);
-	// Устанавливаем SSL сертификаты сервера
-	/*
-	core.certificate(
-		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
-	);
-	*/
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 	// Активируем шифрование
 	// awh.encryption(true);
 	// Устанавливаем пароль шифрования
