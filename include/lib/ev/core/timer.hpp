@@ -33,6 +33,40 @@ namespace awh {
 	typedef class Timer : public awh::core_t {
 		private:
 			/**
+			 * Broker Прототип класса брокера подключения
+			 */
+			class Broker;
+			/**
+			 * Timeout Класс таймаута
+			 */
+			typedef class Timeout {
+				private:
+					// Задержка времени в секундах
+					float _delay;
+				private:
+					// Идентификатор таймера
+					uint16_t _tid;
+				private:
+					// Объект брокера подключения
+					Broker * _broker;
+				public:
+					/**
+					 * operator Оператор [()] Получения события таймера
+					 * @param timer   объект события таймаута
+					 * @param revents идентификатор события
+					 */
+					void operator()(ev::timer & timer, int revents) noexcept;
+				public:
+					/**
+					 * Timeout Конструктор
+					 * @param tid    идентификатор таймера
+					 * @param delay  задержка времени в секундах
+					 * @param broker брокер подключения
+					 */
+					Timeout(const uint16_t tid, const float delay, Broker * broker) noexcept :
+					 _delay(delay), _tid(tid), _broker(broker) {}
+			} timeout_t;
+			/**
 			 * Broker Класс брокера
 			 */
 			typedef class Broker {
@@ -41,14 +75,21 @@ namespace awh {
 					bool persist;
 				public:
 					// Объект события таймера
-					event_t event;
+					ev::timer io;
+				public:
+					// Объект таймаута
+					timeout_t timeout;
+				public:
+					// Функция обратного вызова
+					function <void (const uint16_t, const float)> fn;
 				public:
 					/**
 					 * Broker Конструктор
-					 * @param log объект для работы с логами
+					 * @param tid   идентификатор таймера
+					 * @param delay задержка времени в секундах
 					 */
-					Broker(const log_t * log) noexcept :
-					 persist(false), event(event_t::type_t::TIMER, log) {}
+					Broker(const uint16_t tid, const float delay) noexcept :
+					 persist(false), timeout(tid, delay, this), fn(nullptr) {}
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -67,10 +108,9 @@ namespace awh {
 			/**
 			 * event Метод события таймера
 			 * @param tid   идентификатор таймера
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
+			 * @param delay задержка времени в секундах
 			 */
-			void event(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept;
+			void event(const uint16_t tid, const float delay) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех таймеров

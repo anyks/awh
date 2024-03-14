@@ -207,13 +207,15 @@ namespace awh {
 				/**
 				 * Marker Конструктор
 				 */
-				Marker() noexcept : read(BUFFER_READ_MIN, BUFFER_READ_MAX), write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
+				Marker() noexcept :
+				 read(BUFFER_READ_MIN, BUFFER_READ_MAX),
+				 write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
 			} marker_t;
 		private:
 			/**
-			 * Broker Структура брокера
+			 * Broker Класс брокера подключения
 			 */
-			typedef struct Broker {
+			typedef class Broker {
 				private:
 					// Идентификатор брокера
 					uint64_t _id;

@@ -63,18 +63,14 @@ namespace awh {
  */
 namespace awh {
 	/**
-	 * Core Прототип класса ядра биндинга TCP/IP
-	 */
-	class Core;
-	/**
 	 * Scheme Структура схемы сети
 	 */
 	typedef struct Scheme {
 		private:
 			/**
-			 * Core Устанавливаем дружбу с классом ядра
+			 * Node Core Устанавливаем дружбу с нодой сетевого ядра
 			 */
-			friend class Core;
+			friend class Node;
 			/**
 			 * Client Core Устанавливаем дружбу с клиентским классом ядра
 			 */
@@ -84,6 +80,13 @@ namespace awh {
 			 */
 			friend class server::Core;
 		public:
+			/**
+			 * Флаги активации/деактивации
+			 */
+			enum class mode_t : uint8_t {
+				ENABLED  = 0x01, // Включено
+				DISABLED = 0x00  // Отключено
+			};
 			/**
 			 * Семейство протоколов интернета
 			 */
@@ -110,15 +113,17 @@ namespace awh {
 				ev::timer read;    // Событие таймера таймаута на чтение из сокета
 				ev::timer write;   // Событие таймера таймаута на запись в сокет
 				ev::timer connect; // Событие таймера таймаута на подключение к серверу
-			} timer_t;
+			} timers_t;
 			/**
 			 * Event Структура события
 			 */
 			typedef struct Event {
-				ev::io read;    // Событие на чтение
-				ev::io write;   // Событие на запись
-				ev::io connect; // Событие на подключение
-			} event_t;
+				ev::io read;       // Событие на чтение
+				ev::io write;      // Событие на запись
+				ev::io accept;     // Событие на запросы подключений
+				ev::io connect;    // Событие на подключение
+				ev::timer timeout; // Событие на таймаут
+			} events_t;
 			/**
 			 * Timeouts Структура таймаутов
 			 */
@@ -126,10 +131,15 @@ namespace awh {
 				time_t read;    // Таймаут на чтение в секундах
 				time_t write;   // Таймаут на запись в секундах
 				time_t connect; // Таймаут на подключение в секундах
+				time_t timeout; // Таймаут на выполнение таймера в миллисекундах
 				/**
 				 * Timeouts Конструктор
 				 */
-				Timeouts() noexcept : read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
+				Timeouts() noexcept :
+				 read(READ_TIMEOUT),
+				 write(WRITE_TIMEOUT),
+				 connect(CONNECT_TIMEOUT),
+				 timeout(10) {}
 			} timeouts_t;
 			/**
 			 * Locked Структура блокировки на чтение и запись данных в буфере
@@ -146,8 +156,8 @@ namespace awh {
 			 * BufferEvent Структура буфера событий
 			 */
 			typedef struct BufferEvent {
-				event_t event;   // Событие чтения/записи
-				timer_t timer;   // Собатие таймера на чтение/запись
+				events_t events; // Событие чтения/записи
+				timers_t timers; // Собатие таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
@@ -176,33 +186,57 @@ namespace awh {
 				/**
 				 * Marker Конструктор
 				 */
-				Marker() noexcept : read(BUFFER_READ_MIN, BUFFER_READ_MAX), write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
+				Marker() noexcept :
+				 read(BUFFER_READ_MIN, BUFFER_READ_MAX),
+				 write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
 			} marker_t;
 		private:
 			/**
-			 * Broker Структура брокера
+			 * Broker Прототип класса брокера подключения
 			 */
-			typedef struct Broker {
+			class Broker;
+			/**
+			 * Timeout Класс таймаута
+			 */
+			typedef class Timeout {
 				private:
+					// Объект брокера подключения
+					Broker * _broker;
+				private:
+					// Метод режима работы
+					engine_t::method_t _method;
+				public:
 					/**
-					 * Core Устанавливаем дружбу с классом ядра
+					 * method Метод установки метода режима работы
+					 * @param method метод режима работы
 					 */
-					friend class Core;
+					void method(const engine_t::method_t method) noexcept;
+				public:
 					/**
-					 * Scheme Устанавливаем дружбу с родительским объектом
+					 * operator Оператор [()] Получения события таймера
+					 * @param timer   объект события таймаута
+					 * @param revents идентификатор события
 					 */
-					friend class Scheme;
+					void operator()(ev::timer & timer, int revents) noexcept;
+				public:
 					/**
-					 * Client Core Устанавливаем дружбу с клиентским классом ядра
+					 * Timeout Конструктор
+					 * @param broker брокер подключения
+					 * @param method метод режима работы
 					 */
-					friend class client::Core;
-					/**
-					 * Server Core Устанавливаем дружбу с серверным классом ядра
-					 */
-					friend class server::Core;
+					Timeout(Broker * broker, const engine_t::method_t method) noexcept : _broker(broker), _method(method) {}
+			} timeout_t;
+		private:
+			/**
+			 * Broker Класс брокера подключения
+			 */
+			typedef class Broker {
 				private:
 					// Идентификатор брокера
-					uint64_t _bid;
+					uint64_t _id;
+				private:
+					// Идентификатор схемы сети
+					uint16_t _sid;
 				private:
 					// Адрес интернет-подключения клиента
 					string _ip;
@@ -210,27 +244,133 @@ namespace awh {
 					string _mac;
 					// Порт интернет-подключения клиента
 					u_int _port;
-				private:
+				public:
 					// Объект буфера событий
 					bev_t _bev;
 				private:
+					// Тип сокета подключения
+					sonet_t _sonet;
+				private:
+					// Хранилище функций обратного вызова
+					fn_t _callbacks;
+				public:
 					// Маркер размера детектируемых байт
 					marker_t _marker;
-				private:
+				public:
 					// Объект таймаутов
 					timeouts_t _timeouts;
-				private:
+				public:
+					// Объект таймаута на событие чтения
+					timeout_t _readEventTimeout;
+					// Объект таймаута на событие записи
+					timeout_t _writeEventTimeout;
+					// Объект таймаута на событие подключени
+					timeout_t _connectEventTimeout;
+					// Объект таймаута на событие таймаута
+					timeout_t _timeoutEventTimeout;
+				public:
 					// Контекст двигателя для работы с передачей данных
 					engine_t::ctx_t _ectx;
 					// Создаём объект подключения клиента
 					engine_t::addr_t _addr;
-				public:
+				private:
 					// Создаём объект фреймворка
-					const fmk_t * fmk;
+					const fmk_t * _fmk;
 					// Создаём объект работы с логами
-					const log_t * log;
-					// Объект родительской схемы
-					const Scheme * parent;
+					const log_t * _log;
+				private:
+					// База данных событий
+					struct ev_loop * _base;
+				public:
+					/**
+					 * id Метод извлечения идентификатора брокера
+					 * @return идентификатор брокера
+					 */
+					uint64_t id() const noexcept;
+				public:
+					/**
+					 * sid Метод извлечения идентификатора схемы сети
+					 * @return идентификатор схемы сети
+					 */
+					uint16_t sid() const noexcept;
+				public:
+					/**
+					 * port Метод извлечения порта подключения
+					 * @return установленный порт подключения
+					 */
+					u_int port() const noexcept;
+					/**
+					 * port Метод установки порта подключения
+					 * @param порт подключения для установки
+					 */
+					void port(const u_int port) noexcept;
+				public:
+					/**
+					 * ip Метод извлечения IP-адреса
+					 * @return установленный IP-адрес
+					 */
+					const string & ip() const noexcept;
+					/**
+					 * ip Метод установки IP-адреса
+					 * @param ip адрес для установки
+					 */
+					void ip(const string & ip) noexcept;
+				public:
+					/**
+					 * mac Метод извлечения MAC-адреса
+					 * @return установленный MAC-адрес
+					 */
+					const string & mac() const noexcept;
+					/**
+					 * mac Метод установки MAC-адреса
+					 * @param mac адрес для установки
+					 */
+					void mac(const string & mac) noexcept;
+				public:
+					/**
+					 * callbacks Метод установки функций обратного вызова
+					 * @param callbacks функции обратного вызова
+					 */
+					void callbacks(const fn_t & callbacks) noexcept;
+				public:
+					/**
+					 * callback Шаблон метода установки финкции обратного вызова
+					 * @tparam A тип функции обратного вызова
+					 */
+					template <typename A>
+					/**
+					 * callback Метод установки функции обратного вызова
+					 * @param idw идентификатор функции обратного вызова
+					 * @param fn  функция обратного вызова для установки
+					 */
+					void callback(const uint64_t idw, function <A> fn) noexcept {
+						// Если функция обратного вызова передана
+						if((idw > 0) && (fn != nullptr))
+							// Выполняем установку функции обратного вызова
+							this->_callbacks.set <A> (idw, fn);
+					}
+					/**
+					 * callback Шаблон метода установки финкции обратного вызова
+					 * @tparam A тип функции обратного вызова
+					 */
+					template <typename A>
+					/**
+					 * callback Метод установки функции обратного вызова
+					 * @param name название функции обратного вызова
+					 * @param fn   функция обратного вызова для установки
+					 */
+					void callback(const string & name, function <A> fn) noexcept {
+						// Если функция обратного вызова передана
+						if(!name.empty() && (fn != nullptr))
+							// Выполняем установку функции обратного вызова
+							this->_callbacks.set <A> (name, fn);
+					}
+				private:
+					/**
+					 * sonet Метод установки типа сокета подключения
+					 * @param sonet тип сокета подключения
+					 */
+					void sonet(const sonet_t sonet) noexcept;
 				private:
 					/**
 					 * read Метод вызова при чтении данных с сокета
@@ -239,26 +379,76 @@ namespace awh {
 					 */
 					void read(ev::io & watcher, int revents) noexcept;
 					/**
+					 * write Метод вызова при активации сокета на запись данных
+					 * @param watcher объект события чтения
+					 * @param revents идентификатор события
+					 */
+					void write(ev::io & watcher, int revents) noexcept;
+					/**
+					 * accept Метод вызова при подключении к серверу
+					 * @param watcher объект события чтения
+					 * @param revents идентификатор события
+					 */
+					void accept(ev::io & watcher, int revents) noexcept;
+					/**
 					 * connect Метод вызова при подключении к серверу
 					 * @param watcher объект события подключения
 					 * @param revents идентификатор события
 					 */
 					void connect(ev::io & watcher, int revents) noexcept;
+				public:
 					/**
 					 * timeout Метод вызова при срабатывании таймаута
-					 * @param timer   объект события таймаута
-					 * @param revents идентификатор события
+					 * @param method метод режима работы
 					 */
-					void timeout(ev::timer & timer, int revents) noexcept;
+					void timeout(const engine_t::method_t method) noexcept;
+				public:
+					/**
+					 * lockup Метод блокировки метода режима работы
+					 * @param mode   флаг блокировки метода
+					 * @param method метод режима работы
+					 */
+					void lockup(const mode_t mode, const engine_t::method_t method) noexcept;
+					/**
+					 * events Метод активации/деактивации метода события сокета
+					 * @param mode   сигнал активации сокета
+					 * @param method метод режима работы
+					 */
+					void events(const mode_t mode, const engine_t::method_t method) noexcept;
+					/**
+					 * timeout Метод установки таймаута ожидания появления данных
+					 * @param seconds время ожидания в секундах
+					 * @param method  метод режима работы
+					 */
+					void timeout(const time_t seconds, const engine_t::method_t method) noexcept;
+					/**
+					 * marker Метод установки маркера на размер детектируемых байт
+					 * @param min    минимальный размер детектируемых байт
+					 * @param min    максимальный размер детектируемых байт
+					 * @param method метод режима работы
+					 */
+					void marker(const size_t min, const size_t max, const engine_t::method_t method) noexcept;
+				public:
+					/**
+					 * base Метод установки базы событий
+					 * @param base база событий для установки
+					 */
+					void base(struct ev_loop * base) noexcept;
+				public:
+					/**
+					 * Оператор [=] установки базы событий
+					 * @param base база событий для установки
+					 * @return     текущий объект
+					 */
+					Broker & operator = (struct ev_loop * base) noexcept;
 				public:
 					/**
 					 * Broker Конструктор
-					 * @param parent объект родительской схемы сети
-					 * @param fmk    объект фреймворка
-					 * @param log    объект для работы с логами
+					 * @param sid идентификатор схемы сети
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Broker(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 _bid(0), _ip{""}, _mac{""}, _port(0), _ectx(fmk, log), _addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
+					Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -266,15 +456,12 @@ namespace awh {
 			} broker_t;
 		public:
 			// Идентификатор родительской схемы
-			uint16_t sid;
+			uint16_t id;
 		public:
 			// Флаг ожидания входящих сообщений
 			bool wait;
 			// Флаг автоматического поддержания подключения
 			bool alive;
-		public:
-			// Хранилище функций обратного вызова
-			fn_t callbacks;
 		public:
 			// Маркер размера детектируемых байт
 			marker_t marker;
@@ -292,15 +479,6 @@ namespace awh {
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
-			// Создаём объект фреймворка
-			const Core * _core;
-		private:
-			/**
-			 * resolving Метод получения IP адреса доменного имени
-			 * @param ip     адрес интернет-подключения
-			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 */
-			void resolving(const string & ip, const int family) noexcept;
 		public:
 			/**
 			 * clear Метод очистки
@@ -339,7 +517,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-			 sid(0), wait(false), alive(false), callbacks(log), _fmk(fmk), _log(log), _core(nullptr) {}
+			 id(0), wait(false), alive(false), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

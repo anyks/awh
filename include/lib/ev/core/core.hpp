@@ -1,6 +1,6 @@
 /**
  * @file: core.hpp
- * @date: 2022-09-03
+ * @date: 2024-03-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2022
+ * @copyright: Copyright © 2024
  */
 
 #ifndef __AWH_CORE__
@@ -18,17 +18,11 @@
 /**
  * Стандартные модули
  */
-#include <map>
-#include <ctime>
 #include <mutex>
-#include <future>
 #include <chrono>
-#include <thread>
 #include <string>
 #include <cerrno>
 #include <cstdlib>
-#include <functional>
-#include <unordered_map>
 #include <libev/ev++.h>
 
 /**
@@ -50,13 +44,12 @@
  * Наши модули
  */
 #include <sys/fn.hpp>
-#include <net/dns.hpp>
-#include <net/engine.hpp>
 #include <scheme/core.hpp>
 #include <sys/signals.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -80,13 +73,6 @@ namespace awh {
 				START = 0x01  // Статус запуска
 			};
 			/**
-			 * Флаги активации/деактивации
-			 */
-			enum class mode_t : uint8_t {
-				ENABLED  = 0x01, // Включено
-				DISABLED = 0x00  // Отключено
-			};
-			/**
 			 * Коды ошибок клиента
 			 */
 			enum class error_t : uint8_t {
@@ -98,76 +84,18 @@ namespace awh {
 				PROTOCOL  = 0x05, // Ошибка активации протокола
 				OS_BROKEN = 0x06  // Ошибка неподдерживаемой ОС
 			};
-		private:
-			/**
-			 * Timer Класс таймера
-			 */
-			typedef class Timer {
-				public:
-					// Идентификатор таймера
-					uint16_t id;
-				public:
-					// Флаг персистентной работы
-					bool persist;
-				public:
-					// Задержка времени в секундах
-					float delay;
-				public:
-					// Объект события таймера
-					ev::timer io;
-				public:
-					// Объект сетевого ядра
-					Core * core;
-				public:
-					// Внешняя функция обратного вызова
-					function <void (const uint16_t)> fn;
-				public:
-					/**
-					 * callback Метод обратного вызова
-					 * @param timer   объект события таймера
-					 * @param revents идентификатор события
-					 */
-					void callback(ev::timer & timer, int revents) noexcept;
-				public:
-					/**
-					 * Timer Конструктор
-					 */
-					Timer() noexcept : id(0), persist(false), delay(0.f), core(nullptr), fn(nullptr) {}
-			} timer_t;
 		protected:
 			/**
 			 * Mutex Объект основных мютексов
 			 */
 			typedef struct Mutex {
-				recursive_mutex bind;   // Для работы с биндингом ядра
-				recursive_mutex main;   // Для работы с параметрами модуля
-				recursive_mutex timer;  // Для работы с таймерами
-				recursive_mutex status; // Для контроля запуска модуля
-				recursive_mutex scheme; // Для работы с схемой сети
+				// Для работы с параметрами модуля
+				recursive_mutex main;
+				// Для работы с биндингом сетевых ядер
+				recursive_mutex bind;
+				// Для контроля запуска модуля
+				recursive_mutex status;
 			} mtx_t;
-			/**
-			 * Settings Структура текущих параметров сети
-			 */
-			typedef struct Settings {
-				// Протокол активного подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
-				engine_t::proto_t proto;
-				// Тип сокета подключения (TCP / UDP)
-				scheme_t::sonet_t sonet;
-				// Тип протокола интернета (IPV4 / IPV6 / NIX)
-				scheme_t::family_t family;
-				// Адрес файла unix-сокета
-				string filename;
-				// Параметры для сети
-				vector <string> network;
-				/**
-				 * Settings Конструктор
-				 */
-				Settings() noexcept :
-				 proto(engine_t::proto_t::RAW),
-				 sonet(scheme_t::sonet_t::TCP),
-				 family(scheme_t::family_t::IPV4),
-				 filename{""}, network{"0.0.0.0","[::]"} {}
-			} settings_t;
 		private:
 			/**
 			 * Dispatch Класс работы с событиями
@@ -263,25 +191,14 @@ namespace awh {
 		protected:
 			// Флаг разрешения работы
 			bool _mode;
-			// Флаг запрета вывода информационных сообщений
-			bool _noinfo;
+			// Флаг разрешающий вывод информационных сообщений
+			bool _verb;
 		private:
 			// Количество подключённых внешних ядер
 			uint32_t _cores;
 		protected:
-			// Объект работы с файловой системой
-			fs_t _fs;
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
-		protected:
-			// Создаем объект сети
-			net_t _net;
-			// Создаём объект работы с URI
-			uri_t _uri;
-			// Создаём объект для работы с актуатором
-			engine_t _engine;
-			// Сетевые параметры
-			settings_t _settings;
 			// Объект для работы с чтением базы событий
 			dispatch_t _dispatch;
 		private:
@@ -291,23 +208,12 @@ namespace awh {
 			// Мютекс для блокировки основного потока
 			mtx_t _mtx;
 		protected:
-			// Флаг обработки сигналов
-			mode_t _signals;
 			// Статус сетевого ядра
 			status_t _status;
 			// Тип запускаемого ядра
 			engine_t::type_t _type;
-		private:
-			// Список активных таймеров
-			map <uint16_t, unique_ptr <timer_t>> _timers;
-		protected:
-			// Список активных схем сети
-			map <uint16_t, const scheme_t *> _schemes;
-			// Список активных брокеров
-			map <uint64_t, const scheme_t::broker_t *> _brokers;
-		protected:
-			// Создаём объект DNS-резолвера
-			dns_t * _dns;
+			// Флаг обработки сигналов
+			scheme_t::mode_t _signals;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -318,25 +224,6 @@ namespace awh {
 			 * signal Метод вывода полученного сигнала
 			 */
 			void signal(const int signal) noexcept;
-		private:
-			/**
-			 * launching Метод вызова при активации базы событий
-			 * @param mode   флаг работы с сетевым протоколом
-			 * @param status флаг вывода события статуса
-			 */
-			void launching(const bool mode, const bool status) noexcept;
-			/**
-			 * closedown Метод вызова при деакцтивации базы событий
-			 * @param mode   флаг работы с сетевым протоколом
-			 * @param status флаг вывода события статуса
-			 */
-			void closedown(const bool mode, const bool status) noexcept;
-		protected:
-			/**
-			 * clean Метод буфера событий
-			 * @param bid идентификатор брокера
-			 */
-			void clean(const uint64_t bid) const noexcept;
 		public:
 			/**
 			 * rebase Метод пересоздания базы событий
@@ -362,126 +249,19 @@ namespace awh {
 			 * start Метод запуска клиента
 			 */
 			virtual void start() noexcept;
-		public:
+		protected:
 			/**
-			 * working Метод проверки на запуск работы
-			 * @return результат проверки
+			 * launching Метод вызова при активации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
 			 */
-			bool working() const noexcept;
-		public:
+			virtual void launching(const bool mode, const bool status) noexcept;
 			/**
-			 * add Метод добавления схемы сети
-			 * @param scheme схема рабочей сети
-			 * @return       идентификатор схемы сети
+			 * closedown Метод вызова при деакцтивации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
 			 */
-			uint16_t add(const scheme_t * scheme) noexcept;
-		public:
-			/**
-			 * close Метод отключения всех брокеров
-			 */
-			virtual void close() noexcept;
-			/**
-			 * remove Метод удаления всех схем сети
-			 */
-			virtual void remove() noexcept;
-		public:
-			/**
-			 * close Метод закрытия подключения брокера
-			 * @param bid идентификатор брокера
-			 */
-			virtual void close(const uint64_t bid) noexcept;
-			/**
-			 * remove Метод удаления схемы сети
-			 * @param sid идентификатор схемы сети
-			 */
-			virtual void remove(const uint16_t sid) noexcept;
-		private:
-			/**
-			 * timeout Метод вызова при срабатывании таймаута
-			 * @param bid идентификатор брокера
-			 */
-			virtual void timeout(const uint64_t bid) noexcept;
-			/**
-			 * connected Метод вызова при удачном подключении к серверу
-			 * @param bid идентификатор брокера
-			 */
-			virtual void connected(const uint64_t bid) noexcept;
-		public:
-			/**
-			 * read Метод чтения данных для брокера
-			 * @param bid идентификатор брокера
-			 */
-			virtual void read(const uint64_t bid) noexcept;
-			/**
-			 * write Метод записи буфера данных в сокет
-			 * @param buffer буфер для записи данных
-			 * @param size   размер записываемых данных
-			 * @param bid    идентификатор брокера
-			 */
-			virtual void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
-		public:
-			/**
-			 * bandWidth Метод установки пропускной способности сети
-			 * @param bid   идентификатор брокера
-			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
-			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
-			 */
-			virtual void bandWidth(const uint64_t bid, const string & read, const string & write) noexcept;
-		public:
-			/**
-			 * lockup Метод блокировки метода режима работы
-			 * @param method метод режима работы
-			 * @param mode   флаг блокировки метода
-			 * @param bid    идентификатор брокера
-			 */
-			void lockup(const engine_t::method_t method, const bool mode, const uint64_t bid) noexcept;
-			/**
-			 * events Метод активации/деактивации метода события сокета
-			 * @param mode   сигнал активации сокета
-			 * @param method метод события сокета
-			 * @param bid    идентификатор брокера
-			 */
-			void events(const mode_t mode, const engine_t::method_t method, const uint64_t bid) noexcept;
-			/**
-			 * dataTimeout Метод установки таймаута ожидания появления данных
-			 * @param method  метод режима работы
-			 * @param seconds время ожидания в секундах
-			 * @param bid     идентификатор брокера
-			 */
-			void dataTimeout(const engine_t::method_t method, const time_t seconds, const uint64_t bid) noexcept;
-			/**
-			 * marker Метод установки маркера на размер детектируемых байт
-			 * @param method метод режима работы
-			 * @param min    минимальный размер детектируемых байт
-			 * @param min    максимальный размер детектируемых байт
-			 * @param bid    идентификатор брокера
-			 */
-			void marker(const engine_t::method_t method, const size_t min, const size_t max, const uint64_t bid) noexcept;
-		public:
-			/**
-			 * clearTimers Метод очистки всех таймеров
-			 */
-			void clearTimers() noexcept;
-			/**
-			 * clearTimer Метод очистки таймера
-			 * @param id идентификатор таймера для очистки
-			 */
-			void clearTimer(const uint16_t id) noexcept;
-		public:
-			/**
-			 * setTimeout Метод установки таймаута
-			 * @param delay    задержка времени в миллисекундах
-			 * @param callback функция обратного вызова
-			 * @return         идентификатор созданного таймера
-			 */
-			uint16_t setTimeout(const time_t delay, function <void (const uint16_t)> callback) noexcept;
-			/**
-			 * setInterval Метод установки интервала времени
-			 * @param delay    задержка времени в миллисекундах
-			 * @param callback функция обратного вызова
-			 * @return         идентификатор созданного таймера
-			 */
-			uint16_t setInterval(const time_t delay, function <void (const uint16_t)> callback) noexcept;
+			virtual void closedown(const bool mode, const bool status) noexcept;
 		public:
 			/**
 			 * callbacks Метод установки функций обратного вызова
@@ -523,83 +303,27 @@ namespace awh {
 			}
 		public:
 			/**
+			 * working Метод проверки на запуск работы
+			 * @return результат проверки
+			 */
+			bool working() const noexcept;
+		public:
+			/**
 			 * easily Метод активации простого режима чтения базы событий
 			 * @param mode флаг активации простого чтения базы событий
 			 */
-			void easily(const bool mode) noexcept;
+			void easily(const bool mode = true) noexcept;
 			/**
 			 * freeze Метод заморозки чтения данных
 			 * @param mode флаг активации заморозки чтения данных
 			 */
-			void freeze(const bool mode) noexcept;
-		public:
+			void freeze(const bool mode = true) noexcept;
 			/**
-			 * removeUnixSocket Метод удаления unix-сокета
-			 * @return результат выполнения операции
-			 */
-			bool removeUnixSocket() noexcept;
-			/**
-			 * unixSocket Метод установки адреса файла unix-сокета
-			 * @param socket адрес файла unix-сокета
-			 * @return       результат установки unix-сокета
-			 */
-			bool unixSocket(const string & socket = "") noexcept;
-		public:
-			/**
-			 * proto Метод извлечения поддерживаемого протокола подключения
-			 * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
-			 */
-			engine_t::proto_t proto() const noexcept;
-			/**
-			 * proto Метод извлечения активного протокола подключения
-			 * @param bid идентификатор брокера
-			 * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
-			 */
-			engine_t::proto_t proto(const uint64_t bid) const noexcept;
-			/**
-			 * proto Метод установки поддерживаемого протокола подключения
-			 * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
-			 */
-			void proto(const engine_t::proto_t proto) noexcept;
-		public:
-			/**
-			 * sonet Метод извлечения типа сокета подключения
-			 * @return тип сокета подключения (TCP / UDP / SCTP)
-			 */
-			scheme_t::sonet_t sonet() const noexcept;
-			/**
-			 * sonet Метод установки типа сокета подключения
-			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
-			 */
-			void sonet(const scheme_t::sonet_t sonet) noexcept;
-		public:
-			/**
-			 * family Метод извлечения типа протокола интернета
-			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
-			 */
-			scheme_t::family_t family() const noexcept;
-			/**
-			 * family Метод установки типа протокола интернета
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 */
-			void family(const scheme_t::family_t family) noexcept;
-		public:
-			/**
-			 * resolver Метод установки объекта DNS-резолвера
-			 * @param dns объект DNS-резолвер
-			 */
-			void resolver(const dns_t * dns) noexcept;
-		public:
-			/**
-			 * noInfo Метод установки флага запрета вывода информационных сообщений
+			 * verbose Метод установки флага запрета вывода информационных сообщений
 			 * @param mode флаг запрета вывода информационных сообщений
 			 */
-			void noInfo(const bool mode) noexcept;
-			/**
-			 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
-			 * @param mode флаг состояния разрешения проверки
-			 */
-			void verifySSL(const bool mode) noexcept;
+			void verbose(const bool mode = true) noexcept;
+		public:
 			/**
 			 * frequency Метод установки частоты обновления базы событий
 			 * @param msec частота обновления базы событий в миллисекундах
@@ -609,50 +333,18 @@ namespace awh {
 			 * signalInterception Метод активации перехвата сигналов
 			 * @param mode флаг активации
 			 */
-			void signalInterception(const mode_t mode) noexcept;
-			/**
-			 * ciphers Метод установки алгоритмов шифрования
-			 * @param ciphers список алгоритмов шифрования для установки
-			 */
-			void ciphers(const vector <string> & ciphers) noexcept;
-			/**
-			 * ca Метод установки доверенного сертификата (CA-файла)
-			 * @param trusted адрес доверенного сертификата (CA-файла)
-			 * @param path    адрес каталога где находится сертификат (CA-файл)
-			 */
-			void ca(const string & trusted, const string & path = "") noexcept;
-			/**
-			 * certificate Метод установки файлов сертификата
-			 * @param chain файл цепочки сертификатов
-			 * @param key   приватный ключ сертификата
-			 */
-			void certificate(const string & chain, const string & key) noexcept;
-		public:
-			/**
-			 * network Метод установки параметров сети
-			 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP / UDP)
-			 */
-			void network(const vector <string> & ips = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			void signalInterception(const scheme_t::mode_t mode = scheme_t::mode_t::DISABLED) noexcept;
 		public:
 			/**
 			 * Core Конструктор
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
-			/**
-			 * Core Конструктор
-			 * @param dns    объект DNS-резолвера
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
-			 */
-			Core(const dns_t * dns, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			Core(const fmk_t * fmk, const log_t * log) noexcept :
+			 _pid(::getpid()), _mode(false), _verb(true), _cores(0),
+			 _callbacks(log), _dispatch(this), _sig(_dispatch.base),
+			 _status(status_t::STOP), _type(engine_t::type_t::NONE),
+			 _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Core Деструктор
 			 */
