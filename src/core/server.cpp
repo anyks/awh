@@ -1852,6 +1852,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(0), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Устанавливаем функцию получения статуса кластера
+	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3));
 }
 /**
  * Core Конструктор
@@ -1863,4 +1865,6 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
  awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(0), _clusterAutoRestart(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Устанавливаем функцию получения статуса кластера
+	this->_cluster.callback <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", std::bind(static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3));
 }

@@ -255,7 +255,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Отключаем валидацию сертификата
-	ssl.verify = true;
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
 	ssl.ca = "./certs/ca.pem";
 	// Устанавливаем SSL сертификаты сервера

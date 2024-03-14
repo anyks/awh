@@ -452,7 +452,7 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Выводим в консоль информацию
-			this->_log->print("[+] Start service: pid = %u", log_t::flag_t::INFO, ::getpid());
+			this->_log->print("[+] Start service: PID=%u", log_t::flag_t::INFO, ::getpid());
 	}
 }
 /**
@@ -476,7 +476,7 @@ void awh::Core::closedown(const bool mode, const bool status) noexcept {
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Выводим в консоль информацию
-			this->_log->print("[-] Stop service: pid = %u", log_t::flag_t::INFO, ::getpid());
+			this->_log->print("[-] Stop service: PID=%u", log_t::flag_t::INFO, ::getpid());
 	}
 }
 /**
