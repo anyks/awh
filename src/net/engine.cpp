@@ -1270,7 +1270,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 								// Требуем завершения работы
 								result = 0;
 						// Если защищённый режим работы запрещён
-						} else if((errno == EAGAIN) || (errno == EINTR))
+						} else if((errno == EWOULDBLOCK) || (errno == EINTR))
 							// Выполняем пропуск попытки
 							return result;
 						// Иначе выводим сообщение об ошибке
@@ -1513,7 +1513,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 								// Требуем завершения работы
 								result = 0;
 						// Если защищённый режим работы запрещён
-						} else if((errno == EAGAIN) || (errno == EINTR))
+						} else if((errno == EWOULDBLOCK) || (errno == EINTR))
 							// Выполняем пропуск попытки
 							return result;
 						// Иначе выводим сообщение об ошибке
