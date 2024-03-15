@@ -51,6 +51,12 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						} else {
 							// Создаём бъект активного брокера подключения
 							unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+							// Устанавливаем таймаут начтение данных из сокета
+							broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+							// Устанавливаем таймаут на запись данных в сокет
+							broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+							// Устанавливаем таймаут на подключение к серверу
+							broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 							// Определяем тип протокола подключения
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения IPv4
@@ -197,6 +203,12 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						const uint64_t bid = broker->id();
 						// Выполняем установку желаемого протокола подключения
 						broker->_ectx.proto(this->_settings.proto);
+						// Устанавливаем таймаут начтение данных из сокета
+						broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+						// Устанавливаем таймаут на запись данных в сокет
+						broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+						// Устанавливаем таймаут на подключение к серверу
+						broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 						// Выполняем получение контекста сертификата
 						this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
 						{
@@ -266,6 +278,12 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 						// Устанавливаем время жизни подключения
 						broker->_addr.alive = shm->keepAlive;
+						// Устанавливаем таймаут начтение данных из сокета
+						broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+						// Устанавливаем таймаут на запись данных в сокет
+						broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+						// Устанавливаем таймаут на подключение к серверу
+						broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							/**

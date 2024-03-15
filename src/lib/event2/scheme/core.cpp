@@ -230,10 +230,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_bev.events.read.set(std::bind(&awh::scheme_t::broker_t::read, this, _1, _2));
 						// Выполняем запуск работы события
 						this->_bev.events.read.start();
-						// Если флаг ожидания входящих сообщений, активирован
-						if(this->_timeouts.read > 0)
-							// Выполняем установку таймаута ожидания
-							this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
+						// Выполняем установку таймаута ожидания
+						this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED): {
@@ -260,10 +258,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_bev.events.write.set(std::bind(&awh::scheme_t::broker_t::write, this, _1, _2));
 						// Выполняем запуск работы события
 						this->_bev.events.write.start();
-						// Если флаг ожидания исходящих сообщений, активирован
-						if(this->_timeouts.write > 0)
-							// Выполняем установку таймаута ожидания
-							this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
+						// Выполняем установку таймаута ожидания
+						this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED): {
@@ -310,10 +306,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_bev.events.connect.set(std::bind(&awh::scheme_t::broker_t::connect, this, _1, _2));
 						// Выполняем запуск работы события
 						this->_bev.events.connect.start();
-						// Если время ожидания записи данных установлено
-						if(this->_timeouts.connect > 0)
-							// Выполняем установку таймаута ожидания
-							this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
+						// Выполняем установку таймаута ожидания
+						this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):

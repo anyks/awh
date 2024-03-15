@@ -71,6 +71,12 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 				// Устанавливаем время жизни подключения
 				broker->_addr.alive = shm->keepAlive;
+				// Устанавливаем таймаут начтение данных из сокета
+				broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+				// Устанавливаем таймаут на запись данных в сокет
+				broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+				// Устанавливаем таймаут на подключение к серверу
+				broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (family)){
 					// Если тип протокола подключения IPv4
