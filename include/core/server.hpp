@@ -58,9 +58,12 @@ namespace awh {
 				cluster_t _cluster;
 			private:
 				// Размер кластера
-				uint16_t _clusterSize;
+				int16_t _clusterSize;
 				// Флаг автоматического перезапуска упавших процессов
 				bool _clusterAutoRestart;
+			private:
+				// Список активных дочерних процессов
+				multimap <uint16_t, pid_t> _workers;
 			private:
 				// Список активных таймеров для сетевых схем
 				map <uint16_t, unique_ptr <timer_t>> _timers;
@@ -101,12 +104,29 @@ namespace awh {
 				 * @param event идентификатор события
 				 */
 				void cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
+				/**
+				 * message Метод получения сообщений от дочерних процессоров кластера
+				 * @param sid    идентификатор схемы сети
+				 * @param pid    идентификатор процесса
+				 * @param buffer буфер бинарных данных
+				 * @param size   размер буфера бинарных данных
+				 */
+				void message(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * disable Метод остановки активности брокера подключения
 				 * @param bid идентификатор брокера
 				 */
 				void disable(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * stop Метод остановки клиента
+				 */
+				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * close Метод отключения всех брокеров
@@ -133,6 +153,13 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void launch(const uint16_t sid) noexcept;
+			private:
+				/**
+				 * create Метод создания сервера
+				 * @param sid идентификатор схемы сети
+				 * @return    результат создания сервера
+				 */
+				bool create(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * port Метод получения порта сервера
@@ -146,6 +173,37 @@ namespace awh {
 				 * @return    хост на котором висит сервер
 				 */
 				const string & host(const uint16_t sid) const noexcept;
+			public:
+				/**
+				 * workers Метод получения списка доступных воркеров
+				 * @param sid идентификатор схемы сети
+				 * @return    список доступных воркеров
+				 */
+				set <pid_t> workers(const uint16_t sid) const noexcept;
+			public:
+				/**
+				 * send Метод отправки сообщения родительскому процессу
+				 * @param wid    идентификатор воркера
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void send(const uint16_t wid, const char * buffer, const size_t size) noexcept;
+				/**
+				 * send Метод отправки сообщения дочернему процессу
+				 * @param wid    идентификатор воркера
+				 * @param pid    идентификатор процесса для получения сообщения
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * @param wid    идентификатор воркера
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * timeout Метод вызова при срабатывании таймаута
@@ -199,7 +257,7 @@ namespace awh {
 				 * cluster Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
-				void cluster(const uint16_t size = 0) noexcept;
+				void cluster(const int16_t size = 0) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param sid  идентификатор схемы сети

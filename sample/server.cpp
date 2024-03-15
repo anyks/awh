@@ -38,7 +38,7 @@ class Server {
 		 */
 		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -55,21 +55,21 @@ class Server {
 		 * message Метод получения сообщений
 		 * @param bid    идентификатор брокера
 		 * @param buffer буфер входящих данных
+		 * @param sample объект активного сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			// Выводим информацию в лог
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 			// Отправляем сообщение обратно
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
 		/**
 		 * Server Конструктор
-		 * @param fmk    объект фреймворка
-		 * @param log    объект логирования
-		 * @param sample объект сервера
+		 * @param fmk объект фреймворка
+		 * @param log объект логирования
 		 */
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -92,7 +92,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект SAMPLE запроса
 	server::sample_t sample(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("SAMPLE Server");
 	// Устанавливаем формат времени
@@ -130,12 +130,12 @@ int main(int argc, char * argv[]){
 	// sample.keepAlive(100, 30, 10);
 	// Разрешаем перехват сигналов
 	core.signalInterception(scheme_t::mode_t::DISABLED);
-	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие получения сообщений
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

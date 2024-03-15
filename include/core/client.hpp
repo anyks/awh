@@ -93,6 +93,15 @@ namespace awh {
 				void createTimeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept;
 			public:
 				/**
+				 * stop Метод остановки клиента
+				 */
+				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
+			public:
+				/**
 				 * sendTimeout Метод отправки принудительного таймаута
 				 * @param bid идентификатор брокера
 				 */

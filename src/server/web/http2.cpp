@@ -1278,7 +1278,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 			// Выполняем поиск указанного брокера
 			auto it = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 5000)){
+			if((it != this->_disconected.end()) && ((date - it->second) >= 3000)){
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callbacks.is("erase"))
 					// Выполняем функцию обратного вызова
@@ -1293,7 +1293,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 			// Выполняем переход по всему списку отключившихся брокеров
 			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 5000){
+				if((date - it->second) >= 3000){
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callbacks.is("erase"))
 						// Выполняем функцию обратного вызова

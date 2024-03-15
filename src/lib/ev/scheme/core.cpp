@@ -382,14 +382,27 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_bev.events.connect.start();
 						// Если время ожидания записи данных установлено
 						if(this->_timeouts.connect > 0){
-							// Устанавливаем приоритет выполнения для таймаута на подключение
-							ev_set_priority(&this->_bev.timers.connect, 0);
-							// Устанавливаем базу событий
-							this->_bev.timers.connect.set(this->_base);
-							// Устанавливаем событие на подключение к серверу
-							this->_bev.timers.connect.set(&this->_connectEventTimeout);
-							// Запускаем запись данных на сервер
-							this->_bev.timers.connect.start(static_cast <float> (this->_timeouts.connect));
+							// Определяем тип активного сокета
+							switch(static_cast <uint8_t> (this->_sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Выполняем установку таймаута ожидания
+									this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
+								break;
+								// Для всех остальных протоколов
+								default: {
+									// Устанавливаем приоритет выполнения для таймаута на подключение
+									ev_set_priority(&this->_bev.timers.connect, 0);
+									// Устанавливаем базу событий
+									this->_bev.timers.connect.set(this->_base);
+									// Устанавливаем событие на подключение к серверу
+									this->_bev.timers.connect.set(&this->_connectEventTimeout);
+									// Запускаем запись данных на сервер
+									this->_bev.timers.connect.start(static_cast <float> (this->_timeouts.connect));
+								}
+							}
 						}
 					} break;
 					// Если установлен сигнал деактивации сокета

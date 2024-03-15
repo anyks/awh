@@ -356,14 +356,27 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_bev.events.connect.start();
 						// Если время ожидания записи данных установлено
 						if(this->_timeouts.connect > 0){
-							// Устанавливаем тип таймера
-							this->_bev.timers.connect.set(-1, EV_TIMEOUT);
-							// Устанавливаем базу данных событий
-							this->_bev.timers.connect.set(this->_base);
-							// Устанавливаем функцию обратного вызова
-							this->_bev.timers.connect.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
-							// Выполняем запуск работы таймера
-							this->_bev.timers.connect.start(this->_timeouts.connect * 1000);
+							// Определяем тип активного сокета
+							switch(static_cast <uint8_t> (this->_sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Выполняем установку таймаута ожидания
+									this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
+								break;
+								// Для всех остальных протоколов
+								default: {
+									// Устанавливаем тип таймера
+									this->_bev.timers.connect.set(-1, EV_TIMEOUT);
+									// Устанавливаем базу данных событий
+									this->_bev.timers.connect.set(this->_base);
+									// Устанавливаем функцию обратного вызова
+									this->_bev.timers.connect.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
+									// Выполняем запуск работы таймера
+									this->_bev.timers.connect.start(this->_timeouts.connect * 1000);
+								}
+							}
 						}
 					} break;
 					// Если установлен сигнал деактивации сокета

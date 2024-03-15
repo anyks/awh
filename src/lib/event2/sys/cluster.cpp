@@ -65,11 +65,11 @@
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
 		// Выполняем поиск работника
-		auto jt = this->cluster->_jacks.find(this->wid);
+		auto j = this->cluster->_jacks.find(this->wid);
 		// Если работник найден
-		if(jt != this->cluster->_jacks.end()){
+		if(j != this->cluster->_jacks.end()){
 			// Выполняем поиск завершившегося процесса
-			for(auto & jack : jt->second){
+			for(auto & jack : j->second){
 				// Если процесс найден
 				if((jack->end = (jack->pid == pid))){
 					// Выполняем остановку чтение сообщений
@@ -95,17 +95,17 @@
 					// Если функция обратного вызова установлена
 					if(this->cluster->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", jt->first, pid, event_t::STOP);
+						this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", j->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
-					auto it = this->cluster->_workers.find(jt->first);
+					auto i = this->cluster->_workers.find(j->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((it != this->cluster->_workers.end()) && it->second->restart){
+					if((i != this->cluster->_workers.end()) && i->second->restart){
 						// Получаем индекс упавшего процесса
 						const uint16_t index = this->cluster->_pids.at(jack->pid);
 						// Удаляем процесс из списка процессов
 						this->cluster->_pids.erase(jack->pid);
 						// Выполняем создание нового процесса
-						this->cluster->fork(it->first, index, it->second->restart);
+						this->cluster->fork(i->first, index, i->second->restart);
 					// Просто удаляем процесс из списка процессов
 					} else this->cluster->_pids.erase(jack->pid);
 					// Выходим из цикла
@@ -129,13 +129,13 @@
 			// Идентификатор процесса приславший сообщение
 			pid_t pid = 0;
 			// Выполняем поиск текущего работника
-			auto jt = this->cluster->_jacks.find(this->wid);
+			auto it = this->cluster->_jacks.find(this->wid);
 			// Если текущий работник найден
-			if(jt != this->cluster->_jacks.end()){
+			if(it != this->cluster->_jacks.end()){
 				// Флаг найденного файлового дескриптора
 				bool found = false;
 				// Переходим по всему списку работников
-				for(auto & jack : jt->second){
+				for(auto & jack : it->second){
 					// Выполняем поиск файлового дескриптора
 					found = (static_cast <evutil_socket_t> (jack->mfds[0]) == fd);
 					// Если файловый дескриптор соответствует
@@ -215,17 +215,17 @@
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
 			// Выполняем поиск текущего работника
-			auto jt = this->cluster->_jacks.find(this->wid);
+			auto it = this->cluster->_jacks.find(this->wid);
 			// Если текущий работник найден
-			if(jt != this->cluster->_jacks.end()){
+			if(it != this->cluster->_jacks.end()){
 				// Получаем индекс текущего процесса
 				const uint16_t index = this->cluster->_pids.at(::getpid());
 				// Получаем объект текущего работника
-				jack_t * jack = jt->second.at(index).get();
+				jack_t * jack = it->second.at(index).get();
 				// Если файловый дескриптор не соответствует родительскому
 				if(jack->cfds[0] != fd){
 					// Переходим по всему списку работников
-					for(auto & item : jt->second){
+					for(auto & item : it->second){
 						// Если работник не является текущим работником
 						if((jack->cfds[0] != item->cfds[0]) && (jack->mfds[1] != item->mfds[1])){
 							// Выполняем остановку чтение сообщений
@@ -403,26 +403,26 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем поиск воркера
-		auto it = this->_workers.find(wid);
+		auto i = this->_workers.find(wid);
 		// Если воркер найден
-		if(it != this->_workers.end()){
+		if(i != this->_workers.end()){
 			// Если не все форки созданы
-			if(index < it->second->count){
+			if(index < i->second->count){
 				// Выполняем поиск работника
-				auto jt = this->_jacks.find(it->first);
+				auto j = this->_jacks.find(i->first);
 				// Если список работников ещё пустой
-				if((jt == this->_jacks.end()) || jt->second.empty()){
+				if((j == this->_jacks.end()) || j->second.empty()){
 					// Удаляем список дочерних процессов
 					this->_pids.clear();
 					// Если список работников еще не инициализирован
-					if(jt == this->_jacks.end()){
+					if(j == this->_jacks.end()){
 						// Выполняем инициализацию списка работников
-						this->_jacks.emplace(it->first, vector <unique_ptr <jack_t>> ());
+						this->_jacks.emplace(i->first, vector <unique_ptr <jack_t>> ());
 						// Выполняем поиск работника
-						jt = this->_jacks.find(it->first);
+						j = this->_jacks.find(i->first);
 					}
 					// Выполняем создание указанное количество работников
-					for(size_t i = 0; i < it->second->count; i++){
+					for(size_t index = 0; index < i->second->count; index++){
 						// Создаём объект работника
 						unique_ptr <jack_t> jack(new jack_t(this->_log));
 						// Выполняем подписку на основной канал передачи данных
@@ -440,11 +440,11 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							::exit(EXIT_FAILURE);
 						}
 						// Выполняем добавление работника в список работников
-						jt->second.push_back(std::move(jack));
+						j->second.push_back(std::move(jack));
 					}
 				}
 				// Если процесс завершил свою работу
-				if(jt->second.at(index)->end){
+				if(j->second.at(index)->end){
 					// Создаём объект работника
 					unique_ptr <jack_t> jack(new jack_t(this->_log));
 					// Выполняем подписку на основной канал передачи данных
@@ -452,11 +452,11 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
-						for(auto & jack : jt->second)
+						for(auto & jack : j->second)
 							// Выполняем остановку чтение сообщений
 							jack->mess.stop();
 						// Выполняем остановку работы
-						this->stop(it->first);
+						this->stop(i->first);
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -465,16 +465,16 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
-						for(auto & jack : jt->second)
+						for(auto & jack : j->second)
 							// Выполняем остановку чтение сообщений
 							jack->mess.stop();
 						// Выполняем остановку работы
-						this->stop(it->first);
+						this->stop(i->first);
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
 					// Устанавливаем нового работника
-					jt->second.at(index) = std::move(jack);
+					j->second.at(index) = std::move(jack);
 				}
 				// Устанавливаем идентификатор процесса
 				pid_t pid = -1;
@@ -501,30 +501,30 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					// Если - это дочерний поток значит все нормально
 					case 0: {
 						// Если процесс является дочерним
-						if((it->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
+						if((i->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
 							// Получаем идентификатор текущего процесса
 							const pid_t pid = ::getpid();
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, index);
 							{
 								// Получаем объект текущего работника
-								jack_t * jack = jt->second.at(index).get();
+								jack_t * jack = j->second.at(index).get();
 								// Выполняем перебор всего списка работников
-								for(size_t i = 0; i < jt->second.size(); i++){
+								for(size_t i = 0; i < j->second.size(); i++){
 									// Если индекс работника совпадает
 									if(i == static_cast <uint16_t> (index)){
 										// Закрываем файловый дескриптор на запись в дочерний процесс
-										::close(jt->second.at(i)->cfds[1]);
+										::close(j->second.at(i)->cfds[1]);
 										// Закрываем файловый дескриптор на чтение из основного процесса
-										::close(jt->second.at(i)->mfds[0]);
+										::close(j->second.at(i)->mfds[0]);
 									// Закрываем все файловые дескрипторы для всех остальных работников
 									} else {
 										// Закрываем файловый дескриптор на запись в дочерний процесс
-										::close(jt->second.at(i)->cfds[0]);
-										::close(jt->second.at(i)->cfds[1]);
+										::close(j->second.at(i)->cfds[0]);
+										::close(j->second.at(i)->cfds[1]);
 										// Закрываем файловый дескриптор на чтение из основного процесса
-										::close(jt->second.at(i)->mfds[0]);
-										::close(jt->second.at(i)->mfds[1]);
+										::close(j->second.at(i)->mfds[0]);
+										::close(j->second.at(i)->mfds[1]);
 									}
 								}
 								// Устанавливаем идентификатор процесса
@@ -536,13 +536,13 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// Устанавливаем сокет для чтения
 								jack->mess.set(jack->cfds[0], EV_READ);
 								// Устанавливаем событие на чтение данных от основного процесса
-								jack->mess.set(std::bind(&worker_t::message, it->second.get(), _1, _2));
+								jack->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("process"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, pid, event_t::START);
+									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
 							}
 							// Выполняем активацию базы событий
 							event_reinit(this->_base);
@@ -565,12 +565,12 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							#endif
 						}
 					} break;
-					// Если - это родительский процесс
+					// Если процесс является родительским
 					default: {
 						// Добавляем в список дочерних процессов, идентификатор процесса
 						this->_pids.emplace(pid, index);
 						// Получаем объект текущего работника
-						jack_t * jack = jt->second.at(index).get();
+						jack_t * jack = j->second.at(index).get();
 						// Закрываем файловый дескриптор на запись в основной процесс
 						::close(jack->mfds[1]);
 						// Закрываем файловый дескриптор на чтение из дочернего процесса
@@ -584,21 +584,21 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Устанавливаем сокет для чтения
 						jack->mess.set(jack->mfds[0], EV_READ);
 						// Устанавливаем событие на чтение данных от основного процесса
-						jack->mess.set(std::bind(&worker_t::message, it->second.get(), _1, _2));
+						jack->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
 						// Если не нужно останавливаться на создании процессов
 						if(!stop)
 							// Выполняем создание новых процессов
-							this->fork(it->first, index + 1, stop);
+							this->fork(i->first, index + 1, stop);
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						else jack->mess.start();
 					}
 				}
 			// Если все процессы удачно созданы
-			} else if((it->second->working = !stop)) {
+			} else if((i->second->working = !stop)) {
 				// Выполняем поиск работника
-				auto jt = this->_jacks.find(it->first);
+				auto j = this->_jacks.find(i->first);
 				// Если идентификатор воркера получен
-				if(jt != this->_jacks.end()){
+				if(j != this->_jacks.end()){
 					// Если нужно отслеживать падение дочерних процессов
 					if(this->_trackCrash){
 						// Устанавливаем базу событий для перехвата сигналов дочерних процессов
@@ -606,18 +606,18 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Устанавливаем тип отслеживаемого сигнала
 						this->_event.set(-1, SIGCHLD);
 						// Устанавливаем событие на получение сигналов дочерних процессов
-						this->_event.set(std::bind(&worker_t::child, it->second.get(), _1, _2));
+						this->_event.set(std::bind(&worker_t::child, i->second.get(), _1, _2));
 						// Выполняем запуск отслеживания сигналов дочерних процессов
 						this->_event.start();
 					}
 					// Выполняем перебор всех доступных работников
-					for(auto & jack : jt->second)
+					for(auto & jack : j->second)
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						jack->mess.start();
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", it->first, this->_pid, event_t::START);
+						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
 				}
 			}
 		}
@@ -637,6 +637,31 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
 		return it->second->working;
 	// Сообщаем, что проверка не выполнена
 	return false;
+}
+/**
+ * pids Метод получения списка дочерних процессов
+ * @param wid идентификатор воркера
+ * @return    список дочерних процессов
+ */
+set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
+	// Результат работы функции
+	set <pid_t> result;
+	// Выполняем поиск работников
+	auto it = this->_jacks.find(wid);
+	// Если работник найден
+	if((it != this->_jacks.end()) && !it->second.empty()){
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Переходим по всему списку работников
+			for(auto & jack : it->second)
+				// Выполняем формирование списка процессов
+				result.emplace(jack->pid);
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * send Метод отправки сообщения родительскому процессу
@@ -673,9 +698,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
 			// Выполняем поиск работников
-			auto jt = this->_jacks.find(wid);
+			auto it = this->_jacks.find(wid);
 			// Если работник найден
-			if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -693,7 +718,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
-					::write(jt->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
+					::write(it->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
 					offset += message.size;
 				} while(offset < size);
@@ -722,9 +747,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск работников
-			auto jt = this->_jacks.find(wid);
+			auto it = this->_jacks.find(wid);
 			// Если работник найден
-			if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -742,7 +767,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
-					::write(jt->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
+					::write(it->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
 					offset += message.size;
 				} while(offset < size);
@@ -789,9 +814,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск работников
-			auto jt = this->_jacks.find(wid);
+			auto it = this->_jacks.find(wid);
 			// Если работник найден
-			if((jt != this->_jacks.end()) && !jt->second.empty()){
+			if((it != this->_jacks.end()) && !it->second.empty()){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -809,7 +834,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Переходим по всем дочерним процессам
-					for(auto & jack : jt->second){
+					for(auto & jack : it->second){
 						// Если идентификатор процесса не нулевой
 						if(jack->pid > 0)
 							// Выполняем отправку сообщения дочернему процессу
@@ -901,15 +926,15 @@ void awh::Cluster::close() noexcept {
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Выполняем поиск работников
-	auto jt = this->_jacks.find(wid);
+	auto it = this->_jacks.find(wid);
 	// Если работник найден
-	if((jt != this->_jacks.end()) && !jt->second.empty()){
+	if((it != this->_jacks.end()) && !it->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Переходим по всему списку работников
-			for(auto & jack : jt->second){
+			for(auto & jack : it->second){
 				// Выполняем остановку чтение сообщений
 				jack->mess.stop();
 				// Выполняем закрытие файловых дескрипторов
@@ -918,7 +943,7 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 			}
 		#endif
 		// Очищаем список работников
-		jt->second.clear();
+		it->second.clear();
 	}
 }
 /**
@@ -927,21 +952,21 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
  */
 void awh::Cluster::stop(const uint16_t wid) noexcept {
 	// Выполняем поиск работников
-	auto jt = this->_jacks.find(wid);
+	auto j = this->_jacks.find(wid);
 	// Если работник найден
-	if((jt != this->_jacks.end()) && !jt->second.empty()){
+	if((j != this->_jacks.end()) && !j->second.empty()){
 		// Выполняем поиск воркера
-		auto it = this->_workers.find(jt->first);
+		auto i = this->_workers.find(j->first);
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Флаг перезапуска
 			bool restart = false;
 			// Если воркер найден, получаем флаг перезапуска
-			if(it != this->_workers.end()){
+			if(i != this->_workers.end()){
 				// Получаем флаг перезапуска
-				restart = it->second->restart;
+				restart = i->second->restart;
 				// Снимаем флаг перезапуска процесса
-				it->second->restart = false;
+				i->second->restart = false;
 			}
 			/**
 			 * Если операционной системой не является Windows
@@ -954,7 +979,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = this->_pid;
 				// Переходим по всему списку работников
-				for(auto & jack : jt->second)
+				for(auto & jack : j->second)
 					// Выполняем отправку сообщения дочернему процессу
 					::write(jack->cfds[1], &message, sizeof(message));
 				// Выполняем закрытие подключения передачи сообщений
@@ -963,9 +988,9 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				this->_event.stop();
 			#endif
 			// Если воркер найден, возвращаем флаг перезапуска
-			if(it != this->_workers.end())
+			if(i != this->_workers.end())
 				// Возвращаем значение флага автоматического перезапуска процесса
-				it->second->restart = restart;
+				i->second->restart = restart;
 		// Если процесс является дочерним
 		} else if(this->_pid == static_cast <pid_t> (::getppid()))
 			// Выполняем закрытие подключения передачи сообщений
@@ -991,9 +1016,9 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			#endif
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
-		if(it != this->_workers.end())
+		if(i != this->_workers.end())
 			// Снимаем флаг запуска кластера
-			it->second->working = false;
+			i->second->working = false;
 		// Удаляем список дочерних процессов
 		this->_pids.clear();
 	}

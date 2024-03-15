@@ -319,9 +319,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->_log->print("Good host %s, socket = %d", log_t::flag_t::INFO, this->_settings.sockname.c_str(), ret.first->second->_addr.fd);
+								this->_log->print("Good host %s, SOCKET=%d", log_t::flag_t::INFO, this->_settings.sockname.c_str(), ret.first->second->_addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->_log->print("Good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->_addr.fd);
+							else this->_log->print("Good host %s [%s:%d], SOCKET=%d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->_addr.fd);
 						}
 					}
 					// Выходим из функции
@@ -582,6 +582,27 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 			::exit(EXIT_FAILURE);
 		}
 	}
+}
+/**
+ * stop Метод остановки клиента
+ */
+void awh::client::Core::stop() noexcept {
+	// Если система уже запущена
+	if(this->working()){
+		// Выполняем закрытие подключения
+		this->close();
+		// Выполняем остановку работы сервера
+		node_t::stop();
+	}
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::client::Core::start() noexcept {
+	// Если система ещё не запущена
+	if(!this->working())
+		// Выполняем запуск работы сервера
+		node_t::start();
 }
 /**
  * sendTimeout Метод отправки принудительного таймаута

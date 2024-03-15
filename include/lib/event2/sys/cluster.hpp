@@ -266,6 +266,13 @@ namespace awh {
 			bool working(const uint16_t wid) const noexcept;
 		public:
 			/**
+			 * pids Метод получения списка дочерних процессов
+			 * @param wid идентификатор воркера
+			 * @return    список дочерних процессов
+			 */
+			set <pid_t> pids(const uint16_t wid) const noexcept;
+		public:
+			/**
 			 * send Метод отправки сообщения родительскому процессу
 			 * @param wid    идентификатор воркера
 			 * @param buffer бинарный буфер для отправки сообщения

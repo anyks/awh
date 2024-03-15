@@ -305,9 +305,11 @@ awh::scheme_t::family_t awh::Node::family() const noexcept {
  */
 void awh::Node::family(const scheme_t::family_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	this->_mtx.lock();
 	// Устанавливаем тип активного интернет-подключения
 	this->_settings.family = family;
+	// Выполняем разблокировку потока
+	this->_mtx.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
 		// Если адрес файла unix-сокета ещё не инициализированно
@@ -320,6 +322,8 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx);
 			// Если сокет в файловой системе уже существует, удаляем его
 			if(this->_fs.isSock(this->_settings.sockname))
 				// Удаляем файл сокета
@@ -368,6 +372,8 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept {
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Выполняем активацию/деактивацию метода события сокета
@@ -382,11 +388,13 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
  */
 void awh::Node::network(const vector <string> & ips, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	this->_mtx.lock();
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
 	this->_settings.family = family;
+	// Выполняем разблокировку потока
+	this->_mtx.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
 		// Если адрес файла unix-сокета ещё не инициализированно
@@ -399,6 +407,8 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx);
 			// Если сокет в файловой системе уже существует, удаляем его
 			if(this->_fs.isSock(this->_settings.sockname))
 				// Удаляем файл сокета
@@ -409,6 +419,8 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	}
 	// Если IP-адреса переданы
 	if(!ips.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если объект DNS-резолвера установлен
 		if(this->_dns != nullptr)
 			// Выполняем установку параметров сети для DNS-резолвера
