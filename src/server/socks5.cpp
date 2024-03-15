@@ -206,7 +206,7 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 				// Если активный клиент найден
 				if(it != this->_clients.end()){
 					// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-					const uint16_t tid = this->_timer.interval(3000);
+					const uint16_t tid = this->_timer.timeout(3000);
 					// Выполняем добавление функции обратного вызова
 					this->_timer.set <void (const uint16_t)> (tid, std::bind(&proxy_socks5_t::erase, this, tid, bid1));
 				}
@@ -372,13 +372,13 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, const uint64_t bid) noe
 		this->_core.unbind(it->second.get());
 		// Удаляем активного клиента
 		this->_clients.erase(it);
+		// Выполняем удаление параметров брокера
+		this->_scheme.rm(bid);
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callbacks.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
-	// Выполняем удаление параметров брокера
-	this->_scheme.rm(bid);
-	// Если функция обратного вызова при подключении/отключении установлена
-	if(this->_callbacks.is("active"))
-		// Выводим функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 }
 /**
  * init Метод инициализации брокера
@@ -532,11 +532,12 @@ void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 }
 /**
  * cluster Метод установки количества процессов кластера
+ * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов
  */
-void awh::server::ProxySocks5::cluster(const uint16_t size) noexcept {
+void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const uint16_t size) noexcept {
 	// Устанавливаем количество процессов кластера
-	this->_core.cluster(size);
+	this->_core.cluster(mode, size);
 }
 /**
  * mode Метод установки флагов модуля

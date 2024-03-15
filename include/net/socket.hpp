@@ -41,6 +41,7 @@
  */
 #include <set>
 #include <ctime>
+#include <cerrno>
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -116,26 +117,38 @@ namespace awh {
 			bool noSigILL() const noexcept;
 		public:
 			/**
-			 * corkTCP Метод активации tcp_cork
+			 * cork Метод активации tcp_cork
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			bool corkTCP(const SOCKET fd) const noexcept;
+			bool cork(const SOCKET fd) const noexcept;
 		public:
 			/**
-			 * isBlocking Метод проверки сокета блокирующий режим
+			 * blocking Метод проверки сокета блокирующий режим
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			bool isBlocking(const SOCKET fd) const noexcept;
+			bool blocking(const SOCKET fd) const noexcept;
 			/**
-			 * setBlocking Метод установки блокирующего сокета
+			 * blocking Метод установки блокирующего сокета
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param mode флаг установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool setBlocking(const SOCKET fd, const mode_t mode) const noexcept;
+			bool blocking(const SOCKET fd, const mode_t mode) const noexcept;
 		public:
+			/**
+			 * nodelay Метод отключения алгоритма Нейгла
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool nodelay(const SOCKET fd) const noexcept;
+			/**
+			 * events Метод активации получения событий SCTP для сокета
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool events(const SOCKET fd) const noexcept;
 			/**
 			 * noSigPIPE Метод игнорирования отключения сигнала записи в убитый сокет
 			 * @param fd файловый дескриптор (сокет)
@@ -148,18 +161,6 @@ namespace awh {
 			 * @return   результат работы функции
 			 */
 			bool reuseable(const SOCKET fd) const noexcept;
-			/**
-			 * nodelayTCP Метод отключения алгоритма Нейгла
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			bool nodelayTCP(const SOCKET fd) const noexcept;
-			/**
-			 * eventsSCTP Метод активации получения событий SCTP для сокета
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			bool eventsSCTP(const SOCKET fd) const noexcept;
 			/**
 			 * closeOnExec Метод разрешения закрывать сокет, после запуска
 			 * @param fd файловый дескриптор (сокет)

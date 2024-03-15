@@ -107,22 +107,13 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Timer Структура таймаута
-			 */
-			typedef struct Timer {
-				ev::timer read;    // Событие таймера таймаута на чтение из сокета
-				ev::timer write;   // Событие таймера таймаута на запись в сокет
-				ev::timer connect; // Событие таймера таймаута на подключение к серверу
-			} timers_t;
-			/**
 			 * Event Структура события
 			 */
 			typedef struct Event {
-				ev::io read;       // Событие на чтение
-				ev::io write;      // Событие на запись
-				ev::io accept;     // Событие на запросы подключений
-				ev::io connect;    // Событие на подключение
-				ev::timer timeout; // Событие на таймаут
+				ev::io read;    // Событие на чтение
+				ev::io write;   // Событие на запись
+				ev::io accept;  // Событие на запросы подключений
+				ev::io connect; // Событие на подключение
 			} events_t;
 			/**
 			 * Timeouts Структура таймаутов
@@ -131,15 +122,13 @@ namespace awh {
 				time_t read;    // Таймаут на чтение в секундах
 				time_t write;   // Таймаут на запись в секундах
 				time_t connect; // Таймаут на подключение в секундах
-				time_t timeout; // Таймаут на выполнение таймера в миллисекундах
 				/**
 				 * Timeouts Конструктор
 				 */
 				Timeouts() noexcept :
 				 read(READ_TIMEOUT),
 				 write(WRITE_TIMEOUT),
-				 connect(CONNECT_TIMEOUT),
-				 timeout(10) {}
+				 connect(CONNECT_TIMEOUT) {}
 			} timeouts_t;
 			/**
 			 * Locked Структура блокировки на чтение и запись данных в буфере
@@ -157,7 +146,6 @@ namespace awh {
 			 */
 			typedef struct BufferEvent {
 				events_t events; // Событие чтения/записи
-				timers_t timers; // Собатие таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
@@ -192,45 +180,12 @@ namespace awh {
 			} marker_t;
 		private:
 			/**
-			 * Broker Прототип класса брокера подключения
-			 */
-			class Broker;
-			/**
-			 * Timeout Класс таймаута
-			 */
-			typedef class Timeout {
-				private:
-					// Объект брокера подключения
-					Broker * _broker;
-				private:
-					// Метод режима работы
-					engine_t::method_t _method;
-				public:
-					/**
-					 * method Метод установки метода режима работы
-					 * @param method метод режима работы
-					 */
-					void method(const engine_t::method_t method) noexcept;
-				public:
-					/**
-					 * operator Оператор [()] Получения события таймера
-					 * @param timer   объект события таймаута
-					 * @param revents идентификатор события
-					 */
-					void operator()(ev::timer & timer, int revents) noexcept;
-				public:
-					/**
-					 * Timeout Конструктор
-					 * @param broker брокер подключения
-					 * @param method метод режима работы
-					 */
-					Timeout(Broker * broker, const engine_t::method_t method) noexcept : _broker(broker), _method(method) {}
-			} timeout_t;
-		private:
-			/**
 			 * Broker Класс брокера подключения
 			 */
 			typedef class Broker {
+				private:
+					// Мютекс для блокировки потока
+					mutex _mtx;
 				private:
 					// Идентификатор брокера
 					uint64_t _id;
@@ -259,15 +214,6 @@ namespace awh {
 				public:
 					// Объект таймаутов
 					timeouts_t _timeouts;
-				public:
-					// Объект таймаута на событие чтения
-					timeout_t _readEventTimeout;
-					// Объект таймаута на событие записи
-					timeout_t _writeEventTimeout;
-					// Объект таймаута на событие подключени
-					timeout_t _connectEventTimeout;
-					// Объект таймаута на событие таймаута
-					timeout_t _timeoutEventTimeout;
 				public:
 					// Контекст двигателя для работы с передачей данных
 					engine_t::ctx_t _ectx;
@@ -345,9 +291,12 @@ namespace awh {
 					 */
 					void callback(const uint64_t idw, function <A> fn) noexcept {
 						// Если функция обратного вызова передана
-						if((idw > 0) && (fn != nullptr))
+						if((idw > 0) && (fn != nullptr)){
+							// Выполняем блокировку потока
+							const lock_guard <mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (idw, fn);
+						}
 					}
 					/**
 					 * callback Шаблон метода установки финкции обратного вызова
@@ -361,9 +310,12 @@ namespace awh {
 					 */
 					void callback(const string & name, function <A> fn) noexcept {
 						// Если функция обратного вызова передана
-						if(!name.empty() && (fn != nullptr))
+						if(!name.empty() && (fn != nullptr)){
+							// Выполняем блокировку потока
+							const lock_guard <mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (name, fn);
+						}
 					}
 				private:
 					/**
@@ -396,12 +348,6 @@ namespace awh {
 					 * @param revents идентификатор события
 					 */
 					void connect(ev::io & watcher, int revents) noexcept;
-				public:
-					/**
-					 * timeout Метод вызова при срабатывании таймаута
-					 * @param method метод режима работы
-					 */
-					void timeout(const engine_t::method_t method) noexcept;
 				public:
 					/**
 					 * lockup Метод блокировки метода режима работы

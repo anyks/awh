@@ -471,7 +471,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
+				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
@@ -479,7 +479,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.nodelayTCP(this->fd);
+						this->_socket.nodelay(this->fd);
 						// Отключаем алгоритм Нейгла
 						BIO_set_tcp_ndelay(this->fd, 1);
 					}
@@ -488,7 +488,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				 */
 				#else
 					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.nodelayTCP(this->fd);
+					this->_socket.nodelay(this->fd);
 					// Отключаем алгоритм Нейгла
 					BIO_set_tcp_ndelay(this->fd, 1);
 				#endif
@@ -509,7 +509,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->fd);
 					// Переводим сокет в не блокирующий режим
-					this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
+					this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 				}
 			} break;
 		#endif
@@ -569,7 +569,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Отключаем сигнал записи в оборванное подключение
 				this->_socket.noSigPIPE(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
+				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 			}
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
@@ -857,7 +857,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				if(type == type_t::SERVER)
 					// Переводим сокет в не блокирующий режим
-					this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
+					this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
@@ -865,7 +865,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.nodelayTCP(this->fd);
+						this->_socket.nodelay(this->fd);
 						// Отключаем алгоритм Нейгла
 						BIO_set_tcp_ndelay(this->fd, 1);
 					}
@@ -874,7 +874,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				 */
 				#else
 					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.nodelayTCP(this->fd);
+					this->_socket.nodelay(this->fd);
 					// Отключаем алгоритм Нейгла
 					BIO_set_tcp_ndelay(this->fd, 1);
 				#endif
@@ -1190,32 +1190,95 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		if(result <= 0){
 			// Получаем статус сокета
 			const bool status = this->isblock();
-			// Если сокет находится в блокирующем режиме
-			if((result < 0) && status){
-				// Выполняем обработку ошибок
-				if(this->error(result))
-					// Выполняем завершение работы
-					result = 0;
-			// Если произошла ошибка
-			} else if((result < 0) && !status) {
-				// Если защищённый режим работы разрешён
-				if(this->_encrypted && (this->_ssl != nullptr)){
-					// Получаем данные описание ошибки
-					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
-						// Выполняем пропуск попытки
-						return result;
-					// Иначе выводим сообщение об ошибке
-					else if(this->error(result))
-						// Требуем завершения работы
-						result = 0;
-				// Если защищённый режим работы запрещён
-				} else if((errno == EAGAIN) || (errno == EINTR))
-					// Выполняем пропуск попытки
-					return result;
-				// Иначе выводим сообщение об ошибке
-				else if(this->error(result))
+			// Определяем тип ошибки
+			switch(errno){
+				// Если ошибка не обнаружена, выходим
+				case 0: break;
+				// Если сработало событие таймаута
+				case ETIME:
+				// Если ошибка протокола
+				case EPROTO:
+				// Если в буфере закончились данные
+				case ENOBUFS:
+				// Если операция не поддерживается сокетом
+				case ENOTSUP:
+				// Если сеть отключена
+				case ENETDOWN:
+				// Если сокет не является сокетом
+				case ENOTSOCK:
+				// Если сокет не подключён
+				case ENOTCONN:
+				// Если подключение сброшено
+				case ENETRESET:
+				// Если хост не существует
+				case EHOSTDOWN:
+				// Если сокет отключён
+				case ESHUTDOWN:
+				// Если произведён сброс подключения
+				case ETIMEDOUT:
+				// Если операция отменена
+				case ECANCELED:
+				// Если подключение сброшено
+				case ECONNRESET:
+				// Если протокол повреждён для сокета
+				case EPROTOTYPE:
+				// Если операция не поддерживается сокетом
+				case EOPNOTSUPP:
+				// Если протокол не поддерживается
+				case ENOPROTOOPT:
+				// Если сеть недоступна
+				case ENETUNREACH:
+				// Если протокол не поддерживается
+				case EPFNOSUPPORT:
+				// Если протокол подключения не поддерживается
+				case EAFNOSUPPORT:
+				// Если роутинг к хосту не существует
+				case EHOSTUNREACH:
+				// Если подключение оборванно
+				case ECONNABORTED:
+				// Если требуется адрес назначения
+				case EDESTADDRREQ:
+				// Если в соединении отказанно
+				case ECONNREFUSED:
+				// Если протокол не поддерживается
+				case EPROTONOSUPPORT:
+				// Если тип сокета не поддерживается
+				case ESOCKTNOSUPPORT: {
+					// Выводим в лог сообщение
+					this->_log->print("READ: %s", log_t::flag_t::WARNING, ::strerror(errno));
 					// Требуем завершения работы
 					result = 0;
+				} break;
+				// Для остальных ошибок
+				default: {
+					// Если сокет находится в блокирующем режиме
+					if((result < 0) && status){
+						// Выполняем обработку ошибок
+						if(this->error(result))
+							// Выполняем завершение работы
+							result = 0;
+					// Если произошла ошибка
+					} else if((result < 0) && !status) {
+						// Если защищённый режим работы разрешён
+						if(this->_encrypted && (this->_ssl != nullptr)){
+							// Получаем данные описание ошибки
+							if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
+								// Выполняем пропуск попытки
+								return result;
+							// Иначе выводим сообщение об ошибке
+							else if(this->error(result))
+								// Требуем завершения работы
+								result = 0;
+						// Если защищённый режим работы запрещён
+						} else if((errno == EAGAIN) || (errno == EINTR))
+							// Выполняем пропуск попытки
+							return result;
+						// Иначе выводим сообщение об ошибке
+						else if(this->error(result))
+							// Требуем завершения работы
+							result = 0;
+					}
+				}
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
 			if((result == 0) || status)
@@ -1370,32 +1433,95 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		if(result <= 0){
 			// Получаем статус сокета
 			const bool status = this->isblock();
-			// Если сокет находится в блокирующем режиме
-			if((result < 0) && status){
-				// Выполняем обработку ошибок
-				if(this->error(result))
-					// Выполняем завершение работы
-					result = 0;
-			// Если произошла ошибка
-			} else if((result < 0) && !status) {
-				// Если защищённый режим работы разрешён
-				if(this->_encrypted){
-					// Получаем данные описание ошибки
-					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
-						// Выполняем пропуск попытки
-						return result;
-					// Иначе выводим сообщение об ошибке
-					else if(this->error(result))
-						// Требуем завершения работы
-						result = 0;
-				// Если защищённый режим работы запрещён
-				} else if((errno == EAGAIN) || (errno == EINTR))
-					// Выполняем пропуск попытки
-					return result;
-				// Иначе выводим сообщение об ошибке
-				else if(this->error(result))
+			// Определяем тип ошибки
+			switch(errno){
+				// Если ошибка не обнаружена, выходим
+				case 0: break;
+				// Если сработало событие таймаута
+				case ETIME:
+				// Если ошибка протокола
+				case EPROTO:
+				// Если в буфере закончились данные
+				case ENOBUFS:
+				// Если операция не поддерживается сокетом
+				case ENOTSUP:
+				// Если сеть отключена
+				case ENETDOWN:
+				// Если сокет не является сокетом
+				case ENOTSOCK:
+				// Если сокет не подключён
+				case ENOTCONN:
+				// Если подключение сброшено
+				case ENETRESET:
+				// Если хост не существует
+				case EHOSTDOWN:
+				// Если сокет отключён
+				case ESHUTDOWN:
+				// Если произведён сброс подключения
+				case ETIMEDOUT:
+				// Если операция отменена
+				case ECANCELED:
+				// Если подключение сброшено
+				case ECONNRESET:
+				// Если протокол повреждён для сокета
+				case EPROTOTYPE:
+				// Если операция не поддерживается сокетом
+				case EOPNOTSUPP:
+				// Если протокол не поддерживается
+				case ENOPROTOOPT:
+				// Если сеть недоступна
+				case ENETUNREACH:
+				// Если протокол не поддерживается
+				case EPFNOSUPPORT:
+				// Если протокол подключения не поддерживается
+				case EAFNOSUPPORT:
+				// Если роутинг к хосту не существует
+				case EHOSTUNREACH:
+				// Если подключение оборванно
+				case ECONNABORTED:
+				// Если требуется адрес назначения
+				case EDESTADDRREQ:
+				// Если в соединении отказанно
+				case ECONNREFUSED:
+				// Если протокол не поддерживается
+				case EPROTONOSUPPORT:
+				// Если тип сокета не поддерживается
+				case ESOCKTNOSUPPORT: {
+					// Выводим в лог сообщение
+					this->_log->print("WRITE: %s", log_t::flag_t::WARNING, ::strerror(errno));
 					// Требуем завершения работы
 					result = 0;
+				} break;
+				// Для остальных ошибок
+				default: {
+					// Если сокет находится в блокирующем режиме
+					if((result < 0) && status){
+						// Выполняем обработку ошибок
+						if(this->error(result))
+							// Выполняем завершение работы
+							result = 0;
+					// Если произошла ошибка
+					} else if((result < 0) && !status) {
+						// Если защищённый режим работы разрешён
+						if(this->_encrypted){
+							// Получаем данные описание ошибки
+							if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
+								// Выполняем пропуск попытки
+								return result;
+							// Иначе выводим сообщение об ошибке
+							else if(this->error(result))
+								// Требуем завершения работы
+								result = 0;
+						// Если защищённый режим работы запрещён
+						} else if((errno == EAGAIN) || (errno == EINTR))
+							// Выполняем пропуск попытки
+							return result;
+						// Иначе выводим сообщение об ошибке
+						else if(this->error(result))
+							// Требуем завершения работы
+							result = 0;
+					}
+				}
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
 			if((result == 0) || status)
@@ -1455,7 +1581,7 @@ bool awh::Engine::Context::block() noexcept {
 		// Если защищённый режим работы разрешён
 		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 			// Переводим сокет в блокирующий режим
-			this->_addr->_async = !this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::BLOCK);
+			this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::BLOCK);
 			// Если шифрование включено
 			if(this->_encrypted && (this->_ssl != nullptr)){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
@@ -1480,7 +1606,7 @@ bool awh::Engine::Context::noblock() noexcept {
 		// Если файловый дескриптор активен
 		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 			// Переводим сокет в не блокирующий режим
-			this->_addr->_async = this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::NOBLOCK);
+			this->_addr->_async = this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::NOBLOCK);
 			// Если шифрование включено
 			if(this->_encrypted && (this->_ssl != nullptr)){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета

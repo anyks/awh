@@ -164,7 +164,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если разрешено выводить информационные сообщения
 							if(this->_verb)
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+								this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -190,7 +190,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если разрешено выводить информационные сообщения
 							if(this->_verb)
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+								this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -249,7 +249,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если unix-сокет используется
 						if(family == scheme_t::family_t::NIX){
 							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->_log->print("Connecting to socket = %s", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+							this->_log->print("Connecting to SOCKET=%s", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -257,7 +257,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если используется хост и порт
 						} else {
 							// Выводим ионформацию об обрыве подключении по хосту и порту
-							this->_log->print("Connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+							this->_log->print("Connecting to HOST=%s, PORT=%u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -310,8 +310,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 						// Выполняем установку функции обратного вызова на получение события подключения к серверу
 						ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(&core_t::connected, this, _1));
-						// Выполняем установку функции обратного вызова на получение таймаута подключения
-						ret.first->second->callback <void (const uint64_t, const engine_t::method_t)> ("timeout", std::bind(static_cast <void (core_t::*)(const uint64_t, const engine_t::method_t)> (&core_t::timeout), this, _1, _2));
 						// Активируем ожидание подключения
 						ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
 						// Если разрешено выводить информационные сообщения
@@ -385,7 +383,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(this->_verb)
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+						this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("disconnect"))
 						// Выполняем функцию обратного вызова
@@ -951,7 +949,7 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 			// Если разрешено выводить информационные сообщения
 			if(this->_verb)
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::INFO, "Disconnected from the server");
+				this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
 			// Выполняем функцию обратного вызова дисконнекта
 			callback.bind("disconnect");
 			// Если функция реконнекта установлена
@@ -1204,122 +1202,6 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 	}
 }
 /**
- * timeout Метод вызова при срабатывании таймаута
- * @param bid    идентификатор брокера
- * @param method метод режима работы
- */
-void awh::client::Core::timeout(const uint64_t bid, const engine_t::method_t method) noexcept {
-	// Если идентификатор брокера подключений существует
-	if(this->has(bid)){
-		// Создаём бъект активного брокера подключения
-		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(broker->sid());
-		// Если идентификатор схемы сети найден
-		if(it != this->_schemes.end()){
-			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
-			// Получаем семейство интернет-протоколов
-			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
-			// Определяем тип протокола подключения
-			switch(static_cast <uint8_t> (family)){
-				// Если тип протокола подключения IPv4
-				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Если тип протокола подключения IPv6
-				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-					// Получаем URL параметры запроса
-					const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
-					// Если IP-адрес не получен и объект DNS-резолвера установлен
-					if(!shm->receiving && !url.ip.empty() && (this->_dns != nullptr)){
-						// Определяем тип протокола подключения
-						switch(static_cast <uint8_t> (family)){
-							// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
-							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-								// Устанавливаем адрес в чёрный список
-								const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip);
-							break;
-							// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
-							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-								// Устанавливаем адрес в чёрный список
-								const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET6, url.domain, url.ip);
-							break;
-						}
-					}
-					// Определяем метод на который сработал таймаут
-					switch(static_cast <uint8_t> (method)){
-						// Режим работы ЧТЕНИЕ
-						case static_cast <uint8_t> (engine_t::method_t::READ): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout read data from HOST=%s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout read data from HOST=%s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
-						} break;
-						// Режим работы ЗАПИСЬ
-						case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout write data to HOST=%s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout write data to HOST=%s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
-						} break;
-						// Если передано событие подписки на подключение
-						case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout connect to HOST=%s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout connect to HOST=%s [%s%d]", url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port));
-						} break;
-					}
-				} break;
-				// Если тип протокола подключения unix-сокет
-				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
-					// Определяем метод на который сработал таймаут
-					switch(static_cast <uint8_t> (method)){
-						// Режим работы ЧТЕНИЕ
-						case static_cast <uint8_t> (engine_t::method_t::READ): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout read data from HOST=%s", log_t::flag_t::WARNING, this->_settings.sockname.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout read data from HOST=%s", this->_settings.sockname.c_str()));
-						} break;
-						// Режим работы ЗАПИСЬ
-						case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout write data to HOST=%s", log_t::flag_t::WARNING, this->_settings.sockname.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout write data to HOST=%s", this->_settings.sockname.c_str()));
-						} break;
-						// Если передано событие подписки на подключение
-						case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout connect to HOST=%s", log_t::flag_t::WARNING, this->_settings.sockname.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout connect to HOST=%s", this->_settings.sockname.c_str()));
-						} break;
-					}
-				} break;
-			}
-			// Останавливаем чтение данных
-			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
-			// Останавливаем запись данных
-			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-			// Выполняем отключение от сервера
-			this->close(bid);
-		}
-	}
-}
-/**
  * read Метод чтения данных для брокера
  * @param bid идентификатор брокера
  */
@@ -1362,18 +1244,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									bytes = broker->_ectx.read(buffer.get(), size);
 									// Если данные получены
 									if(bytes > 0){
-										// Если флаг ожидания входящих сообщений, активирован
-										if(broker->_timeouts.read > 0){
-											// Определяем тип активного сокета
-											switch(static_cast <uint8_t> (this->_settings.sonet)){
-												// Если тип сокета установлен как UDP
-												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-												// Если тип сокета установлен как DTLS
-												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
-												// Останавливаем таймаут ожидания на чтение из сокета
-												default: broker->_bev.timers.read.stop();
-											}
-										}
 										// Если данные считанные из буфера, больше размера ожидающего буфера
 										if((broker->_marker.read.max > 0) && (bytes >= broker->_marker.read.max)){
 											// Смещение в буфере и отправляемый размер данных
@@ -1407,26 +1277,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 											} else if(this->_callbacks.is("read"))
 												// Выводим функцию обратного вызова
 												this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, it->first);
-										}
-										// Если флаг ожидания входящих сообщений, активирован
-										if(broker->_timeouts.read > 0){
-											// Определяем тип активного сокета
-											switch(static_cast <uint8_t> (this->_settings.sonet)){
-												// Если тип сокета установлен как UDP
-												case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-												// Если тип сокета установлен как DTLS
-												case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-													// Выполняем установку таймаута ожидания
-													broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
-												break;
-												// Для всех остальных протоколов
-												default: {
-													// Если время ожидания чтения данных установлено
-													if(shm->wait)
-														// Запускаем работу таймера
-														broker->_bev.timers.read.start(broker->_timeouts.read * 1000);
-												}
-											}
 										}
 									// Если данные небыли получены
 									} else if(bytes <= 0) {
@@ -1566,9 +1416,9 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 									broker->_ectx.noblock();
 								break;
 							}
+							// Останавливаем ожидание записи данных
+							broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 						}
-						// Останавливаем ожидание записи данных
-						broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 						// Если подключение производится через, прокси-сервер
 						if(shm->isProxy()){
 							// Если функция обратного вызова для вывода записи существует

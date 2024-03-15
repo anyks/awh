@@ -62,6 +62,9 @@ namespace awh {
 				// Флаг автоматического перезапуска упавших процессов
 				bool _clusterAutoRestart;
 			private:
+				// Флаг активации/деактивации кластера
+				awh::scheme_t::mode_t _clusterMode;
+			private:
 				// Список активных дочерних процессов
 				multimap <uint16_t, pid_t> _workers;
 			private:
@@ -206,13 +209,6 @@ namespace awh {
 				void broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * timeout Метод вызова при срабатывании таймаута
-				 * @param bid    идентификатор брокера
-				 * @param method метод режима работы
-				 */
-				void timeout(const uint64_t bid, const engine_t::method_t method) noexcept;
-			private:
-				/**
 				 * read Метод чтения данных для брокера
 				 * @param bid идентификатор брокера
 				 */
@@ -254,16 +250,17 @@ namespace awh {
 				void total(const uint16_t sid, const u_short total) noexcept;
 			public:
 				/**
-				 * cluster Метод установки количества процессов кластера
-				 * @param size количество рабочих процессов
-				 */
-				void cluster(const int16_t size = 0) noexcept;
-				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param sid  идентификатор схемы сети
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const uint16_t sid, const bool mode) noexcept;
+				/**
+				 * cluster Метод установки количества процессов кластера
+				 * @param mode флаг активации/деактивации кластера
+				 * @param size количество рабочих процессов
+				 */
+				void cluster(const awh::scheme_t::mode_t mode, const int16_t size = 0) noexcept;
 			public:
 				/**
 				 * init Метод инициализации сервера

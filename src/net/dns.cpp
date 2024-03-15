@@ -417,17 +417,17 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
-								self->_log->print("EPIPE [server = %s, domain = %s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+								self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
 							break;
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								self->_log->print("ECONNRESET [server = %s, domain = %s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+								self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
 							break;
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [server = %s, domain = %s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
+								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -653,17 +653,17 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 						// Если произведена неудачная запись в PIPE
 						case EPIPE:
 							// Выводим в лог сообщение
-							this->_self->_log->print("EPIPE [server = %s, domain = %s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+							this->_self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
 						break;
 						// Если произведён сброс подключения
 						case ECONNRESET:
 							// Выводим в лог сообщение
-							this->_self->_log->print("ECONNRESET [server = %s, domain = %s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+							this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
 						break;
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [server = %s, domain = %s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
+							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
 					}
 				}
 			}
@@ -917,7 +917,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 					// Переходим по всему списку IP-адресов
 					for(auto it = ret.first; it != ret.second;){
 						// Если IP-адрес не находится в чёрном списке
-						if(!it->second.forbidden && !it->second.localhost){
+						if(!it->second.forbidden){
 							// Если время жизни кэша ещё не вышло
 							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов

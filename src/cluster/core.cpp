@@ -257,6 +257,8 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 		this->_autoRestart = mode;
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
 		this->_cluster.restart(0, this->_autoRestart);
+		// Устанавливаем флаг отслеживания упавших процессов
+		this->_cluster.trackCrash(this->_autoRestart);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -282,6 +284,8 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_cluster.base(this->_dispatch.base);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
+	// Отключаем отслеживание упавших процессов
+	this->_cluster.trackCrash(this->_autoRestart);
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений

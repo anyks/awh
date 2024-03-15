@@ -198,8 +198,6 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-	// Активируем максимальное количество рабочих процессов
-	core.cluster();
 	// Отключаем валидацию сертификата
 	ssl.verify = false;
 	// Устанавливаем адрес сертификата
@@ -216,6 +214,8 @@ int main(int argc, char * argv[]){
 	core.ssl(ssl);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	// ws.clusterAutoRestart(true);
+	// Активируем максимальное количество рабочих процессов
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера

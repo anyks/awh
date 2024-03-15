@@ -44,6 +44,8 @@ u_int awh::Scheme::Broker::port() const noexcept {
  * @param порт подключения для установки
  */
 void awh::Scheme::Broker::port(const u_int port) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если порт передан
 	if(port > 0)
 		// Выполняем установку порта
@@ -62,6 +64,8 @@ const string & awh::Scheme::Broker::ip() const noexcept {
  * @param ip адрес для установки
  */
 void awh::Scheme::Broker::ip(const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если IP-адрес передан
 	if(!ip.empty())
 		// Выполняем установку IP-адреса
@@ -80,6 +84,8 @@ const string & awh::Scheme::Broker::mac() const noexcept {
  * @param mac адрес для установки
  */
 void awh::Scheme::Broker::mac(const string & mac) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если MAC-адрес передан
 	if(!mac.empty())
 		// Выполняем установку MAC-адреса
@@ -90,6 +96,8 @@ void awh::Scheme::Broker::mac(const string & mac) noexcept {
  * @param callbacks функции обратного вызова
  */
 void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку функции обратного вызова при активации сокета на чтение
 	this->_callbacks.set("read", callbacks);
 	// Выполняем установку функции обратного вызова при готовности сокета к записи
@@ -104,6 +112,8 @@ void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
  * @param sonet тип сокета подключения
  */
 void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку типа сокета подключения
 	this->_sonet = sonet;
 }
@@ -157,8 +167,12 @@ void awh::Scheme::Broker::connect(const evutil_socket_t fd, const short event) n
 	// Зануляем неиспользуемые переменные
 	(void) fd;
 	(void) event;
+	// Выполняем блокировку потока
+	this->_mtx.lock();
 	// Удаляем событие коннекта
 	this->_bev.events.connect.stop();
+	// Выполняем разблокировку потока
+	this->_mtx.unlock();
 	// Останавливаем ожидания события подключения
 	this->events(mode_t::DISABLED, engine_t::method_t::CONNECT);
 	// Если функция обратного вызова установлена
@@ -167,29 +181,13 @@ void awh::Scheme::Broker::connect(const evutil_socket_t fd, const short event) n
 		this->_callbacks.call <void (const uint64_t)> ("connect", this->_id);
 }
 /**
- * timeout Метод вызова при срабатывании таймаута
- * @param fd     файловый дескриптор (сокет)
- * @param event  произошедшее событие
- * @param method метод режима работы
- */
-void awh::Scheme::Broker::timeout(const evutil_socket_t fd, const short event, const engine_t::method_t method) noexcept {
-	// Останавливаем событие таймера чтения данных
-	this->_bev.timers.read.stop();
-	// Останавливаем событие таймера записи данных
-	this->_bev.timers.write.stop();
-	// Останавливаем событие таймера коннекта
-	this->_bev.timers.connect.stop();
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("timeout"))
-		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t, const engine_t::method_t)> ("timeout", this->_id, method);
-}
-/**
  * lockup Метод блокировки метода режима работы
  * @param mode   флаг блокировки метода
  * @param method метод режима работы
  */
 void awh::Scheme::Broker::lockup(const mode_t mode, const engine_t::method_t method) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем метод режима работы
 	switch(static_cast <uint8_t> (method)){
 		// Режим работы ЧТЕНИЕ
@@ -210,6 +208,8 @@ void awh::Scheme::Broker::lockup(const mode_t mode, const engine_t::method_t met
  * @param method метод режима работы
  */
 void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t method) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
 	if((this->_addr.fd != INVALID_SOCKET) && (this->_addr.fd < MAX_SOCKETS) && (this->_base != nullptr)){
 		// Определяем метод события сокета
@@ -231,36 +231,14 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Выполняем запуск работы события
 						this->_bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if(this->_timeouts.read > 0){
-							// Определяем тип активного сокета
-							switch(static_cast <uint8_t> (this->_sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Выполняем установку таймаута ожидания
-									this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
-								break;
-								// Для всех остальных протоколов
-								default: {
-									// Устанавливаем базу данных событий
-									this->_bev.timers.read.set(this->_base);
-									// Устанавливаем тип таймера
-									this->_bev.timers.read.set(-1, EV_TIMEOUT);
-									// Устанавливаем функцию обратного вызова
-									this->_bev.timers.read.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
-									// Выполняем запуск работы таймера
-									this->_bev.timers.read.start(this->_timeouts.read * 1000);
-								}
-							}
-						}
+						if(this->_timeouts.read > 0)
+							// Выполняем установку таймаута ожидания
+							this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED): {
 						// Запрещаем чтение данных из сокета
 						this->_bev.locked.read = true;
-						// Останавливаем работу таймера
-						this->_bev.timers.read.stop();
 						// Останавливаем работу события
 						this->_bev.events.read.stop();
 					} break;
@@ -283,36 +261,14 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Выполняем запуск работы события
 						this->_bev.events.write.start();
 						// Если флаг ожидания исходящих сообщений, активирован
-						if(this->_timeouts.write > 0){
-							// Определяем тип активного сокета
-							switch(static_cast <uint8_t> (this->_sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Выполняем установку таймаута ожидания
-									this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
-								break;
-								// Для всех остальных протоколов
-								default: {
-									// Устанавливаем базу данных событий
-									this->_bev.timers.write.set(this->_base);
-									// Устанавливаем тип таймера
-									this->_bev.timers.write.set(-1, EV_TIMEOUT);
-									// Устанавливаем функцию обратного вызова
-									this->_bev.timers.write.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
-									// Выполняем запуск работы таймера
-									this->_bev.timers.write.start(this->_timeouts.write * 1000);
-								}
-							}
-						}
+						if(this->_timeouts.write > 0)
+							// Выполняем установку таймаута ожидания
+							this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED): {
 						// Запрещаем записи данных в сокет
 						this->_bev.locked.write = true;
-						// Останавливаем работу таймера
-						this->_bev.timers.write.stop();
 						// Останавливаем работу события
 						this->_bev.events.write.stop();
 					} break;
@@ -355,58 +311,14 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Выполняем запуск работы события
 						this->_bev.events.connect.start();
 						// Если время ожидания записи данных установлено
-						if(this->_timeouts.connect > 0){
-							// Определяем тип активного сокета
-							switch(static_cast <uint8_t> (this->_sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Выполняем установку таймаута ожидания
-									this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
-								break;
-								// Для всех остальных протоколов
-								default: {
-									// Устанавливаем тип таймера
-									this->_bev.timers.connect.set(-1, EV_TIMEOUT);
-									// Устанавливаем базу данных событий
-									this->_bev.timers.connect.set(this->_base);
-									// Устанавливаем функцию обратного вызова
-									this->_bev.timers.connect.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
-									// Выполняем запуск работы таймера
-									this->_bev.timers.connect.start(this->_timeouts.connect * 1000);
-								}
-							}
-						}
-					} break;
-					// Если установлен сигнал деактивации сокета
-					case static_cast <uint8_t> (mode_t::DISABLED): {
-						// Останавливаем работу таймера
-						this->_bev.timers.connect.stop();
-						// Останавливаем работу события
-						this->_bev.events.connect.stop();
-					} break;
-				}
-			} break;
-			// Если передано событие подписки на таймаут таймера
-			case static_cast <uint8_t> (engine_t::method_t::TIMEOUT): {
-				// Определяем сигнал сокета
-				switch(static_cast <uint8_t> (mode)){
-					// Если установлен сигнал активации сокета
-					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Устанавливаем базу данных событий
-						this->_bev.events.timeout.set(this->_base);
-						// Устанавливаем тип таймера
-						this->_bev.events.timeout.set(-1, EV_TIMEOUT);
-						// Устанавливаем функцию обратного вызова
-						this->_bev.events.timeout.set(std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const evutil_socket_t, const short, const engine_t::method_t)> (&awh::scheme_t::broker_t::timeout), this, _1, _2, method));
-						// Выполняем запуск работы таймера
-						this->_bev.events.timeout.start(this->_timeouts.timeout);
+						if(this->_timeouts.connect > 0)
+							// Выполняем установку таймаута ожидания
+							this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
 						// Останавливаем работу события
-						this->_bev.events.timeout.stop();
+						this->_bev.events.connect.stop();
 					break;
 				}
 			} break;
@@ -419,6 +331,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
  * @param method  метод режима работы
  */
 void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t method) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем метод режима работы
 	switch(static_cast <uint8_t> (method)){
 		// Режим работы ЧТЕНИЕ
@@ -445,6 +359,8 @@ void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t
  * @param method метод режима работы
  */
 void awh::Scheme::Broker::marker(const size_t min, const size_t max, const engine_t::method_t method) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем метод режима работы
 	switch(static_cast <uint8_t> (method)){
 		// Режим работы ЧТЕНИЕ
@@ -476,6 +392,8 @@ void awh::Scheme::Broker::marker(const size_t min, const size_t max, const engin
  * @param base база событий для установки
  */
 void awh::Scheme::Broker::base(struct event_base * base) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 }
@@ -485,6 +403,8 @@ void awh::Scheme::Broker::base(struct event_base * base) noexcept {
  * @return     текущий объект
  */
 awh::Scheme::Broker & awh::Scheme::Broker::operator = (struct event_base * base) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 	// Выводим текущий объект

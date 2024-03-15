@@ -53,7 +53,7 @@ class Proxy {
 		 */
 		bool accept(const string & ip, const string & mac, const u_int port){
 			// Выводим информацию в лог
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -119,7 +119,7 @@ int main(int argc, char * argv[]){
 	// proxy.sonet(awh::scheme_t::sonet_t::TCP);
 	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Активируем максимальное количество рабочих процессов
-	proxy.cluster();
+	proxy.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(10, 1);
 	// Выполняем инициализацию Websocket сервера

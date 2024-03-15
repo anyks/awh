@@ -155,12 +155,6 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void connected(const uint64_t bid) noexcept;
-				/**
-				 * timeout Метод вызова при срабатывании таймаута
-				 * @param bid    идентификатор брокера
-				 * @param method метод режима работы
-				 */
-				void timeout(const uint64_t bid, const engine_t::method_t method) noexcept;
 			private:
 				/**
 				 * read Метод чтения данных для брокера

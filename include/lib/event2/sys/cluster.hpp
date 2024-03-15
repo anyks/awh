@@ -171,9 +171,9 @@ namespace awh {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
-				 * Jack Структура работника
+				 * Broker Структура брокера
 				 */
-				typedef struct Jack {
+				typedef struct Broker {
 					bool end;          // Флаг завершения работы процессом
 					pid_t pid;         // Пид активного процесса
 					int mfds[2];       // Список файловых дескрипторов родительского процесса
@@ -181,17 +181,17 @@ namespace awh {
 					time_t date;       // Время начала жизни процесса
 					awh::event_t mess; // Объект события на получения сообщений
 					/**
-					 * Jack Конструктор
+					 * Broker Конструктор
 					 * @param log объект для работы с логами
 					 */
-					Jack(const log_t * log) noexcept :
+					Broker(const log_t * log) noexcept :
 					 end(false), pid(0), mfds{0,0}, cfds{0,0},
 					 date(0), mess(awh::event_t::type_t::EVENT, log) {}
 					/**
-					 * ~Jack Деструктор
+					 * ~Broker Деструктор
 					 */
-					~Jack() noexcept {}
-				} jack_t;
+					~Broker() noexcept {}
+				} broker_t;
 				/**
 				 * Message Структура межпроцессного сообщения
 				 */
@@ -211,16 +211,16 @@ namespace awh {
 			 */
 			#else
 				/**
-				 * Jack Структура работника
+				 * Broker Структура брокера
 				 */
-				typedef struct Jack {
+				typedef struct Broker {
 					pid_t pid;   // Пид активного процесса
 					time_t date; // Время начала жизни процесса
 					/**
-					 * Jack Конструктор
+					 * Broker Конструктор
 					 */
-					Jack() noexcept : pid(0), date(0) {}
-				} jack_t;
+					Broker() noexcept : pid(0), date(0) {}
+				} broker_t;
 			#endif
 		private:
 			// Идентификатор родительского процесса
@@ -239,8 +239,8 @@ namespace awh {
 			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
 			map <uint16_t, unique_ptr <worker_t>> _workers;
-			// Список дочерних работников
-			map <uint16_t, vector <unique_ptr <jack_t>>> _jacks;
+			// Список дочерних брокеров
+			map <uint16_t, vector <unique_ptr <broker_t>>> _jacks;
 		private:
 			// Объект работы с базой событий
 			struct event_base * _base;

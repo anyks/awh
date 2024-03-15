@@ -278,10 +278,10 @@ int main(int argc, char * argv[]){
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
-	// Активируем максимальное количество рабочих процессов
-	core.cluster();
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
-	awh.clusterAutoRestart(true);
+	// awh.clusterAutoRestart(true);
+	// Активируем максимальное количество рабочих процессов
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем режим мультипоточной обработки
 	// core.multiThreads(22);
 	// Устанавливаем название сервера

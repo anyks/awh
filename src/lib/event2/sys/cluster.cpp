@@ -64,19 +64,19 @@
 	void awh::Cluster::Worker::process(const pid_t pid, const int status) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
-		// Выполняем поиск работника
+		// Выполняем поиск брокера
 		auto j = this->cluster->_jacks.find(this->wid);
-		// Если работник найден
+		// Если брокер найден
 		if(j != this->cluster->_jacks.end()){
 			// Выполняем поиск завершившегося процесса
-			for(auto & jack : j->second){
+			for(auto & broker : j->second){
 				// Если процесс найден
-				if((jack->end = (jack->pid == pid))){
+				if((broker->end = (broker->pid == pid))){
 					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
+					broker->mess.stop();
 					// Выполняем закрытие файловых дескрипторов
-					::close(jack->cfds[0]);
-					::close(jack->mfds[1]);
+					::close(broker->cfds[0]);
+					::close(broker->mfds[1]);
 					// Если статус сигнала, ручной остановкой процесса
 					if(status == SIGINT){
 						// Выполняем остановку работы
@@ -84,14 +84,14 @@
 						// Выходим из приложения
 						::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
-					} else if((this->cluster->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - jack->date) <= 180000) {
+					} else if((this->cluster->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
 						this->cluster->stop(this->wid);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("Child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
+					// this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::CRITICAL, broker->pid, status);
 					// Если функция обратного вызова установлена
 					if(this->cluster->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
@@ -101,13 +101,13 @@
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
 					if((i != this->cluster->_workers.end()) && i->second->restart){
 						// Получаем индекс упавшего процесса
-						const uint16_t index = this->cluster->_pids.at(jack->pid);
+						const uint16_t index = this->cluster->_pids.at(broker->pid);
 						// Удаляем процесс из списка процессов
-						this->cluster->_pids.erase(jack->pid);
+						this->cluster->_pids.erase(broker->pid);
 						// Выполняем создание нового процесса
 						this->cluster->fork(i->first, index, i->second->restart);
 					// Просто удаляем процесс из списка процессов
-					} else this->cluster->_pids.erase(jack->pid);
+					} else this->cluster->_pids.erase(broker->pid);
 					// Выходим из цикла
 					break;
 				}
@@ -128,20 +128,20 @@
 		if(this->cluster->_pid == static_cast <pid_t> (::getpid())){
 			// Идентификатор процесса приславший сообщение
 			pid_t pid = 0;
-			// Выполняем поиск текущего работника
+			// Выполняем поиск текущего брокера
 			auto it = this->cluster->_jacks.find(this->wid);
-			// Если текущий работник найден
+			// Если текущий брокер найден
 			if(it != this->cluster->_jacks.end()){
 				// Флаг найденного файлового дескриптора
 				bool found = false;
-				// Переходим по всему списку работников
-				for(auto & jack : it->second){
+				// Переходим по всему списку брокеров
+				for(auto & broker : it->second){
 					// Выполняем поиск файлового дескриптора
-					found = (static_cast <evutil_socket_t> (jack->mfds[0]) == fd);
+					found = (static_cast <evutil_socket_t> (broker->mfds[0]) == fd);
 					// Если файловый дескриптор соответствует
 					if(found){
 						// Получаем идентификатор процесса приславшего сообщение
-						pid = jack->pid;
+						pid = broker->pid;
 						// Выходим из цикла
 						break;
 					}
@@ -214,20 +214,20 @@
 			}
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
-			// Выполняем поиск текущего работника
+			// Выполняем поиск текущего брокера
 			auto it = this->cluster->_jacks.find(this->wid);
-			// Если текущий работник найден
+			// Если текущий брокер найден
 			if(it != this->cluster->_jacks.end()){
 				// Получаем индекс текущего процесса
 				const uint16_t index = this->cluster->_pids.at(::getpid());
-				// Получаем объект текущего работника
-				jack_t * jack = it->second.at(index).get();
+				// Получаем объект текущего брокера
+				broker_t * broker = it->second.at(index).get();
 				// Если файловый дескриптор не соответствует родительскому
-				if(jack->cfds[0] != fd){
-					// Переходим по всему списку работников
+				if(broker->cfds[0] != fd){
+					// Переходим по всему списку брокеров
 					for(auto & item : it->second){
-						// Если работник не является текущим работником
-						if((jack->cfds[0] != item->cfds[0]) && (jack->mfds[1] != item->mfds[1])){
+						// Если брокер не является текущим брокером
+						if((broker->cfds[0] != item->cfds[0]) && (broker->mfds[1] != item->mfds[1])){
 							// Выполняем остановку чтение сообщений
 							item->mess.stop();
 							// Закрываем файловый дескриптор на чтение из дочернего процесса
@@ -237,7 +237,7 @@
 						}
 					}
 					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
+					broker->mess.stop();
 					// Выходим из функции
 					return;
 				}
@@ -408,73 +408,73 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 		if(i != this->_workers.end()){
 			// Если не все форки созданы
 			if(index < i->second->count){
-				// Выполняем поиск работника
+				// Выполняем поиск брокера
 				auto j = this->_jacks.find(i->first);
-				// Если список работников ещё пустой
+				// Если список брокеров ещё пустой
 				if((j == this->_jacks.end()) || j->second.empty()){
 					// Удаляем список дочерних процессов
 					this->_pids.clear();
-					// Если список работников еще не инициализирован
+					// Если список брокеров еще не инициализирован
 					if(j == this->_jacks.end()){
-						// Выполняем инициализацию списка работников
-						this->_jacks.emplace(i->first, vector <unique_ptr <jack_t>> ());
-						// Выполняем поиск работника
+						// Выполняем инициализацию списка брокеров
+						this->_jacks.emplace(i->first, vector <unique_ptr <broker_t>> ());
+						// Выполняем поиск брокера
 						j = this->_jacks.find(i->first);
 					}
-					// Выполняем создание указанное количество работников
+					// Выполняем создание указанное количество брокеров
 					for(size_t index = 0; index < i->second->count; index++){
-						// Создаём объект работника
-						unique_ptr <jack_t> jack(new jack_t(this->_log));
+						// Создаём объект брокера
+						unique_ptr <broker_t> broker(new broker_t(this->_log));
 						// Выполняем подписку на основной канал передачи данных
-						if(::pipe(jack->mfds) != 0){
+						if(::pipe(broker->mfds) != 0){
 							// Выводим в лог сообщение
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
-						if(::pipe(jack->cfds) != 0){
+						if(::pipe(broker->cfds) != 0){
 							// Выводим в лог сообщение
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
-						// Выполняем добавление работника в список работников
-						j->second.push_back(std::move(jack));
+						// Выполняем добавление брокера в список брокеров
+						j->second.push_back(std::move(broker));
 					}
 				}
 				// Если процесс завершил свою работу
 				if(j->second.at(index)->end){
-					// Создаём объект работника
-					unique_ptr <jack_t> jack(new jack_t(this->_log));
+					// Создаём объект брокера
+					unique_ptr <broker_t> broker(new broker_t(this->_log));
 					// Выполняем подписку на основной канал передачи данных
-					if(::pipe(jack->mfds) != 0){
+					if(::pipe(broker->mfds) != 0){
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
-						for(auto & jack : j->second)
+						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений
-							jack->mess.stop();
+							broker->mess.stop();
 						// Выполняем остановку работы
 						this->stop(i->first);
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
 					// Выполняем подписку на дочерний канал передачи данных
-					if(::pipe(jack->cfds) != 0){
+					if(::pipe(broker->cfds) != 0){
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						// Выполняем поиск завершившегося процесса
-						for(auto & jack : j->second)
+						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений
-							jack->mess.stop();
+							broker->mess.stop();
 						// Выполняем остановку работы
 						this->stop(i->first);
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
-					// Устанавливаем нового работника
-					j->second.at(index) = std::move(jack);
+					// Устанавливаем нового брокера
+					j->second.at(index) = std::move(broker);
 				}
 				// Устанавливаем идентификатор процесса
 				pid_t pid = -1;
@@ -507,17 +507,17 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, index);
 							{
-								// Получаем объект текущего работника
-								jack_t * jack = j->second.at(index).get();
-								// Выполняем перебор всего списка работников
+								// Получаем объект текущего брокера
+								broker_t * broker = j->second.at(index).get();
+								// Выполняем перебор всего списка брокеров
 								for(size_t i = 0; i < j->second.size(); i++){
-									// Если индекс работника совпадает
+									// Если индекс брокера совпадает
 									if(i == static_cast <uint16_t> (index)){
 										// Закрываем файловый дескриптор на запись в дочерний процесс
 										::close(j->second.at(i)->cfds[1]);
 										// Закрываем файловый дескриптор на чтение из основного процесса
 										::close(j->second.at(i)->mfds[0]);
-									// Закрываем все файловые дескрипторы для всех остальных работников
+									// Закрываем все файловые дескрипторы для всех остальных брокеров
 									} else {
 										// Закрываем файловый дескриптор на запись в дочерний процесс
 										::close(j->second.at(i)->cfds[0]);
@@ -528,17 +528,17 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									}
 								}
 								// Устанавливаем идентификатор процесса
-								jack->pid = pid;
+								broker->pid = pid;
 								// Устанавливаем время начала жизни процесса
-								jack->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								// Устанавливаем базу событий для чтения
-								jack->mess.set(this->_base);
+								broker->mess.set(this->_base);
 								// Устанавливаем сокет для чтения
-								jack->mess.set(jack->cfds[0], EV_READ);
+								broker->mess.set(broker->cfds[0], EV_READ);
 								// Устанавливаем событие на чтение данных от основного процесса
-								jack->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
+								broker->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
 								// Запускаем чтение данных с основного процесса
-								jack->mess.start();
+								broker->mess.start();
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("process"))
 									// Выполняем функцию обратного вызова
@@ -569,33 +569,33 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					default: {
 						// Добавляем в список дочерних процессов, идентификатор процесса
 						this->_pids.emplace(pid, index);
-						// Получаем объект текущего работника
-						jack_t * jack = j->second.at(index).get();
+						// Получаем объект текущего брокера
+						broker_t * broker = j->second.at(index).get();
 						// Закрываем файловый дескриптор на запись в основной процесс
-						::close(jack->mfds[1]);
+						::close(broker->mfds[1]);
 						// Закрываем файловый дескриптор на чтение из дочернего процесса
-						::close(jack->cfds[0]);
-						// Устанавливаем PID процесса
-						jack->pid = pid;
+						::close(broker->cfds[0]);
+						// Устанавливаем PID-процесса
+						broker->pid = pid;
 						// Устанавливаем время начала жизни процесса
-						jack->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Устанавливаем базу событий для чтения
-						jack->mess.set(this->_base);
+						broker->mess.set(this->_base);
 						// Устанавливаем сокет для чтения
-						jack->mess.set(jack->mfds[0], EV_READ);
+						broker->mess.set(broker->mfds[0], EV_READ);
 						// Устанавливаем событие на чтение данных от основного процесса
-						jack->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
+						broker->mess.set(std::bind(&worker_t::message, i->second.get(), _1, _2));
 						// Если не нужно останавливаться на создании процессов
 						if(!stop)
 							// Выполняем создание новых процессов
 							this->fork(i->first, index + 1, stop);
 						// Выполняем запуск работы чтения данных с дочерних процессов
-						else jack->mess.start();
+						else broker->mess.start();
 					}
 				}
 			// Если все процессы удачно созданы
 			} else if((i->second->working = !stop)) {
-				// Выполняем поиск работника
+				// Выполняем поиск брокера
 				auto j = this->_jacks.find(i->first);
 				// Если идентификатор воркера получен
 				if(j != this->_jacks.end()){
@@ -610,10 +610,10 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем запуск отслеживания сигналов дочерних процессов
 						this->_event.start();
 					}
-					// Выполняем перебор всех доступных работников
-					for(auto & jack : j->second)
+					// Выполняем перебор всех доступных брокеров
+					for(auto & broker : j->second)
 						// Выполняем запуск работы чтения данных с дочерних процессов
-						jack->mess.start();
+						broker->mess.start();
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
@@ -646,18 +646,18 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
 set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
 	set <pid_t> result;
-	// Выполняем поиск работников
+	// Выполняем поиск брокеров
 	auto it = this->_jacks.find(wid);
-	// Если работник найден
+	// Если брокер найден
 	if((it != this->_jacks.end()) && !it->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Переходим по всему списку работников
-			for(auto & jack : it->second)
+			// Переходим по всему списку брокеров
+			for(auto & broker : it->second)
 				// Выполняем формирование списка процессов
-				result.emplace(jack->pid);
+				result.emplace(broker->pid);
 		#endif
 	}
 	// Выводим результат
@@ -697,9 +697,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			#endif
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
-			// Выполняем поиск работников
+			// Выполняем поиск брокеров
 			auto it = this->_jacks.find(wid);
-			// Если работник найден
+			// Если брокер найден
 			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
@@ -746,9 +746,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
-			// Выполняем поиск работников
+			// Выполняем поиск брокеров
 			auto it = this->_jacks.find(wid);
-			// Если работник найден
+			// Если брокер найден
 			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
@@ -813,9 +813,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
-			// Выполняем поиск работников
+			// Выполняем поиск брокеров
 			auto it = this->_jacks.find(wid);
-			// Если работник найден
+			// Если брокер найден
 			if((it != this->_jacks.end()) && !it->second.empty()){
 				// Создаём объект сообщения
 				mess_t message;
@@ -834,11 +834,11 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Переходим по всем дочерним процессам
-					for(auto & jack : it->second){
+					for(auto & broker : it->second){
 						// Если идентификатор процесса не нулевой
-						if(jack->pid > 0)
+						if(broker->pid > 0)
 							// Выполняем отправку сообщения дочернему процессу
-							::write(jack->cfds[1], &message, sizeof(message));
+							::write(broker->cfds[1], &message, sizeof(message));
 					}
 					// Выполняем увеличение смещения в буфере
 					offset += message.size;
@@ -878,16 +878,16 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 void awh::Cluster::clear() noexcept {
 	// Удаляем список дочерних процессов
 	this->_pids.clear();
-	// Если список работников не пустой
+	// Если список брокеров не пустой
 	if(!this->_jacks.empty()){
-		// Переходим по всем работникам
+		// Переходим по всем брокерам
 		for(auto & item : this->_jacks)
 			// Выполняем остановку процессов
 			this->stop(item.first);
-		// Выполняем очистку списка работников
+		// Выполняем очистку списка брокеров
 		this->_jacks.clear();
 		// Выполняем освобождение выделенной памяти
-		map <uint16_t, vector <unique_ptr <jack_t>>> ().swap(this->_jacks);
+		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_jacks);
 	}
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
@@ -898,24 +898,24 @@ void awh::Cluster::clear() noexcept {
  * close Метод закрытия всех подключений
  */
 void awh::Cluster::close() noexcept {
-	// Если список работников не пустой
+	// Если список брокеров не пустой
 	if(!this->_jacks.empty()){
-		// Переходим по всем работникам
+		// Переходим по всем брокерам
 		for(auto & item : this->_jacks){
 			/**
 			 * Если операционной системой не является Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
-				// Переходим по всему списку работников
-				for(auto & jack : item.second){
+				// Переходим по всему списку брокеров
+				for(auto & broker : item.second){
 					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
+					broker->mess.stop();
 					// Выполняем закрытие файловых дескрипторов
-					::close(jack->cfds[0]);
-					::close(jack->mfds[1]);
+					::close(broker->cfds[0]);
+					::close(broker->mfds[1]);
 				}
 			#endif
-			// Очищаем список работников
+			// Очищаем список брокеров
 			item.second.clear();
 		}
 	}
@@ -925,24 +925,24 @@ void awh::Cluster::close() noexcept {
  * @param wid идентификатор воркера
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
-	// Выполняем поиск работников
+	// Выполняем поиск брокеров
 	auto it = this->_jacks.find(wid);
-	// Если работник найден
+	// Если брокер найден
 	if((it != this->_jacks.end()) && !it->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Переходим по всему списку работников
-			for(auto & jack : it->second){
+			// Переходим по всему списку брокеров
+			for(auto & broker : it->second){
 				// Выполняем остановку чтение сообщений
-				jack->mess.stop();
+				broker->mess.stop();
 				// Выполняем закрытие файловых дескрипторов
-				::close(jack->cfds[0]);
-				::close(jack->mfds[1]);
+				::close(broker->cfds[0]);
+				::close(broker->mfds[1]);
 			}
 		#endif
-		// Очищаем список работников
+		// Очищаем список брокеров
 		it->second.clear();
 	}
 }
@@ -951,9 +951,9 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
  * @param wid идентификатор воркера
  */
 void awh::Cluster::stop(const uint16_t wid) noexcept {
-	// Выполняем поиск работников
+	// Выполняем поиск брокеров
 	auto j = this->_jacks.find(wid);
-	// Если работник найден
+	// Если брокер найден
 	if((j != this->_jacks.end()) && !j->second.empty()){
 		// Выполняем поиск воркера
 		auto i = this->_workers.find(j->first);
@@ -978,10 +978,10 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				message.quit = true;
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = this->_pid;
-				// Переходим по всему списку работников
-				for(auto & jack : j->second)
+				// Переходим по всему списку брокеров
+				for(auto & broker : j->second)
 					// Выполняем отправку сообщения дочернему процессу
-					::write(jack->cfds[1], &message, sizeof(message));
+					::write(broker->cfds[1], &message, sizeof(message));
 				// Выполняем закрытие подключения передачи сообщений
 				this->close(wid);
 				// Выполняем остановку отслеживания сигналов дочерних процессов

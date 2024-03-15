@@ -534,9 +534,10 @@ namespace awh {
 				void clusterAutoRestart(const bool mode) noexcept;
 				/**
 				 * cluster Метод установки количества процессов кластера
+				 * @param mode флаг активации/деактивации кластера
 				 * @param size количество рабочих процессов
 				 */
-				void cluster(const uint16_t size = 0) noexcept;
+				void cluster(const awh::scheme_t::mode_t mode, const uint16_t size = 0) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

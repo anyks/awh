@@ -1283,11 +1283,12 @@ void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
 }
 /**
  * cluster Метод установки количества процессов кластера
+ * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов
  */
-void awh::server::Proxy::cluster(const uint16_t size) noexcept {
+void awh::server::Proxy::cluster(const awh::scheme_t::mode_t mode, const uint16_t size) noexcept {
 	// Выполняем установку размера кластера
-	this->_core.cluster(size);
+	this->_core.cluster(mode, size);
 }
 /**
  * total Метод установки максимального количества одновременных подключений

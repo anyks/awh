@@ -109,22 +109,6 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Timers Структура таймеров
-			 */
-			typedef struct Timers {
-				event_t read;    // Событие таймера таймаута на чтение из сокета
-				event_t write;   // Событие таймера таймаута на запись в сокет
-				event_t connect; // Событие таймера таймаута на подключение к серверу
-				/**
-				 * Timers Конструктор
-				 * @param log объект для работы с логами
-				 */
-				Timers(const log_t * log) noexcept :
-				 read(event_t::type_t::TIMER, log),
-				 write(event_t::type_t::TIMER, log),
-				 connect(event_t::type_t::TIMER, log) {}
-			} timers_t;
-			/**
 			 * Events Структура событий
 			 */
 			typedef struct Events {
@@ -132,7 +116,6 @@ namespace awh {
 				event_t write;   // Событие на запись
 				event_t accept;  // Событие на запросы подключений
 				event_t connect; // Событие на подключение
-				event_t timeout; // Событие на таймаут
 				/**
 				 * Events Конструктор
 				 * @param log объект для работы с логами
@@ -141,8 +124,7 @@ namespace awh {
 				 read(event_t::type_t::EVENT, log),
 				 write(event_t::type_t::EVENT, log),
 				 accept(event_t::type_t::EVENT, log),
-				 connect(event_t::type_t::EVENT, log),
-				 timeout(event_t::type_t::TIMER, log) {}
+				 connect(event_t::type_t::EVENT, log) {}
 			} events_t;
 			/**
 			 * Timeouts Структура таймаутов
@@ -151,15 +133,13 @@ namespace awh {
 				time_t read;    // Таймаут на чтение в секундах
 				time_t write;   // Таймаут на запись в секундах
 				time_t connect; // Таймаут на подключение в секундах
-				time_t timeout; // Таймаут на выполнение таймера в миллисекундах
 				/**
 				 * Timeouts Конструктор
 				 */
 				Timeouts() noexcept :
 				 read(READ_TIMEOUT),
 				 write(WRITE_TIMEOUT),
-				 connect(CONNECT_TIMEOUT),
-				 timeout(10) {}
+				 connect(CONNECT_TIMEOUT) {}
 			} timeouts_t;
 			/**
 			 * Locked Структура блокировки на чтение и запись данных в буфере
@@ -177,13 +157,12 @@ namespace awh {
 			 */
 			typedef struct BufferEvent {
 				events_t events; // События чтения/записи
-				timers_t timers; // Собатия таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
 				 * @param log объект для работы с логами
 				 */
-				BufferEvent(const log_t * log) noexcept : events(log), timers(log) {}
+				BufferEvent(const log_t * log) noexcept : events(log) {}
 			} bev_t;
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -216,6 +195,9 @@ namespace awh {
 			 * Broker Класс брокера подключения
 			 */
 			typedef class Broker {
+				private:
+					// Мютекс для блокировки потока
+					mutex _mtx;
 				private:
 					// Идентификатор брокера
 					uint64_t _id;
@@ -321,9 +303,12 @@ namespace awh {
 					 */
 					void callback(const uint64_t idw, function <A> fn) noexcept {
 						// Если функция обратного вызова передана
-						if((idw > 0) && (fn != nullptr))
+						if((idw > 0) && (fn != nullptr)){
+							// Выполняем блокировку потока
+							const lock_guard <mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (idw, fn);
+						}
 					}
 					/**
 					 * callback Шаблон метода установки финкции обратного вызова
@@ -337,9 +322,12 @@ namespace awh {
 					 */
 					void callback(const string & name, function <A> fn) noexcept {
 						// Если функция обратного вызова передана
-						if(!name.empty() && (fn != nullptr))
+						if(!name.empty() && (fn != nullptr)){
+							// Выполняем блокировку потока
+							const lock_guard <mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (name, fn);
+						}
 					}
 				private:
 					/**
@@ -372,13 +360,6 @@ namespace awh {
 					 * @param event произошедшее событие
 					 */
 					void connect(const evutil_socket_t fd, const short event) noexcept;
-					/**
-					 * timeout Метод вызова при срабатывании таймаута
-					 * @param fd     айловый дескриптор (сокет)
-					 * @param event  произошедшее событие
-					 * @param method метод режима работы
-					 */
-					void timeout(const evutil_socket_t fd, const short event, const engine_t::method_t method) noexcept;
 				public:
 					/**
 					 * lockup Метод блокировки метода режима работы

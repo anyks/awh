@@ -119,8 +119,6 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								ret.first->second->_ectx.block();
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
-								// Выполняем установку функции обратного вызова на получение таймаута подключения
-								ret.first->second->callback <void (const uint64_t, const engine_t::method_t)> ("timeout", std::bind(static_cast <void (core_t::*)(const uint64_t, const engine_t::method_t)> (&core_t::timeout), this, _1, _2));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Если функция обратного вызова установлена
@@ -437,8 +435,6 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								}
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
-								// Выполняем установку функции обратного вызова на получение таймаута подключения
-								ret.first->second->callback <void (const uint64_t, const engine_t::method_t)> ("timeout", std::bind(static_cast <void (core_t::*)(const uint64_t, const engine_t::method_t)> (&core_t::timeout), this, _1, _2));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Если функция обратного вызова установлена
@@ -821,11 +817,24 @@ void awh::server::Core::stop() noexcept {
 	if(this->working()){
 		// Выполняем закрытие подключения
 		this->close();
+		// Определяем режим активации кластера
+		switch(static_cast <uint8_t> (this->_clusterMode)){
+			// Если кластер необходимо активировать
+			case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+				// Выполняем перебор всего списка сетевых схем
+				for(auto & scheme : this->_schemes){
+					// Если кластер работает
+					if(this->_cluster.working(scheme.first))
+						// Выполняем остановку работы кластеров
+						this->_cluster.stop(scheme.first);
+				}
+			} break;
+		}
 		// Выполняем остановку работы сервера
 		node_t::stop();
+		// Выполняем очистку списка подключённых дочерних процессов
+		this->_workers.clear();
 	}
-	// Выполняем очистку списка подключённых дочерних процессов
-	this->_workers.clear();
 }
 /**
  * start Метод запуска клиента
@@ -1003,7 +1012,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 					// Если разрешено выводить информационыне уведомления
 					if(this->_verb)
 						// Выводим информацию об удачном отключении от сервера
-						this->_log->print("%s", log_t::flag_t::INFO, "Disconnect client from server");
+						this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("disconnect"))
 						// Устанавливаем полученную функцию обратного вызова
@@ -1129,14 +1138,22 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 		auto it = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->_schemes.end()){
-			// Устанавливаем базу событий кластера
-			this->_cluster.base(this->_dispatch.base);
-			// Устанавливаем флаг автоматического перезапуска упавших процессов
-			this->_cluster.restart(sid, this->_clusterAutoRestart);
-			// Если количество процессов установленно
-			if(this->_clusterSize >= 0)
-				// Выполняем инициализацию кластера
-				this->_cluster.init(sid, static_cast <uint16_t> (this->_clusterSize));
+			// Определяем режим активации кластера
+			switch(static_cast <uint8_t> (this->_clusterMode)){
+				// Если кластер необходимо активировать
+				case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+					// Устанавливаем базу событий кластера
+					this->_cluster.base(this->_dispatch.base);
+					// Устанавливаем флаг отслеживания упавших процессов
+					this->_cluster.trackCrash(this->_clusterAutoRestart);
+					// Устанавливаем флаг автоматического перезапуска упавших процессов
+					this->_cluster.restart(sid, this->_clusterAutoRestart);
+					// Если количество процессов установленно
+					if(this->_clusterSize >= 0)
+						// Выполняем инициализацию кластера
+						this->_cluster.init(sid, static_cast <uint16_t> (this->_clusterSize));
+				} break;
+			}
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если хост сервера не указан
@@ -1408,84 +1425,6 @@ void awh::server::Core::broadcast(const uint16_t wid, const char * buffer, const
 	}
 }
 /**
- * timeout Метод вызова при срабатывании таймаута
- * @param bid    идентификатор брокера
- * @param method метод режима работы
- */
-void awh::server::Core::timeout(const uint64_t bid, const engine_t::method_t method) noexcept {
-	// Если идентификатор брокера подключений существует
-	if(this->has(bid)){
-		// Создаём бъект активного брокера подключения
-		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(broker->sid());
-		// Если идентификатор схемы сети найден
-		if(it != this->_schemes.end()){
-			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
-			// Определяем тип протокола подключения
-			switch(static_cast <uint8_t> (this->_settings.family)){
-				// Если тип протокола подключения IPv4
-				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Если тип протокола подключения IPv6
-				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-					// Определяем метод на который сработал таймаут
-					switch(static_cast <uint8_t> (method)){
-						// Режим работы ЧТЕНИЕ
-						case static_cast <uint8_t> (engine_t::method_t::READ): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout read data from HOST=%s, MAC=%s", log_t::flag_t::WARNING, broker->ip().c_str(), broker->mac().c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout read data from HOST=%s, MAC=%s", broker->ip().c_str(), broker->mac().c_str()));
-						} break;
-						// Режим работы ЗАПИСЬ
-						case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout write data to HOST=%s, MAC=%s", log_t::flag_t::WARNING, broker->ip().c_str(), broker->mac().c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout write data to HOST=%s, MAC=%s", broker->ip().c_str(), broker->mac().c_str()));
-						} break;
-					}
-				} break;
-				// Если тип протокола подключения unix-сокет
-				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
-					// Определяем метод на который сработал таймаут
-					switch(static_cast <uint8_t> (method)){
-						// Режим работы ЧТЕНИЕ
-						case static_cast <uint8_t> (engine_t::method_t::READ): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout read data from HOST=%s", log_t::flag_t::WARNING, this->_settings.sockname.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout read data from HOST=%s", this->_settings.sockname.c_str()));
-						} break;
-						// Режим работы ЗАПИСЬ
-						case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-							// Выводим сообщение в лог, о таймауте подключения
-							this->_log->print("Timeout write data to HOST=%s", log_t::flag_t::WARNING, this->_settings.sockname.c_str());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::TIMEOUT, this->_fmk->format("Timeout write data to HOST=%s", this->_settings.sockname.c_str()));
-						} break;
-					}
-				} break;
-			}
-			// Останавливаем чтение данных
-			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
-			// Останавливаем запись данных
-			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-			// Выполняем отключение клиента
-			this->close(bid);
-		}
-	}
-}
-/**
  * read Метод чтения данных для брокера
  * @param bid идентификатор брокера
  */
@@ -1526,18 +1465,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 								bytes = broker->_ectx.read(buffer.get(), size);
 								// Если данные получены
 								if(bytes > 0){
-									// Если флаг ожидания входящих сообщений, активирован
-									if(broker->_timeouts.read > 0){
-										// Определяем тип активного сокета
-										switch(static_cast <uint8_t> (this->_settings.sonet)){
-											// Если тип сокета установлен как UDP
-											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Если тип сокета установлен как DTLS
-											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): break;
-											// Останавливаем таймаут ожидания на чтение из сокета
-											default: broker->_bev.timers.read.stop();
-										}
-									}
 									// Если данные считанные из буфера, больше размера ожидающего буфера
 									if((broker->_marker.read.max > 0) && (bytes >= broker->_marker.read.max)){
 										// Смещение в буфере и отправляемый размер данных
@@ -1557,26 +1484,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 									} else if(this->_callbacks.is("read"))
 										// Выводим функцию обратного вызова
 										this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, shm->id);
-									// Если флаг ожидания входящих сообщений, активирован
-									if(broker->_timeouts.read > 0){
-										// Определяем тип активного сокета
-										switch(static_cast <uint8_t> (this->_settings.sonet)){
-											// Если тип сокета установлен как UDP
-											case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Если тип сокета установлен как DTLS
-											case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-												// Выполняем установку таймаута ожидания
-												broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
-											break;
-											// Для всех остальных протоколов
-											default: {
-												// Если время ожидания чтения данных установлено
-												if(shm->wait)
-													// Запускаем работу таймера
-													broker->_bev.timers.read.start(broker->_timeouts.read * 1000);
-											}
-										}
-									}
 								// Если данные небыли получены
 								} else if(bytes <= 0) {
 									// Если чтение не выполнена, закрываем подключение
@@ -1704,9 +1611,9 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 								broker->_ectx.noblock();
 							break;
 						}
+						// Останавливаем запись данных
+						broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 					}
-					// Останавливаем запись данных
-					broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 					// Если функция обратного вызова на запись данных установлена
 					if(this->_callbacks.is("write"))
 						// Выводим функцию обратного вызова
@@ -1779,21 +1686,20 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 							else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 						}
-						// Если операционная система является Windows или количество процессов всего один
-						if(this->_cluster.count(sid) < 2)
-							// Выполняем активацию сервера
-							this->accept(1, sid);
-						// Выполняем запуск кластера
-						else {
-							// Выводим в консоль информацию
-							this->_log->print("Working in cluster mode for the UDP protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the UDP protocol is not supported PID=%d", ::getpid()));
-							// Выполняем активацию сервера
-							this->accept(1, sid);
+						// Определяем режим активации кластера
+						switch(static_cast <uint8_t> (this->_clusterMode)){
+							// Если кластер необходимо активировать
+							case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+								// Выводим в консоль информацию
+								this->_log->print("Working in cluster mode for the UDP protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the UDP protocol is not supported PID=%d", ::getpid()));
+							} break;
 						}
+						// Выполняем активацию сервера
+						this->accept(1, sid);
 						// Выходим из функции
 						return;
 					} break;
@@ -1810,14 +1716,17 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
-							// Если операционная система является Windows или количество процессов всего один
-							if(this->_cluster.count(sid) > 1){
-								// Выводим в консоль информацию
-								this->_log->print("Working in cluster mode for the DTLS protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
-								// Если функция обратного вызова установлена
-								if(this->_callbacks.is("error"))
-									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the DTLS protocol is not supported PID=%d", ::getpid()));
+							// Определяем режим активации кластера
+							switch(static_cast <uint8_t> (this->_clusterMode)){
+								// Если кластер необходимо активировать
+								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+									// Выводим в консоль информацию
+									this->_log->print("Working in cluster mode for the DTLS protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+									// Если функция обратного вызова установлена
+									if(this->_callbacks.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the DTLS protocol is not supported PID=%d", ::getpid()));
+								} break;
 							}
 							// Выполняем поиск брокера в списке активных брокеров
 							auto it = this->_brokers.find(sid);
@@ -1882,37 +1791,44 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
-							// Если операционная система является Windows или количество процессов всего один
-							if(this->_cluster.count(sid) < 2){
-								// Выполняем поиск брокера в списке активных брокеров
-								auto it = this->_brokers.find(sid);
-								// Если активный брокер найден
-								if(it != this->_brokers.end()){
-									// Устанавливаем активный сокет сервера
-									it->second->_addr.fd = shm->_addr.fd;
-									// Выполняем установку базы событий
-									it->second->base(this->_dispatch.base);
-									// Активируем получение данных с клиента
-									it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
-								// Если брокер не существует
-								} else {
-									// Выполняем блокировку потока
-									this->_mtx.accept.lock();
-									// Выполняем создание брокера подключения
-									auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
-									// Выполняем блокировку потока
-									this->_mtx.accept.unlock();
-									// Устанавливаем активный сокет сервера
-									ret.first->second->_addr.fd = shm->_addr.fd;
-									// Выполняем установку базы событий
-									ret.first->second->base(this->_dispatch.base);
-									// Выполняем установку функции обратного вызова на получении сообщений
-									ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(&core_t::accept, this, _1, _2));
-									// Активируем получение данных с клиента
-									ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
-								}
-							// Выполняем запуск кластера
-							} else this->_cluster.start(sid);
+							// Определяем режим активации кластера
+							switch(static_cast <uint8_t> (this->_clusterMode)){
+								// Если кластер необходимо активировать
+								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED):
+									// Выполняем запуск кластера
+									this->_cluster.start(sid);
+								break;
+								// Если кластер необходимо деактивировать
+								case static_cast <uint8_t> (awh::scheme_t::mode_t::DISABLED): {
+									// Выполняем поиск брокера в списке активных брокеров
+									auto it = this->_brokers.find(sid);
+									// Если активный брокер найден
+									if(it != this->_brokers.end()){
+										// Устанавливаем активный сокет сервера
+										it->second->_addr.fd = shm->_addr.fd;
+										// Выполняем установку базы событий
+										it->second->base(this->_dispatch.base);
+										// Активируем получение данных с клиента
+										it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									// Если брокер не существует
+									} else {
+										// Выполняем блокировку потока
+										this->_mtx.accept.lock();
+										// Выполняем создание брокера подключения
+										auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
+										// Выполняем блокировку потока
+										this->_mtx.accept.unlock();
+										// Устанавливаем активный сокет сервера
+										ret.first->second->_addr.fd = shm->_addr.fd;
+										// Выполняем установку базы событий
+										ret.first->second->base(this->_dispatch.base);
+										// Выполняем установку функции обратного вызова на получении сообщений
+										ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(&core_t::accept, this, _1, _2));
+										// Активируем получение данных с клиента
+										ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									}
+								} break;
+							}
 							// Выходим из функции
 							return;
 						// Если сокет не создан, выводим в консоль информацию
@@ -1990,35 +1906,6 @@ void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept 
 	}
 }
 /**
- * cluster Метод установки количества процессов кластера
- * @param size количество рабочих процессов
- */
-void awh::server::Core::cluster(const int16_t size) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Если количество воркеров установленно больше чем разрешено
-		if(size > (static_cast <int16_t> (std::thread::hardware_concurrency()) * 2))
-			// Устанавливаем количество рабочих процессов кластера
-			this->_clusterSize = static_cast <int16_t> (std::thread::hardware_concurrency());
-		// Устанавливаем количество рабочих процессов кластера
-		else this->_clusterSize = size;
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
-}
-/**
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param sid  идентификатор схемы сети
  * @param mode флаг перезапуска процессов
@@ -2032,6 +1919,55 @@ void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) 
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * cluster Метод установки количества процессов кластера
+ * @param mode флаг активации/деактивации кластера
+ * @param size количество рабочих процессов
+ */
+void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t size) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Активируем режим работы кластера
+		this->_clusterMode = mode;
+		// Определяем режим активации кластера
+		switch(static_cast <uint8_t> (mode)){
+			// Если кластер необходимо активировать
+			case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+				// Если количество процессов установлено меньше 2-х, отключаем работу кластера
+				if((size < 2) && (size != 0)){
+					// Устанавливаем количество рабочих процессов кластера
+					this->_clusterSize = -1;
+					// Деактивируем режим работы кластера
+					this->_clusterMode = awh::scheme_t::mode_t::DISABLED;
+				// Если количество воркеров установленно больше чем разрешено
+				} else if(size > (static_cast <int16_t> (std::thread::hardware_concurrency()) * 2))
+					// Устанавливаем количество рабочих процессов кластера
+					this->_clusterSize = static_cast <int16_t> (std::thread::hardware_concurrency());
+				// Устанавливаем количество рабочих процессов кластера
+				else this->_clusterSize = size;
+			} break;
+			// Если кластер необходимо деактивировать
+			case static_cast <uint8_t> (awh::scheme_t::mode_t::DISABLED):
+				// Устанавливаем количество рабочих процессов кластера
+				this->_clusterSize = -1;
+			break;
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -2161,9 +2097,12 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false) {
+ awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Отключаем отслеживание упавших процессов
+	this->_cluster.trackCrash(this->_clusterAutoRestart);
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера
@@ -2176,9 +2115,12 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false) {
+ awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Отключаем отслеживание упавших процессов
+	this->_cluster.trackCrash(this->_clusterAutoRestart);
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера

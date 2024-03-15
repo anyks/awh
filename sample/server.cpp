@@ -104,7 +104,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
-	// core.cluster();
+	// core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Отключаем валидацию сертификата
 	ssl.verify = false;
 	// Устанавливаем адрес сертификата
