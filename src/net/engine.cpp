@@ -1200,8 +1200,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				case EPROTO:
 				// Если в буфере закончились данные
 				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
 				// Если сеть отключена
 				case ENETDOWN:
 				// Если сокет не является сокетом
@@ -1443,8 +1441,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				case EPROTO:
 				// Если в буфере закончились данные
 				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
 				// Если сеть отключена
 				case ENETDOWN:
 				// Если сокет не является сокетом
