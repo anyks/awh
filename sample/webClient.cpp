@@ -254,8 +254,8 @@ int main(int argc, char * argv[]){
 	// awh.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// awh.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
 	// awh.proxy("socks5://127.0.0.1:2222");
-	// awh.proxy("socks5://test1:test@127.0.0.1:2222");
-	// awh.proxy("http://test1:password@127.0.0.1:2222");
+	// awh.proxy("socks5://user:password@127.0.0.1:2222");
+	// awh.proxy("http://user:password@127.0.0.1:2222");
 	// awh.proxy("http://127.0.0.1:2222");
 	// awh.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);

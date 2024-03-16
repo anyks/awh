@@ -2592,7 +2592,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						/**
 						 * Типы основных заголовков
 						 */
-						bool available[14] = {
+						bool available[15] = {
 							false, // te
 							false, // Host
 							false, // Accept
@@ -2606,6 +2606,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							false, // Content-Encoding
 							false, // Transfer-Encoding
 							false, // X-AWH-Encryption
+							false, // Authorization
 							false  // Proxy-Authorization
 						};
 						// Размер тела сообщения
@@ -2628,20 +2629,20 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									continue;
 								// Выполняем првоерку заголовка
 								switch(i){
-									case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;
-									case 1:  available[i] = this->_fmk->compare(header.first, "host");                  break;
-									case 2:  available[i] = this->_fmk->compare(header.first, "accept");                break;
-									case 3:  available[i] = this->_fmk->compare(header.first, "origin");                break;
-									case 4:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
-									case 5:  available[i] = this->_fmk->compare(header.first, "connection");            break;
-									case 6:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
-									case 8:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
-									case 9:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
-									case 10: available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
-									case 11: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
-									case 12: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
-									case 13: available[i] = (this->_fmk->compare(header.first, "authorization") ||
-															 this->_fmk->compare(header.first, "proxy-authorization")); break;
+									case 0:  available[i] = this->_fmk->compare(header.first, "te");                  break;
+									case 1:  available[i] = this->_fmk->compare(header.first, "host");                break;
+									case 2:  available[i] = this->_fmk->compare(header.first, "accept");              break;
+									case 3:  available[i] = this->_fmk->compare(header.first, "origin");              break;
+									case 4:  available[i] = this->_fmk->compare(header.first, "user-agent");          break;
+									case 5:  available[i] = this->_fmk->compare(header.first, "connection");          break;
+									case 6:  available[i] = this->_fmk->compare(header.first, "proxy-connection");    break;
+									case 8:  available[i] = this->_fmk->compare(header.first, "accept-language");     break;
+									case 9:  available[i] = this->_fmk->compare(header.first, "accept-encoding");     break;
+									case 10: available[i] = this->_fmk->compare(header.first, "content-encoding");    break;
+									case 11: available[i] = this->_fmk->compare(header.first, "transfer-encoding");   break;
+									case 12: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");    break;
+									case 13: available[i] = this->_fmk->compare(header.first, "authorization");       break;
+									case 14: available[i] = this->_fmk->compare(header.first, "proxy-authorization"); break;
 									case 7: {
 										// Запоминаем, что мы нашли заголовок размера тела
 										available[i] = this->_fmk->compare(header.first, "content-length");
@@ -2855,7 +2856,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							request.append(this->_fmk->format("User-Agent: %s\r\n", this->_userAgent.c_str()));
 						}
 						// Если заголовок авторизации не передан
-						if(!available[13]){
+						if(!available[13] && (this->_identity != identity_t::PROXY)){
 							// Метод HTTP-запроса
 							string method = "";
 							// Определяем метод запроса
@@ -2879,32 +2880,49 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если метод запроса указан как CONNECT
 								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
 							}
-							// Выполняем определения протокола модуля
-							switch(static_cast <uint8_t> (this->_identity)){
-								// Если протокол принадлежит прокси-серверу
-								case static_cast <uint8_t> (identity_t::PROXY): {
-									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->is(suite_t::BLACK, "Proxy-Authorization")){
-										// Получаем параметры авторизации
-										const string & auth = this->_auth.client.auth(method);
-										// Если данные авторизации получены
-										if(!auth.empty())
-											// Выполняем установку параметров авторизации
-											request.append(this->_fmk->format("Proxy-Authorization: %s\r\n", auth.c_str()));
-									}
-								} break;
-								// Если протокол принадлежит к остальным сервисам
-								default: {
-									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->is(suite_t::BLACK, "Authorization")){
-										// Получаем параметры авторизации
-										const string & auth = this->_auth.client.auth(method);
-										// Если данные авторизации получены
-										if(!auth.empty())
-											// Выполняем установку параметров авторизации
-											request.append(this->_fmk->format("Authorization: %s\r\n", auth.c_str()));
-									}
-								}
+							// Если заголовок авторизации на прокси-сервере не запрещён
+							if(!this->is(suite_t::BLACK, "Authorization")){
+								// Получаем параметры авторизации
+								const string & auth = this->_auth.client.auth(method);
+								// Если данные авторизации получены
+								if(!auth.empty())
+									// Выполняем установку параметров авторизации
+									request.append(this->_fmk->format("Authorization: %s\r\n", auth.c_str()));
+							}
+						}
+						// Если заголовок авторизации на прокси-сервере не передан
+						if(!available[14] && (this->_identity == identity_t::PROXY)){
+							// Метод HTTP-запроса
+							string method = "";
+							// Определяем метод запроса
+							switch(static_cast <uint8_t> (req.method)){
+								// Если метод запроса указан как GET
+								case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
+								// Если метод запроса указан как PUT
+								case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
+								// Если метод запроса указан как POST
+								case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
+								// Если метод запроса указан как HEAD
+								case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
+								// Если метод запроса указан как DELETE
+								case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+								// Если метод запроса указан как PATCH
+								case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+								// Если метод запроса указан как TRACE
+								case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
+								// Если метод запроса указан как OPTIONS
+								case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
+								// Если метод запроса указан как CONNECT
+								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
+							}
+							// Если заголовок авторизации на прокси-сервере не запрещён
+							if(!this->is(suite_t::BLACK, "Proxy-Authorization")){
+								// Получаем параметры авторизации
+								const string & auth = this->_auth.client.auth(method);
+								// Если данные авторизации получены
+								if(!auth.empty())
+									// Выполняем установку параметров авторизации
+									request.append(this->_fmk->format("Proxy-Authorization: %s\r\n", auth.c_str()));
 							}
 						}
 						// Если нужно вставить заголовок TE и он не находится в чёрном списке
@@ -3539,7 +3557,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						/**
 						 * Типы основных заголовков
 						 */
-						bool available[14] = {
+						bool available[15] = {
 							false, // te
 							false, // Host
 							false, // Accept
@@ -3553,6 +3571,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							false, // Content-Encoding
 							false, // Transfer-Encoding
 							false, // X-AWH-Encryption
+							false, // authorization
 							false  // Proxy-Authorization
 						};
 						// Устанавливаем парарметры запроса
@@ -3575,21 +3594,21 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										continue;
 									// Выполняем првоерку заголовка
 									switch(i){
-										case 0:  available[i] = this->_fmk->compare(header.first, "te");                    break;
-										case 1:  available[i] = this->_fmk->compare(header.first, "host");                  break;
-										case 2:  available[i] = this->_fmk->compare(header.first, "accept");                break;
-										case 3:  available[i] = this->_fmk->compare(header.first, "origin");                break;
-										case 4:  available[i] = this->_fmk->compare(header.first, "user-agent");            break;
-										case 5:  available[i] = this->_fmk->compare(header.first, "connection");            break;
-										case 6:  available[i] = this->_fmk->compare(header.first, "proxy-connection");      break;
-										case 7:  available[i] = this->_fmk->compare(header.first, "content-length");        break;
-										case 8:  available[i] = this->_fmk->compare(header.first, "accept-language");       break;
-										case 9:  available[i] = this->_fmk->compare(header.first, "accept-encoding");       break;
-										case 10: available[i] = this->_fmk->compare(header.first, "content-encoding");      break;
-										case 11: available[i] = this->_fmk->compare(header.first, "transfer-encoding");     break;
-										case 12: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");      break;
-										case 13: available[i] = (this->_fmk->compare(header.first, "authorization") ||
-																 this->_fmk->compare(header.first, "proxy-authorization")); break;
+										case 0:  available[i] = this->_fmk->compare(header.first, "te");                  break;
+										case 1:  available[i] = this->_fmk->compare(header.first, "host");                break;
+										case 2:  available[i] = this->_fmk->compare(header.first, "accept");              break;
+										case 3:  available[i] = this->_fmk->compare(header.first, "origin");              break;
+										case 4:  available[i] = this->_fmk->compare(header.first, "user-agent");          break;
+										case 5:  available[i] = this->_fmk->compare(header.first, "connection");          break;
+										case 6:  available[i] = this->_fmk->compare(header.first, "proxy-connection");    break;
+										case 7:  available[i] = this->_fmk->compare(header.first, "content-length");      break;
+										case 8:  available[i] = this->_fmk->compare(header.first, "accept-language");     break;
+										case 9:  available[i] = this->_fmk->compare(header.first, "accept-encoding");     break;
+										case 10: available[i] = this->_fmk->compare(header.first, "content-encoding");    break;
+										case 11: available[i] = this->_fmk->compare(header.first, "transfer-encoding");   break;
+										case 12: available[i] = this->_fmk->compare(header.first, "x-awh-encryption");    break;
+										case 13: available[i] = this->_fmk->compare(header.first, "authorization");       break;
+										case 14: available[i] = this->_fmk->compare(header.first, "proxy-authorization"); break;
 									}
 									// Если заголовок разрешён для вывода
 									if(allow){
@@ -3750,7 +3769,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							result.push_back(make_pair("user-agent", this->_userAgent));
 						}
 						// Если заголовок авторизации не передан
-						if(!available[13]){
+						if(!available[13] && (this->_identity != identity_t::PROXY)){
 							// Метод HTTP-запроса
 							string method = "";
 							// Определяем метод запроса
@@ -3774,32 +3793,49 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если метод запроса указан как CONNECT
 								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
 							}
-							// Выполняем определения протокола модуля
-							switch(static_cast <uint8_t> (this->_identity)){
-								// Если протокол принадлежит прокси-серверу
-								case static_cast <uint8_t> (identity_t::PROXY): {
-									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->is(suite_t::BLACK, "proxy-authorization")){
-										// Получаем параметры авторизации
-										const string & auth = this->_auth.client.auth(method);
-										// Если данные авторизации получены
-										if(!auth.empty())
-											// Выполняем установку заголовка
-											result.push_back(make_pair("proxy-authorization", auth));
-									}
-								} break;
-								// Если протокол принадлежит к остальным сервисам
-								default: {
-									// Если заголовок авторизации на прокси-сервере не запрещён
-									if(!this->is(suite_t::BLACK, "authorization")){
-										// Получаем параметры авторизации
-										const string & auth = this->_auth.client.auth(method);
-										// Если данные авторизации получены
-										if(!auth.empty())
-											// Выполняем установку заголовка
-											result.push_back(make_pair("authorization", auth));
-									}
-								}
+							// Если заголовок авторизации на прокси-сервере не запрещён
+							if(!this->is(suite_t::BLACK, "authorization")){
+								// Получаем параметры авторизации
+								const string & auth = this->_auth.client.auth(method);
+								// Если данные авторизации получены
+								if(!auth.empty())
+									// Выполняем установку заголовка
+									result.push_back(make_pair("authorization", auth));
+							}
+						}
+						// Если заголовок авторизации на прокси-сервере не передан
+						if(!available[14] && (this->_identity == identity_t::PROXY)){
+							// Метод HTTP-запроса
+							string method = "";
+							// Определяем метод запроса
+							switch(static_cast <uint8_t> (req.method)){
+								// Если метод запроса указан как GET
+								case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
+								// Если метод запроса указан как PUT
+								case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
+								// Если метод запроса указан как POST
+								case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
+								// Если метод запроса указан как HEAD
+								case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
+								// Если метод запроса указан как DELETE
+								case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+								// Если метод запроса указан как PATCH
+								case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+								// Если метод запроса указан как TRACE
+								case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
+								// Если метод запроса указан как OPTIONS
+								case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
+								// Если метод запроса указан как CONNECT
+								case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
+							}
+							// Если заголовок авторизации на прокси-сервере не запрещён
+							if(!this->is(suite_t::BLACK, "proxy-authorization")){
+								// Получаем параметры авторизации
+								const string & auth = this->_auth.client.auth(method);
+								// Если данные авторизации получены
+								if(!auth.empty())
+									// Выполняем установку заголовка
+									result.push_back(make_pair("proxy-authorization", auth));
 							}
 						}
 						// Если нужно вставить заголовок TE и он не находится в чёрном списке
