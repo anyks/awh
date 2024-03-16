@@ -38,7 +38,7 @@ class Executor {
 		 * @param tid   идентификатор таймера
 		 * @param timer объект таймера
 		 */
-		void interval(const u_short tid, timer_t * timer){
+		void interval(const u_short tid, awh::timer_t * timer){
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Выводим информацию в лог
@@ -66,7 +66,7 @@ class Executor {
 		 * @param status флаг запуска сетевого ядра
 		 * @param timer  объект таймера
 		 */
-		void run(const awh::core_t::status_t status, timer_t * timer){
+		void run(const awh::core_t::status_t status, awh::timer_t * timer){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -115,7 +115,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	Executor executor(&log);
 	// Создаём объект таймера
-	timer_t timer(&fmk, &log);
+	awh::timer_t timer(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Timer");
 	// Устанавливаем формат времени
