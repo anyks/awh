@@ -28,7 +28,6 @@
 - [LibXML2](http://xmlsoft.org/html)
 - [JeMalloc](https://jemalloc.net)
 - [NgHttp2](https://nghttp2.org/documentation/)
-# !!! - [NgHttp3](https://nghttp2.org/nghttp3/programmers-guide.html)) !!!
 - [NgTCP2](https://nghttp2.org/ngtcp2/programmers-guide.html)
 - [Libev-Win](https://github.com/disenone/libev-win)
 - [LibEvent2](https://libevent.org)
