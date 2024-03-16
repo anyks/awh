@@ -135,7 +135,7 @@ if(Dependence_FOUND)
     message(STATUS "PCRE2 include dir found: " ${PCRE_INCLUDE_DIR})
     message(STATUS "NgTCP2 include dir found: " ${NGTCP2_INCLUDE_DIR})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
-    message(STATUS "NgHttp3 include dir found: " ${NGHTTP3_INCLUDE_DIR})
+    #message(STATUS "NgHttp3 include dir found: " ${NGHTTP3_INCLUDE_DIR})
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
