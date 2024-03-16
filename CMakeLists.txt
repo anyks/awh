@@ -254,7 +254,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web2.cpp"
