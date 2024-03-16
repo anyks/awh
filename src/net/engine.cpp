@@ -137,7 +137,7 @@ bool awh::Engine::Address::list() noexcept {
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
-					this->_socket.eventsSCTP(this->fd);
+					this->_socket.events(this->fd);
 					/**
 					 * Создаём BIO, чтобы установить все необходимые параметры для
 					 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
@@ -225,7 +225,7 @@ bool awh::Engine::Address::connect() noexcept {
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
-				this->_socket.eventsSCTP(this->fd);
+				this->_socket.events(this->fd);
 		#endif
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if((this->_peer.size > 0) && (::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
