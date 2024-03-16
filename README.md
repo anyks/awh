@@ -20,7 +20,7 @@
 - [Brotli](https://brotli.org)
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [PCRE](https://www.pcre.org)
+- [PCRE2](https://www.pcre.org)
 - [OpenSSL](https://www.openssl.org)
 - [CityHash](https://github.com/google/cityhash)
 - [LibIconv](https://www.gnu.org/software/libiconv)
