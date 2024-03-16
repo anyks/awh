@@ -40,11 +40,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Если процесс является дочерним
 						if(this->_pid != ::getpid()){
 							// Выводим в консоль информацию
-							this->_log->print("Working in child processes for the UDP protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+							this->_log->print("Working in child processes for \"UDP-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for the UDP protocol is not supported PID=%d", ::getpid()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for \"UDP-protocol\" is not supported PID=%d", ::getpid()));
 							// Выходим
 							break;
 						// Выполняем остановку работы получения запроса на подключение
@@ -164,11 +164,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
 							// Выводим в консоль информацию
-							this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
+							this->_log->print("Number of simultaneous connections, cannot exceed maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed maximum allowed number of %d", shm->_total));
 							// Выходим
 							break;
 						}
@@ -181,11 +181,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Деактивируем получение данных с клиента
 								it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 							// Выводим в консоль информацию
-							this->_log->print("Working in child processes for the DTLS protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+							this->_log->print("Working in child processes for \"DTLS-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for the DTLS protocol is not supported PID=%d", ::getpid()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for \"DTLS-protocol\" is not supported PID=%d", ::getpid()));
 							// Выходим
 							break;
 						// Выполняем остановку работы получения запроса на подключение
@@ -266,11 +266,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
 							// Выводим в консоль информацию
-							this->_log->print("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
+							this->_log->print("Number of simultaneous connections, cannot exceed maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed the maximum allowed number of %d", shm->_total));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed maximum allowed number of %d", shm->_total));
 							// Выходим
 							break;
 						}
@@ -327,13 +327,15 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 									if(broker->port() > 0){
 										// Выводим сообщение об ошибке
 										this->_log->print(
-											"Access to the server is denied for the client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+											"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
 											log_t::flag_t::WARNING,
+											this->host(sid).c_str(),
+											this->port(sid),
+											::getpid(),
 											broker->ip().c_str(),
 											broker->port(),
 											broker->mac().c_str(),
-											broker->_addr.fd,
-											::getpid()
+											broker->_addr.fd
 										);
 										// Если функция обратного вызова установлена
 										if(this->_callbacks.is("error"))
@@ -343,24 +345,28 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 												log_t::flag_t::WARNING,
 												error_t::ACCEPT,
 												this->_fmk->format(
-													"Access to the server is denied for the client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+													"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+													this->host(sid).c_str(),
+													this->port(sid),
+													::getpid(),
 													broker->ip().c_str(),
 													broker->port(),
 													broker->mac().c_str(),
-													broker->_addr.fd,
-													::getpid()
+													broker->_addr.fd
 												)
 											);
 									// Если порт не установлен
 									} else {
 										// Выводим сообщение об ошибке
 										this->_log->print(
-											"Access to the server is denied for the client [%s], MAC=%s, SOCKET=%d, PID=%d",
+											"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
 											log_t::flag_t::WARNING,
+											this->host(sid).c_str(),
+											this->port(sid),
+											::getpid(),
 											broker->ip().c_str(),
 											broker->mac().c_str(),
-											broker->_addr.fd,
-											::getpid()
+											broker->_addr.fd
 										);
 										// Если функция обратного вызова установлена
 										if(this->_callbacks.is("error"))
@@ -370,11 +376,13 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 												log_t::flag_t::WARNING,
 												error_t::ACCEPT,
 												this->_fmk->format(
-													"Access to the server is denied for the client [%s], MAC=%s, SOCKET=%d, PID=%d",
+													"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+													this->host(sid).c_str(),
+													this->port(sid),
+													::getpid(),
 													broker->ip().c_str(),
 													broker->mac().c_str(),
-													broker->_addr.fd,
-													::getpid()
+													broker->_addr.fd
 												)
 											);
 									}
@@ -432,22 +440,28 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 									if(ret.first->second->port() > 0){
 										// Выводим в консоль информацию
 										this->_log->print(
-											"Connect to server client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+											"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
 											log_t::flag_t::INFO,
 											ret.first->second->ip().c_str(),
 											ret.first->second->port(),
 											ret.first->second->mac().c_str(),
-											ret.first->second->_addr.fd, ::getpid()
+											ret.first->second->_addr.fd,
+											this->host(sid).c_str(),
+											this->port(sid),
+											::getpid()
 										);
 									// Если порт не установлен
 									} else {
 										// Выводим в консоль информацию
 										this->_log->print(
-											"Connect to server client [%s], MAC=%s, SOCKET=%d, PID=%d",
+											"Connected client [%s] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
 											log_t::flag_t::INFO,
 											ret.first->second->ip().c_str(),
 											ret.first->second->mac().c_str(),
-											ret.first->second->_addr.fd, ::getpid()
+											ret.first->second->_addr.fd,
+											this->host(sid).c_str(),
+											this->port(sid),
+											::getpid()
 										);
 									}
 								}
@@ -533,13 +547,15 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 								if(broker->port() > 0){
 									// Выводим сообщение об ошибке
 									this->_log->print(
-										"Access to the server is denied for the client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+										"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
 										log_t::flag_t::WARNING,
+										this->host(sid).c_str(),
+										this->port(sid),
+										::getpid(),
 										broker->ip().c_str(),
 										broker->port(),
 										broker->mac().c_str(),
-										broker->_addr.fd,
-										::getpid()
+										broker->_addr.fd
 									);
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("error"))
@@ -549,24 +565,28 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
 											this->_fmk->format(
-												"Access to the server is denied for the client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+												"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+												this->host(sid).c_str(),
+												this->port(sid),
+												::getpid(),
 												broker->ip().c_str(),
 												broker->port(),
 												broker->mac().c_str(),
-												broker->_addr.fd,
-												::getpid()
+												broker->_addr.fd
 											)
 										);
 								// Если порт не установлен
 								} else {
 									// Выводим сообщение об ошибке
 									this->_log->print(
-										"Access to the server is denied for the client [%s], MAC=%s, SOCKET=%d, PID=%d",
+										"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
 										log_t::flag_t::WARNING,
+										this->host(sid).c_str(),
+										this->port(sid),
+										::getpid(),
 										broker->ip().c_str(),
 										broker->mac().c_str(),
-										broker->_addr.fd,
-										::getpid()
+										broker->_addr.fd
 									);
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("error"))
@@ -576,11 +596,13 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 											log_t::flag_t::WARNING,
 											error_t::ACCEPT,
 											this->_fmk->format(
-												"Access to the server is denied for the client [%s], MAC=%s, SOCKET=%d, PID=%d",
+												"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+												this->host(sid).c_str(),
+												this->port(sid),
+												::getpid(),
 												broker->ip().c_str(),
 												broker->mac().c_str(),
-												broker->_addr.fd,
-												::getpid()
+												broker->_addr.fd
 											)
 										);
 								}
@@ -597,22 +619,28 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 								if(broker->port() > 0){
 									// Выводим в консоль информацию
 									this->_log->print(
-										"Connect to server client [%s:%d], MAC=%s, SOCKET=%d, PID=%d",
+										"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
 										log_t::flag_t::INFO,
 										broker->ip().c_str(),
 										broker->port(),
 										broker->mac().c_str(),
-										broker->_addr.fd, ::getpid()
+										broker->_addr.fd,
+										this->host(sid).c_str(),
+										this->port(sid),
+										::getpid()
 									);
 								// Если порт не установлен
 								} else {
 									// Выводим в консоль информацию
 									this->_log->print(
-										"Connect to server client [%s], MAC=%s, SOCKET=%d, PID=%d",
+										"Connected client [%s], MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
 										log_t::flag_t::INFO,
 										broker->ip().c_str(),
 										broker->mac().c_str(),
-										broker->_addr.fd, ::getpid()
+										broker->_addr.fd,
+										this->host(sid).c_str(),
+										this->port(sid),
+										::getpid()
 									);
 								}
 							}
@@ -1378,11 +1406,11 @@ void awh::server::Core::send(const uint16_t wid, const char * buffer, const size
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
-			this->_log->print("Send message is only available from the children process", log_t::flag_t::WARNING);
+			this->_log->print("Send message is only available from children process", log_t::flag_t::WARNING);
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from the children process");
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from children process");
 		} break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
@@ -1409,11 +1437,11 @@ void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * b
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
-			this->_log->print("Send message is only available from the master process", log_t::flag_t::WARNING);
+			this->_log->print("Send message is only available from master process", log_t::flag_t::WARNING);
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from the master process");
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from master process");
 		} break;
 	}
 }
@@ -1434,11 +1462,11 @@ void awh::server::Core::broadcast(const uint16_t wid, const char * buffer, const
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
-			this->_log->print("Broadcast message is only available from the master process", log_t::flag_t::WARNING);
+			this->_log->print("Broadcast message is only available from master process", log_t::flag_t::WARNING);
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Broadcast is only available from the master process");
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Broadcast is only available from master process");
 		} break;
 	}
 }
@@ -1709,11 +1737,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 							// Если кластер необходимо активировать
 							case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
 								// Выводим в консоль информацию
-								this->_log->print("Working in cluster mode for the UDP protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+								this->_log->print("Working in cluster mode for \"UDP-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the UDP protocol is not supported PID=%d", ::getpid()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for \"UDP-protocol\" is not supported PID=%d", ::getpid()));
 							} break;
 						}
 						// Выполняем активацию сервера
@@ -1739,11 +1767,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								// Если кластер необходимо активировать
 								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
 									// Выводим в консоль информацию
-									this->_log->print("Working in cluster mode for the DTLS protocol is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
+									this->_log->print("Working in cluster mode for \"DTLS-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for the DTLS protocol is not supported PID=%d", ::getpid()));
+										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for \"DTLS-protocol\" is not supported PID=%d", ::getpid()));
 								} break;
 							}
 							// Выполняем поиск брокера в списке активных брокеров

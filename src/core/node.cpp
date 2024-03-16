@@ -285,7 +285,7 @@ void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 		// Если установлен протокол SCTP
 		if(this->_settings.sonet == scheme_t::sonet_t::SCTP){
 			// Выводим в лог сообщение
-			this->_log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
+			this->_log->print("\"SCTP-protocol\" is allowed to be used only in Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
 			// Выходим принудительно из приложения
 			::exit(EXIT_FAILURE);
 		}

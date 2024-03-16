@@ -170,7 +170,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если разрешено выводить информационные сообщения
 							if(this->_verb)
 								// Выводим сообщение об ошибке
-								this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
+								this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -196,7 +196,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если разрешено выводить информационные сообщения
 							if(this->_verb)
 								// Выводим сообщение об ошибке
-								this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
+								this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
@@ -389,7 +389,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(this->_verb)
 						// Выводим сообщение об ошибке
-						this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
+						this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("disconnect"))
 						// Выполняем функцию обратного вызова
@@ -955,7 +955,7 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 			// Если разрешено выводить информационные сообщения
 			if(this->_verb)
 				// Выводим сообщение об ошибке
-				this->_log->print("Disconnected from the server", log_t::flag_t::INFO);
+				this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 			// Выполняем функцию обратного вызова дисконнекта
 			callback.bind("disconnect");
 			// Если функция реконнекта установлена
