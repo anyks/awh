@@ -1226,7 +1226,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					case EOPNOTSUPP:
 				#endif
 				/**
-				 * Если мы работаем в MacOS X
+				 * Если мы работаем не в MS Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если хост не существует
@@ -1479,7 +1479,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					case EOPNOTSUPP:
 				#endif
 				/**
-				 * Если мы работаем в MacOS X
+				 * Если мы работаем не в MS Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если хост не существует
