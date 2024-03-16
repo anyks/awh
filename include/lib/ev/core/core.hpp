@@ -72,19 +72,6 @@ namespace awh {
 				STOP  = 0x02, // Статус остановки
 				START = 0x01  // Статус запуска
 			};
-			/**
-			 * Коды ошибок клиента
-			 */
-			enum class error_t : uint8_t {
-				NONE      = 0x00, // Ошибка не установлена
-				START     = 0x01, // Ошибка запуска приложения
-				ACCEPT    = 0x02, // Ошибка разрешения подключения
-				TIMEOUT   = 0x03, // Подключение завершено по таймауту
-				CONNECT   = 0x04, // Ошибка подключения
-				CLUSTER   = 0x05, // Ошибка работы кластера
-				PROTOCOL  = 0x06, // Ошибка активации протокола
-				OS_BROKEN = 0x07  // Ошибка неподдерживаемой ОС
-			};
 		protected:
 			/**
 			 * Mutex Объект основных мютексов
@@ -102,12 +89,6 @@ namespace awh {
 			 * Dispatch Класс работы с событиями
 			 */
 			typedef class Dispatch {
-				private:
-					// Core Устанавливаем дружбу с классом ядра
-					friend class Core;
-				private:
-					// Объект ядра
-					Core * _core;
 				private:
 					// Флаг простого чтения базы событий
 					bool _easy;
@@ -133,6 +114,9 @@ namespace awh {
 					function <void (const bool, const bool)> _launching;
 					// Функция обратного вызова при остановки модуля
 					function <void (const bool, const bool)> _closedown;
+				private:
+					// Создаём объект работы с логами
+					const log_t * _log;
 				private:
 					/**
 					 * Если операционной системой является Windows
@@ -177,10 +161,17 @@ namespace awh {
 					void frequency(const uint8_t msec = 10) noexcept;
 				public:
 					/**
-					 * Dispatch Конструктор
-					 * @param core объект сетевого ядра
+					 * on Метод установки функции обратного вызова
+					 * @param status   статус которому соответствует функция
+					 * @param callback функция обратного вызова
 					 */
-					Dispatch(Core * core) noexcept;
+					void on(const status_t status, function <void (const bool, const bool)> callback) noexcept;
+				public:
+					/**
+					 * Dispatch Конструктор
+					 * @param log объект для работы с логами
+					 */
+					Dispatch(const log_t * log) noexcept;
 					/**
 					 * ~Dispatch Деструктор
 					 */
@@ -341,11 +332,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Core(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(::getpid()), _mode(false), _verb(true), _cores(0),
-			 _callbacks(log), _dispatch(this), _sig(_dispatch.base),
-			 _status(status_t::STOP), _type(engine_t::type_t::NONE),
-			 _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {}
+			Core(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

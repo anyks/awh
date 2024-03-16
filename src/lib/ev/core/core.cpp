@@ -40,9 +40,12 @@ void awh::Core::Dispatch::stop() noexcept {
 		// Выполняем пинок
 		this->kick();
 	// Если модуль не инициализирован
-	} else if(!this->_init)
-		// Выполняем остановку функции активации базы событий
-		this->_closedown(true, false);
+	} else if(!this->_init) {
+		// Если функция обратного вызова установлена
+		if(this->_closedown != nullptr)
+			// Выполняем остановку функции активации базы событий
+			this->_closedown(true, false);
+	}
 }
 /**
  * start Метод запуска чтения базы событий
@@ -56,8 +59,10 @@ void awh::Core::Dispatch::start() noexcept {
 		this->_work = !this->_work;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Выполняем запуск функции активации базы событий
-		this->_launching(true, true);
+		// Если функция обратного вызова установлена
+		if(this->_launching != nullptr)
+			// Выполняем запуск функции активации базы событий
+			this->_launching(true, true);
 		// Выполняем чтение базы событий пока это разрешено
 		while(this->_work){
 			// Если база событий проинициализированна
@@ -76,30 +81,25 @@ void awh::Core::Dispatch::start() noexcept {
 				 * Если возникает ошибка
 				 */
 				} catch(const exception & error) {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						this->_core->_log->print("%s", log_t::flag_t::WARNING, error.what());
-						// Если функция обратного вызова установлена
-						if(this->_core->_callbacks.is("error"))
-							// Выполняем функцию обратного вызова
-							this->_core->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, error.what());
-					#endif
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				}
 			}
 			// Замораживаем поток на период времени частоты обновления базы событий
 			this_thread::sleep_for(this->_freq);
 		}
-		// Выполняем остановку функции активации базы событий
-		this->_closedown(true, true);
+		// Если функция обратного вызова установлена
+		if(this->_closedown != nullptr)
+			// Выполняем остановку функции активации базы событий
+			this->_closedown(true, true);
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Выполняем запуск функции активации базы событий
-		this->_launching(true, false);
+		// Если функция обратного вызова установлена
+		if(this->_launching != nullptr)
+			// Выполняем запуск функции активации базы событий
+			this->_launching(true, false);
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -211,12 +211,32 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 	}
 }
 /**
- * Dispatch Конструктор
- * @param core объект сетевого ядра
+ * on Метод установки функции обратного вызова
+ * @param status   статус которому соответствует функция
+ * @param callback функция обратного вызова
  */
-awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
- _core(core), _easy(false), _work(false), _init(false), _virt(false),
- _freeze(false), base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
+void awh::Core::Dispatch::on(const status_t status, function <void (const bool, const bool)> callback) noexcept {
+	// Определяем статус которому соответствует функции
+	switch(static_cast <uint8_t> (status)){
+		// Если статус функции соответствует запуску базы событий
+		case static_cast <uint8_t> (status_t::START):
+			// Выполняем установку функции активации базы событий
+			this->_launching = callback;
+		break;
+		// Если статус функции соответствует остановки базы событий
+		case static_cast <uint8_t> (status_t::STOP):
+			// Выполняем установку функции активации базы событий
+			this->_closedown = callback;
+		break;
+	}
+}
+/**
+ * Dispatch Конструктор
+ * @param log объект для работы с логами
+ */
+awh::Core::Dispatch::Dispatch(const log_t * log) noexcept :
+ _easy(false), _work(false), _init(false), _virt(false), _freeze(false),
+ base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr), _log(log) {
 	// Выполняем получение базы событий
 	struct ev_loop * base = ev_default_loop_uc_();
 	// Если база событий ещё не проинициализированна
@@ -253,10 +273,6 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept :
 		// Выполняем установку базы событий
 		this->base = ev::loop_ref(base);
 	}
-	// Выполняем установку функции активации базы событий
-	this->_launching = std::bind(&awh::Core::launching, this->_core, _1, _2);
-	// Выполняем установку функции активации базы событий
-	this->_closedown = std::bind(&awh::Core::closedown, this->_core, _1, _2);
 }
 /**
  * ~Dispatch Деструктор
@@ -581,6 +597,21 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 			} break;
 		}
 	}
+}
+/**
+ * Core Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
+ _pid(::getpid()), _mode(false), _verb(true), _cores(0),
+ _callbacks(log), _dispatch(log), _sig(_dispatch.base),
+ _status(status_t::STOP), _type(engine_t::type_t::NONE),
+ _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
+	// Выполняем установку функции активации базы событий
+	this->_dispatch.on(status_t::START, std::bind(&awh::Core::launching, this, _1, _2));
+	// Выполняем установку функции деактивации базы событий
+	this->_dispatch.on(status_t::STOP, std::bind(&awh::Core::closedown, this, _1, _2));
 }
 /**
  * ~Core Деструктор

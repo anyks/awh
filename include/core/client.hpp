@@ -37,6 +37,17 @@ namespace awh {
 		 * Core Класс клиентского сетевого ядра
 		 */
 		typedef class Core : public awh::node_t {
+			public:
+				/**
+				 * Коды ошибок клиента
+				 */
+				enum class error_t : uint8_t {
+					NONE      = 0x00, // Ошибка не установлена
+					START     = 0x01, // Ошибка запуска приложения
+					CONNECT   = 0x02, // Ошибка подключения
+					PROTOCOL  = 0x03, // Ошибка активации протокола
+					OS_BROKEN = 0x04  // Ошибка неподдерживаемой ОС
+				};
 			private:
 				/**
 				 * Mutex Структура основных мютексов

@@ -48,6 +48,16 @@ namespace awh {
 		 * Core Класс клиентского ядра биндинга TCP/IP
 		 */
 		typedef class Core : public awh::core_t {
+			public:
+				/**
+				 * Коды ошибок клиента
+				 */
+				enum class error_t : uint8_t {
+					NONE      = 0x00, // Ошибка не установлена
+					START     = 0x01, // Ошибка запуска приложения
+					CLUSTER   = 0x02, // Ошибка работы кластера
+					OS_BROKEN = 0x03  // Ошибка неподдерживаемой ОС
+				};
 			private:
 				// Идентификатор активного дочернего прцоесса
 				pid_t _pid;
