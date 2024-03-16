@@ -1210,10 +1210,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				case ENOTCONN:
 				// Если подключение сброшено
 				case ENETRESET:
-				// Если хост не существует
-				case EHOSTDOWN:
-				// Если сокет отключён
-				case ESHUTDOWN:
 				// Если произведён сброс подключения
 				case ETIMEDOUT:
 				// Если операция отменена
@@ -1229,12 +1225,23 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Если операция не поддерживается сокетом
 					case EOPNOTSUPP:
 				#endif
+				/**
+				 * Если мы работаем в MacOS X
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если хост не существует
+					case EHOSTDOWN:
+					// Если сокет отключён
+					case ESHUTDOWN:
+					// Если протокол не поддерживается
+					case EPFNOSUPPORT:
+					// Если тип сокета не поддерживается
+					case ESOCKTNOSUPPORT:
+				#endif
 				// Если протокол не поддерживается
 				case ENOPROTOOPT:
 				// Если сеть недоступна
 				case ENETUNREACH:
-				// Если протокол не поддерживается
-				case EPFNOSUPPORT:
 				// Если протокол подключения не поддерживается
 				case EAFNOSUPPORT:
 				// Если роутинг к хосту не существует
@@ -1246,9 +1253,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Если в соединении отказанно
 				case ECONNREFUSED:
 				// Если протокол не поддерживается
-				case EPROTONOSUPPORT:
-				// Если тип сокета не поддерживается
-				case ESOCKTNOSUPPORT: {
+				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
 					this->_log->print("READ: %s", log_t::flag_t::WARNING, ::strerror(errno));
 					// Требуем завершения работы
@@ -1458,10 +1463,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				case ENOTCONN:
 				// Если подключение сброшено
 				case ENETRESET:
-				// Если хост не существует
-				case EHOSTDOWN:
-				// Если сокет отключён
-				case ESHUTDOWN:
 				// Если произведён сброс подключения
 				case ETIMEDOUT:
 				// Если операция отменена
@@ -1477,12 +1478,23 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					// Если операция не поддерживается сокетом
 					case EOPNOTSUPP:
 				#endif
+				/**
+				 * Если мы работаем в MacOS X
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если хост не существует
+					case EHOSTDOWN:
+					// Если сокет отключён
+					case ESHUTDOWN:
+					// Если протокол не поддерживается
+					case EPFNOSUPPORT:
+					// Если тип сокета не поддерживается
+					case ESOCKTNOSUPPORT:
+				#endif
 				// Если протокол не поддерживается
 				case ENOPROTOOPT:
 				// Если сеть недоступна
 				case ENETUNREACH:
-				// Если протокол не поддерживается
-				case EPFNOSUPPORT:
 				// Если протокол подключения не поддерживается
 				case EAFNOSUPPORT:
 				// Если роутинг к хосту не существует
@@ -1494,9 +1506,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Если в соединении отказанно
 				case ECONNREFUSED:
 				// Если протокол не поддерживается
-				case EPROTONOSUPPORT:
-				// Если тип сокета не поддерживается
-				case ESOCKTNOSUPPORT: {
+				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
 					this->_log->print("WRITE: %s", log_t::flag_t::WARNING, ::strerror(errno));
 					// Требуем завершения работы
