@@ -226,9 +226,9 @@ int main(int argc, char * argv[]){
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию Websocket сервера
-	// ws.init(2222, "127.0.0.1", {awh::http_t::compress_t::DEFLATE});
-	ws.init(2222, "", {awh::http_t::compress_t::DEFLATE});
-	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
+	// ws.init(2222, "127.0.0.1", {awh::http_t::compressor_t::DEFLATE});
+	ws.init(2222, "", {awh::http_t::compressor_t::DEFLATE});
+	// ws.init("anyks", {awh::http_t::compressor_t::DEFLATE});
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Активируем шифрование

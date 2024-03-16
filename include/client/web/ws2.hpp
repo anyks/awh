@@ -131,14 +131,14 @@ namespace awh {
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
-				// Активный прототип интернета
-				engine_t::proto_t _proto;
-			private:
 				// Хранилище функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:
+				// Активный прототип интернета
+				engine_t::proto_t _proto;
+			private:
 				// Метод компрессии данных
-				http_t::compress_t _compress;
+				http_t::compressor_t _compressor;
 			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;

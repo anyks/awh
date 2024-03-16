@@ -173,17 +173,17 @@ namespace awh {
 			 * compression Метод извлечения выбранного метода компрессии
 			 * @return метод компрессии
 			 */
-			compress_t compression() const noexcept;
+			compressor_t compression() const noexcept;
 			/**
 			 * compression Метод установки выбранного метода компрессии
-			 * @param compress метод компрессии
+			 * @param compressor метод компрессии
 			 */
-			void compression(const compress_t compress) noexcept;
+			void compression(const compressor_t compressor) noexcept;
 			/**
 			 * compressors Метод установки списка поддерживаемых компрессоров
-			 * @param compress методы компрессии данных полезной нагрузки
+			 * @param compressors методы компрессии данных полезной нагрузки
 			 */
-			void compressors(const vector <compress_t> & compressors) noexcept;
+			void compressors(const vector <compressor_t> & compressors) noexcept;
 		public:
 			/**
 			 * extensions Метод извлечения списка расширений

@@ -33,11 +33,11 @@ void awh::client::WS::commit() noexcept {
 			// Список доступных расширений
 			vector <string> extensions;
 			// Отключаем сжатие ответа с сервера
-			this->_compressor.selected = compress_t::NONE;
+			this->_compressors.selected = compressor_t::NONE;
 			// Отключаем сжатие тела сообщения
-			http_t::_compressor.current = compress_t::NONE;
+			http_t::_compressors.current = compressor_t::NONE;
 			// Отключаем сжатие тела сообщения
-			http_t::_compressor.selected = compress_t::NONE;
+			http_t::_compressors.selected = compressor_t::NONE;
 			// Переходим по всему списку заголовков
 			for(auto & header : this->_web.headers()){
 				// Если заголовок получен с описанием методов компрессии
@@ -56,31 +56,31 @@ void awh::client::WS::commit() noexcept {
 							// Если данные пришли сжатые методом LZ4
 							if(this->_fmk->compare(compressor, "lz4"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::LZ4;
+								http_t::_compressors.current = compressor_t::LZ4;
 							// Если данные пришли сжатые методом Zstandard
 							else if(this->_fmk->compare(compressor, "zstd"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::ZSTD;
+								http_t::_compressors.current = compressor_t::ZSTD;
 							// Если данные пришли сжатые методом LZma
 							else if(this->_fmk->compare(compressor, "xz"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::LZMA;
+								http_t::_compressors.current = compressor_t::LZMA;
 							// Если данные пришли сжатые методом Brotli
 							else if(this->_fmk->compare(compressor, "br"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::BROTLI;
+								http_t::_compressors.current = compressor_t::BROTLI;
 							// Если данные пришли сжатые методом BZip2
 							else if(http_t::_fmk->compare(compressor, "bzip2"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::BZIP2;
+								http_t::_compressors.current = compressor_t::BZIP2;
 							// Если данные пришли сжатые методом GZip
 							else if(http_t::_fmk->compare(compressor, "gzip"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::GZIP;
+								http_t::_compressors.current = compressor_t::GZIP;
 							// Если данные пришли сжатые методом Deflate
 							else if(this->_fmk->compare(compressor, "deflate"))
 								// Устанавливаем тип компрессии полезной нагрузки
-								http_t::_compressor.current = compress_t::DEFLATE;
+								http_t::_compressors.current = compressor_t::DEFLATE;
 						};
 						// Если компрессоров в списке больше 1-го
 						if(compressors.size() > 1){
@@ -95,7 +95,7 @@ void awh::client::WS::commit() noexcept {
 						// Выполняем определение типа компрессора
 						extractFn(compressors.front());
 						// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
-						http_t::_compressor.selected = http_t::_compressor.current;
+						http_t::_compressors.selected = http_t::_compressors.current;
 					}
 				// Если заголовок расширения найден
 				} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
@@ -304,10 +304,10 @@ void awh::client::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
 awh::client::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
 	// Выполняем установку списка поддерживаемых компрессоров
 	http_t::compressors({
-		compress_t::ZSTD,
-		compress_t::BROTLI,
-		compress_t::GZIP,
-		compress_t::DEFLATE
+		compressor_t::ZSTD,
+		compressor_t::BROTLI,
+		compressor_t::GZIP,
+		compressor_t::DEFLATE
 	});
 	// Выполняем установку идентичность клиента к протоколу WebSocket
 	this->_identity = identity_t::WS;

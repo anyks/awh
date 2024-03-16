@@ -20,7 +20,7 @@
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Websocket::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket::init(const string & socket, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию Websocket-сервера
 	this->_ws.init(socket, compressors);
 }
@@ -30,7 +30,7 @@ void awh::server::Websocket::init(const string & socket, const vector <http_t::c
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Websocket::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию Websocket-сервера
 	this->_ws.init(port, host, compressors);
 }
@@ -209,7 +209,7 @@ void awh::server::Websocket::keepAlive(const int cnt, const int idle, const int 
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Websocket::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Websocket::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку список поддерживаемых компрессоров
 	this->_ws.compressors(compressors);
 }

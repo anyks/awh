@@ -51,7 +51,7 @@ void awh::client::Websocket::pause() noexcept {
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::Websocket::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Websocket::init(const string & dest, const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию клиента
 	this->_ws.init(dest, compressors);
 }
@@ -189,7 +189,7 @@ void awh::client::Websocket::keepAlive(const int cnt, const int idle, const int 
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::Websocket::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Websocket::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_ws.compressors(compressors);
 }

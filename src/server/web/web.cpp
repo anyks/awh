@@ -178,7 +178,7 @@ void awh::server::Web::disconected(const uint16_t tid) noexcept {
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Web::init(const string & socket, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Отключаем неиспользуемую переменную
 	(void) compressors;
 	/**
@@ -203,7 +203,7 @@ void awh::server::Web::init(const string & socket, const vector <http_t::compres
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Web::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Отключаем неиспользуемую переменную
 	(void) compressors;
 	// Устанавливаем порт сервера

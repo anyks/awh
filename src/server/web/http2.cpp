@@ -620,7 +620,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 			// Получаем флаг шифрованных данных
 			stream->crypted = stream->http.crypted();
 			// Получаем поддерживаемый метод компрессии
-			stream->compress = stream->http.compression();
+			stream->compressor = stream->http.compression();
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1006,7 +1006,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}
 					// Получаем поддерживаемый метод компрессии
-					options->compress = options->http.compression();
+					options->compressor = options->http.compression();
 					// Получаем размер скользящего окна сервера
 					options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -1596,7 +1596,7 @@ void awh::server::Http2::trailer(const int32_t sid, const uint64_t bid, const st
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http2::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http2::init(const string & socket, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем писок поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -1608,7 +1608,7 @@ void awh::server::Http2::init(const string & socket, const vector <http_t::compr
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http2::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http2::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем писок поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -2797,7 +2797,7 @@ void awh::server::Http2::keepAlive(const int cnt, const int idle, const int intv
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http2::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http2::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список компрессоров
 	this->_scheme.compressors = compressors;
 }

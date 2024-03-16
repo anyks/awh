@@ -219,14 +219,14 @@ namespace awh {
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & socket, const vector <http_t::compress_t> & compressors = {}) noexcept;
+				void init(const string & socket, const vector <http_t::compressor_t> & compressors = {}) noexcept;
 				/**
 				 * init Метод инициализации Websocket-сервера
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const u_int port, const string & host = "", const vector <http_t::compress_t> & compressors = {}) noexcept;
+				void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -464,7 +464,7 @@ namespace awh {
 				 * compressors Метод установки списка поддерживаемых компрессоров
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void compressors(const vector <http_t::compress_t> & compressors) noexcept;
+				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

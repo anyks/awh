@@ -293,25 +293,25 @@ int main(int argc, char * argv[]){
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию Web-сервера
 	awh.init(2222, "127.0.0.1", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 	/*
 	awh.init(2222, "anyks.net", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 	*/
 	/*
 	awh.init("anyks", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 	*/
 	// Устанавливаем длительное подключение

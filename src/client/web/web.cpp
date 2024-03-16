@@ -408,7 +408,7 @@ void awh::client::Web::errors(const uint64_t bid, const log_t::flag_t flag, cons
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::Web::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Web::init(const string & dest, const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Если unix-сокет установлен
 	if((this->_core != nullptr) && (this->_core->family() == scheme_t::family_t::NIX)){
 		// Выполняем очистку схемы сети
@@ -684,7 +684,7 @@ void awh::client::Web::keepAlive(const int cnt, const int idle, const int intvl)
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::Web::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::Web::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_compressors = compressors;
 }

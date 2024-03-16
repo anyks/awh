@@ -135,7 +135,7 @@ void awh::client::AWH::pause() noexcept {
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::AWH::init(const string & dest, const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::AWH::init(const string & dest, const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию клиента
 	this->_http.init(dest, compressors);
 }
@@ -536,10 +536,10 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		});
 		// Выполняем инициализацию подключения
 		this->init(this->_uri.origin(url), {
-			awh::http_t::compress_t::ZSTD,
-			awh::http_t::compress_t::BROTLI,
-			awh::http_t::compress_t::GZIP,
-			awh::http_t::compress_t::DEFLATE
+			awh::http_t::compressor_t::ZSTD,
+			awh::http_t::compressor_t::BROTLI,
+			awh::http_t::compressor_t::GZIP,
+			awh::http_t::compressor_t::DEFLATE
 		});
 		// Выполняем запуск работы
 		this->start();
@@ -687,7 +687,7 @@ void awh::client::AWH::keepAlive(const int cnt, const int idle, const int intvl)
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::client::AWH::compressors(const vector <awh::http_t::compress_t> & compressors) noexcept {
+void awh::client::AWH::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_http.compressors(compressors);
 }

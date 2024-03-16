@@ -621,7 +621,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
-					this->_compress = this->_http.compression();
+					this->_compressor = this->_http.compression();
 					// Получаем размер скользящего окна сервера
 					this->_server.wbit = this->_http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -746,7 +746,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					return status_t::NEXT;
 				}
 				// Если флаг компресси включён а данные пришли не сжатые
-				if(head.rsv[0] && ((this->_compress == http_t::compress_t::NONE) ||
+				if(head.rsv[0] && ((this->_compressor == http_t::compressor_t::NONE) ||
 				  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
 				  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
 					// Создаём сообщение
@@ -794,7 +794,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						// Запоминаем полученный опкод
 						this->_frame.opcode = head.optcode;
 						// Запоминаем, что данные пришли сжатыми
-						this->_inflate = (head.rsv[0] && (this->_compress != http_t::compress_t::NONE));
+						this->_inflate = (head.rsv[0] && (this->_compressor != http_t::compressor_t::NONE));
 						// Если сообщение замаскированно
 						if(head.mask){
 							// Создаём сообщение
@@ -928,43 +928,43 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->_freeze && this->_callbacks.is("messageWebsocket")){
 		// Если данные пришли в сжатом виде
-		if(this->_inflate && (this->_compress != http_t::compress_t::NONE)){
+		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
-			switch(static_cast <uint8_t> (this->_compress)){
+			switch(static_cast <uint8_t> (this->_compressor)){
 				// Если метод компрессии выбран LZ4
-				case static_cast <uint8_t> (http_t::compress_t::LZ4):
+				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZ4);
 				break;
 				// Если метод компрессии выбран Zstandard
-				case static_cast <uint8_t> (http_t::compress_t::ZSTD):
+				case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::ZSTD);
 				break;
 				// Если метод компрессии выбран LZma
-				case static_cast <uint8_t> (http_t::compress_t::LZMA):
+				case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZMA);
 				break;
 				// Если метод компрессии выбран Brotli
-				case static_cast <uint8_t> (http_t::compress_t::BROTLI):
+				case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BROTLI);
 				break;
 				// Если метод компрессии выбран BZip2
-				case static_cast <uint8_t> (http_t::compress_t::BZIP2):
+				case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BZIP2);
 				break;
 				// Если метод компрессии выбран GZip
-				case static_cast <uint8_t> (http_t::compress_t::GZIP):
+				case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::GZIP);
 				break;
 				// Если метод компрессии выбран Deflate
-				case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
+				case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 					// Устанавливаем размер скользящего окна
 					this->_hash.wbit(this->_server.wbit);
 					// Добавляем хвост в полученные данные
@@ -1101,45 +1101,45 @@ void awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 				// Устанавливаем опкод сообщения
 				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Указываем, что сообщение передаётся в сжатом виде
-				head.rsv[0] = ((message.size() >= 1024) && (this->_compress != http_t::compress_t::NONE));
+				head.rsv[0] = ((message.size() >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
 				// Если необходимо сжимать сообщение перед отправкой
 				if(head.rsv[0]){
 					// Компрессионные данные
 					vector <char> data;
 					// Определяем метод компрессии
-					switch(static_cast <uint8_t> (this->_compress)){
+					switch(static_cast <uint8_t> (this->_compressor)){
 						// Если метод компрессии выбран LZ4
-						case static_cast <uint8_t> (http_t::compress_t::LZ4):
+						case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZ4);
 						break;
 						// Если метод компрессии выбран Zstandard
-						case static_cast <uint8_t> (http_t::compress_t::ZSTD):
+						case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::ZSTD);
 						break;
 						// Если метод компрессии выбран LZma
-						case static_cast <uint8_t> (http_t::compress_t::LZMA):
+						case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZMA);
 						break;
 						// Если метод компрессии выбран Brotli
-						case static_cast <uint8_t> (http_t::compress_t::BROTLI):
+						case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::BROTLI);
 						break;
 						// Если метод компрессии выбран BZIP2
-						case static_cast <uint8_t> (http_t::compress_t::BZIP2):
+						case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::BZIP2);
 						break;
 						// Если метод компрессии выбран GZip
-						case static_cast <uint8_t> (http_t::compress_t::GZIP):
+						case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 							// Выполняем компрессию полученных данных
 							data = this->_hash.compress(message.data(), message.size(), hash_t::method_t::GZIP);
 						break;
 						// Если метод компрессии выбран Deflate
-						case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
+						case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 							// Устанавливаем размер скользящего окна
 							this->_hash.wbit(this->_client.wbit);
 							// Выполняем компрессию полученных данных
@@ -1531,7 +1531,7 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
  */
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _sid(-1), _rid(0), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1551,7 +1551,7 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
  */
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _sid(-1), _rid(0), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compress(awh::http_t::compress_t::NONE) {
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

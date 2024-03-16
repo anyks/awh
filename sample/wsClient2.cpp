@@ -247,7 +247,7 @@ class WebClient {
 				// Устанавливаем агента Websocket
 				req.agent = client::web_t::agent_t::WEBSOCKET;
 				// Устанавливаем тип компрессии данных
-				req.compressors = {http_t::compress_t::DEFLATE};
+				req.compressors = {http_t::compressor_t::DEFLATE};
 				// Выполняем первый запрос на сервер
 				awh->send(std::move(req));
 			}
@@ -399,7 +399,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	// awh.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем тип компрессии
-	// awh.compress({http_t::compress_t::DEFLATE});
+	// awh.compress({http_t::compressor_t::DEFLATE});
 	// Устанавливаем тип авторизации прокси-сервера
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации

@@ -52,18 +52,18 @@ namespace awh {
 					 * Options Структура параметров активного клиента
 					 */
 					typedef struct Options {
-						bool mode;                   // Флаг открытия подключения
-						bool alive;                  // Флаг долгоживущего подключения
-						bool close;                  // Флаг требования закрыть брокера
-						bool crypted;                // Флаг шифрования сообщений
-						bool stopped;                // Флаг принудительной остановки
-						int32_t sid;                 // Идентификатор потока
-						time_t point;                // Контрольная точка ответа на пинг
-						size_t requests;             // Количество выполненных запросов
-						http_t http;                 // Создаём объект для работы с HTTP
-						vector <char> buffer;        // Буфер бинарных необработанных данных
-						engine_t::proto_t proto;     // Активный прототип интернета
-						http_t::compress_t compress; // Метод компрессии данных
+						bool mode;                       // Флаг открытия подключения
+						bool alive;                      // Флаг долгоживущего подключения
+						bool close;                      // Флаг требования закрыть брокера
+						bool crypted;                    // Флаг шифрования сообщений
+						bool stopped;                    // Флаг принудительной остановки
+						int32_t sid;                     // Идентификатор потока
+						time_t point;                    // Контрольная точка ответа на пинг
+						size_t requests;                 // Количество выполненных запросов
+						http_t http;                     // Создаём объект для работы с HTTP
+						vector <char> buffer;            // Буфер бинарных необработанных данных
+						engine_t::proto_t proto;         // Активный прототип интернета
+						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Options Конструктор
 						 * @param fmk объект фреймворка
@@ -74,7 +74,7 @@ namespace awh {
 						crypted(false), stopped(false), sid(1),
 						point(0), requests(0), http(fmk, log),
 						proto(engine_t::proto_t::HTTP1_1),
-						compress(awh::http_t::compress_t::NONE) {}
+						compressor(awh::http_t::compressor_t::NONE) {}
 						/**
 						 * ~Options Деструктор
 						 */
@@ -82,7 +82,7 @@ namespace awh {
 					} options_t;
 				public:
 					// Список доступных компрессоров
-					vector <awh::http_t::compress_t> compressors;
+					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Список параметров активных клиентов
 					map <uint64_t, unique_ptr <options_t>> _options;

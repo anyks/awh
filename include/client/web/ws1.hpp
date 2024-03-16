@@ -145,7 +145,7 @@ namespace awh {
 				fn_t _resultCallback;
 			private:
 				// Метод компрессии данных
-				http_t::compress_t _compress;
+				http_t::compressor_t _compressor;
 			private:
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;

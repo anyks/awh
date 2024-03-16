@@ -270,10 +270,10 @@ int main(int argc, char * argv[]){
 	/*
 	// Устанавливаем тип компрессии
 	awh.compressors({
-		http_t::compress_t::ZSTD,
-		http_t::compress_t::BROTLI,
-		http_t::compress_t::GZIP,
-		http_t::compress_t::DEFLATE
+		http_t::compressor_t::ZSTD,
+		http_t::compressor_t::BROTLI,
+		http_t::compressor_t::GZIP,
+		http_t::compressor_t::DEFLATE
 	});
 	*/
 	// Устанавливаем тип авторизации прокси-сервера

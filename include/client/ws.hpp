@@ -71,7 +71,7 @@ namespace awh {
 				 * @param dest        адрес назначения удалённого сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & dest, const vector <awh::http_t::compress_t> & compressors = {awh::http_t::compress_t::DEFLATE}) noexcept;
+				void init(const string & dest, const vector <awh::http_t::compressor_t> & compressors = {awh::http_t::compressor_t::DEFLATE}) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения
@@ -192,7 +192,7 @@ namespace awh {
 				 * compressors Метод установки списка поддерживаемых компрессоров
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
+				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности в Websocket

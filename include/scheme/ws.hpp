@@ -98,24 +98,24 @@ namespace awh {
 					 * Options Структура параметров активного клиента
 					 */
 					typedef struct Options {
-						bool close;                  // Флаг требования закрыть брокера
-						bool shake;                  // Флаг выполненного рукопожатия
-						bool crypted;               // Флаг шифрования сообщений
-						bool inflate;                // Флаг переданных сжатых данных
-						bool stopped;                // Флаг принудительной остановки
-						int32_t sid;                 // Идентификатор потока
-						time_t point;                // Контрольная точка ответа на пинг
-						hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
-						allow_t allow;               // Объект разрешения обмена данными
-						frame_t frame;               // Объект для работы с фреймом WebSocket
-						ws::mess_t mess;             // Объект отправляемого сообщения
-						buffer_t buffer;             // Объект буфера данных
-						partner_t client;            // Объект партнёра клиента
-						partner_t server;            // Объект партнёра сервера
-						server::ws_t http;           // Создаём объект для работы с HTTP
-						recursive_mutex mtx;         // Мютекс для блокировки потока
-						engine_t::proto_t proto;     // Активный прототип интернета
-						http_t::compress_t compress; // Метод компрессии данных
+						bool close;                      // Флаг требования закрыть брокера
+						bool shake;                      // Флаг выполненного рукопожатия
+						bool crypted;                    // Флаг шифрования сообщений
+						bool inflate;                    // Флаг переданных сжатых данных
+						bool stopped;                    // Флаг принудительной остановки
+						int32_t sid;                     // Идентификатор потока
+						time_t point;                    // Контрольная точка ответа на пинг
+						hash_t hash;                     // Создаём объект для компрессии-декомпрессии данных
+						allow_t allow;                   // Объект разрешения обмена данными
+						frame_t frame;                   // Объект для работы с фреймом WebSocket
+						ws::mess_t mess;                 // Объект отправляемого сообщения
+						buffer_t buffer;                 // Объект буфера данных
+						partner_t client;                // Объект партнёра клиента
+						partner_t server;                // Объект партнёра сервера
+						server::ws_t http;               // Создаём объект для работы с HTTP
+						recursive_mutex mtx;             // Мютекс для блокировки потока
+						engine_t::proto_t proto;         // Активный прототип интернета
+						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Options Конструктор
 						 * @param fmk объект фреймворка
@@ -126,7 +126,7 @@ namespace awh {
 						inflate(false), stopped(false), sid(1), point(0),
 						hash(log), frame(fmk, log), http(fmk, log),
 						proto(engine_t::proto_t::HTTP1_1),
-						compress(http_t::compress_t::NONE) {}
+						compressor(http_t::compressor_t::NONE) {}
 						/**
 						 * ~Options Деструктор
 						 */
@@ -134,7 +134,7 @@ namespace awh {
 					} options_t;
 				public:
 					// Список доступных компрессоров
-					vector <awh::http_t::compress_t> compressors;
+					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Список параметров активных клиентов
 					map <uint64_t, unique_ptr <options_t>> _options;

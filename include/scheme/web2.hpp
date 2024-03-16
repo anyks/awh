@@ -52,17 +52,18 @@ namespace awh {
 					 * Stream Структура потока
 					 */
 					typedef struct Stream {
-						bool crypted;                // Флаг шифрования сообщений
-						int32_t sid;                 // Идентификатор потока
-						http_t http;                 // Создаём объект для работы с HTTP
-						http_t::compress_t compress; // Метод компрессии данных
+						bool crypted;                    // Флаг шифрования сообщений
+						int32_t sid;                     // Идентификатор потока
+						http_t http;                     // Создаём объект для работы с HTTP
+						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Stream Конструктор
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
 						Stream(const fmk_t * fmk, const log_t * log) noexcept :
-						 crypted(false), sid(1), http(fmk, log), compress(awh::http_t::compress_t::NONE) {}
+						 crypted(false), sid(1), http(fmk, log),
+						 compressor(awh::http_t::compressor_t::NONE) {}
 					} stream_t;
 					/**
 					 * Options Класс параметров активного клиента
@@ -97,7 +98,7 @@ namespace awh {
 					} options_t;
 				public:
 					// Список доступных компрессоров
-					vector <awh::http_t::compress_t> compressors;
+					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Список параметров активных клиентов
 					map <uint64_t, unique_ptr <options_t>> _options;

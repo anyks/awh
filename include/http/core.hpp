@@ -98,7 +98,7 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class compress_t : uint8_t {
+			enum class compressor_t : uint8_t {
 				NONE    = 0x00, // Метод компрессии не установлен
 				LZ4     = 0x01, // Метод компрессии Lz4
 				LZMA    = 0x02, // Метод компрессии LZma
@@ -141,14 +141,14 @@ namespace awh {
 			 * Compressor Структура параметров компрессора
 			 */
 			typedef struct Compressor {
-				compress_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
-				compress_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
-				map <float, compress_t> supports; // Список поддерживаемых компрессоров
+				compressor_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
+				compressor_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
+				map <float, compressor_t> supports; // Список поддерживаемых компрессоров
 				/**
 				 * Compressor Конструктор
 				 */
-				Compressor() noexcept : current(compress_t::NONE), selected(compress_t::NONE) {}
-			} compressor_t;
+				Compressor() noexcept : current(compressor_t::NONE), selected(compressor_t::NONE) {}
+			} compressors_t;
 			/**
 			 * Auth Структура объекта авторизации
 			 */
@@ -253,7 +253,7 @@ namespace awh {
 			identity_t _identity;
 		protected:
 			// Компрессор для жатия данных
-			compressor_t _compressor;
+			compressors_t _compressors;
 		private:
 			// User-Agent для HTTP-запроса
 			mutable string _userAgent;
@@ -451,17 +451,17 @@ namespace awh {
 			 * compression Метод извлечения выбранного метода компрессии
 			 * @return метод компрессии
 			 */
-			compress_t compression() const noexcept;
+			compressor_t compression() const noexcept;
 			/**
 			 * compression Метод установки выбранного метода компрессии
-			 * @param compress метод компрессии
+			 * @param compressor метод компрессии
 			 */
-			void compression(const compress_t compress) noexcept;
+			void compression(const compressor_t compressor) noexcept;
 			/**
 			 * compressors Метод установки списка поддерживаемых компрессоров
-			 * @param compress методы компрессии данных полезной нагрузки
+			 * @param compressors методы компрессии данных полезной нагрузки
 			 */
-			void compressors(const vector <compress_t> & compressors) noexcept;
+			void compressors(const vector <compressor_t> & compressors) noexcept;
 		public:
 			/**
 			 * dump Метод получения бинарного дампа

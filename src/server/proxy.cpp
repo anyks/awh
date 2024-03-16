@@ -592,7 +592,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Устанавливаем сообщение ответа сервера
 				i->second->response.params.message = message;
 				// Компрессор которым необходимо выполнить сжатие контента
-				http_t::compress_t compress = http_t::compress_t::NONE;
+				http_t::compressor_t compressor = http_t::compressor_t::NONE;
 				// Выполняем перебор всех полученных заголовков
 				for(auto j = i->second->response.headers.begin(); j != i->second->response.headers.end();){
 					// Если получен заголовок Via
@@ -610,31 +610,31 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 							// Если данные пришли сжатые методом LZ4
 							if(this->_fmk->exists("lz4", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::LZ4;
+								compressor = http_t::compressor_t::LZ4;
 							// Если данные пришли сжатые методом Zstandard
 							else if(this->_fmk->exists("zstd", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::ZSTD;
+								compressor = http_t::compressor_t::ZSTD;
 							// Если данные пришли сжатые методом LZma
 							else if(this->_fmk->exists("xz", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::LZMA;
+								compressor = http_t::compressor_t::LZMA;
 							// Если данные пришли сжатые методом Brotli
 							else if(this->_fmk->exists("br", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::BROTLI;
+								compressor = http_t::compressor_t::BROTLI;
 							// Если данные пришли сжатые методом BZip2
 							else if(this->_fmk->exists("bzip2", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::BZIP2;
+								compressor = http_t::compressor_t::BZIP2;
 							// Если данные пришли сжатые методом GZip
 							else if(this->_fmk->exists("gzip", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::GZIP;
+								compressor = http_t::compressor_t::GZIP;
 							// Если данные пришли сжатые методом Deflate
 							else if(this->_fmk->exists("deflate", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
-								compress = http_t::compress_t::DEFLATE;
+								compressor = http_t::compressor_t::DEFLATE;
 						}
 					}
 					// Продолжаем перебор дальше
@@ -643,13 +643,13 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Если флаг рекомпрессии данных прокси-сервером установлен
 				if(this->_flags.count(flag_t::RECOMPRESS) > 0)
 					// Устанавливаем компрессор рекомпрессии
-					compress = this->_compressor;
+					compressor = this->_compressor;
 				// Получаем объект HTTP-парсера
 				const awh::http_t * http = this->_server.parser(j->second, bid);
 				// Если объект HTTP-парсера получен
 				if(http != nullptr)
 					// Устанавливаем параметры компрессии
-					const_cast <awh::http_t *> (http)->compression(compress);
+					const_cast <awh::http_t *> (http)->compression(compressor);
 				// Выполняем получение заголовка Via
 				const string & header = this->via(j->second, bid, via);
 				// Если заголовок получен
@@ -788,10 +788,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							it->second->awh.mode(std::move(flags));
 							// Выполняем инициализацию подключения
 							it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
-								awh::http_t::compress_t::ZSTD,
-								awh::http_t::compress_t::BROTLI,
-								awh::http_t::compress_t::GZIP,
-								awh::http_t::compress_t::DEFLATE
+								awh::http_t::compressor_t::ZSTD,
+								awh::http_t::compressor_t::BROTLI,
+								awh::http_t::compressor_t::GZIP,
+								awh::http_t::compressor_t::DEFLATE
 							});
 							// Выполняем подключение клиента к сетевому ядру
 							this->_core.bind(&it->second->core);
@@ -875,10 +875,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									it->second->awh.mode(std::move(flags));
 									// Выполняем инициализацию подключения
 									it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
-										awh::http_t::compress_t::ZSTD,
-										awh::http_t::compress_t::BROTLI,
-										awh::http_t::compress_t::GZIP,
-										awh::http_t::compress_t::DEFLATE
+										awh::http_t::compressor_t::ZSTD,
+										awh::http_t::compressor_t::BROTLI,
+										awh::http_t::compressor_t::GZIP,
+										awh::http_t::compressor_t::DEFLATE
 									});
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&it->second->core);
@@ -974,10 +974,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										it->second->request.params.url.schema = "https";
 									// Выполняем инициализацию подключения
 									it->second->awh.init(this->_uri.origin(it->second->request.params.url), {
-										awh::http_t::compress_t::ZSTD,
-										awh::http_t::compress_t::BROTLI,
-										awh::http_t::compress_t::GZIP,
-										awh::http_t::compress_t::DEFLATE
+										awh::http_t::compressor_t::ZSTD,
+										awh::http_t::compressor_t::BROTLI,
+										awh::http_t::compressor_t::GZIP,
+										awh::http_t::compressor_t::DEFLATE
 									});
 									// Подписываемся на получение сообщения сервера
 									it->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
@@ -1160,7 +1160,7 @@ const awh::http_t * awh::server::Proxy::parser(const int32_t sid, const uint64_t
  * @param socket     unix-сокет для биндинга
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
  */
-void awh::server::Proxy::init(const string & socket, const http_t::compress_t compressor) noexcept {
+void awh::server::Proxy::init(const string & socket, const http_t::compressor_t compressor) noexcept {
 	// Выполняем инициализацию PROXY-сервера
 	this->_server.init(socket);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
@@ -1172,7 +1172,7 @@ void awh::server::Proxy::init(const string & socket, const http_t::compress_t co
  * @param host       хост сервера
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
  */
-void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compress_t compressor) noexcept {
+void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compressor_t compressor) noexcept {
 	// Выполняем инициализацию PROXY-сервера
 	this->_server.init(port, host);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
@@ -1526,7 +1526,7 @@ void awh::server::Proxy::keepAlive(const broker_t broker, const int cnt, const i
  * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
@@ -1921,7 +1921,7 @@ void awh::server::Proxy::encryption(const broker_t broker, const string & pass, 
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _callbacks(log), _core(fmk, log), _server(&_core, fmk, log),
- _compressor(http_t::compress_t::NONE), _fmk(fmk), _log(log) {
+ _compressor(http_t::compressor_t::NONE), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета TCP
 	this->_core.sonet(awh::scheme_t::sonet_t::TCP);
 	// Устанавливаем активный протокол подключения

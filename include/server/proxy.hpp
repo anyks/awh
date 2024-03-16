@@ -210,24 +210,24 @@ namespace awh {
 				 * Settings Структура параметров клиента
 				 */
 				typedef struct Settings {
-					ka_t ka;                                 // Параметры жизни подключения
-					wtd_t wtd;                               // Таймауты на обмен данными
-					dns_t dns;                               // Параметры DNS-резолвера
-					auth_t auth;                             // Параметры авторизации на сервере
-					size_t chunk;                            // Размер передаваемых чанков
-					uint8_t attempts;                        // Количество попыток выполнения редиректов
-					scheme_t::sonet_t sonet;                 // Тип сокета подключения (TCP / UDP)
-					scheme_t::family_t family;               // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
-					scheme_t::marker_t marker;               // Объект маркеров детектирования обмена данных
-					proxy_t proxy;                           // Параметры прокси-клиента для подключения к прокси-серверу
-					string login;                            // Логин пользователя для авторизации на сервере
-					string password;                         // Пароль пользователя для авторизации на сервере
-					string userAgent;                        // Название заголовка User-Agent для HTTP-запроса
-					node_t::ssl_t ssl;                       // Объект работы с SSL-шифрованием
-					encryption_t encryption;                 // Объект параметров шифрования
-					vector <string> ns;                      // Список серверов имён, через которые необходимо производить резолвинг доменов
-					vector <string> ips;                     // Список IP-адресов компьютера с которых разрешено выходить в интернет
-					vector <http_t::compress_t> compressors; // Список поддерживаемых компрессоров
+					ka_t ka;                                   // Параметры жизни подключения
+					wtd_t wtd;                                 // Таймауты на обмен данными
+					dns_t dns;                                 // Параметры DNS-резолвера
+					auth_t auth;                               // Параметры авторизации на сервере
+					size_t chunk;                              // Размер передаваемых чанков
+					uint8_t attempts;                          // Количество попыток выполнения редиректов
+					scheme_t::sonet_t sonet;                   // Тип сокета подключения (TCP / UDP)
+					scheme_t::family_t family;                 // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
+					scheme_t::marker_t marker;                 // Объект маркеров детектирования обмена данных
+					proxy_t proxy;                             // Параметры прокси-клиента для подключения к прокси-серверу
+					string login;                              // Логин пользователя для авторизации на сервере
+					string password;                           // Пароль пользователя для авторизации на сервере
+					string userAgent;                          // Название заголовка User-Agent для HTTP-запроса
+					node_t::ssl_t ssl;                         // Объект работы с SSL-шифрованием
+					encryption_t encryption;                   // Объект параметров шифрования
+					vector <string> ns;                        // Список серверов имён, через которые необходимо производить резолвинг доменов
+					vector <string> ips;                       // Список IP-адресов компьютера с которых разрешено выходить в интернет
+					vector <http_t::compressor_t> compressors; // Список поддерживаемых компрессоров
 					/**
 					 * Settings Конструктор
 					 */
@@ -236,7 +236,12 @@ namespace awh {
 					 sonet(scheme_t::sonet_t::TCP),
 					 family(scheme_t::family_t::IPV4),
 					 login{""}, password{""}, userAgent{""},
-					 compressors({http_t::compress_t::ZSTD, http_t::compress_t::BROTLI, http_t::compress_t::GZIP, http_t::compress_t::DEFLATE}) {}
+					 compressors({
+					 	http_t::compressor_t::ZSTD,
+						http_t::compressor_t::BROTLI,
+						http_t::compressor_t::GZIP,
+						http_t::compressor_t::DEFLATE
+					}) {}
 				} settings_t;
 			private:
 				// Объект работы с URI ссылками
@@ -255,7 +260,7 @@ namespace awh {
 				awh_t _server;
 			private:
 				// Компрессор для рекомпрессии пересылаемых данных
-				http_t::compress_t _compressor;
+				http_t::compressor_t _compressor;
 			private:
 				// Список флагов приложения
 				set <flag_t> _flags;
@@ -445,14 +450,14 @@ namespace awh {
 				 * @param socket     unix-сокет для биндинга
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
 				 */
-				void init(const string & socket, const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
+				void init(const string & socket, const http_t::compressor_t compressor = http_t::compressor_t::NONE) noexcept;
 				/**
 				 * init Метод инициализации PROXY-сервера
 				 * @param port       порт сервера
 				 * @param host       хост сервера
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
 				 */
-				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compress_t compressor = http_t::compress_t::NONE) noexcept;
+				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -660,7 +665,7 @@ namespace awh {
 				 * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void compressors(const broker_t broker, const vector <http_t::compress_t> & compressors) noexcept;
+				void compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept;
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт

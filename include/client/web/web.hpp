@@ -103,7 +103,7 @@ namespace awh {
 					uri_t::url_t url;                            // URL-запроса запроса
 					web_t::method_t method;                      // Метод запроса
 					vector <char> entity;                        // Тело запроса
-					vector <http_t::compress_t> compressors;     // Список поддерживаемых компрессоров
+					vector <http_t::compressor_t> compressors;   // Список поддерживаемых компрессоров
 					unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
@@ -200,7 +200,7 @@ namespace awh {
 				stack <event_t> _events;
 			protected:
 				// Список поддерживаемых компрессоров
-				vector <http_t::compress_t> _compressors;
+				vector <http_t::compressor_t> _compressors;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -315,7 +315,7 @@ namespace awh {
 				 * @param dest        адрес назначения удалённого сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const string & dest, const vector <awh::http_t::compress_t> & compressors = {}) noexcept;
+				void init(const string & dest, const vector <awh::http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута
@@ -417,7 +417,7 @@ namespace awh {
 				 * compressors Метод установки списка поддерживаемых компрессоров
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void compressors(const vector <awh::http_t::compress_t> & compressors) noexcept;
+				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

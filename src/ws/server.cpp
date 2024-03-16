@@ -33,77 +33,77 @@ void awh::server::WS::commit() noexcept {
 			// Список доступных расширений
 			vector <string> extensions;
 			// Отключаем сжатие ответа с сервера
-			this->_compressor.selected = compress_t::NONE;
+			this->_compressors.selected = compressor_t::NONE;
 			// Отключаем сжатие тела сообщения
-			http_t::_compressor.selected = compress_t::NONE;
+			http_t::_compressors.selected = compressor_t::NONE;
 			// Переходим по всему списку заголовков
 			for(auto & header : this->_web.headers()){
 				// Если заголовок получен с описанием методов компрессии
 				if(this->_fmk->compare(header.first, "accept-encoding")){
 					// Если список поддерживаемых протоколов установлен
-					if(!http_t::_compressor.supports.empty()){
+					if(!http_t::_compressors.supports.empty()){
 						// Если конкретный метод сжатия не запрашивается
 						if(this->_fmk->compare(header.second, "*"))
 							// Устанавливаем флаг метода компрессии
-							http_t::_compressor.selected = http_t::_compressor.supports.rbegin()->second;
+							http_t::_compressors.selected = http_t::_compressors.supports.rbegin()->second;
 						// Если запрашиваются конкретные методы сжатия
 						else {
 							// Если найден запрашиваемый метод компрессии LZ4
 							if(this->_fmk->exists("lz4", header.second)) {
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::LZ4, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::LZ4, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::LZ4;
+									http_t::_compressors.selected = compressor_t::LZ4;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии Zstandard
 							} else if(this->_fmk->exists("zstd", header.second)) {
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::ZSTD, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::ZSTD, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::ZSTD;
+									http_t::_compressors.selected = compressor_t::ZSTD;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии LZma
 							} else if(this->_fmk->exists("xz", header.second)) {
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::LZMA, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::LZMA, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::LZMA;
+									http_t::_compressors.selected = compressor_t::LZMA;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии Brotli
 							} else if(this->_fmk->exists("br", header.second)){
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::BROTLI, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::BROTLI, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::BROTLI;
+									http_t::_compressors.selected = compressor_t::BROTLI;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии BZip2
 							} else if(this->_fmk->exists("bzip2", header.second)){
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::BZIP2, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::BZIP2, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::BZIP2;
+									http_t::_compressors.selected = compressor_t::BZIP2;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии GZip
 							} else if(this->_fmk->exists("gzip", header.second)) {
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::GZIP, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::GZIP, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::GZIP;
+									http_t::_compressors.selected = compressor_t::GZIP;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							// Если найден запрашиваемый метод компрессии Deflate
 							} else if(this->_fmk->exists("deflate", header.second)) {
 								// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-								if(this->_fmk->findInMap(compress_t::DEFLATE, http_t::_compressor.supports) != http_t::_compressor.supports.end())
+								if(this->_fmk->findInMap(compressor_t::DEFLATE, http_t::_compressors.supports) != http_t::_compressors.supports.end())
 									// Устанавливаем флаг метода компрессии
-									http_t::_compressor.selected = compress_t::DEFLATE;
+									http_t::_compressors.selected = compressor_t::DEFLATE;
 								// Выполняем сброс типа компрессии
-								else http_t::_compressor.selected = compress_t::NONE;
+								else http_t::_compressors.selected = compressor_t::NONE;
 							}
 						}
 					}
@@ -325,10 +325,10 @@ void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
 awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
 	// Выполняем установку списка поддерживаемых компрессоров
 	http_t::compressors({
-		compress_t::ZSTD,
-		compress_t::BROTLI,
-		compress_t::GZIP,
-		compress_t::DEFLATE
+		compressor_t::ZSTD,
+		compressor_t::BROTLI,
+		compressor_t::GZIP,
+		compressor_t::DEFLATE
 	});
 	// Выполняем установку идентичность клиента к протоколу WebSocket
 	this->_identity = identity_t::WS;

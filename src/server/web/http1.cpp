@@ -288,7 +288,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 							// Получаем флаг шифрованных данных
 							options->crypted = options->http.crypted();
 							// Получаем поддерживаемый метод компрессии
-							options->compress = options->http.compression();
+							options->compressor = options->http.compression();
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (options->http.auth())){
 								// Если запрос выполнен удачно
@@ -592,11 +592,11 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 				// Выполняем коммит полученного результата
 				options->http.commit();
 				// Метод компрессии данных
-				http_t::compress_t compress = http_t::compress_t::NONE;
+				http_t::compressor_t compressor = http_t::compressor_t::NONE;
 				// Если рукопожатие выполнено
 				if(options->http.handshake(http_t::process_t::REQUEST)){
 					// Получаем метод компрессии HTML данных
-					compress = options->http.compression();
+					compressor = options->http.compression();
 					// Проверяем версию протокола
 					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST ответа
@@ -620,7 +620,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Устанавливаем параметры шифрования
 						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					// Получаем поддерживаемый метод компрессии
-					options->compress = options->http.compression();
+					options->compressor = options->http.compression();
 					// Получаем размер скользящего окна сервера
 					options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
@@ -696,7 +696,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif
 					// Устанавливаем метод компрессии данных ответа
-					web->http.compression(compress);
+					web->http.compression(compressor);
 					// Выполняем извлечение параметров запроса
 					const auto & request = options->http.request();
 					// Получаем параметры ответа
@@ -947,7 +947,7 @@ void awh::server::Http1::trailer(const uint64_t bid, const string & key, const s
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http1::init(const string & socket, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http1::init(const string & socket, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -959,7 +959,7 @@ void awh::server::Http1::init(const string & socket, const vector <http_t::compr
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http1::init(const u_int port, const string & host, const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http1::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -1535,7 +1535,7 @@ void awh::server::Http1::keepAlive(const int cnt, const int idle, const int intv
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Http1::compressors(const vector <http_t::compress_t> & compressors) noexcept {
+void awh::server::Http1::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 }

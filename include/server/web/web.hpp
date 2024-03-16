@@ -276,14 +276,14 @@ namespace awh {
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void init(const string & socket, const vector <http_t::compress_t> & compressors = {}) noexcept;
+				virtual void init(const string & socket, const vector <http_t::compressor_t> & compressors = {}) noexcept;
 				/**
 				 * init Метод инициализации WEB брокера
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void init(const u_int port, const string & host = "", const vector <http_t::compress_t> & compressors = {}) noexcept;
+				virtual void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -443,7 +443,7 @@ namespace awh {
 				 * compressors Метод установки списка поддерживаемых компрессоров
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void compressors(const vector <http_t::compress_t> & compressors) noexcept = 0;
+				virtual void compressors(const vector <http_t::compressor_t> & compressors) noexcept = 0;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера

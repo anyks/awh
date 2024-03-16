@@ -84,51 +84,51 @@ void awh::WCore::init(const process_t flag) noexcept {
 			// Добавляем заголовок версии WebSocket
 			this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
 			// Если компрессор уже выбран
-			if(http_t::_compressor.selected != compress_t::NONE){
+			if(http_t::_compressors.selected != compressor_t::NONE){
 				// Определяем метод сжатия который поддерживает клиент
-				switch(static_cast <uint8_t> (http_t::_compressor.selected)){
+				switch(static_cast <uint8_t> (http_t::_compressors.selected)){
 					// Если клиент поддерживает методот сжатия LZ4
-					case static_cast <uint8_t> (compress_t::LZ4):
+					case static_cast <uint8_t> (compressor_t::LZ4):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "lz4");
 					break;
 					// Если клиент поддерживает методот сжатия Zstandard
-					case static_cast <uint8_t> (compress_t::ZSTD):
+					case static_cast <uint8_t> (compressor_t::ZSTD):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "zstd");
 					break;
 					// Если клиент поддерживает методот сжатия LZma
-					case static_cast <uint8_t> (compress_t::LZMA):
+					case static_cast <uint8_t> (compressor_t::LZMA):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "xz");
 					break;
 					// Если клиент поддерживает методот сжатия Brotli
-					case static_cast <uint8_t> (compress_t::BROTLI):
+					case static_cast <uint8_t> (compressor_t::BROTLI):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "br");
 					break;
 					// Если клиент поддерживает методот сжатия BZip2
-					case static_cast <uint8_t> (compress_t::BZIP2):
+					case static_cast <uint8_t> (compressor_t::BZIP2):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "bzip2");
 					break;
 					// Если клиент поддерживает методот сжатия GZip
-					case static_cast <uint8_t> (compress_t::GZIP):
+					case static_cast <uint8_t> (compressor_t::GZIP):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "gzip");
 					break;
 					// Если клиент поддерживает методот сжатия Deflate
-					case static_cast <uint8_t> (compress_t::DEFLATE):
+					case static_cast <uint8_t> (compressor_t::DEFLATE):
 						// Добавляем заголовок требования сжимать содержимое ответов
 						this->header("Accept-Encoding", "deflate");
 					break;
 				}
 			// Если список компрессоров установлен
-			} else if(!http_t::_compressor.supports.empty()) {
+			} else if(!http_t::_compressors.supports.empty()) {
 				// Строка со списком компрессоров
 				string compressors = "";
 				// Выполняем перебор всего списка компрессоров
-				for(auto it = http_t::_compressor.supports.rbegin(); it != http_t::_compressor.supports.rend(); ++it){
+				for(auto it = http_t::_compressors.supports.rbegin(); it != http_t::_compressors.supports.rend(); ++it){
 					// Если список компрессоров уже не пустой
 					if(!compressors.empty())
 						// Выполняем добавление разделителя
@@ -136,37 +136,37 @@ void awh::WCore::init(const process_t flag) noexcept {
 					// Определяем метод сжатия который поддерживает клиент
 					switch(static_cast <uint8_t> (it->second)){
 						// Если клиент поддерживает методот сжатия LZ4
-						case static_cast <uint8_t> (compress_t::LZ4):
+						case static_cast <uint8_t> (compressor_t::LZ4):
 							// Добавляем компрессор в список
 							compressors.append("lz4");
 						break;
 						// Если клиент поддерживает методот сжатия Zstandard
-						case static_cast <uint8_t> (compress_t::ZSTD):
+						case static_cast <uint8_t> (compressor_t::ZSTD):
 							// Добавляем компрессор в список
 							compressors.append("zstd");
 						break;
 						// Если клиент поддерживает методот сжатия LZma
-						case static_cast <uint8_t> (compress_t::LZMA):
+						case static_cast <uint8_t> (compressor_t::LZMA):
 							// Добавляем компрессор в список
 							compressors.append("xz");
 						break;
 						// Если клиент поддерживает методот сжатия Brotli
-						case static_cast <uint8_t> (compress_t::BROTLI):
+						case static_cast <uint8_t> (compressor_t::BROTLI):
 							// Добавляем компрессор в список
 							compressors.append("br");
 						break;
 						// Если клиент поддерживает методот сжатия BZip2
-						case static_cast <uint8_t> (compress_t::BZIP2):
+						case static_cast <uint8_t> (compressor_t::BZIP2):
 							// Добавляем компрессор в список
 							compressors.append("bzip2");
 						break;
 						// Если клиент поддерживает методот сжатия GZip
-						case static_cast <uint8_t> (compress_t::GZIP):
+						case static_cast <uint8_t> (compressor_t::GZIP):
 							// Добавляем компрессор в список
 							compressors.append("gzip");
 						break;
 						// Если клиент поддерживает методот сжатия Deflate
-						case static_cast <uint8_t> (compress_t::DEFLATE):
+						case static_cast <uint8_t> (compressor_t::DEFLATE):
 							// Добавляем компрессор в список
 							compressors.append("deflate");
 						break;
@@ -233,39 +233,39 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		// Список поддверживаемых расширений
 		vector <vector <string>> extensions;
 		// Определяем тип активной компрессии
-		switch(static_cast <uint8_t> (this->_compressor.selected)){
+		switch(static_cast <uint8_t> (this->_compressors.selected)){
 			// Если метод компрессии выбран LZ4
-			case static_cast <uint8_t> (compress_t::LZ4):
+			case static_cast <uint8_t> (compressor_t::LZ4):
 				// Добавляем метод сжатия LZ4
 				extensions.push_back({"permessage-lz4"});
 			break;
 			// Если метод компрессии выбран Zstandard
-			case static_cast <uint8_t> (compress_t::ZSTD):
+			case static_cast <uint8_t> (compressor_t::ZSTD):
 				// Добавляем метод сжатия Zstandard
 				extensions.push_back({"permessage-zstd"});
 			break;
 			// Если метод компрессии выбран LZma
-			case static_cast <uint8_t> (compress_t::LZMA):
+			case static_cast <uint8_t> (compressor_t::LZMA):
 				// Добавляем метод сжатия LZma
 				extensions.push_back({"permessage-xz"});
 			break;
 			// Если метод компрессии выбран Brotli
-			case static_cast <uint8_t> (compress_t::BROTLI):
+			case static_cast <uint8_t> (compressor_t::BROTLI):
 				// Добавляем метод сжатия Brotli
 				extensions.push_back({"permessage-br"});
 			break;
 			// Если метод компрессии выбран BZip2
-			case static_cast <uint8_t> (compress_t::BZIP2):
+			case static_cast <uint8_t> (compressor_t::BZIP2):
 				// Добавляем метод сжатия BZip2
 				extensions.push_back({"permessage-bzip2"});
 			break;
 			// Если метод компрессии выбран GZip
-			case static_cast <uint8_t> (compress_t::GZIP):
+			case static_cast <uint8_t> (compressor_t::GZIP):
 				// Добавляем метод сжатия GZip
 				extensions.push_back({"permessage-gzip"});
 			break;
 			// Если метод компрессии выбран Deflate
-			case static_cast <uint8_t> (compress_t::DEFLATE): {
+			case static_cast <uint8_t> (compressor_t::DEFLATE): {
 				// Добавляем метод сжатия Deflate
 				extensions.push_back({"permessage-deflate"});
 				// Если запрещено переиспользовать контекст компрессии для сервера
@@ -472,16 +472,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::DEFLATE;
+					this->_compressors.selected = compressor_t::DEFLATE;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::DEFLATE, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::DEFLATE, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::DEFLATE;
+						this->_compressors.selected = compressor_t::DEFLATE;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом LZ4
@@ -491,16 +491,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::LZ4;
+					this->_compressors.selected = compressor_t::LZ4;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::LZ4, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::LZ4, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::LZ4;
+						this->_compressors.selected = compressor_t::LZ4;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Zstandard
@@ -510,16 +510,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::ZSTD;
+					this->_compressors.selected = compressor_t::ZSTD;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::ZSTD, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::ZSTD, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::ZSTD;
+						this->_compressors.selected = compressor_t::ZSTD;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом LZma
@@ -529,16 +529,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::LZMA;
+					this->_compressors.selected = compressor_t::LZMA;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::LZMA, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::LZMA, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::LZMA;
+						this->_compressors.selected = compressor_t::LZMA;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
@@ -548,16 +548,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::BROTLI;
+					this->_compressors.selected = compressor_t::BROTLI;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::BROTLI, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::BROTLI, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::BROTLI;
+						this->_compressors.selected = compressor_t::BROTLI;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом BZip2
@@ -567,16 +567,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::BZIP2;
+					this->_compressors.selected = compressor_t::BZIP2;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::BZIP2, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::BZIP2, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::BZIP2;
+						this->_compressors.selected = compressor_t::BZIP2;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
@@ -586,16 +586,16 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
-					this->_compressor.selected = compress_t::GZIP;
+					this->_compressors.selected = compressor_t::GZIP;
 				break;
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-					if(this->_fmk->findInMap(compress_t::GZIP, this->_compressor.supports) != this->_compressor.supports.end())
+					if(this->_fmk->findInMap(compressor_t::GZIP, this->_compressors.supports) != this->_compressors.supports.end())
 						// Устанавливаем флаг метода компрессии
-						this->_compressor.selected = compress_t::GZIP;
+						this->_compressors.selected = compressor_t::GZIP;
 					// Выполняем сброс типа компрессии
-					else this->_compressor.selected = compress_t::NONE;
+					else this->_compressors.selected = compressor_t::NONE;
 				} break;
 			}
 		// Если размер скользящего окна для клиента получен
@@ -712,15 +712,15 @@ vector <char> awh::WCore::dump() const noexcept {
 		// Устанавливаем параметры партнёра сервера
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_server), reinterpret_cast <const char *> (&this->_server) + sizeof(this->_server));
 		// Устанавливаем метод компрессии отправляемых данных
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressor.selected), reinterpret_cast <const char *> (&this->_compressor.selected) + sizeof(this->_compressor.selected));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressors.selected), reinterpret_cast <const char *> (&this->_compressors.selected) + sizeof(this->_compressors.selected));
 		// Получаем количество поддерживаемых компрессоров
-		count = this->_compressor.supports.size();
+		count = this->_compressors.supports.size();
 		// Устанавливаем количество поддерживаемых компрессоров
 		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 		// Если список поддерживаемых компрессоров не пустой
-		if(!this->_compressor.supports.empty()){
+		if(!this->_compressors.supports.empty()){
 			// Выполняем перебор всех поддерживаемых компрессоров
-			for(auto & compressor : this->_compressor.supports){
+			for(auto & compressor : this->_compressors.supports){
 				// Выполняем установку веска компрессора
 				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.first), reinterpret_cast <const char *> (&compressor.first) + sizeof(compressor.first));
 				// Выполняем установку идентификатора компрессора
@@ -813,15 +813,15 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_server);
 		// Выполняем получение метода компрессии отправляемых данных
-		::memcpy(reinterpret_cast <void *> (&this->_compressor.selected), data.data() + offset, sizeof(this->_compressor.selected));
+		::memcpy(reinterpret_cast <void *> (&this->_compressors.selected), data.data() + offset, sizeof(this->_compressors.selected));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_compressor.selected);
+		offset += sizeof(this->_compressors.selected);
 		// Выполняем получение количества поддерживаемых компрессоров
 		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
 		// Выполняем смещение в буфере
 		offset += sizeof(count);
 		// Выполняем очистку списку поддерживаемых компрессоров
-		this->_compressor.supports.clear();
+		this->_compressors.supports.clear();
 		// Если количество компрессоров полученно
 		if(count > 0){
 			// Выполняем последовательную установку всех компрессоров
@@ -829,7 +829,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Вес компрессора
 				float weight = .0f;
 				// Идентификатор компрессора
-				compress_t compressor = compress_t::NONE;
+				compressor_t compressor = compressor_t::NONE;
 				// Выполняем получение веса компрессора
 				::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
 				// Выполняем смещение в буфере
@@ -839,7 +839,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем смещение в буфере
 				offset += sizeof(compressor);
 				// Выполняем установку метода компрессора
-				this->_compressor.supports.emplace(weight, compressor);
+				this->_compressors.supports.emplace(weight, compressor);
 			}
 		}
 		// Выполняем получение количества расширений
@@ -1013,23 +1013,23 @@ void awh::WCore::encryption(const string & pass, const string & salt, const hash
  * compression Метод извлечения выбранного метода компрессии
  * @return метод компрессии
  */
-awh::Http::compress_t awh::WCore::compression() const noexcept {
+awh::Http::compressor_t awh::WCore::compression() const noexcept {
 	// Выполняем извлечение выбранного метода компрессии
-	return this->_compressor.selected;
+	return this->_compressors.selected;
 }
 /**
  * compression Метод установки выбранного метода компрессии
- * @param compress метод компрессии
+ * @param compressor метод компрессии
  */
-void awh::WCore::compression(const compress_t compress) noexcept {
+void awh::WCore::compression(const compressor_t compressor) noexcept {
 	// Выполняем установку выбранного метода компрессии
-	this->_compressor.selected = compress;
+	this->_compressors.selected = compressor;
 }
 /**
  * compressors Метод установки списка поддерживаемых компрессоров
- * @param compress методы компрессии данных полезной нагрузки
+ * @param compressors методы компрессии данных полезной нагрузки
  */
-void awh::WCore::compressors(const vector <compress_t> & compressors) noexcept {
+void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept {
 	// Если список архиваторов передан
 	if(!compressors.empty()){
 		// Вес запрашиваемого компрессора
@@ -1037,12 +1037,12 @@ void awh::WCore::compressors(const vector <compress_t> & compressors) noexcept {
 		// Выполняем перебор списка запрашиваемых компрессоров
 		for(auto & compressor : compressors){
 			// Выполняем установку полученного компрессера
-			this->_compressor.supports.emplace(weight, compressor);
+			this->_compressors.supports.emplace(weight, compressor);
 			// Выполняем уменьшение веса компрессора
 			weight -= .1f;
 		}
 		// Устанавливаем флаг метода компрессии
-		this->_compressor.selected = this->_compressor.supports.rbegin()->second;
+		this->_compressors.selected = this->_compressors.supports.rbegin()->second;
 	}
 }
 /**
