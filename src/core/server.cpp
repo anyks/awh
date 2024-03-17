@@ -538,6 +538,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				 * Для всех остальных операционных систем
 				 */
 				#else
+					
+					cout << " ---- " << AWH_ERROR() << " == " << EWOULDBLOCK << " == " << EAGAIN << endl;
+					
 					// Если нужно попытаться ещё раз отправить сообщение
 					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK));
 				#endif
