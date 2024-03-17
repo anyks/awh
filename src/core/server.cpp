@@ -967,45 +967,12 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 					this->close(bid);
 
 
-					{
-						// Создаём бъект активного брокера подключения
-						unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
-						// Получаем идентификатор брокера подключения
-						const uint64_t bid = broker->id();
-						// Выполняем установку желаемого протокола подключения
-						broker->_ectx.proto(this->_settings.proto);
-						// Устанавливаем таймаут начтение данных из сокета
-						broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
-						// Устанавливаем таймаут на запись данных в сокет
-						broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
-						// Выполняем получение контекста сертификата
-						this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
-						{
-							// Выполняем блокировку потока
-							const lock_guard <recursive_mutex> lock(this->_mtx.accept);
-							// Выполняем установку базы событий
-							broker->base(this->_dispatch.base);
-							// Добавляем созданного брокера в список брокеров
-							auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
-							// Добавляем брокера в список подключений
-							node_t::_brokers.emplace(ret.first->first, sid);
-						}{
-							// Выполняем поиск таймера
-							auto i = this->_timers.find(sid);
-							// Если таймер найден
-							if(i != this->_timers.end()){
-								// Выполняем создание нового таймаута на 10 миллисекунд
-								const uint16_t tid = i->second->timeout(10);
-								// Выполняем добавление функции обратного вызова
-								i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
-							}
-						}
-					}
+					
 
 
 
 
-					/*
+					
 					shm->_addr.clear();
 
 					// Если сокет подключения получен
@@ -1060,7 +1027,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 						
 
 						
-						//
+						/*
 						// Выполняем поиск брокера в списке активных брокеров
 						auto i = this->_brokers.find(sid);
 						// Если активный брокер найден
@@ -1070,7 +1037,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							// Активируем получение данных с клиента
 							i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 						}
-						//
+						*/
 
 					// Если сокет не создан, выводим в консоль информацию
 					} else {
@@ -1514,7 +1481,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						}
 						*/
 
-						{
+						/*{
 							// Создаём бъект активного брокера подключения
 							unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(shm->id, this->_fmk, this->_log));
 							// Получаем идентификатор брокера подключения
@@ -1548,6 +1515,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 								} 
 							}
 						}
+						*/
 
 						// Удаляем блокировку брокера
 						this->_busy.erase(bid);
