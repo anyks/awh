@@ -1303,7 +1303,44 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 							// Выполняем все функции обратного вызова
 							callback.bind(bid);
 						// Выполняем создание нового DTLS-брокера
-						this->dtlsBroker(shm->id);
+						// this->dtlsBroker(shm->id);
+
+						// Выполняем удаление старого подключения
+						shm->_addr.clear();
+						// Если сокет подключения получен
+						if(this->create(shm->id)){
+							// Если разрешено выводить информационные сообщения
+							if(this->_verb){
+								// Если unix-сокет используется
+								if(this->_settings.family == scheme_t::family_t::NIX)
+									// Выводим информацию о запущенном сервере на unix-сокете
+									this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
+								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+							}
+							// Выполняем создание нового DTLS-брокера
+							this->dtlsBroker(shm->id);
+						// Если сокет не создан, выводим в консоль информацию
+						} else {
+							// Если unix-сокет используется
+							if(this->_settings.family == scheme_t::family_t::NIX){
+								// Выводим информацию об незапущенном сервере на unix-сокете
+								this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.sockname.c_str()));
+							// Если используется хост и порт
+							} else {
+								// Выводим сообщение об незапущенном сервере за порту
+								this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
+							}
+						}
+
 						// Удаляем блокировку брокера
 						this->_busy.erase(bid);
 						// Выходим из функции
