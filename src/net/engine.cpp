@@ -3117,12 +3117,6 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 			BIO_set_fd(target._bio, target._addr->fd, BIO_NOCLOSE);
 			// Выполняем установку объекта подключения в BIO
 			BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.client));
-		// Если передан неверный сокет
-		} else {
-			// Очищаем созданный контекст
-			target.clear();
-			// Выводим сообщение, что сокет не был инициализирован
-			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }
@@ -3425,12 +3419,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
 			}
-		// Если передан неверный сокет
-		} else {
-			// Очищаем созданный контекст
-			target.clear();
-			// Выводим сообщение, что сокет не был инициализирован
-			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }
@@ -4028,12 +4016,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 				// Выходим из функции
 				return;
 			}
-		// Если передан неверный сокет
-		} else {
-			// Очищаем созданный контекст
-			target.clear();
-			// Выводим сообщение, что сокет не был инициализирован
-			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }
