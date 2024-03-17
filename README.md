@@ -222,7 +222,6 @@ class WebClient {
 int main(int argc, char * argv[]){
 	fmk_t fmk{};
 	log_t log(&fmk);
-	uri_t uri(&fmk);
 
 	client::core_t core(&fmk, &log);
 	client::awh_t awh(&core, &fmk, &log);
@@ -238,11 +237,19 @@ int main(int argc, char * argv[]){
 	awh.mode({
 		client::web_t::flag_t::NOT_INFO,
 		client::web_t::flag_t::REDIRECTS,
-		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./certs/ca.pem");
+	node_t::ssl_t ssl;
+	ssl.verify = true;
+	ssl.ca     = "./certs/ca.pem";
+	// ssl.key  = "./certs/certificates/client-key.pem";
+	// ssl.cert = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
+
+	// awh.user("user", "password");
+	// awh.authType(auth_t::type_t::BASIC);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	// awh.proxy("http://user:password@host.com:port");
 	// awh.proxy("https://user:password@host.com:port");
@@ -250,6 +257,15 @@ int main(int argc, char * argv[]){
 
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	/*
+	awh.compressors({
+		http_t::compressor_t::ZSTD,
+		http_t::compressor_t::BROTLI,
+		http_t::compressor_t::GZIP,
+		http_t::compressor_t::DEFLATE
+	});
+	*/
 
 	awh.callback <void (const client::web_t::mode_t, client::awh_t *)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
@@ -288,11 +304,19 @@ int main(int argc, char * argv[]){
 	awh.mode({
 		client::web_t::flag_t::NOT_INFO,
 		client::web_t::flag_t::REDIRECTS,
-		client::web_t::flag_t::VERIFY_SSL,
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./certs/ca.pem");
+	node_t::ssl_t ssl;
+	ssl.verify = true;
+	ssl.ca     = "./certs/ca.pem";
+	// ssl.key  = "./certs/certificates/client-key.pem";
+	// ssl.cert = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
+
+	// awh.user("user", "password");
+	// awh.authType(auth_t::type_t::BASIC);
+	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	// awh.proxy("http://user:password@host.com:port");
 	// awh.proxy("https://user:password@host.com:port");
@@ -300,6 +324,15 @@ int main(int argc, char * argv[]){
 
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	/*
+	awh.compressors({
+		http_t::compressor_t::ZSTD,
+		http_t::compressor_t::BROTLI,
+		http_t::compressor_t::GZIP,
+		http_t::compressor_t::DEFLATE
+	});
+	*/
 
 	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 
@@ -456,7 +489,13 @@ int main(int argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	
-	core.cluster();
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	awh.clusterAutoRestart(true);
 
@@ -464,22 +503,20 @@ int main(int argc, char * argv[]){
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	awh.init(2222, "127.0.0.1", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 
 	/*
 	awh.init("anyks", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 	*/
-
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
 
 	// awh.addOrigin("example.net");
 
@@ -584,13 +621,15 @@ int main(int argc, char * argv[]){
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.ca("./certs/ca.pem");
-
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/client-key.pem";
+	ssl.cert   = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
 
 	// ws.proxy("http://user:password@host.com:port");
 	// ws.proxy("https://user:password@host.com:port");
@@ -604,7 +643,7 @@ int main(int argc, char * argv[]){
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
-	ws.init("wss://127.0.0.1:2222", {awh::http_t::compress_t::DEFLATE});
+	ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
 
 	ws.subprotocols({"test2", "test8", "test9"});
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
@@ -720,22 +759,26 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::TAKEOVER_SERVER
 	});
 
-	core.cluster();
-
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	ws.subprotocols({"test1", "test2", "test3"});
 
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
-	// ws.init("anyks", {awh::http_t::compress_t::DEFLATE});
-	// ws.init(2222, "", {awh::http_t::compress_t::DEFLATE});
-	ws.init(2222, "127.0.0.1", {awh::http_t::compress_t::DEFLATE});
+	// ws.init("anyks", {awh::http_t::compressor_t::DEFLATE});
+	// ws.init(2222, "", {awh::http_t::compressor_t::DEFLATE});
+	ws.init(2222, "127.0.0.1", {awh::http_t::compressor_t::DEFLATE});
 
 	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
 	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
@@ -903,13 +946,17 @@ int main(int argc, char * argv[]){
 		server::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 
-	core.cluster();
-
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	awh.clusterAutoRestart(true);
 
@@ -917,18 +964,18 @@ int main(int argc, char * argv[]){
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	awh.init(2222, "127.0.0.1", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 
 	/*
 	awh.init("anyks", {
-		awh::http_t::compress_t::ZSTD,
-		awh::http_t::compress_t::BROTLI,
-		awh::http_t::compress_t::GZIP,
-		awh::http_t::compress_t::DEFLATE,
+		awh::http_t::compressor_t::ZSTD,
+		awh::http_t::compressor_t::BROTLI,
+		awh::http_t::compressor_t::GZIP,
+		awh::http_t::compressor_t::DEFLATE,
 	});
 	*/
 
@@ -1013,9 +1060,14 @@ int main(int argc, char * argv[]){
 	log.name("Proxy Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.cluster();
+	proxy.cluster(awh::scheme_t::mode_t::ENABLED);
 
-	proxy.ca(server::proxy_t::broker_t::CLIENT, "./certs/ca.pem");
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.ca     = "./certs/ca.pem";
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	proxy.ssl(ssl);
 
 	proxy.mode({
 		server::proxy_t::flag_t::SYNCPROTO,
@@ -1023,15 +1075,15 @@ int main(int argc, char * argv[]){
 		server::proxy_t::flag_t::CONNECT_METHOD_SERVER_ENABLE
 	});
 
+	proxy.hosts(server::proxy_t::broker_t::CLIENT, "/etc/hosts");
+
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);
 	proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
-	// proxy.init("anyks", http_t::compress_t::GZIP);
-	// proxy.init(2222, "", http_t::compress_t::GZIP);
-	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
-	
-	proxy.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	// proxy.init("anyks", http_t::compressor_t::GZIP);
+	// proxy.init(2222, "", http_t::compressor_t::GZIP);
+	proxy.init(2222, "127.0.0.1", http_t::compressor_t::GZIP);
 
 	proxy.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Proxy::password, &executor, _1, _2));
 	proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
@@ -1092,13 +1144,14 @@ int main(int argc, char * argv[]){
 	log.name("Proxy Socks5 Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	proxy.cluster();
-
-	proxy.ca("./certs/ca.pem");
+	node_t::ssl_t ssl;
+	ssl.verify = true;
+	ssl.ca     = "./certs/ca.pem";
+	proxy.ssl(ssl);
 
 	proxy.sonet(awh::scheme_t::sonet_t::TCP);
 
-	proxy.mode({proxy_socks5_t::flag_t::WAIT_MESS});
+	proxy.cluster(awh::scheme_t::mode_t::ENABLED);
 
 	// proxy.init("anyks");
 	// proxy.init(2222);
@@ -1117,50 +1170,53 @@ int main(int argc, char * argv[]){
 ### Example Timer
 ```c++
 #include <chrono>
-#include <core/core.hpp>
+#include <core/timer.hpp>
 
 using namespace std;
 using namespace awh;
 
 class Executor {
 	private:
-		chrono::time_point <chrono::system_clock> ts;
-		chrono::time_point <chrono::system_clock> is;
+		chrono::time_point <chrono::system_clock> _ts;
+		chrono::time_point <chrono::system_clock> _is;
 	private:
-		u_short count;
+		u_short _count;
 	private:
 		log_t * _log;
 	public:
 
-		void interval(const u_short id, core_t * core){
+		void interval(const u_short tid, awh::timer_t * timer){
 			auto shift = chrono::system_clock::now();
 
-			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->is).count());
+			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->_is).count());
 
-			this->is = shift;
+			this->_is = shift;
 
-			if((this->count++) >= 10){
-				core->clearTimer(id);
-				core->stop();
+			if((this->_count++) >= 10){
+				timer->clear(tid);
+				timer->stop();
 			}
 		}
 
 		void timeout(const u_short id){
-			(void) id;
-
-			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
+			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 
-		void run(const awh::core_t::status_t status, core_t * core){
+		void run(const awh::core_t::status_t status, awh::timer_t * timer){
 			switch(static_cast <uint8_t> (status)){
 				case static_cast <uint8_t> (awh::core_t::status_t::START): {
-					this->ts = chrono::system_clock::now();
-					this->is = this->ts;
+					this->_ts = chrono::system_clock::now();
+					this->_is = this->_ts;
 
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 
-					core->setTimeout(10000, std::bind(&Executor::timeout, this, _1));
-					core->setInterval(5000, std::bind(&Executor::interval, this, _1, core));
+					uint16_t tid = timer->timeout(10000);
+
+					timer->set <void (const uint16_t)> (tid, std::bind(&Executor::timeout, this, tid));
+
+					tid = timer->interval(5000);
+
+					timer->set <void (const uint16_t, awh::timer_t *)> (tid, std::bind(&Executor::interval, this, tid, timer));
 				} break;
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
@@ -1168,7 +1224,7 @@ class Executor {
 			}
 		}
 	public:
-		Executor(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
+		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1176,14 +1232,14 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 
 	Executor executor(&log);
-	core_t core(&fmk, &log);
+
+	awh::timer_t timer(&fmk, &log);
 
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &core));
-
-	core.start();
+	timer.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &timer));
+	timer.start();
 
 	return 0;
 }
@@ -1285,29 +1341,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1317,22 +1371,19 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("TCP Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -1351,8 +1402,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -1367,15 +1416,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1386,18 +1435,19 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("SAMPLE Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -1416,29 +1466,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1448,24 +1496,25 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("TLS Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
-	core.verifySSL(false);
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/client-key.pem";
+	ssl.cert   = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -1484,8 +1533,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -1500,15 +1547,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1519,20 +1566,25 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("TLS Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -1551,29 +1603,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1583,22 +1633,19 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("UDP Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -1617,8 +1664,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -1633,15 +1678,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1652,7 +1697,7 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("UDP Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -1661,9 +1706,9 @@ int main(int argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -1682,29 +1727,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1714,24 +1757,25 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("SCTP Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
-	core.verifySSL(false);
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
+	
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/client-key.pem";
+	ssl.cert   = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -1750,8 +1794,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -1766,15 +1808,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1785,20 +1827,25 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("SCTP Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -1817,29 +1864,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1849,24 +1894,25 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("DTLS Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
-	core.verifySSL(false);
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.certificate("./certs/certificates/client-cert.pem", "./certs/certificates/client-key.pem");
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/client-key.pem";
+	ssl.cert   = "./certs/certificates/client-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -1885,8 +1931,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -1901,15 +1945,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1920,20 +1964,24 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("DTLS Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.certificate("./certs/certificates/server-cert.pem", "./certs/certificates/server-key.pem");
+
+	node_t::ssl_t ssl;
+	ssl.verify = false;
+	ssl.key    = "./certs/certificates/server-key.pem";
+	ssl.cert   = "./certs/certificates/server-cert.pem";
+	core.ssl(ssl);
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -1952,29 +2000,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -1984,23 +2030,20 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("UnixSocket Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 	
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
 
 	sample.init("anyks");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -2019,8 +2062,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -2035,15 +2076,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -2054,19 +2095,20 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("UnixSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
+	core.cluster(awh::scheme_t::mode_t::ENABLED);
 
 	sample.init("anyks");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 
@@ -2085,29 +2127,27 @@ class Client {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		client::sample_t * _sample;
 	public:
 
-		void active(const client::sample_t::mode_t mode){
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 
 			if(mode == client::sample_t::mode_t::CONNECT){
 				const string message = "Hello World!!!";
 
-				this->_sample->send(message.data(), message.size());
+				sample->send(message.data(), message.size());
 			}
 		}
 
-		void message(const vector <char> & buffer){
+		void message(const vector <char> & buffer, client::sample_t * sample){
 			const string message(buffer.begin(), buffer.end());
 			
 			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			
-			this->_sample->stop();
+			sample->stop();
 		}
 	public:
-		Client(const fmk_t * fmk, const log_t * log, client::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -2117,23 +2157,20 @@ int main(int argc, char * argv[]){
 
 	client::core_t core(&dns, &fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
-	Client executor(&fmk, &log, &sample);
+	Client executor(&fmk, &log);
 
 	log.name("UDP UnixSocket Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	sample.mode({
-		// client::sample_t::flag_t::NOT_INFO,
-		client::sample_t::flag_t::WAIT_MESS,
-	});
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 	
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);
 
 	sample.init("anyks");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1));
+	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 
 	sample.start();
 
@@ -2152,8 +2189,6 @@ class Server {
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
-	private:
-		server::sample_t * _sample;
 	public:
 
 		bool accept(const string & ip, const string & mac, const u_int port){
@@ -2168,15 +2203,15 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			(void) bid;
 
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
-			this->_sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, buffer.data(), buffer.size());
 		}
 	public:
-		Server(const fmk_t * fmk, const log_t * log, server::sample_t * sample) : _fmk(fmk), _log(log), _sample(sample) {}
+		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 int main(int argc, char * argv[]){
@@ -2187,7 +2222,7 @@ int main(int argc, char * argv[]){
 	server::core_t core(&dns, &fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	Server executor(&fmk, &log, &sample);
+	Server executor(&fmk, &log);
 
 	log.name("UDP UnixSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -2197,9 +2232,9 @@ int main(int argc, char * argv[]){
 
 	sample.init("anyks");
 
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
 

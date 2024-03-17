@@ -262,15 +262,14 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем постоянное подключение
 	 * 2. Устанавливаем поддержку редиректов
-	 * 3. Устанавливаем валидацию SSL сертификата
-	 * 4. Устанавливаем флаг перехвата контекста компрессии
-	 * 5. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 3. Устанавливаем флаг перехвата контекста компрессии
+	 * 4. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 5. Устанавливаем флаг разрешения метода CONNECT
 	 */
 	ws.mode({
 		// client::web_t::flag_t::NOT_STOP,
 		client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
-		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,

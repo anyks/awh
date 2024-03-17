@@ -210,12 +210,11 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем поддержку редиректов
-	 * 2. Устанавливаем валидацию SSL сертификата
+	 * 2. Устанавливаем флаг разрешения метода CONNECT
 	 */
 	awh.mode({
 		// client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
-		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});

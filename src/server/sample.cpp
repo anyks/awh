@@ -37,6 +37,8 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status) noe
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
+			// Выполняем биндинг ядра локального таймера
+			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 			// Устанавливаем интервал времени на выполнения пинга клиента
 			uint16_t tid = this->_timer.interval(PING_INTERVAL);
 			// Выполняем добавление функции обратного вызова
@@ -45,8 +47,6 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status) noe
 			tid = this->_timer.interval(3000);
 			// Выполняем добавление функции обратного вызова
 			this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::erase, this, tid));
-			// Выполняем биндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -174,21 +174,21 @@ void awh::server::Sample::erase(const uint16_t tid) noexcept {
 		// Получаем текущее значение времени
 		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 		// Выполняем переход по всему списку отключившихся клиентов
-		for(auto it = this->_disconnected.begin(); it != this->_disconnected.end();){
+		for(auto i = this->_disconnected.begin(); i != this->_disconnected.end();){
 			// Если брокер уже давно удалился
-			if((date - it->second) >= 3000){
+			if((date - i->second) >= 3000){
 				// Получаем параметры активного клиента
-				scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(it->first));
+				scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(i->first));
 				// Если параметры активного клиента получены
 				if(options != nullptr)
 					// Устанавливаем флаг отключения
 					options->close = true;
 				// Выполняем удаление параметров брокера
-				this->_scheme.rm(it->first);
+				this->_scheme.rm(i->first);
 				// Выполняем удаление объекта брокеров из списка мусора
-				it = this->_disconnected.erase(it);
+				i = this->_disconnected.erase(i);
 			// Выполняем пропуск брокера
-			} else ++it;
+			} else ++i;
 		}
 	}
 }
@@ -326,10 +326,12 @@ void awh::server::Sample::alive(const uint64_t bid, const bool mode) noexcept {
  * stop Метод остановки сервера
  */
 void awh::server::Sample::stop() noexcept {
-	// Если подключение выполнено
-	if(this->_core->working())
+	// Если завершить работу разрешено
+	if(this->_complete && this->_core->working())
 		// Завершаем работу, если разрешено остановить
 		const_cast <server::core_t *> (this->_core)->stop();
+	// Если завершать работу запрещено, просто отключаемся
+	else const_cast <server::core_t *> (this->_core)->close();
 }
 /**
  * start Метод запуска сервера
@@ -395,8 +397,8 @@ void awh::server::Sample::total(const u_short total) noexcept {
  * @param flag флаг модуля для установки
  */
 void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
@@ -429,7 +431,7 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _alive(false), _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log),
+ _pid(getpid()), _alive(false), _complete(true), _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log),
  _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);

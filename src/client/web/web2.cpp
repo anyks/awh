@@ -586,15 +586,15 @@ void awh::client::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 	// Если максимальный размер фрейма установлен
 	else {
 		// Выполняем извлечение максимального размера фрейма
-		auto it = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
+		auto i = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
 		// Если максимальный размер фрейма больше самого максимального значения
-		if(it->second > http2_t::MAX_FRAME_SIZE_MAX)
+		if(i->second > http2_t::MAX_FRAME_SIZE_MAX)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = http2_t::MAX_FRAME_SIZE_MAX;
+			i->second = http2_t::MAX_FRAME_SIZE_MAX;
 		// Если максимальный размер фрейма меньше самого минимального значения
-		else if(it->second < http2_t::MAX_FRAME_SIZE_MIN)
+		else if(i->second < http2_t::MAX_FRAME_SIZE_MIN)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = http2_t::MAX_FRAME_SIZE_MIN;
+			i->second = http2_t::MAX_FRAME_SIZE_MIN;
 	}
 	// Если максимальный размер окна фрейма не установлен
 	if(this->_settings.count(http2_t::settings_t::WINDOW_SIZE) == 0)
@@ -628,16 +628,14 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг разрешающий выполнять редиректы
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
 	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено

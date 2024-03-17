@@ -94,6 +94,9 @@ namespace awh {
 				// Количество активных ядер
 				int16_t _threads;
 			private:
+				// Список активных маршрутов запросов
+				unordered_map <string, string> _route;
+			private:
 				// Список активных воркеров
 				map <int32_t, unique_ptr <worker_t>> _workers;
 				// Список активых запросов

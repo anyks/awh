@@ -520,11 +520,11 @@ void awh::Http::commit() noexcept {
 				// Выполняем извлечение списка нужных заголовков
 				const auto & range = headers.equal_range("content-encoding");
 				// Выполняем перебор всего списка указанных заголовков
-				for(auto it = range.first; it != range.second; ++it){
+				for(auto i = range.first; i != range.second; ++i){
 					// Создаём временный список компрессоров полученных в из заголовка
 					vector <string> tmp;
 					// Выполняем извлечение списка компрессоров
-					this->_fmk->split(it->second, ",", tmp);
+					this->_fmk->split(i->second, ",", tmp);
 					// Если список компрессоров получен
 					if(!tmp.empty())
 						// Добавляем в общий список компрессоров
@@ -604,11 +604,11 @@ void awh::Http::commit() noexcept {
 						// Выполняем извлечение списка нужных заголовков
 						const auto & range = headers.equal_range("transfer-encoding");
 						// Выполняем перебор всего списка указанных заголовков
-						for(auto it = range.first; it != range.second; ++it){
+						for(auto i = range.first; i != range.second; ++i){
 							// Создаём временный список параметров полученных в из заголовка
 							vector <string> tmp;
 							// Выполняем извлечение списка параметров
-							this->_fmk->split(it->second, ",", tmp);
+							this->_fmk->split(i->second, ",", tmp);
 							// Если список параметров получен
 							if(!tmp.empty())
 								// Добавляем в общий список параметров
@@ -659,9 +659,9 @@ void awh::Http::commit() noexcept {
 							// Выполняем извлечение списка нужных заголовков
 							const auto & range = headers.equal_range("accept-encoding");
 							// Выполняем перебор всего списка указанных заголовков
-							for(auto it = range.first; it != range.second; ++it){
+							for(auto i = range.first; i != range.second; ++i){
 								// Если конкретный метод сжатия запрашивается любой
-								if(this->_fmk->compare(it->second, "*")){
+								if(this->_fmk->compare(i->second, "*")){
 									// Выполняем перебор всего списка доступных компрессоров
 									for(auto & compressor : this->_compressors.supports)
 										// Добавляем в список запрашиваемых компрессоров
@@ -671,7 +671,7 @@ void awh::Http::commit() noexcept {
 									// Список компрессоров которым выполненно сжатие
 									vector <string> compressors;
 									// Выполняем извлечение списка компрессоров
-									this->_fmk->split(it->second, ",", compressors);
+									this->_fmk->split(i->second, ",", compressors);
 									// Если список компрессоров получен
 									if(!compressors.empty()){
 										// Вес запрашиваемого компрессора
@@ -776,11 +776,11 @@ void awh::Http::commit() noexcept {
 							// Если список запрашиваемых компрессоров получен
 							if(!requested.empty()){
 								// Выполняем перебор списка запрашиваемых компрессоров
-								for(auto it = requested.rbegin(); it != requested.rend(); ++it){
+								for(auto i = requested.rbegin(); i != requested.rend(); ++i){
 									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-									if(this->_fmk->findInMap(it->second, this->_compressors.supports) != this->_compressors.supports.end()){
+									if(this->_fmk->findInMap(i->second, this->_compressors.supports) != this->_compressors.supports.end()){
 										// Устанавливаем флаг метода компрессии
-										this->_compressors.selected = it->second;
+										this->_compressors.selected = i->second;
 										// Выходим из цикла
 										break;
 									}
@@ -808,11 +808,11 @@ void awh::Http::commit() noexcept {
 							// Выполняем извлечение списка нужных заголовков
 							const auto & range = headers.equal_range("te");
 							// Выполняем перебор всего списка указанных заголовков
-							for(auto it = range.first; it != range.second; ++it){
+							for(auto i = range.first; i != range.second; ++i){
 								// Список параметров запроса для Transfer-Encoding
 								vector <string> params;
 								// Выполняем извлечение списка параметров
-								this->_fmk->split(it->second, ",", params);
+								this->_fmk->split(i->second, ",", params);
 								// Если список параметров получен
 								if(!params.empty()){
 									// Вес запрашиваемого компрессора
@@ -932,11 +932,11 @@ void awh::Http::commit() noexcept {
 							// Если список запрашиваемых компрессоров получен
 							if(!requested.empty() && !this->_compressors.supports.empty()){
 								// Выполняем перебор списка запрашиваемых компрессоров
-								for(auto it = requested.rbegin(); it != requested.rend(); ++it){
+								for(auto i = requested.rbegin(); i != requested.rend(); ++i){
 									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-									if(this->_fmk->findInMap(it->second, this->_compressors.supports) != this->_compressors.supports.end()){
+									if(this->_fmk->findInMap(i->second, this->_compressors.supports) != this->_compressors.supports.end()){
 										// Устанавливаем флаг метода компрессии
-										this->_compressors.selected = it->second;
+										this->_compressors.selected = i->second;
 										// Выходим из цикла
 										break;
 									}
@@ -2143,11 +2143,11 @@ const string & awh::Http::message(const u_int code) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Выполняем поиск кода сообщения
-	auto it = this->messages.find(code);
+	auto i = this->messages.find(code);
 	// Если код сообщения найден
-	if(it != this->messages.end())
+	if(i != this->messages.end())
 		// Выводим сообщение на код ответа
-		return it->second;
+		return i->second;
 	// Выводим результат
 	return result;
 }
@@ -2253,15 +2253,15 @@ vector <char> awh::Http::trailer() const noexcept {
 		// Если список трейлеров получен
 		if(!this->_trailers.empty()){
 			// Получаем первый трейлер из списка
-			auto it = this->_trailers.begin();
+			auto i = this->_trailers.begin();
 			// Получаем название заголовка
-			const string name = it->first;
+			const string name = i->first;
 			// Переводим заголовок в нормальный режим
 			this->_fmk->transform(name, fmk_t::transform_t::SMART);
 			// Сформированный отправляемый ответ
-			string response = this->_fmk->format("%s: %s\r\n", name.c_str(), it->second.c_str());
+			string response = this->_fmk->format("%s: %s\r\n", name.c_str(), i->second.c_str());
 			// Выполняем удаление отправляемого трейлера из списка
-			const_cast <http_t *> (this)->_trailers.erase(it);
+			const_cast <http_t *> (this)->_trailers.erase(i);
 			// Если трейлеров в списке больше нет
 			if(this->_trailers.empty())
 				// Выполняем добавление конца запроса
@@ -2285,11 +2285,11 @@ vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 		// Если список трейлеров получен
 		if(!this->_trailers.empty()){
 			// Переходим по всему списку доступных трейлеров
-			for(auto it = this->_trailers.begin(); it != this->_trailers.end();){
+			for(auto i = this->_trailers.begin(); i != this->_trailers.end();){
 				// Устанавливаем трейлер в список для отправки
-				result.push_back(make_pair(it->first, it->second));
+				result.push_back(make_pair(i->first, i->second));
 				// Выполняем удаление отправляемого трейлера из списка
-				it = const_cast <http_t *> (this)->_trailers.erase(it);
+				i = const_cast <http_t *> (this)->_trailers.erase(i);
 			}		
 		}
 	}
@@ -2777,13 +2777,13 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Строка со списком компрессоров
 								string compressors = "";
 								// Выполняем перебор всего списка компрессоров
-								for(auto it = this->_compressors.supports.rbegin(); it != this->_compressors.supports.rend(); ++it){
+								for(auto i = this->_compressors.supports.rbegin(); i != this->_compressors.supports.rend(); ++i){
 									// Если список компрессоров уже не пустой
 									if(!compressors.empty())
 										// Выполняем добавление разделителя
 										compressors.append(", ");
 									// Определяем метод сжатия который поддерживает клиент
-									switch(static_cast <uint8_t> (it->second)){
+									switch(static_cast <uint8_t> (i->second)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Добавляем компрессор в список
@@ -2936,13 +2936,13 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Выполняем извлечение списка нужных заголовков
 								const auto & range = headers.equal_range("te");
 								// Выполняем перебор всего списка указанных заголовков
-								for(auto it = range.first; it != range.second; ++it){
+								for(auto i = range.first; i != range.second; ++i){
 									// Если заголовок уже собран
 									if(!header.empty())
 										// Добавляем разделитель
 										header.append(", ");
 									// Добавляем заголовок в список
-									header.append(this->_fmk->transform(it->second, fmk_t::transform_t::LOWER));
+									header.append(this->_fmk->transform(i->second, fmk_t::transform_t::LOWER));
 								}
 								// Если заголовок собран
 								if(!header.empty())
@@ -3690,13 +3690,13 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Строка со списком компрессоров
 								string compressors = "";
 								// Выполняем перебор всего списка компрессоров
-								for(auto it = this->_compressors.supports.rbegin(); it != this->_compressors.supports.rend(); ++it){
+								for(auto i = this->_compressors.supports.rbegin(); i != this->_compressors.supports.rend(); ++i){
 									// Если список компрессоров уже не пустой
 									if(!compressors.empty())
 										// Выполняем добавление разделителя
 										compressors.append(", ");
 									// Определяем метод сжатия который поддерживает клиент
-									switch(static_cast <uint8_t> (it->second)){
+									switch(static_cast <uint8_t> (i->second)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Добавляем компрессор в список

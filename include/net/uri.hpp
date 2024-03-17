@@ -110,7 +110,7 @@ namespace awh {
 					vector <pair <string, string>> params;
 				public:
 					// Функция выполняемая при генерации URL адреса
-					function <string (const URL *, const URI *)> fn;
+					function <string (const URL *, const URI *)> callback;
 				public:
 					/**
 					 * clear Метод очистки
@@ -134,9 +134,9 @@ namespace awh {
 					 * URL Конструктор
 					 */
 					URL() noexcept :
-					 port(0), family(AF_INET), ip(""), host(""),
-					 user(""), pass(""), domain(""), schema(""),
-					 anchor(""), fn(nullptr) {}
+					 port(0), family(AF_INET), ip{""}, host{""},
+					 user{""}, pass{""}, domain{""}, schema{""},
+					 anchor{""}, callback(nullptr) {}
 			} url_t;
 		private:
 			// Объект работы с IP-адресами

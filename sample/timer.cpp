@@ -23,12 +23,12 @@ using namespace awh;
 class Executor {
 	private:
 		// Замеряем время начала работы для таймера
-		chrono::time_point <chrono::system_clock> ts;
+		chrono::time_point <chrono::system_clock> _ts;
 		// Замеряем время начала работы для интервала времени
-		chrono::time_point <chrono::system_clock> is;
+		chrono::time_point <chrono::system_clock> _is;
 	private:
 		// Идентификаторы таймеров
-		u_short count;
+		u_short _count;
 	private:
 		// Объект логирования
 		log_t * _log;
@@ -42,11 +42,11 @@ class Executor {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Выводим информацию в лог
-			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->is).count());
+			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->_is).count());
 			// Замеряем время начала работы для интервала времени
-			this->is = shift;
+			this->_is = shift;
 			// Если таймер отработал 10 раз, выходим
-			if((this->count++) >= 10){
+			if((this->_count++) >= 10){
 				// Останавливаем работу таймера
 				timer->clear(tid);
 				// Останавливаем работу модуля
@@ -59,7 +59,7 @@ class Executor {
 		 */
 		void timeout(const u_short id){
 			// Выводим информацию в лог
-			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
+			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 		/**
 		 * run Метод запуска сетевого ядра
@@ -72,9 +72,9 @@ class Executor {
 				// Если система запущена
 				case static_cast <uint8_t> (awh::core_t::status_t::START): {
 					// Замеряем время начала работы для таймера
-					this->ts = chrono::system_clock::now();
+					this->_ts = chrono::system_clock::now();
 					// Замеряем время начала работы для интервала времени
-					this->is = this->ts;
+					this->_is = this->_ts;
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 					// Устанавливаем задержку времени на 10 секунд
@@ -98,7 +98,7 @@ class Executor {
 		 * Executor Конструктор
 		 * @param log объект логирования
 		 */
-		Executor(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
+		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
 
 /**

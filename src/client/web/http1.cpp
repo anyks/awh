@@ -76,7 +76,7 @@ void awh::client::Http1::disconnectEvent(const uint64_t bid, const uint16_t sid)
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 	}
@@ -422,9 +422,9 @@ void awh::client::Http1::response(const uint64_t bid, const u_int code, const st
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 	if(!this->_requests.empty() && this->_callbacks.is("response")){
 		// Выполняем получение первого запроса
-		auto it = this->_requests.begin();
+		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", it->first, it->second.id, code, message);
+		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", i->first, i->second.id, code, message);
 	}
 }
 /**
@@ -439,9 +439,9 @@ void awh::client::Http1::header(const uint64_t bid, const string & key, const st
 	// Если функция обратного вызова на полученного заголовка с сервера установлена
 	if(!this->_requests.empty() && this->_callbacks.is("header")){
 		// Выполняем получение первого запроса
-		auto it = this->_requests.begin();
+		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const int32_t, const uint64_t, const string &, const string &)> ("header", it->first, it->second.id, key, value);
+		this->_callbacks.call <void (const int32_t, const uint64_t, const string &, const string &)> ("header", i->first, i->second.id, key, value);
 	}
 }
 /**
@@ -457,9 +457,9 @@ void awh::client::Http1::headers(const uint64_t bid, const u_int code, const str
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(!this->_requests.empty() && this->_callbacks.is("headers")){
 		// Выполняем получение первого запроса
-		auto it = this->_requests.begin();
+		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", it->first, it->second.id, code, message, headers);
+		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", i->first, i->second.id, code, message, headers);
 	}
 }
 /**
@@ -474,13 +474,13 @@ void awh::client::Http1::chunking(const uint64_t bid, const vector <char> & chun
 		// Выполняем неиспользуемую переменную
 		(void) bid;
 		// Извлекаем параметры текущего запроса
-		auto it = this->_requests.begin();
+		auto i = this->_requests.begin();
 		// Если запрос получен правильно
-		if(it != this->_requests.end()){
+		if(i != this->_requests.end()){
 			// Если функция обратного вызова на перехват входящих чанков установлена
 			if(this->_callbacks.is("chunking"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", it->second.id, chunk, http);
+				this->_callbacks.call <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", i->second.id, chunk, http);
 			// Если функция перехвата полученных чанков не установлена
 			else if(this->_core != nullptr) {
 				// Выполняем добавление полученного чанка в тело ответа
@@ -488,7 +488,7 @@ void awh::client::Http1::chunking(const uint64_t bid, const vector <char> & chun
 				// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 				if(this->_callbacks.is("chunks"))
 					// Выполняем функцию обратного вызова
-					this->_callbacks.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", it->first, it->second.id, chunk);
+					this->_callbacks.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", i->first, i->second.id, chunk);
 			}
 		}
 	}
@@ -544,13 +544,13 @@ void awh::client::Http1::result(const int32_t sid) noexcept {
 		// Идентификатор запроса
 		uint64_t rid = 0;
 		// Выполняем поиск указанного запроса
-		auto it = this->_requests.find(sid);
+		auto i = this->_requests.find(sid);
 		// Если параметры активного запроса найдены
-		if(it != this->_requests.end()){
+		if(i != this->_requests.end()){
 			// Выполняем получение идентификатора запроса
-			rid = it->second.id;
+			rid = i->second.id;
 			// Выполняем удаление объекта запроса
-			this->_requests.erase(it);
+			this->_requests.erase(i);
 		}
 		// Если функция обратного вызова при завершении запроса установлена
 		if(this->_callbacks.is("result"))
@@ -594,13 +594,13 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				status = awh::http_t::status_t::GOOD;
 	}
 	// Выполняем поиск указанного запроса
-	auto it = this->_requests.find(sid);
+	auto i = this->_requests.find(sid);
 	// Если параметры активного запроса найдены
-	if(it != this->_requests.end()){
+	if(i != this->_requests.end()){
 		// Если функция обратного вызова получения статуса ответа установлена
 		if(this->_callbacks.is("answer"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, it->second.id, status);
+			this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, i->second.id, status);
 	}
 	// Выполняем анализ результата авторизации
 	switch(static_cast <uint8_t> (status)){
@@ -613,17 +613,17 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 			// Если попытки повторить переадресацию ещё не закончились
 			if(!(this->_stopped = (this->_attempt >= this->_attempts))){
 				// Выполняем поиск указанного запроса
-				it = this->_requests.find(sid);
+				i = this->_requests.find(sid);
 				// Если параметры активного запроса найдены
-				if(it != this->_requests.end()){
+				if(i != this->_requests.end()){
 					// Получаем новый адрес запроса
 					const uri_t::url_t & url = this->_http.url();
 					// Если URL-адрес запроса получен
 					if(!url.empty()){
 						// Выполняем проверку соответствие протоколов
 						const bool schema = (
-							(this->_fmk->compare(url.host, it->second.url.host)) &&
-							(this->_fmk->compare(url.schema, it->second.url.schema))
+							(this->_fmk->compare(url.host, i->second.url.host)) &&
+							(this->_fmk->compare(url.schema, i->second.url.schema))
 						);
 						// Если соединение является постоянным
 						if(schema && this->_http.is(http_t::state_t::ALIVE)){
@@ -632,13 +632,13 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							// Увеличиваем количество попыток
 							this->_attempt++;
 							// Устанавливаем новый адрес запроса
-							this->_uri.combine(it->second.url, url);
+							this->_uri.combine(i->second.url, url);
 							// Выполняем запрос на удалённый сервер
-							this->send(it->second);
+							this->send(i->second);
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callbacks.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, it->second.id, mode_t::CLOSE);
+								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, i->second.id, mode_t::CLOSE);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -667,11 +667,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							// Увеличиваем количество попыток
 							this->_attempt++;
 							// Выполняем запрос на удалённый сервер
-							this->send(it->second);
+							this->send(i->second);
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callbacks.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, it->second.id, mode_t::CLOSE);
+								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, i->second.id, mode_t::CLOSE);
 							// Завершаем работу
 							return status_t::SKIP;
 						}
@@ -681,7 +681,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callbacks.is("stream"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, it->second.id, mode_t::CLOSE);
+						this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, i->second.id, mode_t::CLOSE);
 					// Завершаем работу
 					return status_t::SKIP;
 				}
@@ -690,19 +690,19 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если запрос выполнен удачно
 		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 			// Выполняем поиск указанного запроса
-			it = this->_requests.find(sid);
+			i = this->_requests.find(sid);
 			// Если параметры активного запроса найдены
-			if(it != this->_requests.end()){
+			if(i != this->_requests.end()){
 				// Выполняем сброс количества попыток
 				this->_attempt = 0;
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(this->_callbacks.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 				// Устанавливаем размер стопбайт
@@ -721,9 +721,9 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если запрос неудачный
 		case static_cast <uint8_t> (awh::http_t::status_t::FAULT): {
 			// Выполняем поиск указанного запроса
-			it = this->_requests.find(sid);
+			i = this->_requests.find(sid);
 			// Если параметры активного запроса найдены
-			if(it != this->_requests.end()){
+			if(i != this->_requests.end()){
 				// Устанавливаем флаг принудительной остановки
 				this->_stopped = true;
 				// Если функция обратного вызова на на вывод ошибок установлена
@@ -733,11 +733,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(this->_callbacks.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 			}
@@ -746,19 +746,19 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		}
 	}
 	// Выполняем поиск указанного запроса
-	it = this->_requests.find(sid);
+	i = this->_requests.find(sid);
 	// Если параметры активного запроса найдены
-	if(it != this->_requests.end()){
+	if(i != this->_requests.end()){
 		// Выполняем очистку оставшихся данных
 		this->_buffer.clear();
 		// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 		if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
-			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, it->second.id, response.code, response.message, this->_http.body());
+			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 		// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 		if(this->_callbacks.is("complete"))
 			// Выполняем функцию обратного вызова
-			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, it->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 		// Выполняем завершение запроса
 		this->result(sid);
 	}
@@ -1234,18 +1234,16 @@ void awh::client::Http1::segmentSize(const size_t size) noexcept {
 void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг разрешающий выполнять редиректы
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
 	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
 	// Если сетевое ядро установлено

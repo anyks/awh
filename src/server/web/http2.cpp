@@ -28,9 +28,9 @@ void awh::server::Http2::connectEvents(const uint64_t bid, const uint16_t sid) n
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если протокол HTTP/2 для клиента не инициализирован
-		if(it == this->_sessions.end()){
+		if(i == this->_sessions.end()){
 			// Выполняем установку сетевого ядра
 			this->_http1._core = this->_core;
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -55,17 +55,17 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
+		if(i != this->_sessions.end()){
 			// Выполняем закрытие подключения
-			it->second->close();
+			i->second->close();
 			// Выполняем поиск брокера в списке активных сессий
-			auto jt = this->_ws2._sessions.find(bid);
+			auto j = this->_ws2._sessions.find(bid);
 			// Если активная сессия найдена
-			if(jt != this->_ws2._sessions.end())
+			if(j != this->_ws2._sessions.end())
 				// Выполняем закрытие подключения
-				(* jt->second.get()) = nullptr;
+				(* j->second.get()) = nullptr;
 		}
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
@@ -111,11 +111,11 @@ void awh::server::Http2::readEvents(const char * buffer, const size_t size, cons
 					// Если протокол подключения соответствует HTTP/1.1
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 						// Выполняем поиск агента которому соответствует клиент
-						auto it = this->_http1._agents.find(bid);
+						auto i = this->_http1._agents.find(bid);
 						// Если активный агент клиента установлен
-						if(it != this->_http1._agents.end()){
+						if(i != this->_http1._agents.end()){
 							// Определяем тип активного протокола
-							switch(static_cast <uint8_t> (it->second)){
+							switch(static_cast <uint8_t> (i->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
 								// Если протокол соответствует протоколу Websocket
@@ -129,19 +129,19 @@ void awh::server::Http2::readEvents(const char * buffer, const size_t size, cons
 					// Если протокол подключения соответствует HTTP/2
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 						// Выполняем поиск агента которому соответствует клиент
-						auto it = this->_agents.find(bid);
+						auto i = this->_agents.find(bid);
 						// Если активный агент клиента установлен
-						if(it != this->_agents.end()){
+						if(i != this->_agents.end()){
 							// Определяем тип активного протокола
-							switch(static_cast <uint8_t> (it->second)){
+							switch(static_cast <uint8_t> (i->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Выполняем поиск брокера в списке активных сессий
-									auto it = this->_sessions.find(bid);
+									auto i = this->_sessions.find(bid);
 									// Если активная сессия найдена
-									if(it != this->_sessions.end()){
+									if(i != this->_sessions.end()){
 										// Если прочитать данные фрейма не удалось, выходим из функции
-										if(!it->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
+										if(!i->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
 											// Выполняем закрытие подключения
 											web2_t::close(bid);
 											// Выходим из функции
@@ -181,11 +181,11 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 							// Если протокол соответствует протоколу Websocket
@@ -199,11 +199,11 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Если необходимо выполнить закрыть подключение
@@ -401,11 +401,11 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
 			// Если поток получен удачно
 			if(stream != nullptr){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Добавляем полученный чанк в тело данных
@@ -451,11 +451,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 				// Если параметры активного клиента получены
 				if((this->_core != nullptr) && (options != nullptr)){
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Если необходимо выполнить закрыть подключение
@@ -463,11 +463,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 									// Устанавливаем флаг закрытия подключения
 									options->close = !options->close;
 									// Выполняем поиск брокера в списке активных сессий
-									auto it = this->_sessions.find(bid);
+									auto i = this->_sessions.find(bid);
 									// Если активная сессия найдена
-									if(it != this->_sessions.end()){
+									if(i != this->_sessions.end()){
 										// Выполняем закрытие подключения
-										it->second->close();
+										i->second->close();
 										// Выполняем закрытие подключения
 										web2_t::close(bid);
 									// Принудительно выполняем отключение лкиента
@@ -479,13 +479,13 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								// Выполняем передачу фрейма клиенту Websocket
 								this->_ws2.frameSignal(sid, bid, direct, frame, flags);
 								// Выполняем поиск брокера в списке активных сессий
-								auto it = this->_ws2._sessions.find(bid);
+								auto i = this->_ws2._sessions.find(bid);
 								// Если активная сессия найдена
-								if(it != this->_ws2._sessions.end()){
+								if(i != this->_ws2._sessions.end()){
 									// Если сессия была удалена
-									if(!it->second->is())
+									if(!i->second->is())
 										// Выполняем копирование контекста сессии HTTP/2
-										(* this->_sessions.at(bid).get()) = (* it->second.get());
+										(* this->_sessions.at(bid).get()) = (* i->second.get());
 								}
 							} break;
 						}
@@ -506,11 +506,11 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 			// Если параметры активного клиента получены
 			if((this->_core != nullptr) && (options != nullptr)){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Выполняем определение типа фрейма
@@ -1043,13 +1043,13 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
 						// Выполняем поиск брокера в списке активных сессий
-						auto it = this->_sessions.find(bid);
+						auto i = this->_sessions.find(bid);
 						// Если активная сессия найдена
-						if(it != this->_sessions.end()){
+						if(i != this->_sessions.end()){
 							// Выполняем создание нового объекта сессии HTTP/2
 							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
 							// Выполняем копирование контекста сессии HTTP/2
-							(* ret.first->second.get()) = (* it->second.get());
+							(* ret.first->second.get()) = (* i->second.get());
 						}
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = this->_core;
@@ -1220,11 +1220,11 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 					// Если протокол подключения соответствует HTTP/1.1
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 						// Выполняем поиск агента которому соответствует клиент
-						auto it = this->_http1._agents.find(bid);
+						auto i = this->_http1._agents.find(bid);
 						// Если активный агент клиента установлен
-						if(it != this->_http1._agents.end()){
+						if(i != this->_http1._agents.end()){
 							// Определяем тип активного протокола
-							switch(static_cast <uint8_t> (it->second)){
+							switch(static_cast <uint8_t> (i->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
 								// Если протокол соответствует протоколу Websocket
@@ -1238,11 +1238,11 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 					// Если протокол подключения соответствует HTTP/2
 					case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 						// Выполняем поиск агента которому соответствует клиент
-						auto it = this->_agents.find(bid);
+						auto i = this->_agents.find(bid);
 						// Если активный агент клиента установлен
-						if(it != this->_agents.end()){
+						if(i != this->_agents.end()){
 							// Определяем тип активного протокола
-							switch(static_cast <uint8_t> (it->second)){
+							switch(static_cast <uint8_t> (i->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP):
 									// Выполняем удаление созданной ранее сессии HTTP/2
@@ -1251,11 +1251,11 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 								// Если протокол соответствует протоколу Websocket
 								case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 									// Выполняем поиск брокера в списке активных сессий
-									auto it = this->_ws2._sessions.find(bid);
+									auto i = this->_ws2._sessions.find(bid);
 									// Если активная сессия найдена
-									if(it != this->_ws2._sessions.end())
+									if(i != this->_ws2._sessions.end())
 										// Выполняем закрытие подключения
-										(* it->second.get()) = nullptr;
+										(* i->second.get()) = nullptr;
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
 									// Выполняем удаление отключённого брокера Websocket-клиента
@@ -1263,7 +1263,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 								} break;
 							}
 							// Выполняем удаление активного агента
-							this->_agents.erase(it);
+							this->_agents.erase(i);
 						}
 					} break;
 				}
@@ -1276,34 +1276,34 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
-			auto it = this->_disconected.find(bid);
+			auto i = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 3000)){
+			if((i != this->_disconected.end()) && ((date - i->second) >= 3000)){
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callbacks.is("erase"))
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
-				eraseFn(it->first);
+				eraseFn(i->first);
 				// Выполняем удаление брокера
-				this->_disconected.erase(it);
+				this->_disconected.erase(i);
 			}
 		// Если идентификатор брокера не передан
 		} else {
 			// Выполняем переход по всему списку отключившихся брокеров
-			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			for(auto i = this->_disconected.begin(); i != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 3000){
+				if((date - i->second) >= 3000){
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callbacks.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint64_t)> ("erase", it->first);
+						this->_callbacks.call <void (const uint64_t)> ("erase", i->first);
 					// Выполняем удаление отключившегося брокера
-					eraseFn(it->first);
+					eraseFn(i->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
-					it = this->_disconected.erase(it);
+					i = this->_disconected.erase(i);
 				// Выполняем пропуск брокера
-				} else ++it;
+				} else ++i;
 			}
 		}
 	}
@@ -1322,11 +1322,11 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 			// Если протокол подключения соответствует HTTP/1.1
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
+				auto i = this->_http1._agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end()){
+				if(i != this->_http1._agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 						// Если протокол соответствует протоколу Websocket
@@ -1340,11 +1340,11 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 			// Если протокол подключения соответствует HTTP/2
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем отключение брокера клиента Websocket
@@ -1372,11 +1372,11 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(item.first);
+					auto i = this->_http1._agents.find(item.first);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 							// Если протокол соответствует протоколу Websocket
@@ -1390,11 +1390,11 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(item.first);
+					auto i = this->_agents.find(item.first);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
@@ -1441,11 +1441,11 @@ const awh::http_t * awh::server::Http2::parser(const int32_t sid, const uint64_t
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем получение объекта HTTP-парсера
@@ -1456,11 +1456,11 @@ const awh::http_t * awh::server::Http2::parser(const int32_t sid, const uint64_t
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -1497,11 +1497,11 @@ bool awh::server::Http2::trailers(const int32_t sid, const uint64_t bid) const n
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем получение флага запроса клиента на передачу трейлеров
@@ -1512,11 +1512,11 @@ bool awh::server::Http2::trailers(const int32_t sid, const uint64_t bid) const n
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -1554,11 +1554,11 @@ void awh::server::Http2::trailer(const int32_t sid, const uint64_t bid, const st
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем установку трейлера
@@ -1570,11 +1570,11 @@ void awh::server::Http2::trailer(const int32_t sid, const uint64_t bid, const st
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -1631,11 +1631,11 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем отправку ошибки клиенту
@@ -1647,11 +1647,11 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем отправку ошибки клиенту Websocket
@@ -1682,11 +1682,11 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем передачу данных клиенту
@@ -1698,11 +1698,11 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем передачу данных клиенту Websocket
@@ -1744,11 +1744,11 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const vecto
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
@@ -1784,11 +1784,11 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем отправку тала сообщения клиенту через протокол HTTP/1.1
@@ -1799,11 +1799,11 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
@@ -1896,11 +1896,11 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем отправку заголовков клиенту через протокол HTTP/1.1
@@ -1911,11 +1911,11 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -1994,11 +1994,11 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_int
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем передачу запроса на сервер HTTP/1.1
@@ -2010,11 +2010,11 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const u_int
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -2145,11 +2145,11 @@ bool awh::server::Http2::shutdown2(const uint64_t bid) noexcept {
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем тправки клиенту сообщения корректного завершения
@@ -2179,11 +2179,11 @@ bool awh::server::Http2::reject2(const int32_t sid, const uint64_t bid, const aw
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем сброс подключения
@@ -2215,11 +2215,11 @@ bool awh::server::Http2::goaway2(const int32_t last, const uint64_t bid, const a
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку сообщения закрытия всех потоков
@@ -2249,11 +2249,11 @@ bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const vect
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку трейлеров
@@ -2285,11 +2285,11 @@ bool awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const char
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку сообщения клиенту
@@ -2320,11 +2320,11 @@ int32_t awh::server::Http2::send2(const int32_t sid, const uint64_t bid, const v
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 							// Выполняем отправку заголовков
@@ -2355,11 +2355,11 @@ int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const v
 			// Если протокол подключения соответствует HTTP/2
 			if(options->proto == engine_t::proto_t::HTTP2){
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							/**
@@ -2467,20 +2467,20 @@ awh::server::web_t::agent_t awh::server::Http2::agent(const uint64_t bid) const 
 			// Если протокол подключения соответствует HTTP/1.1
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
+				auto i = this->_http1._agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end())
+				if(i != this->_http1._agents.end())
 					// Выводим идентификатор агента
-					return it->second;
+					return i->second;
 			} break;
 			// Если протокол подключения соответствует HTTP/2
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end())
+				if(i != this->_agents.end())
 					// Выводим идентификатор агента
-					return it->second;
+					return i->second;
 			} break;
 		}
 	}
@@ -2540,11 +2540,11 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 			// Если протокол подключения соответствует HTTP/1.1
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
+				auto i = this->_http1._agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end()){
+				if(i != this->_http1._agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP):
 						// Если протокол соответствует протоколу Websocket
@@ -2558,21 +2558,21 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 			// Если протокол подключения соответствует HTTP/2
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Устанавливаем флаг закрытия подключения брокера
 							options->close = true;
 							// Выполняем поиск брокера в списке активных сессий
-							auto it = this->_sessions.find(bid);
+							auto i = this->_sessions.find(bid);
 							// Если активная сессия найдена
-							if(it != this->_sessions.end()){
+							if(i != this->_sessions.end()){
 								// Выполняем закрытие подключения
-								it->second->close();
+								i->second->close();
 								// Выполняем закрытие подключения
 								web2_t::close(bid);
 							// Выполняем отключение брокера
@@ -2583,11 +2583,11 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 							// Выполняем закрытие подключения клиента Websocket
 							this->_ws2.close(bid);
 							// Выполняем поиск брокера в списке активных сессий
-							auto it = this->_ws2._sessions.find(bid);
+							auto i = this->_ws2._sessions.find(bid);
 							// Если активная сессия найдена
-							if(it != this->_ws2._sessions.end())
+							if(i != this->_ws2._sessions.end())
 								// Выполняем закрытие подключения
-								(* it->second.get()) = nullptr;
+								(* i->second.get()) = nullptr;
 						} break;
 					}
 				}
@@ -2632,11 +2632,11 @@ const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const 
 			// Если протокол подключения соответствует HTTP/1.1
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
+				auto i = this->_http1._agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end()){
+				if(i != this->_http1._agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выводим согласованный сабпротокол
@@ -2647,11 +2647,11 @@ const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const 
 			// Если протокол подключения соответствует HTTP/2
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выводим согласованный сабпротокол
@@ -2691,11 +2691,11 @@ const vector <vector <string>> & awh::server::Http2::extensions(const uint64_t b
 			// Если протокол подключения соответствует HTTP/1.1
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_http1._agents.find(bid);
+				auto i = this->_http1._agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_http1._agents.end()){
+				if(i != this->_http1._agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем извлечение списка поддерживаемых расширений Websocket
@@ -2706,11 +2706,11 @@ const vector <vector <string>> & awh::server::Http2::extensions(const uint64_t b
 			// Если протокол подключения соответствует HTTP/2
 			case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 				// Выполняем поиск агента которому соответствует клиент
-				auto it = this->_agents.find(bid);
+				auto i = this->_agents.find(bid);
 				// Если активный агент клиента установлен
-				if(it != this->_agents.end()){
+				if(i != this->_agents.end()){
 					// Определяем тип активного протокола
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем извлечение списка поддерживаемых расширений Websocket
@@ -2811,11 +2811,9 @@ void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для HTTP-сервера
 	this->_http1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
@@ -3047,11 +3045,11 @@ bool awh::server::Http2::crypted(const int32_t sid, const uint64_t bid) const no
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выводим установленный флаг шифрования
@@ -3062,11 +3060,11 @@ bool awh::server::Http2::crypted(const int32_t sid, const uint64_t bid) const no
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока
@@ -3107,11 +3105,11 @@ void awh::server::Http2::encrypt(const int32_t sid, const uint64_t bid, const bo
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_http1._agents.find(bid);
+					auto i = this->_http1._agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_http1._agents.end()){
+					if(i != this->_http1._agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Устанавливаем флаг шифрования для клиента
@@ -3123,11 +3121,11 @@ void awh::server::Http2::encrypt(const int32_t sid, const uint64_t bid, const bo
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Выполняем поиск агента которому соответствует клиент
-					auto it = this->_agents.find(bid);
+					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
-					if(it != this->_agents.end()){
+					if(i != this->_agents.end()){
 						// Определяем тип активного протокола
-						switch(static_cast <uint8_t> (it->second)){
+						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Извлекаем данные потока

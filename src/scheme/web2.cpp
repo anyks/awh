@@ -49,11 +49,11 @@ void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
-		auto it = this->_options.find(bid);
+		auto i = this->_options.find(bid);
 		// Если брокер найден, удаляем его
-		if(it != this->_options.end())
+		if(i != this->_options.end())
 			// Выполняем удаление брокеров
-			this->_options.erase(it);
+			this->_options.erase(i);
 	}
 }
 /**
@@ -65,11 +65,11 @@ const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(cons
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
-		auto it = this->_options.find(bid);
+		auto i = this->_options.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(it != this->_options.end())
+		if(i != this->_options.end())
 			// Выводим параметры подключения брокера
-			return it->second.get();
+			return i->second.get();
 	}
 	// Выводим результат
 	return nullptr;
@@ -91,11 +91,11 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
 	// Если идентификатор брокера передан
 	if((bid > 0) && (sid > -1) && !this->_options.empty()){
 		// Выполняем поиск брокера
-		auto it = this->_options.find(bid);
+		auto i = this->_options.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(it != this->_options.end()){
+		if(i != this->_options.end()){
 			// Создаём объект параметров активного клиента
-			auto ret = it->second->streams.emplace(sid, unique_ptr <stream_t> (new stream_t(it->second->fmk, it->second->log)));
+			auto ret = i->second->streams.emplace(sid, unique_ptr <stream_t> (new stream_t(i->second->fmk, i->second->log)));
 			// Устанавливаем идентификатор потока
 			ret.first->second->sid = sid;
 			// Устанавливаем список доступных компрессоров

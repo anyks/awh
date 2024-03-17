@@ -140,11 +140,11 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 	// Если производится переключение на виртуальную базу событий но она уже виртуальная
 	} else if(mode && this->_virt)
 		// Выводим сообщение об ошибке
-		this->_log->print("Cannot make the event database virtual because it is already virtual", log_t::flag_t::WARNING);
+		this->_log->print("Cannot make the event database virtual because i is already virtual", log_t::flag_t::WARNING);
 	// Если производится переход с виртуальной базы данных на обычную но она уже обычная
 	else if(!mode && !this->_virt)
 		// Выводим сообщение об ошибке
-		this->_log->print("Cannot switch from a virtual event database to a real one, since it is no longer virtual", log_t::flag_t::WARNING);
+		this->_log->print("Cannot switch from a virtual event database to a real one, since i is no longer virtual", log_t::flag_t::WARNING);
 }
 /**
  * rebase Метод пересоздания базы событий

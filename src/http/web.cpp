@@ -125,11 +125,11 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Выполняем функцию обратного вызова
 										this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
 									// Выполняем поиск ключа заголовка в списке трейлеров
-									auto it = this->_trailers.find(key);
+									auto i = this->_trailers.find(key);
 									// Если трейлер найден в списке
-									if(it != this->_trailers.end())
+									if(i != this->_trailers.end())
 										// Выполняем удаление полученного трейлера
-										this->_trailers.erase(it);
+										this->_trailers.erase(i);
 									// Если трейлер не соответствует
 									else {
 										// Устанавливаем код внутренней ошибки сервера
@@ -405,11 +405,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						} break;
 					}
 					// Получаем размер тела
-					auto it = this->_headers.find("content-length");
+					auto i = this->_headers.find("content-length");
 					// Если размер запроса передан
-					if(it != this->_headers.end()){
+					if(i != this->_headers.end()){
 						// Запоминаем размер тела сообщения
-						this->_bodySize = static_cast <size_t> (::stoull(it->second));
+						this->_bodySize = static_cast <size_t> (::stoull(i->second));
 						// Если размер тела не получен
 						if(this->_bodySize == 0){
 							// Запрашиваем заголовок подключения
@@ -431,9 +431,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Выполняем извлечение списка параметров передачи данных
 						const auto & range = this->_headers.equal_range("transfer-encoding");
 						// Выполняем перебор всего списка указанных заголовков
-						for(auto it = range.first; it != range.second; ++it){
+						for(auto i = range.first; i != range.second; ++i){
 							// Если нужно получать размер тела чанками
-							if(this->_fmk->exists("chunked", it->second)){
+							if(this->_fmk->exists("chunked", i->second)){
 								// Устанавливаем стейт поиска тела запроса
 								this->_state = state_t::BODY;
 								// Продолжаем работу
@@ -1148,11 +1148,11 @@ set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty()){
 		// Выполняем поиск заголовка
-		auto it = this->_standardHeaders.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		auto i = this->_standardHeaders.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 		// Если заголовок найден выводим результат
-		if(it != this->_standardHeaders.end())
+		if(i != this->_standardHeaders.end())
 			// Выводим результат
-			return it->second;
+			return i->second;
 	}
 	// Выводим результат
 	return set <awh::Web::proto_t> ();
@@ -1165,13 +1165,13 @@ void awh::Web::delHeader(const string & key) noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
 		// Выполняем перебор всех заголовков
-		for(auto it = this->_headers.begin(); it != this->_headers.end();){
+		for(auto i = this->_headers.begin(); i != this->_headers.end();){
 			// Выполняем проверку существования заголовка
-			if(this->_fmk->compare(it->first, key))
+			if(this->_fmk->compare(i->first, key))
 				// Выполняем удаление указанного заголовка
-				it = this->_headers.erase(it);
+				i = this->_headers.erase(i);
 			// Иначе ищем заголовок дальше
-			else it++;
+			else i++;
 		}
 	}
 }

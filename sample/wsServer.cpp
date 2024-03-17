@@ -174,14 +174,12 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем валидацию SSL сертификата
-	 * 2. Устанавливаем флаг перехвата контекста декомпрессии
-	 * 3. Устанавливаем флаг перехвата контекста компрессии
+	 * 1. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 2. Устанавливаем флаг перехвата контекста компрессии
 	 */
 	ws.mode({
 		// server::web_t::flag_t::NOT_STOP,
 		// server::web_t::flag_t::NOT_INFO,
-		// server::web_t::flag_t::WAIT_MESS,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER
 	});

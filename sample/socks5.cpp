@@ -98,12 +98,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
+	 * Запрет вывода информационных сообщений
 	 */
-	proxy.mode({
-		// proxy_socks5_t::flag_t::NOT_INFO,
-		proxy_socks5_t::flag_t::WAIT_MESS
-	});
+	// proxy.mode({client::sample_t::flag_t::NOT_INFO});
 	// Отключаем валидацию сертификата
 	ssl.verify = true;
 	// Устанавливаем адрес сертификата

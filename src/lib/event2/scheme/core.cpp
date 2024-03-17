@@ -435,11 +435,11 @@ SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if(bid > 0){
 		// Выполняем поиск брокера
-		auto it = this->_brokers.find(bid);
+		auto i = this->_brokers.find(bid);
 		// Если брокер найден, выводим
-		if(it != this->_brokers.end())
+		if(i != this->_brokers.end())
 			// Выводим полученный сокет
-			return it->second->_addr.fd;
+			return i->second->_addr.fd;
 	}
 	// Выводим результат
 	return result;
@@ -455,11 +455,11 @@ u_int awh::Scheme::port(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if(bid > 0){
 		// Выполняем поиск брокера
-		auto it = this->_brokers.find(bid);
+		auto i = this->_brokers.find(bid);
 		// Если брокер найден, выводим
-		if(it != this->_brokers.end())
+		if(i != this->_brokers.end())
 			// Выводим полученный порт
-			return it->second->port();
+			return i->second->port();
 	}
 	// Выводим результат
 	return result;
@@ -475,11 +475,11 @@ const string & awh::Scheme::ip(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if(bid > 0){
 		// Выполняем поиск брокера
-		auto it = this->_brokers.find(bid);
+		auto i = this->_brokers.find(bid);
 		// Если брокер найден, выводим
-		if(it != this->_brokers.end())
+		if(i != this->_brokers.end())
 			// Выводим полученный IP-адрес
-			return it->second->ip();
+			return i->second->ip();
 	}
 	// Выводим результат
 	return result;
@@ -495,11 +495,11 @@ const string & awh::Scheme::mac(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if(bid > 0){
 		// Выполняем поиск брокера
-		auto it = this->_brokers.find(bid);
+		auto i = this->_brokers.find(bid);
 		// Если брокер найден, выводим MAC адрес
-		if(it != this->_brokers.end())
+		if(i != this->_brokers.end())
 			// Выводим полученный MAC-адрес
-			return it->second->mac();
+			return i->second->mac();
 	}
 	// Выводим результат
 	return result;

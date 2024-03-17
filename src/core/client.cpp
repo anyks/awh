@@ -21,11 +21,11 @@
  */
 void awh::client::Core::connect(const uint16_t sid) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Если подключение ещё не выполнено и выполнение работ разрешено
 		if((shm->status.real == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			/**
@@ -45,19 +45,19 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				// Если в схеме сети есть подключённые клиенты
 				if(!shm->_brokers.empty()){
 					// Переходим по всему списку брокера
-					for(auto it = shm->_brokers.begin(); it != shm->_brokers.end();){
+					for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 						// Если блокировка брокера не установлена
-						if(this->_busy.find(it->first) == this->_busy.end()){
+						if(this->_busy.find(i->first) == this->_busy.end()){
 							// Создаём бъект активного брокера подключения
-							awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (it->second.get());
+							awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 							// Выполняем очистку буфера событий
-							this->disable(it->first);
+							this->disable(i->first);
 							// Выполняем очистку контекста двигателя
 							broker->_ectx.clear();
 							// Удаляем брокера из списка подключений
-							this->_brokers.erase(it->first);
+							this->_brokers.erase(i->first);
 							// Удаляем брокера из списка
-							it = shm->_brokers.erase(it);
+							i = shm->_brokers.erase(i);
 						// Если есть хотябы один заблокированный элемент, выходим
 						} else {
 							// Устанавливаем статус подключения
@@ -411,11 +411,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
  */
 void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
@@ -529,11 +529,11 @@ void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode)
 			// Если режим работы клиента - это переподключение
 			case static_cast <uint8_t> (scheme_t::mode_t::RECONNECT): {
 				// Выполняем поиск идентификатора схемы сети
-				auto it = this->_schemes.find(sid);
+				auto i = this->_schemes.find(sid);
 				// Если идентификатор схемы сети найден
-				if(it != this->_schemes.end()){
+				if(i != this->_schemes.end()){
 					// Получаем объект схемы сети
-					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::DISCONNECT;
 					// Выполняем новую попытку подключиться
@@ -556,27 +556,27 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 		 */
 		try {
 			// Выполняем поиск таймера
-			auto it = this->_timers.find(sid);
+			auto i = this->_timers.find(sid);
 			// Если таймер найден
-			if(it != this->_timers.end()){
+			if(i != this->_timers.end()){
 				// Выполняем создание нового таймаута на 5 секунд
-				const uint16_t tid = it->second->timeout(5000);
+				const uint16_t tid = i->second->timeout(5000);
 				// Выполняем добавление функции обратного вызова
-				it->second->set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
+				i->second->set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
 			// Если таймер не найден
 			} else {
 				// Выполняем блокировку потока
 				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 				// Выполняем создание нового таймера
 				auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
+				// Выполняем биндинг сетевого ядра таймера
+				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 				// Выполняем создание нового таймаута на 5 секунд
 				const uint16_t tid = ret.first->second->timeout(5000);
 				// Выполняем добавление функции обратного вызова
 				ret.first->second->set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
 				// Устанавливаем флаг запрещающий вывод информационных сообщений
 				ret.first->second->verbose(false);
-				// Выполняем биндинг сетевого ядра таймера
-				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 			}
 		/**
 		 * Если возникает ошибка
@@ -669,11 +669,11 @@ void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
  */
 void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
 	// Выполняем поиск таймера
-	auto it = this->_timers.find(sid);
+	auto i = this->_timers.find(sid);
 	// Если таймер найден
-	if(it != this->_timers.end())
+	if(i != this->_timers.end())
 		// Останавливаем работу таймера
-		it->second->clear();
+		i->second->clear();
 }
 /**
  * disable Метод остановки активности брокера подключения
@@ -726,29 +726,29 @@ void awh::client::Core::close() noexcept {
 					// Выполняем переключение обратно на прокси-сервер
 					shm->switchConnect();
 				// Переходим по всему списку брокера
-				for(auto it = shm->_brokers.begin(); it != shm->_brokers.end();){
+				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(it->first) == this->_busy.end()){
+					if(this->_busy.find(i->first) == this->_busy.end()){
 						// Выполняем блокировку брокера
-						this->_busy.emplace(it->first);
+						this->_busy.emplace(i->first);
 						// Получаем бъект активного брокера подключения
-						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (it->second.get());
+						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 						// Выполняем очистку буфера событий
-						this->disable(it->first);
+						this->disable(i->first);
 						// Выполняем очистку контекста двигателя
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
-						this->_brokers.erase(it->first);
+						this->_brokers.erase(i->first);
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t)> (it->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), it->first, item.first);
+							callback.set <void (const uint64_t, const uint16_t)> (i->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
 						// Удаляем блокировку брокера
-						this->_busy.erase(it->first);
+						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
-						it = shm->_brokers.erase(it);
+						i = shm->_brokers.erase(i);
 					// Иначе продолжаем дальше
-					} else ++it;
+					} else ++i;
 				}
 			}
 		}
@@ -767,15 +767,15 @@ void awh::client::Core::remove() noexcept {
 		// Если список таймеров не пустой
 		if(!this->_timers.empty()){
 			// Выполняем перебор всех таймеров
-			for(auto it = this->_timers.begin(); it != this->_timers.end();){
+			for(auto i = this->_timers.begin(); i != this->_timers.end();){
 				// Выполняем блокировку потока
 				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 				// Останавливаем работу таймера
-				it->second->clear();
+				i->second->clear();
 				// Выполняем анбиндинг сетевого ядра таймера
-				this->unbind(dynamic_cast <awh::core_t *> (it->second.get()));
+				this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
 				// Выполняем удаление таймера
-				it = this->_timers.erase(it);
+				i = this->_timers.erase(i);
 			}
 		}
 		// Объект работы с функциями обратного вызова
@@ -829,11 +829,11 @@ void awh::client::Core::remove() noexcept {
  */
 void awh::client::Core::open(const uint16_t sid) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
@@ -915,15 +915,15 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 			// Создаём бъект активного брокера подключения
 			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(broker->sid());
+			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Выполняем очистку буфера событий
 				this->disable(bid);
 				// Удаляем установленный таймаут, если он существует
-				this->clearTimeout(it->first);
+				this->clearTimeout(i->first);
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
 				if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
 					// Выполняем переключение обратно на прокси-сервер
@@ -941,11 +941,11 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				// Если функция обратного вызова установлена
 				if(this->_callbacks.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const uint64_t, const uint16_t)> ("disconnect", this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, it->first);
+					callback.set <void (const uint64_t, const uint16_t)> ("disconnect", this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
 				// Если активированно постоянное подключение
 				if(shm->alive)
 					// Устанавливаем функцию обратного вызова
-					callback.set <void (const uint16_t)> ("reconnect", std::bind(&core_t::reconnect, this, _1), it->first);
+					callback.set <void (const uint16_t)> ("reconnect", std::bind(&core_t::reconnect, this, _1), i->first);
 			}
 		}
 		// Удаляем блокировку брокера
@@ -979,17 +979,17 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 		// Если список таймеров не пустой
 		if(!this->_timers.empty()){
 			// Выполняем поиск таймера
-			auto it = this->_timers.find(sid);
+			auto i = this->_timers.find(sid);
 			// Если таймер найден удачно
-			if(it != this->_timers.end()){
+			if(i != this->_timers.end()){
 				// Выполняем блокировку потока
 				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 				// Останавливаем работу таймера
-				it->second->clear();
+				i->second->clear();
 				// Выполняем анбиндинг сетевого ядра таймера
-				this->unbind(dynamic_cast <awh::core_t *> (it->second.get()));
+				this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
 				// Выполняем удаление таймера
-				this->_timers.erase(it);
+				this->_timers.erase(i);
 			}
 		}
 		// Объект работы с функциями обратного вызова
@@ -1057,11 +1057,11 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(broker->sid());
+		auto i = this->_schemes.find(broker->sid());
 		// Если идентификатор схемы сети найден
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если прокси-сервер активирован но ещё не переключён на работу с сервером
 			if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
 				// Выполняем переключение на работу с сервером
@@ -1081,7 +1081,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Если функция обратного вызова активации шифрованного SSL канала установлена
 					if((this->_callbacks.is("ssl")))
 						// Выполняем активацию шифрованного SSL канала
-						this->_engine.encrypted(this->_callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", shm->url, bid, it->first), broker->_ectx);
+						this->_engine.encrypted(this->_callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", shm->url, bid, i->first), broker->_ectx);
 					// Выполняем получение контекста сертификата
 					this->_engine.wrap(broker->_ectx, broker->_ectx, host);
 					// Если подключение не обёрнуто
@@ -1126,11 +1126,11 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(broker->sid());
+		auto i = this->_schemes.find(broker->sid());
 		// Если идентификатор схемы сети найден
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если подключение удачное и работа разрешена
 			if(shm->status.work == scheme_t::work_t::ALLOW){
 				// Снимаем флаг получения данных
@@ -1140,7 +1140,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 				// Устанавливаем флаг ожидания статуса
 				shm->status.wait = scheme_t::mode_t::DISCONNECT;
 				// Выполняем очистку существующих таймаутов
-				this->clearTimeout(it->first);
+				this->clearTimeout(i->first);
 				// Получаем семейство интернет-протоколов
 				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
 				// Определяем тип протокола подключения
@@ -1194,11 +1194,11 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 					// Если функция обратного вызова для прокси-сервера установлена
 					if(this->_callbacks.is("connectProxy"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connectProxy", bid, it->first);
+						this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connectProxy", bid, i->first);
 				// Если функция обратного вызова установлена
 				} else if(this->_callbacks.is("connect"))
 					// Выполняем функцию обратного вызова
-					this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connect", bid, it->first);
+					this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connect", bid, i->first);
 				// Выходим из функции
 				return;
 			}
@@ -1219,11 +1219,11 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(broker->sid());
+			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					// Останавливаем чтение данных с клиента
@@ -1263,11 +1263,11 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 													// Если функция обратного вызова для вывода записи существует
 													if(this->_callbacks.is("readProxy"))
 														// Выводим функцию обратного вызова
-														this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get() + offset, actual, bid, it->first);
+														this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get() + offset, actual, bid, i->first);
 												// Если прокси-сервер не используется
 												} else if(this->_callbacks.is("read"))
 													// Выводим функцию обратного вызова
-													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get() + offset, actual, bid, it->first);
+													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get() + offset, actual, bid, i->first);
 												// Увеличиваем смещение в буфере
 												offset += actual;
 											}
@@ -1278,11 +1278,11 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 												// Если функция обратного вызова для вывода записи существует
 												if(this->_callbacks.is("readProxy"))
 													// Выводим функцию обратного вызова
-													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get(), bytes, bid, it->first);
+													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get(), bytes, bid, i->first);
 											// Если прокси-сервер не используется
 											} else if(this->_callbacks.is("read"))
 												// Выводим функцию обратного вызова
-												this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, it->first);
+												this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, i->first);
 										}
 									// Если данные небыли получены
 									} else if(bytes <= 0) {
@@ -1355,11 +1355,11 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(broker->sid());
+			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					// Определяем тип сокета
@@ -1430,11 +1430,11 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							// Если функция обратного вызова для вывода записи существует
 							if(this->_callbacks.is("writeProxy"))
 								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", buffer, offset, bid, it->first);
+								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", buffer, offset, bid, i->first);
 						// Если функция обратного вызова на запись данных установлена
 						} else if(this->_callbacks.is("write"))
 							// Выводим функцию обратного вызова
-							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, it->first);
+							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, i->first);
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем ожидание записи данных
@@ -1444,11 +1444,11 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 							// Если функция обратного вызова для вывода записи существует
 							if(this->_callbacks.is("writeProxy"))
 								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", nullptr, 0, bid, it->first);
+								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", nullptr, 0, bid, i->first);
 						// Если функция обратного вызова на запись данных установлена
 						} else if(this->_callbacks.is("write"))
 							// Выводим функцию обратного вызова
-							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", nullptr, 0, bid, it->first);
+							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", nullptr, 0, bid, i->first);
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 					if((this->_settings.sonet == scheme_t::sonet_t::UDP) && this->has(bid))
@@ -1493,11 +1493,11 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
  */
 void awh::client::Core::work(const uint16_t sid, const string & ip, const int family) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Если IP-адрес получен
 		if(!ip.empty()){
 			// Если прокси-сервер активен

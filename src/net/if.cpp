@@ -135,21 +135,21 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Создаём указатели для перехода
 		char * cptr = nullptr;
 		// Получаем текущее значение итератора
-		struct ifreq * it = ifc.ifc_req;
+		struct ifreq * i = ifc.ifc_req;
 		// Получаем конечное значение итератора
-		const struct ifreq * const end = (it + (ifc.ifc_len / sizeof(struct ifreq)));
+		const struct ifreq * const end = (i + (ifc.ifc_len / sizeof(struct ifreq)));
 		// Переходим по всем сетевым интерфейсам
-		for(; it != end; ++it){
+		for(; i != end; ++i){
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
-			if(it->ifr_addr.sa_family != family)
+			if(i->ifr_addr.sa_family != family)
 				// Выполняем пропуск
 				continue;
 			// Если в имени сетевого интерфейса найден разделитель, пропускаем его
-			if((cptr = reinterpret_cast <char *> (strchr(it->ifr_name, ':'))) != nullptr)
+			if((cptr = reinterpret_cast <char *> (strchr(i->ifr_name, ':'))) != nullptr)
 				// Зануляем значение
 				(* cptr) = 0;
 			// Запоминаем текущее значение указателя
-			ifrc = (* it);
+			ifrc = (* i);
 			// Считываем флаги для сетевого интерфейса
 			::ioctl(fd, SIOCGIFFLAGS, &ifrc);
 			// Если флаги не соответствуют, пропускаем
@@ -157,11 +157,11 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 				// Выполняем пропуск
 				continue;
 			// Определяем тип интернет адреса
-			switch(it->ifr_addr.sa_family){
+			switch(i->ifr_addr.sa_family){
 				// Если мы обрабатываем IPv4
 				case AF_INET:
 					// Устанавливаем сетевой интерфейс в список
-					this->_ips.emplace(it->ifr_name, inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&it->ifr_addr)->sin_addr));
+					this->_ips.emplace(i->ifr_name, inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&i->ifr_addr)->sin_addr));
 				break;
 				// Если мы обрабатываем IPv6
 				case AF_INET6: {
@@ -170,9 +170,9 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 					// Заполняем нуляем наши буферы
 					::memset(buffer, 0, INET6_ADDRSTRLEN);
 					// Запрашиваем данные ip адреса
-					inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&it->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
+					inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&i->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
 					// Устанавливаем сетевой интерфейс в список
-					this->_ips6.emplace(it->ifr_name, buffer);
+					this->_ips6.emplace(i->ifr_name, buffer);
 				} break;
 			}
 		}
@@ -371,13 +371,13 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 			return;
 		}
 		// Получаем текущее значение итератора
-		struct ifreq * it = ifc.ifc_req;
+		struct ifreq * i = ifc.ifc_req;
 		// Получаем конечное значение итератора
-		const struct ifreq * const end = (it + (ifc.ifc_len / sizeof(struct ifreq)));
+		const struct ifreq * const end = (i + (ifc.ifc_len / sizeof(struct ifreq)));
 		// Переходим по всем сетевым интерфейсам
-		for(; it != end; ++it){
+		for(; i != end; ++i){
 			// Копируем название сетевого интерфейса
-			strcpy(ifrc.ifr_name, it->ifr_name);
+			strcpy(ifrc.ifr_name, i->ifr_name);
 			// Выполняем подключение к сокету
 			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
 				// Проверяем сетевой интерфейс (не loopback)
@@ -393,7 +393,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 						// Выполняем получение MAC адреса
 						sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 						// Добавляем MAC адрес в список сетевых интерфейсов
-						this->_ifs.emplace(it->ifr_name, hardware);
+						this->_ifs.emplace(i->ifr_name, hardware);
 					}
 				}
 			// Если подключение к сокету не удалось, выводим сообщение об ошибке
@@ -622,7 +622,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				struct sockaddr_dl * sdl  = nullptr;
 				struct sockaddr_in6 * sin = nullptr;
 				// Параметры итератора в буфере
-				char * it = nullptr, * end = nullptr;
+				char * i = nullptr, * end = nullptr;
 				// Устанавливаем парарметры сетевого интерфейса
 				mib[0] = CTL_NET;
 				mib[1] = PF_ROUTE;
@@ -655,15 +655,15 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Получаем конечное значение итератора
 				end = (buffer.data() + size);
 				// Переходим по всем сетевым интерфейсам
-				for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
+				for(i = buffer.data(); i < end; i += rtm->rtm_msglen){
 					// Получаем указатель сетевого интерфейса
-					rtm = reinterpret_cast <struct rt_msghdr *> (it);
+					rtm = reinterpret_cast <struct rt_msghdr *> (i);
 					// Если версия RTM протокола не соответствует, пропускаем
 					if(rtm->rtm_version != RTM_VERSION)
 						// Выполняем пропуск
 						continue;
 					// Получаем текущее значение активного подключения
-					sin = reinterpret_cast <struct sockaddr_in6 *> (it + sizeof(rt_msghdr));
+					sin = reinterpret_cast <struct sockaddr_in6 *> (i + sizeof(rt_msghdr));
 					/**
 					 * Если мы работаем с KAME
 					 */
@@ -719,7 +719,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Размер буфера данных
 				size_t size = 0;
 				// Параметры итератора в буфере
-				char * it = nullptr, * end = nullptr;
+				char * i = nullptr, * end = nullptr;
 				// Объекты для работы с сетевым интерфейсом
 				struct rt_msghdr * rtm      = nullptr;
 				struct sockaddr_dl * sdl    = nullptr;
@@ -752,9 +752,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Получаем числовое значение IP адреса
 				const uint32_t addr = (family == AF_INET ? inet_addr(ip.c_str()) : 0);
 				// Переходим по всем сетевым интерфейсам
-				for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
+				for(i = buffer.data(); i < end; i += rtm->rtm_msglen){
 					// Получаем указатель сетевого интерфейса
-					rtm = reinterpret_cast <struct rt_msghdr *> (it);
+					rtm = reinterpret_cast <struct rt_msghdr *> (i);
 					// Получаем текущее значение активного подключения
 					sin = reinterpret_cast <struct sockaddr_inarp *> (rtm + 1);
 					// Получаем текущее значение аппаратного сетевого адреса
@@ -1173,11 +1173,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Если название сетевого интерфейса получено
 		if(!ifrName.empty()){
 			// Выполняем поиск MAC адреса
-			auto it = this->_ifs.find(ifrName);
+			auto i = this->_ifs.find(ifrName);
 			// Если MAC адрес получен
-			if(it != this->_ifs.end())
+			if(i != this->_ifs.end())
 				// Выполняем получение результата
-				result = it->second;
+				result = i->second;
 		}
 	}
 	// Выводим результат
@@ -1340,20 +1340,20 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
 			// Если мы обрабатываем IPv4
 			case AF_INET: {
 				// Выполняем поиск сетевого интерфейса
-				auto it = this->_ips.find(eth);
+				auto i = this->_ips.find(eth);
 				// Если сетевой интерфейс получен, выводим IP адрес
-				if(it != this->_ips.end())
+				if(i != this->_ips.end())
 					// Выводим полученный результат
-					return it->second;
+					return i->second;
 			} break;
 			// Если мы обрабатываем IPv6
 			case AF_INET6: {
 				// Выполняем поиск сетевого интерфейса
-				auto it = this->_ips6.find(eth);
+				auto i = this->_ips6.find(eth);
 				// Если сетевой интерфейс получен, выводим IP адрес
-				if(it != this->_ips6.end())
+				if(i != this->_ips6.end())
 					// Выводим полученный результат
-					return it->second;
+					return i->second;
 			} break;
 		}
 	}

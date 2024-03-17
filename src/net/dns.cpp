@@ -599,13 +599,13 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 									// Если количество IP-адресов в списке больше 1-го
 									if(ips.size() > 1){
 										// Получаем текущее значение адреса
-										auto it = ips.begin();
+										auto i = ips.begin();
 										// Выполняем смещение итератора
-										std::advance(it, 1);
+										std::advance(i, 1);
 										// Переходим по всему списку полученных адресов
-										for(; it != ips.end(); ++it)
+										for(; i != ips.end(); ++i)
 											// Очищаем список используемых IP-адресов
-											self->_using.erase(* it);
+											self->_using.erase(* i);
 									}
 								// Если IP-адрес получен, то запоминаем полученный адрес
 								} else self->_using.emplace(result);
@@ -915,24 +915,24 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 					// Получаем диапазон IP-адресов в кэше
 					auto ret = this->_cacheIPv4.equal_range(domain);
 					// Переходим по всему списку IP-адресов
-					for(auto it = ret.first; it != ret.second;){
+					for(auto i = ret.first; i != ret.second;){
 						// Если IP-адрес не находится в чёрном списке
-						if(!it->second.forbidden){
+						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
-							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - i->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов
-								ips.push_back(::inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								ips.push_back(::inet_ntop(family, &i->second.ip, buffer, sizeof(buffer)));
 								// Выполняем смещение итератора
-								++it;
+								++i;
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
 								const lock_guard <recursive_mutex> lock(this->_mtx);
 								// Выполняем удаление записи из кэша
-								it = this->_cacheIPv4.erase(it);
+								i = this->_cacheIPv4.erase(i);
 							}
 						// Выполняем смещение итератора
-						} else ++it;
+						} else ++i;
 					}
 				}
 			} break;
@@ -945,24 +945,24 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 					// Получаем диапазон IP-адресов в кэше
 					auto ret = this->_cacheIPv6.equal_range(domain);
 					// Переходим по всему списку IP-адресов
-					for(auto it = ret.first; it != ret.second;){
+					for(auto i = ret.first; i != ret.second;){
 						// Если IP-адрес не находится в чёрном списке
-						if(!it->second.forbidden && !it->second.localhost){
+						if(!i->second.forbidden && !i->second.localhost){
 							// Если время жизни кэша ещё не вышло
-							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - i->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов
-								ips.push_back(::inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								ips.push_back(::inet_ntop(family, &i->second.ip, buffer, sizeof(buffer)));
 								// Выполняем смещение итератора
-								++it;
+								++i;
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
 								const lock_guard <recursive_mutex> lock(this->_mtx);
 								// Выполняем удаление записи из кэша
-								it = this->_cacheIPv6.erase(it);
+								i = this->_cacheIPv6.erase(i);
 							}
 						// Выполняем смещение итератора
-						} else ++it;
+						} else ++i;
 					}
 				}
 			} break;
@@ -1012,13 +1012,13 @@ void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second;){
+				for(auto i = ret.first; i != ret.second;){
 					// Если мы IP-адрес не запрещён
-					if(!it->second.forbidden)
+					if(!i->second.forbidden)
 						// Выполняем удаление IP-адреса
-						it = this->_cacheIPv4.erase(it);
+						i = this->_cacheIPv4.erase(i);
 					// Иначе продолжаем перебор дальше
-					else ++it;
+					else ++i;
 				}
 			} break;
 			// Если тип протокола подключения IPv6
@@ -1026,13 +1026,13 @@ void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second;){
+				for(auto i = ret.first; i != ret.second;){
 					// Если мы IP-адрес не запрещён
-					if(!it->second.forbidden)
+					if(!i->second.forbidden)
 						// Выполняем удаление IP-адреса
-						it = this->_cacheIPv6.erase(it);
+						i = this->_cacheIPv6.erase(i);
 					// Иначе продолжаем перебор дальше
-					else ++it;
+					else ++i;
 				}
 			} break;
 		}
@@ -1061,25 +1061,25 @@ void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
 		// Если тип протокола подключения IPv4
 		case static_cast <int> (AF_INET): {
 			// Переходим по всему списку IP-адресов
-			for(auto it = this->_cacheIPv4.begin(); it != this->_cacheIPv4.end();){
+			for(auto i = this->_cacheIPv4.begin(); i != this->_cacheIPv4.end();){
 				// Если мы нашли нужный тип IP-адреса
-				if(!it->second.forbidden && (it->second.localhost == localhost))
+				if(!i->second.forbidden && (i->second.localhost == localhost))
 					// Выполняем удаление IP-адреса
-					it = this->_cacheIPv4.erase(it);
+					i = this->_cacheIPv4.erase(i);
 				// Иначе продолжаем перебор дальше
-				else ++it;
+				else ++i;
 			}
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
 			// Переходим по всему списку IP-адресов
-			for(auto it = this->_cacheIPv6.begin(); it != this->_cacheIPv6.end();){
+			for(auto i = this->_cacheIPv6.begin(); i != this->_cacheIPv6.end();){
 				// Если мы нашли нужный тип IP-адреса
-				if(!it->second.forbidden && (it->second.localhost == localhost))
+				if(!i->second.forbidden && (i->second.localhost == localhost))
 					// Выполняем удаление IP-адреса
-					it = this->_cacheIPv6.erase(it);
+					i = this->_cacheIPv6.erase(i);
 				// Иначе продолжаем перебор дальше
-				else ++it;
+				else ++i;
 			}
 		} break;
 	}
@@ -1133,13 +1133,13 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[1];
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &buffer);
 					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
-					result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0);
 					// Если IP-адрес соответствует переданному адресу
 					if(result)
 						// Выходим из условия
@@ -1164,13 +1164,13 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[4];
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &buffer);
 					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
-					result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0);
 					// Если IP-адрес соответствует переданному адресу
 					if(result)
 						// Выходим из условия
@@ -1225,11 +1225,11 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden)
+					if(i->second.forbidden)
 						// Снимаем флаг запрещённого IP-адреса
-						it->second.forbidden = !it->second.forbidden;
+						i->second.forbidden = !i->second.forbidden;
 				}
 			} break;
 			// Если тип протокола подключения IPv6
@@ -1237,11 +1237,11 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden)
+					if(i->second.forbidden)
 						// Снимаем флаг запрещённого IP-адреса
-						it->second.forbidden = !it->second.forbidden;
+						i->second.forbidden = !i->second.forbidden;
 				}
 			} break;
 		}
@@ -1292,17 +1292,17 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden){
+					if(i->second.forbidden){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						if(::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)
 							// Снимаем флаг запрещённого IP-адреса
-							it->second.forbidden = !it->second.forbidden;
+							i->second.forbidden = !i->second.forbidden;
 					}
 				}
 			} break;
@@ -1311,17 +1311,17 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden){
+					if(i->second.forbidden){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						if(::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)
 							// Снимаем флаг запрещённого IP-адреса
-							it->second.forbidden = !it->second.forbidden;
+							i->second.forbidden = !i->second.forbidden;
 					}
 				}
 			} break;
@@ -1387,15 +1387,15 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 					// Получаем диапазон IP-адресов в кэше
 					auto ret = this->_cacheIPv4.equal_range(domain);
 					// Переходим по всему списку IP-адресов
-					for(auto it = ret.first; it != ret.second; ++it){
+					for(auto i = ret.first; i != ret.second; ++i){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+						if((result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0))){
 							// Выполняем блокировку IP-адреса
-							it->second.forbidden = result;
+							i->second.forbidden = result;
 							// Выходим из цикла
 							break;
 						}
@@ -1425,15 +1425,15 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 					// Получаем диапазон IP-адресов в кэше
 					auto ret = this->_cacheIPv6.equal_range(domain);
 					// Переходим по всему списку IP-адресов
-					for(auto it = ret.first; it != ret.second; ++it){
+					for(auto i = ret.first; i != ret.second; ++i){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+						if((result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0))){
 							// Выполняем блокировку IP-адреса
-							it->second.forbidden = result;
+							i->second.forbidden = result;
 							// Выходим из цикла
 							break;
 						}
@@ -1494,15 +1494,15 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden){
+					if(i->second.forbidden){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[1];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+						if((result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)))
 							// Выводим результат проверки
 							return result;
 					}
@@ -1513,15 +1513,15 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
+				for(auto i = ret.first; i != ret.second; ++i){
 					// Если мы нашли запрещённую запись
-					if(it->second.forbidden){
+					if(i->second.forbidden){
 						// Создаём буфер бинарных данных IP-адреса
 						uint32_t buffer[4];
 						// Выполняем копирование полученных данных в переданный буфер
 						::inet_pton(family, ip.c_str(), &buffer);
 						// Если IP-адрес соответствует переданному адресу
-						if((result = (::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+						if((result = (::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)))
 							// Выводим результат проверки
 							return result;
 					}
@@ -1555,13 +1555,13 @@ string awh::DNS::server(const int family) noexcept {
 				// Устанавливаем новый список имён
 				this->replace(family);
 			// Получаем первое значение итератора
-			auto it = this->_serversIPv4.begin();
+			auto i = this->_serversIPv4.begin();
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(it, dist6(generator));
+			advance(i, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
@@ -1572,13 +1572,13 @@ string awh::DNS::server(const int family) noexcept {
 				// Устанавливаем новый список имён
 				this->replace(family);
 			// Получаем первое значение итератора
-			auto it = this->_serversIPv6.begin();
+			auto i = this->_serversIPv6.begin();
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(it, dist6(generator));
+			advance(i, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 		} break;
 	}
 	// Выводим результат
@@ -2493,29 +2493,29 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 			// Если тип протокола подключения IPv4
 			case static_cast <int> (AF_INET): {
 				// Переходим по всему списку IP-адресов
-				for(auto it = this->_cacheIPv4.begin(); it != this->_cacheIPv4.end(); ++it){
+				for(auto i = this->_cacheIPv4.begin(); i != this->_cacheIPv4.end(); ++i){
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[1];
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &buffer);
 					// Если IP-адрес соответствует переданному адресу
-					if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+					if(::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)
 						// Выполняем добавление доменное имя в список
-						result.push_back(it->first);
+						result.push_back(i->first);
 				}
 			}
 			// Если тип протокола подключения IPv6
 			case static_cast <int> (AF_INET6): {
 				// Переходим по всему списку IP-адресов
-				for(auto it = this->_cacheIPv6.begin(); it != this->_cacheIPv6.end(); ++it){
+				for(auto i = this->_cacheIPv6.begin(); i != this->_cacheIPv6.end(); ++i){
 					// Создаём буфер бинарных данных IP-адреса
 					uint32_t buffer[4];
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &buffer);
 					// Если IP-адрес соответствует переданному адресу
-					if(::memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+					if(::memcmp(i->second.ip, buffer, sizeof(buffer)) == 0)
 						// Выполняем добавление доменное имя в список
-						result.push_back(it->first);
+						result.push_back(i->first);
 				}
 			}
 		}

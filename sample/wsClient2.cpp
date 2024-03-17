@@ -343,15 +343,15 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем постоянное подключение
 	 * 2. Устанавливаем поддержку редиректов
-	 * 3. Устанавливаем валидацию SSL сертификата
-	 * 4. Устанавливаем разрешение использовать протокол Websocket
-	 * 5. Устанавливаем флаг поддержания активным подключение
+	 * 3. Устанавливаем разрешение использовать протокол Websocket
+	 * 4. Устанавливаем флаг перехвата контекста компрессии
+	 * 5. Устанавливаем флаг перехвата контекста декомпрессии
+	 * 6. Устанавливаем флаг разрешения метода CONNECT
 	 */
 	awh.mode({
 		// client::web_t::flag_t::NOT_STOP,
 		client::web_t::flag_t::ALIVE,
 		// client::web_t::flag_t::NOT_INFO,
-		// client::web_t::flag_t::WAIT_MESS,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::WEBSOCKET_ENABLE,
 		client::web_t::flag_t::TAKEOVER_CLIENT,

@@ -28,9 +28,9 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 		// Выполняем активацию HTTP/2 протокола
 		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
-		if(it != this->_sessions.end()){
+		if(i != this->_sessions.end()){
 			// Получаем параметры активного клиента
 			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -149,11 +149,11 @@ void awh::server::Websocket2::disconnectEvents(const uint64_t bid, const uint16_
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end())
+		if(i != this->_sessions.end())
 			// Выполняем закрытие подключения
-			it->second->close();
+			i->second->close();
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -200,11 +200,11 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
 						// Выходим из функции
 						return;
 					// Выполняем поиск брокера в списке активных сессий
-					auto it = this->_sessions.find(bid);
+					auto i = this->_sessions.find(bid);
 					// Если активная сессия найдена
-					if(it != this->_sessions.end()){
+					if(i != this->_sessions.end()){
 						// Если прочитать данные фрейма не удалось, выходим из функции
-						if(!it->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
+						if(!i->second->frame(reinterpret_cast <const uint8_t *> (buffer), size)){
 							// Выполняем закрытие подключения
 							web2_t::close(bid);
 							// Выходим из функции
@@ -401,11 +401,11 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 						// Устанавливаем флаг закрытия подключения
 						options->close = !options->close;
 						// Выполняем поиск брокера в списке активных сессий
-						auto it = this->_sessions.find(bid);
+						auto i = this->_sessions.find(bid);
 						// Если активная сессия найдена
-						if(it != this->_sessions.end()){
+						if(i != this->_sessions.end()){
 							// Выполняем закрытие подключения
-							it->second->close();
+							i->second->close();
 							// Выполняем закрытие подключения
 							web2_t::close(bid);
 						// Принудительно выполняем отключение лкиента
@@ -1068,34 +1068,34 @@ void awh::server::Websocket2::erase(const uint64_t bid) noexcept {
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
-			auto it = this->_disconected.find(bid);
+			auto i = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 3000)){
+			if((i != this->_disconected.end()) && ((date - i->second) >= 3000)){
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callbacks.is("erase"))
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
-				eraseFn(it->first);
+				eraseFn(i->first);
 				// Выполняем удаление брокера
-				this->_disconected.erase(it);
+				this->_disconected.erase(i);
 			}
 		// Если идентификатор брокера не передан
 		} else {
 			// Выполняем переход по всему списку отключившихся брокеров
-			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			for(auto i = this->_disconected.begin(); i != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 3000){
+				if((date - i->second) >= 3000){
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callbacks.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint64_t)> ("erase", it->first);
+						this->_callbacks.call <void (const uint64_t)> ("erase", i->first);
 					// Выполняем удаление отключившегося брокера
-					eraseFn(it->first);
+					eraseFn(i->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
-					it = this->_disconected.erase(it);
+					i = this->_disconected.erase(i);
 				// Выполняем пропуск брокера
-				} else ++it;
+				} else ++i;
 			}
 		}
 	}
@@ -1509,11 +1509,11 @@ void awh::server::Websocket2::close(const uint64_t bid) noexcept {
 			// Устанавливаем флаг закрытия подключения брокера
 			options->close = true;
 			// Выполняем поиск брокера в списке активных сессий
-			auto it = this->_sessions.find(bid);
+			auto i = this->_sessions.find(bid);
 			// Если активная сессия найдена
-			if(it != this->_sessions.end()){
+			if(i != this->_sessions.end()){
 				// Выполняем закрытие подключения
-				it->second->close();
+				i->second->close();
 				// Выполняем закрытие подключения
 				web2_t::close(bid);
 			// Выполняем отключение брокера
@@ -1685,11 +1685,9 @@ void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера

@@ -1190,7 +1190,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		// Выполняем группировку нужного нам вида адресов
 		auto ret = this->_localsNet.equal_range(this->_type);
 		// Перебираем все локальные адреса
-		for(auto it = ret.first; it != ret.second; ++it){
+		for(auto i = ret.first; i != ret.second; ++i){
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если IP-адрес определён как IPv4
@@ -1198,11 +1198,11 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 					// Устанавливаем IP-адрес
 					net = this->v4();
 					// Если получен диапазон IP-адресов
-					if(it->second.end->type() == type_t::IPV4){
+					if(i->second.end->type() == type_t::IPV4){
 						// Если адрес входит в диапазон адресов
-						if(net.range(* it->second.begin.get(), * it->second.end.get(), it->second.prefix)){
+						if(net.range(* i->second.begin.get(), * i->second.end.get(), i->second.prefix)){
 							// Если адрес зарезервирован
-							if(it->second.reserved)
+							if(i->second.reserved)
 								// Устанавливаем результат
 								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
@@ -1211,11 +1211,11 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 					// Если диапазон адресов для этой проверки не установлен
 					} else {
 						// Устанавливаем префикс сети
-						net.impose(it->second.prefix, net_t::addr_t::NETWORK);
+						net.impose(i->second.prefix, net_t::addr_t::NETWORK);
 						// Если проверяемые сети совпадают
-						if(net.v4() == it->second.begin->v4()){
+						if(net.v4() == i->second.begin->v4()){
 							// Если адрес зарезервирован
-							if(it->second.reserved)
+							if(i->second.reserved)
 								// Устанавливаем результат
 								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
@@ -1228,11 +1228,11 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 					// Устанавливаем IP-адрес
 					net = this->v6();
 					// Если получен диапазон IP-адресов
-					if(it->second.end->type() == type_t::IPV6){
+					if(i->second.end->type() == type_t::IPV6){
 						// Если адрес входит в диапазон адресов
-						if(net.range(* it->second.begin.get(), * it->second.end.get(), it->second.prefix)){
+						if(net.range(* i->second.begin.get(), * i->second.end.get(), i->second.prefix)){
 							// Если адрес зарезервирован
-							if(it->second.reserved)
+							if(i->second.reserved)
 								// Устанавливаем результат
 								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
@@ -1241,11 +1241,11 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 					// Если диапазон адресов для этой проверки не установлен
 					} else {
 						// Устанавливаем префикс сети
-						net.impose(it->second.prefix, net_t::addr_t::NETWORK);
+						net.impose(i->second.prefix, net_t::addr_t::NETWORK);
 						// Если проверяемые сети совпадают
-						if(::memcmp(net.v6().data(), it->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
+						if(::memcmp(net.v6().data(), i->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
 							// Если адрес зарезервирован
-							if(it->second.reserved)
+							if(i->second.reserved)
 								// Устанавливаем результат
 								return mode_t::SYS;
 							// Иначе устанавливаем, что адрес локальный
@@ -1354,11 +1354,11 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Устанавливаем индекс последнего элемента
 							size_t start = 0, stop = 0, index = 6;
 							// Выполняем перебор всех хексеков
-							for(auto it = data.rbegin() + 1; it != data.rend(); ++it){
+							for(auto i = data.rbegin() + 1; i != data.rend(); ++i){
 								// Если хексет установлен
-								if(!it->empty())
+								if(!i->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* i));
 								// Выходим из цикла
 								else break;
 							}
@@ -1382,11 +1382,11 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Устанавливаем индекс последнего элемента
 							uint8_t index = 8;
 							// Выполняем перебор всех хексеков
-							for(auto it = data.rbegin(); it != data.rend(); ++it){
+							for(auto i = data.rbegin(); i != data.rend(); ++i){
 								// Если хексет установлен
-								if(!it->empty())
+								if(!i->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* i));
 								// Выходим из цикла
 								else break;
 							}
@@ -1397,11 +1397,11 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 						// Устанавливаем индекс первого элемента
 						uint8_t index = 0;
 						// Выполняем перебор всего списка хексетов
-						for(auto it = data.begin(); it != data.end(); ++it){
+						for(auto i = data.begin(); i != data.end(); ++i){
 							// Если хексет установлен
-							if(!it->empty())
+							if(!i->empty())
 								// Добавляем хексет в список
-								buffer[index++] = static_cast <uint16_t> (this->atoi(* it));
+								buffer[index++] = static_cast <uint16_t> (this->atoi(* i));
 							// Выходим из цикла
 							else break;
 						}
@@ -1410,11 +1410,11 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Устанавливаем индекс последнего элемента
 							uint8_t index = 8;
 							// Выполняем перебор всех хексеков
-							for(auto it = data.rbegin(); it != data.rend(); ++it){
+							for(auto i = data.rbegin(); i != data.rend(); ++i){
 								// Если хексет установлен
-								if(!it->empty())
+								if(!i->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* i));
 								// Выходим из цикла
 								else break;
 							}

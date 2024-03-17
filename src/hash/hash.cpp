@@ -122,9 +122,9 @@ void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
 	// Если сообщение является финальным
 	if(buffer.size() > sizeof(this->_btype)){
 		// Выполняем поиск хвостового списка байт для удаления
-		auto it = search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
+		auto i = std::search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 		// Удаляем хвостовой список байт из буфера данных
-		buffer.erase(it, buffer.end());
+		buffer.erase(i, buffer.end());
 	}
 }
 /**

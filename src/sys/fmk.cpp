@@ -240,11 +240,11 @@ uint16_t awh::Framework::Symbols::getRome(const char num) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Выполняем поиск римского числа
-	auto it = this->_romes.find(::toupper(num));
+	auto i = this->_romes.find(::toupper(num));
 	// Если римское число найдено
-	if(it != this->_romes.end())
+	if(i != this->_romes.end())
 		// Получаем римское число в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -257,11 +257,11 @@ uint16_t awh::Framework::Symbols::getRome(const wchar_t num) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Выполняем поиск римского числа
-	auto it = this->_wideRomes.find(::towupper(num));
+	auto i = this->_wideRomes.find(::towupper(num));
 	// Если римское число найдено
-	if(it != this->_wideRomes.end())
+	if(i != this->_wideRomes.end())
 		// Получаем римское число в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -274,11 +274,11 @@ uint8_t awh::Framework::Symbols::getArabic(const char num) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Выполняем поиск арабского числа
-	auto it = this->_arabics.find(num);
+	auto i = this->_arabics.find(num);
 	// Если арабское число найдено
-	if(it != this->_arabics.end())
+	if(i != this->_arabics.end())
 		// Получаем арабское число в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -291,11 +291,11 @@ uint8_t awh::Framework::Symbols::getArabic(const wchar_t num) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Выполняем поиск арабского числа
-	auto it = this->_wideArabics.find(num);
+	auto i = this->_wideArabics.find(num);
 	// Если арабское число найдено
-	if(it != this->_wideArabics.end())
+	if(i != this->_wideArabics.end())
 		// Получаем арабское число в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -308,11 +308,11 @@ wchar_t awh::Framework::Symbols::getLetter(const char letter) const noexcept {
 	// Результат работы функции
 	wchar_t result = 0;
 	// Выполняем поиск латинской буквы
-	auto it = this->_letters.find(::tolower(letter));
+	auto i = this->_letters.find(::tolower(letter));
 	// Если латинская буква найдена
-	if(it != this->_letters.end())
+	if(i != this->_letters.end())
 		// Получаем латинскую букву в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -325,11 +325,11 @@ char awh::Framework::Symbols::getLetter(const wchar_t letter) const noexcept {
 	// Результат работы функции
 	char result = 0;
 	// Выполняем поиск латинской буквы
-	auto it = this->_wideLetters.find(::towlower(letter));
+	auto i = this->_wideLetters.find(::towlower(letter));
 	// Если латинская буква найдена
-	if(it != this->_wideLetters.end())
+	if(i != this->_wideLetters.end())
 		// Получаем латинскую букву в чистом виде
-		result = it->second;
+		result = i->second;
 	// Выводим результат
 	return result;
 }
@@ -1743,17 +1743,17 @@ string awh::Framework::noexp(const double number, const double step) const noexc
 		// Получаем из потока строку
 		stream >> result;
 		// Переходим по всему числу
-		for(auto it = result.begin(); it != result.end();){
+		for(auto i = result.begin(); i != result.end();){
 			// Если это первый символ
-			if(it == result.begin() && ((* it) == '-'))
+			if(i == result.begin() && ((* i) == '-'))
 				// Увеличиваем значение итератора
-				++it;
+				++i;
 			// Проверяем является ли символ числом
-			else if(this->_symbols.isArabic(* it) || ((* it) == '.'))
+			else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
 				// Увеличиваем значение итератора
-				++it;
+				++i;
 			// Иначе удаляем символ
-			else it = result.erase(it);
+			else i = result.erase(i);
 		}
 	}
 	// Выводим результат
@@ -1781,36 +1781,36 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 		// Устанавливаем значение последнего символа
 		char last = '$';
 		// Выполняем перебор всех символов
-		for(auto it = (result.end() - 2); it != (result.begin() - 1);){
+		for(auto i = (result.end() - 2); i != (result.begin() - 1);){
 			// Если символ не является последним
-			if(it != (result.end() - 2)){
+			if(i != (result.end() - 2)){
 				// Если символы совпадают
-				if((* it) == last)
+				if((* i) == last)
 					// Выполняем удаление лишних символов
-					result.erase(it);
+					result.erase(i);
 				// Если символы не совпадат, выходим
 				else break;
 			}
 			// Запоминаем текущее значение символа
-			last = (* it);
+			last = (* i);
 			// Уменьшаем значение итератора
-			it--;
+			i--;
 		}
 	}
 	// Если нужно выводить только числа
 	if(onlyNum){
 		// Переходим по всему числу
-		for(auto it = result.begin(); it != result.end();){
+		for(auto i = result.begin(); i != result.end();){
 			// Если это первый символ
-			if(it == result.begin() && ((* it) == '-'))
+			if(i == result.begin() && ((* i) == '-'))
 				// Выполняем увеличение значения итератора
-				++it;
+				++i;
 			// Проверяем является ли символ числом
-			else if(this->_symbols.isArabic(* it) || ((* it) == '.'))
+			else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
 				// Выполняем увеличение значения итератора
-				++it;
+				++i;
 			// Иначе удаляем символ
-			else it = result.erase(it);
+			else i = result.erase(i);
 		}
 	}
 	// Выводим результат

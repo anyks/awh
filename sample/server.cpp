@@ -98,17 +98,15 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
+	 * Запрет вывода информационных сообщений
 	 */
-	// sample.mode({server::sample_t::flag_t::WAIT_MESS});
+	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
 	// core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Отключаем валидацию сертификата
 	ssl.verify = false;
-	// Устанавливаем адрес сертификата
-	ssl.ca = "./certs/ca.pem";
 	// Устанавливаем SSL сертификаты сервера
 	ssl.key  = "./certs/certificates/server-key.pem";
 	ssl.cert = "./certs/certificates/server-cert.pem";

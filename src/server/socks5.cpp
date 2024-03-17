@@ -89,8 +89,6 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 				scheme::socks5_t::options_t * options = const_cast <scheme::socks5_t::options_t *> (this->_scheme.get(bid1));
 				// Если параметры активного клиента получены
 				if(options != nullptr){
-					// Устанавливаем флаг ожидания входящих сообщений
-					options->scheme.wait = this->_scheme.wait;
 					// Устанавливаем количество секунд на чтение
 					options->scheme.timeouts.read = this->_scheme.timeouts.read;
 					// Устанавливаем количество секунд на запись
@@ -202,9 +200,9 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 			// Если брокер является сервером
 			case static_cast <uint8_t> (broker_t::SERVER): {
 				// Выполняем поиск активного клиента
-				auto it = this->_clients.find(bid1);
+				auto i = this->_clients.find(bid1);
 				// Если активный клиент найден
-				if(it != this->_clients.end()){
+				if(i != this->_clients.end()){
 					// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 					const uint16_t tid = this->_timer.timeout(3000);
 					// Выполняем добавление функции обратного вызова
@@ -292,11 +290,11 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 									} break;
 								}
 								// Выполняем поиск сетевое ядро клиента
-								auto it = this->_clients.find(bid);
+								auto i = this->_clients.find(bid);
 								// Если сетевое ядро клиента найдено
-								if(it != this->_clients.end())
+								if(i != this->_clients.end())
 									// Выполняем запрос на сервер
-									it->second->open(options->scheme.id);
+									i->second->open(options->scheme.id);
 								// Выходим из функции
 								return;
 							// Если рукопожатие не выполнено
@@ -316,17 +314,17 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 					// Если подключение выполнено
 					} else {
 						// Выполняем поиск сетевое ядро клиента
-						auto it = this->_clients.find(bid);
+						auto i = this->_clients.find(bid);
 						// Если сетевое ядро клиента найдено
-						if(it != this->_clients.end()){
+						if(i != this->_clients.end()){
 							// Если функция обратного вызова при получении входящих сообщений установлена
 							if(this->_callbacks.is("message")){
 								// Выводим данные полученного сообщения
 								if(this->_callbacks.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::REQUEST, buffer, size))
 									// Отправляем запрос на внешний сервер
-									it->second->write(buffer, size, options->id);
+									i->second->write(buffer, size, options->id);
 							// Отправляем запрос на внешний сервер
-							} else it->second->write(buffer, size, options->id);
+							} else i->second->write(buffer, size, options->id);
 						}
 					}
 				}
@@ -365,13 +363,13 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, const uint64_t bid) noe
 	// Зануляем неиспользуемую переменную
 	(void) tid;
 	// Выполняем поиск активного клиента
-	auto it = this->_clients.find(bid);
+	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
-	if(it != this->_clients.end()){
+	if(i != this->_clients.end()){
 		// Выполняем отключение клиента от сетевого ядра
-		this->_core.unbind(it->second.get());
+		this->_core.unbind(i->second.get());
 		// Удаляем активного клиента
-		this->_clients.erase(it);
+		this->_clients.erase(i);
 		// Выполняем удаление параметров брокера
 		this->_scheme.rm(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -544,8 +542,6 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
  * @param flags список флагов модуля для установки
  */
 void awh::server::ProxySocks5::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_core.verbose(flags.count(flag_t::NOT_INFO) == 0);
 }

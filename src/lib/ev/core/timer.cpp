@@ -35,15 +35,15 @@ void awh::Timer::Timeout::operator()(ev::timer & timer, int revents) noexcept {
  */
 void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 	// Выполняем поиск активного брокера
-	auto it = this->_brokers.find(tid);
+	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
-	if(it != this->_brokers.end()){
+	if(i != this->_brokers.end()){
 		// Если персистентная работа не установлена, удаляем таймер
-		if(!it->second->persist){
+		if(!i->second->persist){
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Выполняем удаление таймера
-			this->_brokers.erase(it);
+			this->_brokers.erase(i);
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Если функция обратного вызова существует
@@ -72,13 +72,13 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 				// Выполняем функцию обратного вызова
 				callback.bind(static_cast <uint64_t> (tid));
 				// Выполняем поиск активного брокера
-				auto it = this->_brokers.find(tid);
+				auto i = this->_brokers.find(tid);
 				// Если активный брокер найден
-				if(it != this->_brokers.end())
+				if(i != this->_brokers.end())
 					// Продолжаем работу дальше
-					it->second->io.start(delay);
+					i->second->io.start(delay);
 			// Продолжаем работу дальше
-			} else it->second->io.start(delay);
+			} else i->second->io.start(delay);
 		}
 	}
 }
@@ -91,15 +91,15 @@ void awh::Timer::clear() noexcept {
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Выполняем перебор всех активных брокеров
-		for(auto it = this->_brokers.begin(); it != this->_brokers.end();){
+		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
 			// Выполняем остановку активного брокера
-			it->second->io.stop();
+			i->second->io.stop();
 			// Если функция обратного вызова существует
-			if(this->_callbacks.is(static_cast <uint64_t> (it->first)))
+			if(this->_callbacks.is(static_cast <uint64_t> (i->first)))
 				// Выполняем удаление функции обратного вызова
-				this->_callbacks.erase(static_cast <uint64_t> (it->first));
+				this->_callbacks.erase(static_cast <uint64_t> (i->first));
 			// Выполняем удаление таймера
-			it = this->_brokers.erase(it);
+			i = this->_brokers.erase(i);
 		}
 	}
 }
@@ -111,17 +111,17 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем поиск активного брокера
-	auto it = this->_brokers.find(tid);
+	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
-	if(it != this->_brokers.end()){
+	if(i != this->_brokers.end()){
 		// Выполняем остановку активного брокера
-		it->second->io.stop();
+		i->second->io.stop();
 		// Если функция обратного вызова существует
 		if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 			// Выполняем удаление функции обратного вызова
 			this->_callbacks.erase(static_cast <uint64_t> (tid));
 		// Выполняем удаление таймера
-		this->_brokers.erase(it);
+		this->_brokers.erase(i);
 	}
 }
 /**

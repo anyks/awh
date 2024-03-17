@@ -839,34 +839,34 @@ void awh::server::Websocket1::erase(const uint64_t bid) noexcept {
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
-			auto it = this->_disconected.find(bid);
+			auto i = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 3000)){
+			if((i != this->_disconected.end()) && ((date - i->second) >= 3000)){
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callbacks.is("erase"))
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
-				eraseFn(it->first);
+				eraseFn(i->first);
 				// Выполняем удаление брокера
-				this->_disconected.erase(it);
+				this->_disconected.erase(i);
 			}
 		// Если идентификатор брокера не передан
 		} else {
 			// Выполняем переход по всему списку отключившихся брокеров
-			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			for(auto i = this->_disconected.begin(); i != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 3000){
+				if((date - i->second) >= 3000){
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callbacks.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint64_t)> ("erase", it->first);
+						this->_callbacks.call <void (const uint64_t)> ("erase", i->first);
 					// Выполняем удаление отключившегося брокера
-					eraseFn(it->first);
+					eraseFn(i->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
-					it = this->_disconected.erase(it);
+					i = this->_disconected.erase(i);
 				// Выполняем пропуск брокера
-				} else ++it;
+				} else ++i;
 			}
 		}
 	}
@@ -1350,11 +1350,9 @@ void awh::server::Websocket1::compressors(const vector <http_t::compressor_t> & 
  */
 void awh::server::Websocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера

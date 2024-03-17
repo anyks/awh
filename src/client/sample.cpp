@@ -73,8 +73,8 @@ void awh::client::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 		if(!this->_scheme.alive){
 			// Очищаем адрес сервера
 			this->_scheme.url.clear();
-			// Завершаем работу
-			if(this->_unbind)
+			// Завершаем работу базы событий
+			if(this->_complete)
 				// Выполняем остановку работы сетевого ядра
 				const_cast <client::core_t *> (this->_core)->stop();
 		}
@@ -266,11 +266,9 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
  */
 void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
@@ -295,7 +293,7 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _callbacks(log), _scheme(fmk, log), _bid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
+ _callbacks(log), _scheme(fmk, log), _bid(0), _complete(true), _fmk(fmk), _log(log), _core(core) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

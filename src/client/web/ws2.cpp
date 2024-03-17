@@ -191,7 +191,7 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 	}
@@ -1530,7 +1530,7 @@ void awh::client::Websocket2::stop() noexcept {
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся

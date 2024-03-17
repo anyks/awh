@@ -37,6 +37,8 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
+			// Выполняем биндинг ядра локального таймера
+			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 			// Устанавливаем интервал времени на выполнения пинга клиента
 			uint16_t tid = this->_timer.interval(PING_INTERVAL);
 			// Выполняем добавление функции обратного вызова
@@ -45,8 +47,6 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 			tid = this->_timer.interval(3000);
 			// Выполняем добавление функции обратного вызова
 			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
-			// Выполняем биндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -138,21 +138,21 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
-			auto it = this->_disconected.find(bid);
+			auto i = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 10000))
+			if((i != this->_disconected.end()) && ((date - i->second) >= 10000))
 				// Выполняем удаление брокера
-				this->_disconected.erase(it);
+				this->_disconected.erase(i);
 		// Если идентификатор брокера не передан
 		} else {
 			// Выполняем переход по всему списку отключившихся брокеров
-			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			for(auto i = this->_disconected.begin(); i != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 10000)
+				if((date - i->second) >= 10000)
 					// Выполняем удаление объекта брокеров из списка отключившихся
-					it = this->_disconected.erase(it);
+					i = this->_disconected.erase(i);
 				// Выполняем пропуск брокера
-				else ++it;
+				else ++i;
 			}
 		}
 	}
@@ -295,7 +295,7 @@ void awh::server::Web::stop() noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <server::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
@@ -396,7 +396,7 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
@@ -410,7 +410,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _unbind(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);

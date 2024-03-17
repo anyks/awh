@@ -36,11 +36,11 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
-		if(it != this->_schemes.end())
+		if(i != this->_schemes.end())
 			// Выполняем удаление схему сети
-			this->_schemes.erase(it);
+			this->_schemes.erase(i);
 	}
 }
 /**
@@ -99,11 +99,11 @@ uint16_t awh::Node::sid(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
 		// Выполняем поиск брокера подключения
-		auto it = this->_brokers.find(bid);
+		auto i = this->_brokers.find(bid);
 		// Если брокер подключения найден
-		if(it != this->_brokers.end())
+		if(i != this->_brokers.end())
 			// Выводим результат
-			return it->second;
+			return i->second;
 	}
 	// Выводим пустой результат
 	return 0;

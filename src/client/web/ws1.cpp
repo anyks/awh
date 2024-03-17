@@ -133,7 +133,7 @@ void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 	}
@@ -1230,7 +1230,7 @@ void awh::client::Websocket1::stop() noexcept {
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
@@ -1347,16 +1347,14 @@ void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
 void awh::client::Websocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг разрешающий выполнять редиректы
 	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера

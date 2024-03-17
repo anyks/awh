@@ -44,13 +44,13 @@
 			// Идентификатор процесса приславший сообщение
 			pid_t pid = 0;
 			// Выполняем поиск текущего брокера
-			auto it = this->cluster->_jacks.find(this->wid);
+			auto i = this->cluster->_jacks.find(this->wid);
 			// Если текущий брокер найден
-			if(it != this->cluster->_jacks.end()){
+			if(i != this->cluster->_jacks.end()){
 				// Флаг найденного файлового дескриптора
 				bool found = false;
 				// Переходим по всему списку брокеров
-				for(auto & broker : it->second){
+				for(auto & broker : i->second){
 					// Выполняем поиск файлового дескриптора
 					found = (broker->mfds[0] == watcher.fd);
 					// Если файловый дескриптор соответствует
@@ -132,19 +132,19 @@
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
 			// Выполняем поиск текущего брокера
-			auto it = this->cluster->_jacks.find(this->wid);
+			auto i = this->cluster->_jacks.find(this->wid);
 			// Если текущий брокер найден
-			if(it != this->cluster->_jacks.end()){
+			if(i != this->cluster->_jacks.end()){
 				// Получаем индекс текущего процесса
 				const uint16_t index = this->cluster->_pids.at(::getpid());
 				// Получаем объект текущего брокера
-				broker_t * broker = it->second.at(index).get();
+				broker_t * broker = i->second.at(index).get();
 				// Если файловый дескриптор не соответствует родительскому
 				if(broker->cfds[0] != watcher.fd){
 					// Останавливаем чтение
 					watcher.stop();
 					// Переходим по всему списку брокеров
-					for(auto & item : it->second){
+					for(auto & item : i->second){
 						// Если брокер не является текущим брокером
 						if((broker->cfds[0] != item->cfds[0]) && (broker->mfds[1] != item->mfds[1])){
 							// Останавливаем чтение
@@ -605,11 +605,11 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
  */
 bool awh::Cluster::working(const uint16_t wid) const noexcept {
 	// Выполняем поиск воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если воркер найден
-	if(it != this->_workers.end())
+	if(i != this->_workers.end())
 		// Выводим результат проверки
-		return it->second->working;
+		return i->second->working;
 	// Сообщаем, что проверка не выполнена
 	return false;
 }
@@ -622,15 +622,15 @@ set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
 	set <pid_t> result;
 	// Выполняем поиск брокеров
-	auto it = this->_jacks.find(wid);
+	auto i = this->_jacks.find(wid);
 	// Если брокер найден
-	if((it != this->_jacks.end()) && !it->second.empty()){
+	if((i != this->_jacks.end()) && !i->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Переходим по всему списку брокеров
-			for(auto & broker : it->second)
+			for(auto & broker : i->second)
 				// Выполняем формирование списка процессов
 				result.emplace(broker->pid);
 		#endif
@@ -673,9 +673,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
 			// Выполняем поиск брокеров
-			auto it = this->_jacks.find(wid);
+			auto i = this->_jacks.find(wid);
 			// Если брокер найден
-			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((i != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -693,7 +693,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
-					::write(it->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
+					::write(i->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
 					offset += message.size;
 				} while(offset < size);
@@ -722,9 +722,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
-			auto it = this->_jacks.find(wid);
+			auto i = this->_jacks.find(wid);
 			// Если брокер найден
-			if((it != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((i != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -742,7 +742,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Выполняем отправку сообщения дочернему процессу
-					::write(it->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
+					::write(i->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
 					// Выполняем увеличение смещения в буфере
 					offset += message.size;
 				} while(offset < size);
@@ -789,9 +789,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
-			auto it = this->_jacks.find(wid);
+			auto i = this->_jacks.find(wid);
 			// Если брокер найден
-			if((it != this->_jacks.end()) && !it->second.empty()){
+			if((i != this->_jacks.end()) && !i->second.empty()){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -809,7 +809,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Выполняем копирование данные полезной нагрузки
 					::memcpy(message.payload, buffer + offset, message.size);
 					// Переходим по всем дочерним процессам
-					for(auto & broker : it->second){
+					for(auto & broker : i->second){
 						// Если идентификатор процесса не нулевой
 						if(broker->pid > 0)
 							// Выполняем отправку сообщения дочернему процессу
@@ -903,15 +903,15 @@ void awh::Cluster::close() noexcept {
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Выполняем поиск брокеров
-	auto it = this->_jacks.find(wid);
+	auto i = this->_jacks.find(wid);
 	// Если брокер найден
-	if((it != this->_jacks.end()) && !it->second.empty()){
+	if((i != this->_jacks.end()) && !i->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Переходим по всему списку брокеров
-			for(auto & broker : it->second){
+			for(auto & broker : i->second){
 				// Останавливаем обработку получения статуса процессов
 				broker->cw.stop();
 				// Останавливаем чтение данных с дочернего процесса
@@ -922,7 +922,7 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 			}
 		#endif
 		// Очищаем список брокеров
-		it->second.clear();
+		i->second.clear();
 	}
 }
 /**
@@ -1006,11 +1006,11 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
  */
 void awh::Cluster::start(const uint16_t wid) noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если вокер найден
-	if(it != this->_workers.end())
+	if(i != this->_workers.end())
 		// Выполняем запуск процесса
-		this->fork(it->first);
+		this->fork(i->first);
 }
 /**
  * restart Метод установки флага перезапуска процессов
@@ -1019,11 +1019,11 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
  */
 void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если вокер найден
-	if(it != this->_workers.end())
+	if(i != this->_workers.end())
 		// Устанавливаем флаг автоматического перезапуска процесса
-		it->second->restart = mode;
+		i->second->restart = mode;
 }
 /**
  * base Метод установки базы событий
@@ -1052,11 +1052,11 @@ void awh::Cluster::trackCrash(const bool mode) noexcept {
  */
 void awh::Cluster::async(const uint16_t wid, const bool mode) noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если вокер найден
-	if(it != this->_workers.end())
+	if(i != this->_workers.end())
 		// Устанавливаем флаг асинхронного режима работы
-		it->second->async = mode;
+		i->second->async = mode;
 }
 /**
  * count Метод получения максимального количества процессов
@@ -1065,11 +1065,11 @@ void awh::Cluster::async(const uint16_t wid, const bool mode) noexcept {
  */
 uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если вокер найден
-	if(it != this->_workers.end())
+	if(i != this->_workers.end())
 		// Выводим максимально-возможное количество процессов
-		return it->second->count;
+		return i->second->count;
 	// Выводим результат
 	return 0;
 }
@@ -1080,19 +1080,19 @@ uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
  */
 void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если вокер найден
-	if(it != this->_workers.end()){
+	if(i != this->_workers.end()){
 		// Если количество процессов не передано
 		if(count == 0)
 			// Устанавливаем максимальное количество ядер доступных в системе
-			it->second->count = (std::thread::hardware_concurrency() / 2);
+			i->second->count = (std::thread::hardware_concurrency() / 2);
 		// Устанавливаем максимальное количество процессов
-		else it->second->count = count;
+		else i->second->count = count;
 		// Если количество процессов не установлено
-		if(it->second->count == 0)
+		if(i->second->count == 0)
 			// Устанавливаем один рабочий процесс
-			it->second->count = 1;
+			i->second->count = 1;
 	}
 }
 /**
@@ -1102,9 +1102,9 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
  */
 void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	// Выполняем поиск идентификатора воркера
-	auto it = this->_workers.find(wid);
+	auto i = this->_workers.find(wid);
 	// Если воркер не найден
-	if(it == this->_workers.end()){
+	if(i == this->_workers.end()){
 		// Добавляем воркер в список воркеров
 		auto ret = this->_workers.emplace(wid, unique_ptr <worker_t> (new worker_t(this->_log)));
 		// Устанавливаем идентификатор воркера

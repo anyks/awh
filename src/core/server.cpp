@@ -24,11 +24,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if((sid > 0) && (fd != INVALID_SOCKET) && (fd < MAX_SOCKETS)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Получаем объект подключения
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Определяем тип сокета
 			switch(static_cast <uint8_t> (this->_settings.sonet)){
 				// Если тип сокета установлен как UDP
@@ -156,11 +156,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					 */
 					try {
 						// Выполняем поиск таймера
-						auto it = this->_timers.find(sid);
+						auto i = this->_timers.find(sid);
 						// Если таймер найден
-						if(it != this->_timers.end())
+						if(i != this->_timers.end())
 							// Останавливаем работу таймеро
-							it->second->clear();
+							i->second->clear();
 						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
 							// Выводим в консоль информацию
@@ -175,11 +175,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Если процесс является дочерним
 						if(this->_pid != ::getpid()){
 							// Выполняем поиск брокера в списке активных брокеров
-							auto it = this->_brokers.find(sid);
+							auto i = this->_brokers.find(sid);
 							// Если активный брокер найден
-							if(it != this->_brokers.end())
+							if(i != this->_brokers.end())
 								// Деактивируем получение данных с клиента
-								it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+								i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 							// Выводим в консоль информацию
 							this->_log->print("Working in child processes for \"DTLS-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
@@ -191,11 +191,11 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Выполняем остановку работы получения запроса на подключение
 						} else {
 							// Выполняем поиск брокера в списке активных брокеров
-							auto it = this->_brokers.find(sid);
+							auto i = this->_brokers.find(sid);
 							// Если активный брокер найден
-							if(it != this->_brokers.end())
+							if(i != this->_brokers.end())
 								// Деактивируем получение данных с клиента
-								it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+								i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 						}
 						// Создаём бъект активного брокера подключения
 						unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
@@ -222,27 +222,27 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							node_t::_brokers.emplace(ret.first->first, sid);
 						}{
 							// Выполняем поиск таймера
-							auto it = this->_timers.find(sid);
+							auto i = this->_timers.find(sid);
 							// Если таймер найден
-							if(it != this->_timers.end()){
+							if(i != this->_timers.end()){
 								// Выполняем создание нового таймаута на 10 миллисекунд
-								const uint16_t tid = it->second->timeout(10);
+								const uint16_t tid = i->second->timeout(10);
 								// Выполняем добавление функции обратного вызова
-								it->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
+								i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
 							// Если таймер не найден
 							} else {
 								// Выполняем блокировку потока
 								const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 								// Выполняем создание нового таймера
 								auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
+								// Выполняем биндинг сетевого ядра таймера
+								this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 								// Выполняем создание нового таймаута на 10 миллисекунд
 								const uint16_t tid = ret.first->second->timeout(10);
 								// Устанавливаем флаг запрещающий вывод информационных сообщений
 								ret.first->second->verbose(false);
 								// Выполняем добавление функции обратного вызова
 								ret.first->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
-								// Выполняем биндинг сетевого ядра таймера
-								this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 							}
 						}
 					/**
@@ -665,13 +665,13 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 				// Запускаем таймер вновь на 100мс
 				} else {
 					// Выполняем поиск таймера
-					auto it = this->_timers.find(sid);
+					auto i = this->_timers.find(sid);
 					// Если таймер найден
-					if(it != this->_timers.end()){
+					if(i != this->_timers.end()){
 						// Выполняем создание нового таймаута на 10 миллисекунд
-						const uint16_t tid = it->second->timeout(10);
+						const uint16_t tid = i->second->timeout(10);
 						// Выполняем добавление функции обратного вызова
-						it->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
+						i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::dtls), this, sid, bid));
 					}
 				}
 			}
@@ -722,11 +722,11 @@ void awh::server::Core::closedown(const bool mode, const bool status) noexcept {
  */
 void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект подключения
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Определяем члена семейства кластера
 		const cluster_t::family_t family = (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
 		// Выполняем тип возникшего события
@@ -763,15 +763,15 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 							// Для всех остальных типов сокетов
 							default: {
 								// Выполняем поиск брокера в списке активных брокеров
-								auto it = this->_brokers.find(sid);
+								auto i = this->_brokers.find(sid);
 								// Если активный брокер найден
-								if(it != this->_brokers.end()){
+								if(i != this->_brokers.end()){
 									// Устанавливаем активный сокет сервера
-									it->second->_addr.fd = shm->_addr.fd;
+									i->second->_addr.fd = shm->_addr.fd;
 									// Выполняем установку базы событий
-									it->second->base(this->_dispatch.base);
+									i->second->base(this->_dispatch.base);
 									// Активируем получение данных с клиента
-									it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 								// Если брокер не существует
 								} else {
 									// Выполняем блокировку потока
@@ -799,11 +799,11 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 				// Если тип сокета не установлен как UDP
 				if(this->_settings.sonet != scheme_t::sonet_t::UDP){
 					// Выполняем поиск брокера в списке активных брокеров
-					auto it = this->_brokers.find(sid);
+					auto i = this->_brokers.find(sid);
 					// Если активный брокер найден
-					if(it != this->_brokers.end())
+					if(i != this->_brokers.end())
 						// Деактивируем получение данных с клиента
-						it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+						i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 				}
 			} break;
 		}
@@ -908,36 +908,36 @@ void awh::server::Core::close() noexcept {
 			// Если в схеме сети есть подключённые клиенты
 			if(!shm->_brokers.empty()){
 				// Переходим по всему списку брокера
-				for(auto it = shm->_brokers.begin(); it != shm->_brokers.end();){
+				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(it->first) == this->_busy.end()){
+					if(this->_busy.find(i->first) == this->_busy.end()){
 						// Выполняем блокировку брокера
-						this->_busy.emplace(it->first);
+						this->_busy.emplace(i->first);
 						// Получаем бъект активного брокера подключения
-						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (it->second.get());
+						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 						// Выполняем очистку буфера событий
-						this->disable(it->first);
+						this->disable(i->first);
 						// Выполняем очистку контекста двигателя
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
-						node_t::_brokers.erase(it->first);
+						node_t::_brokers.erase(i->first);
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t)> (it->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), it->first, item.first);
+							callback.set <void (const uint64_t, const uint16_t)> (i->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
 						// Удаляем блокировку брокера
-						this->_busy.erase(it->first);
+						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
-						it = shm->_brokers.erase(it);
+						i = shm->_brokers.erase(i);
 					// Иначе продолжаем дальше
-					} else ++it;
+					} else ++i;
 				}
 				// Выполняем поиск брокера в списке активных брокеров
-				auto it = this->_brokers.find(shm->id);
+				auto i = this->_brokers.find(shm->id);
 				// Если активный брокер найден
-				if(it != this->_brokers.end())
+				if(i != this->_brokers.end())
 					// Деактивируем получение данных с клиента
-					it->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+					i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(shm->id);
 			}
@@ -959,15 +959,15 @@ void awh::server::Core::remove() noexcept {
 		// Если список таймеров не пустой
 		if(!this->_timers.empty()){
 			// Выполняем перебор всех таймеров
-			for(auto it = this->_timers.begin(); it != this->_timers.end();){
+			for(auto i = this->_timers.begin(); i != this->_timers.end();){
 				// Выполняем блокировку потока
 				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 				// Останавливаем работу таймера
-				it->second->clear();
+				i->second->clear();
 				// Выполняем анбиндинг сетевого ядра таймера
-				this->unbind(dynamic_cast <awh::core_t *> (it->second.get()));
+				this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
 				// Выполняем удаление таймера
-				it = this->_timers.erase(it);
+				i = this->_timers.erase(i);
 			}
 		}
 		// Объект работы с функциями обратного вызова
@@ -1042,11 +1042,11 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 				// Создаём бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 				// Выполняем поиск идентификатора схемы сети
-				auto it = this->_schemes.find(broker->sid());
+				auto i = this->_schemes.find(broker->sid());
 				// Если идентификатор схемы сети найден
-				if(it != this->_schemes.end()){
+				if(i != this->_schemes.end()){
 					// Получаем объект схемы сети
-					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 					// Выполняем очистку буфера событий
 					this->disable(bid);
 					// Выполняем очистку контекста двигателя
@@ -1072,11 +1072,11 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						// Если процесс является мастером
 						if(this->_pid == ::getpid()){
 							// Выполняем поиск брокера в списке активных брокеров
-							auto it = this->_brokers.find(shm->id);
+							auto i = this->_brokers.find(shm->id);
 							// Если активный брокер найден
-							if(it != this->_brokers.end())
+							if(i != this->_brokers.end())
 								// Активируем получение данных с клиента
-								it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+								i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 						}
 						// Удаляем блокировку брокера
 						this->_busy.erase(bid);
@@ -1110,17 +1110,17 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 			// Если список таймеров не пустой
 			if(!this->_timers.empty()){
 				// Выполняем поиск таймера
-				auto it = this->_timers.find(sid);
+				auto i = this->_timers.find(sid);
 				// Если таймер найден удачно
-				if(it != this->_timers.end()){
+				if(i != this->_timers.end()){
 					// Выполняем блокировку потока
 					const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 					// Останавливаем работу таймера
-					it->second->clear();
+					i->second->clear();
 					// Выполняем анбиндинг сетевого ядра таймера
-					this->unbind(dynamic_cast <awh::core_t *> (it->second.get()));
+					this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
 					// Выполняем удаление таймера
-					this->_timers.erase(it);
+					this->_timers.erase(i);
 				}
 			}
 			// Объект работы с функциями обратного вызова
@@ -1181,9 +1181,9 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети существует
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Определяем режим активации кластера
 			switch(static_cast <uint8_t> (this->_clusterMode)){
 				// Если кластер необходимо активировать
@@ -1201,7 +1201,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 				} break;
 			}
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если хост сервера не указан
 			if(shm->_host.empty()){
 				// Объект для работы с сетевым интерфейсом
@@ -1261,11 +1261,11 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Определяем тип протокола подключения
 			switch(static_cast <uint8_t> (this->_settings.family)){
 				// Если тип протокола подключения IPv4
@@ -1333,11 +1333,11 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
  */
 u_int awh::server::Core::port(const uint16_t sid) const noexcept {
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->_schemes.find(sid);
+	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-	if(it != this->_schemes.end()){
+	if(i != this->_schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Выводим порт сервера который он прослушивает
 		return shm->_port;
 	}
@@ -1361,11 +1361,11 @@ const string & awh::server::Core::host(const uint16_t sid) const noexcept {
 		// Если адрес хоста принадлежит другому типу
 		default: {
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(sid);
+			auto i = this->_schemes.find(sid);
 			// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Выводим хост на котором висит сервер
 				return shm->_host;
 			}
@@ -1387,9 +1387,9 @@ set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
 		// Выполняем перебор списка дочерних воркеров
 		const auto & range = this->_workers.equal_range(sid);
 		// Выполняем перебор всего списка указанных заголовков
-		for(auto it = range.first; it != range.second; ++it)
+		for(auto i = range.first; i != range.second; ++i)
 			// Выполняем заполнение списка полученных воркеров
-			result.emplace(it->second);
+			result.emplace(i->second);
 	}
 	// Выводим результат
 	return result;
@@ -1484,11 +1484,11 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			// Останавливаем чтение данных с клиента
 			broker->_bev.events.read.stop();
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(broker->sid());
+			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Получаем максимальный размер буфера
 				const int64_t size = broker->_ectx.buffer(engine_t::method_t::READ);
 				// Если размер буфера получен
@@ -1592,9 +1592,9 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
 			// Выполняем поиск идентификатора схемы сети
-			auto it = this->_schemes.find(broker->sid());
+			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
-			if(it != this->_schemes.end()){
+			if(i != this->_schemes.end()){
 				// Определяем тип сокета
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как TCP/IP
@@ -1608,7 +1608,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					break;
 				}
 				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если данных достаточно для записи в сокет
 				if(size >= broker->_marker.write.min){
 					// Количество полученных байт
@@ -1709,11 +1709,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если IP-адрес получен
 			if(!ip.empty()){
 				// sudo lsof -i -P | grep 1080
@@ -1775,15 +1775,15 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								} break;
 							}
 							// Выполняем поиск брокера в списке активных брокеров
-							auto it = this->_brokers.find(sid);
+							auto i = this->_brokers.find(sid);
 							// Если активный брокер найден
-							if(it != this->_brokers.end()){
+							if(i != this->_brokers.end()){
 								// Устанавливаем активный сокет сервера
-								it->second->_addr.fd = shm->_addr.fd;
+								i->second->_addr.fd = shm->_addr.fd;
 								// Выполняем установку базы событий
-								it->second->base(this->_dispatch.base);
+								i->second->base(this->_dispatch.base);
 								// Активируем получение данных с клиента
-								it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+								i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 							// Если брокер не существует
 							} else {
 								// Выполняем блокировку потока
@@ -1847,15 +1847,15 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								// Если кластер необходимо деактивировать
 								case static_cast <uint8_t> (awh::scheme_t::mode_t::DISABLED): {
 									// Выполняем поиск брокера в списке активных брокеров
-									auto it = this->_brokers.find(sid);
+									auto i = this->_brokers.find(sid);
 									// Если активный брокер найден
-									if(it != this->_brokers.end()){
+									if(i != this->_brokers.end()){
 										// Устанавливаем активный сокет сервера
-										it->second->_addr.fd = shm->_addr.fd;
+										i->second->_addr.fd = shm->_addr.fd;
 										// Выполняем установку базы событий
-										it->second->base(this->_dispatch.base);
+										i->second->base(this->_dispatch.base);
 										// Активируем получение данных с клиента
-										it->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+										i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 									// Если брокер не существует
 									} else {
 										// Выполняем блокировку потока
@@ -1944,11 +1944,11 @@ void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept 
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end())
+		if(i != this->_schemes.end())
 			// Устанавливаем максимальное количество одновременных подключений
-			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second)))->_total = total;
+			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second)))->_total = total;
 	}
 }
 /**
@@ -2036,13 +2036,13 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
-		auto it = this->_schemes.find(sid);
+		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->_schemes.end()){
+		if(i != this->_schemes.end()){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.main);
 			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если порт передан, устанавливаем
 			if(port > 0){
 				// Устанавливаем порт

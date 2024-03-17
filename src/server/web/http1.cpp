@@ -137,9 +137,9 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(bid);
+			auto i = this->_agents.find(bid);
 			// Если агент соответствует Websocket-у
-			if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+			if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 				// Выполняем передачу данных клиенту Websocket
 				this->_ws1.readEvents(buffer, size, bid, sid);
 			// Иначе выполняем обработку входящих данных как Web-сервер
@@ -450,9 +450,9 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует Websocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+		if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту Websocket
 			this->_ws1.writeEvents(buffer, size, bid, sid);
 		// Иначе выполняем обработку входящих данных как Web-сервер
@@ -774,15 +774,15 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 		 */
 		auto eraseFn = [this](const uint64_t bid) noexcept -> void {
 			// Выполняем поиск агента которому соответствует клиент
-			auto it = this->_agents.find(bid);
+			auto i = this->_agents.find(bid);
 			// Если агент найден в списке активных агентов
-			if(it != this->_agents.end()){
+			if(i != this->_agents.end()){
 				// Если агент соответствует серверу Websocket
-				if(it->second == agent_t::WEBSOCKET)
+				if(i->second == agent_t::WEBSOCKET)
 					// Выполняем удаление отключённого брокера
-					this->_ws1.erase(it->first);
+					this->_ws1.erase(i->first);
 				// Выполняем удаление активного агента
-				this->_agents.erase(it);
+				this->_agents.erase(i);
 			}
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
@@ -801,34 +801,34 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
-			auto it = this->_disconected.find(bid);
+			auto i = this->_disconected.find(bid);
 			// Если данные отключившегося брокера найдены
-			if((it != this->_disconected.end()) && ((date - it->second) >= 3000)){
+			if((i != this->_disconected.end()) && ((date - i->second) >= 3000)){
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callbacks.is("erase"))
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
-				eraseFn(it->first);
+				eraseFn(i->first);
 				// Выполняем удаление брокера
-				this->_disconected.erase(it);
+				this->_disconected.erase(i);
 			}
 		// Если идентификатор брокера не передан
 		} else {
 			// Выполняем переход по всему списку отключившихся брокеров
-			for(auto it = this->_disconected.begin(); it != this->_disconected.end();){
+			for(auto i = this->_disconected.begin(); i != this->_disconected.end();){
 				// Если брокер уже давно отключился
-				if((date - it->second) >= 3000){
+				if((date - i->second) >= 3000){
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callbacks.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint64_t)> ("erase", it->first);
+						this->_callbacks.call <void (const uint64_t)> ("erase", i->first);
 					// Выполняем удаление отключившегося брокера
-					eraseFn(it->first);
+					eraseFn(i->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
-					it = this->_disconected.erase(it);
+					i = this->_disconected.erase(i);
 				// Выполняем пропуск брокера
-				} else ++it;
+				} else ++i;
 			}
 		}
 	}
@@ -883,9 +883,9 @@ const awh::http_t * awh::server::Http1::parser(const uint64_t bid) const noexcep
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -906,9 +906,9 @@ bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -930,9 +930,9 @@ void awh::server::Http1::trailer(const uint64_t bid, const string & key, const s
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -974,9 +974,9 @@ void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) 
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует Websocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+		if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 			// Выполняем отправку ошибки клиенту Websocket
 			this->_ws1.sendError(bid, mess);
 	}
@@ -991,9 +991,9 @@ void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует Websocket-у
-		if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+		if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту Websocket
 			this->_ws1.sendMessage(bid, message, text);
 	}
@@ -1012,9 +1012,9 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 	// Если данные переданы верные
 	if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -1091,9 +1091,9 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 	// Если заголовки запроса переданы
 	if((result = ((this->_core != nullptr) && this->_core->working() && !headers.empty()))){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -1160,9 +1160,9 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
-		auto it = this->_agents.find(bid);
+		auto i = this->_agents.find(bid);
 		// Если агент соответствует HTTP-протоколу
-		if((it == this->_agents.end()) || (it->second == agent_t::HTTP)){
+		if((i == this->_agents.end()) || (i->second == agent_t::HTTP)){
 			// Получаем параметры активного клиента
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -1350,11 +1350,11 @@ u_int awh::server::Http1::port(const uint64_t bid) const noexcept {
  */
 awh::server::web_t::agent_t awh::server::Http1::agent(const uint64_t bid) const noexcept {
 	// Выполняем поиск нужного нам агента
-	auto it = this->_agents.find(bid);
+	auto i = this->_agents.find(bid);
 	// Если агент клиента найден
-	if(it != this->_agents.end())
+	if(i != this->_agents.end())
 		// Выводим идентификатор агента
-		return it->second;
+		return i->second;
 	// Выводим сообщение, что ничего не найдено
 	return agent_t::HTTP;
 }
@@ -1403,9 +1403,9 @@ void awh::server::Http1::start() noexcept {
  */
 void awh::server::Http1::close(const uint64_t bid) noexcept {
 	// Выполняем поиск агента которому соответствует клиент
-	auto it = this->_agents.find(bid);
+	auto i = this->_agents.find(bid);
 	// Если агент соответствует Websocket-у
-	if((it != this->_agents.end()) && (it->second == agent_t::WEBSOCKET))
+	if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 		// Выполняем закрытие подключения клиента Websocket
 		this->_ws1.close(bid);
 	// Иначе выполняем обработку входящих данных как Web-сервер
@@ -1547,11 +1547,9 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
 	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера

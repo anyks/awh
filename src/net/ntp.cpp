@@ -454,13 +454,13 @@ string awh::NTP::server(const int family) noexcept {
 				// Устанавливаем новый список имён
 				this->replace(family);
 			// Получаем первое значение итератора
-			auto it = this->_serversIPv4.begin();
+			auto i = this->_serversIPv4.begin();
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			std::advance(it, dist6(generator));
+			std::advance(i, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
@@ -471,13 +471,13 @@ string awh::NTP::server(const int family) noexcept {
 				// Устанавливаем новый список имён
 				this->replace(family);
 			// Получаем первое значение итератора
-			auto it = this->_serversIPv6.begin();
+			auto i = this->_serversIPv6.begin();
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
 			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			std::advance(it, dist6(generator));
+			std::advance(i, dist6(generator));
 			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 		} break;
 	}
 	// Выводим результат

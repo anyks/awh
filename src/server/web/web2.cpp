@@ -103,11 +103,11 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end())
+		if(i != this->_sessions.end())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			it->second->callback <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+			i->second->callback <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
 		// Завершаем работу
 		else const_cast <server::core_t *> (this->_core)->close(bid);
 	}
@@ -119,11 +119,11 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
  */
 bool awh::server::Web2::ping(const uint64_t bid) noexcept {
 	// Выполняем поиск брокера в списке активных сессий
-	auto it = this->_sessions.find(bid);
+	auto i = this->_sessions.find(bid);
 	// Если активная сессия найдена
-	if(it != this->_sessions.end())
+	if(i != this->_sessions.end())
 		// Выполняем пинг удалённого сервера
-		return it->second->ping();
+		return i->second->ping();
 	// Выводим результат
 	return false;
 }
@@ -138,11 +138,11 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
+		if((result = (i != this->_sessions.end()))){
 			// Выполняем закрытие полное закрытие подключения клиента
-			if(!(result = it->second->shutdown())){
+			if(!(result = i->second->shutdown())){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -166,11 +166,11 @@ bool awh::server::Web2::reject(const int32_t sid, const uint64_t bid, const http
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
+		if((result = (i != this->_sessions.end()))){
 			// Выполняем закрытие подключения клиента
-			if(!(result = it->second->reject(sid, error))){
+			if(!(result = i->second->reject(sid, error))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -196,11 +196,11 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (last > -1)){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
+		if((result = (i != this->_sessions.end()))){
 			// Выполняем отправку требования клиенту выполнить отключение от сервера
-			if(!(result = it->second->goaway(last, error, buffer, size))){
+			if(!(result = i->second->goaway(last, error, buffer, size))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -224,11 +224,11 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
+		if((result = (i != this->_sessions.end()))){
 			// Выполняем отправку трейлеров
-			if(!(result = it->second->sendTrailers(sid, headers))){
+			if(!(result = i->second->sendTrailers(sid, headers))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -254,11 +254,11 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char *
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if((result = (it != this->_sessions.end()))){
+		if((result = (i != this->_sessions.end()))){
 			// Выполняем отправку тела ответа
-			if(!(result = it->second->sendData(sid, reinterpret_cast <const uint8_t *> (buffer), size, flag))){
+			if(!(result = i->second->sendData(sid, reinterpret_cast <const uint8_t *> (buffer), size, flag))){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -283,11 +283,11 @@ int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vec
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
+		if(i != this->_sessions.end()){
 			// Если ответ не получилось отправить
-			if((result = it->second->sendHeaders(sid, headers, flag)) < 0){
+			if((result = i->second->sendHeaders(sid, headers, flag)) < 0){
 				// Выполняем закрытие подключения
 				const_cast <server::core_t *> (this->_core)->close(bid);
 				// Выходим из функции
@@ -312,11 +312,11 @@ int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vec
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Выполняем поиск брокера в списке активных сессий
-		auto it = this->_sessions.find(bid);
+		auto i = this->_sessions.find(bid);
 		// Если активная сессия найдена
-		if(it != this->_sessions.end()){
+		if(i != this->_sessions.end()){
 			// Если ответ не получилось отправить push-уведомление
-			if((result = it->second->sendPush(sid, headers, flag)) < 0)
+			if((result = i->second->sendPush(sid, headers, flag)) < 0)
 				// Выходим из функции
 				return result;
 		}
@@ -381,15 +381,15 @@ void awh::server::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 	// Если максимальный размер фрейма установлен
 	else {
 		// Выполняем извлечение максимального размера фрейма
-		auto it = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
+		auto i = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
 		// Если максимальный размер фрейма больше самого максимального значения
-		if(it->second > http2_t::MAX_FRAME_SIZE_MAX)
+		if(i->second > http2_t::MAX_FRAME_SIZE_MAX)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = http2_t::MAX_FRAME_SIZE_MAX;
+			i->second = http2_t::MAX_FRAME_SIZE_MAX;
 		// Если максимальный размер фрейма меньше самого минимального значения
-		else if(it->second < http2_t::MAX_FRAME_SIZE_MIN)
+		else if(i->second < http2_t::MAX_FRAME_SIZE_MIN)
 			// Выполняем корректировку максимального размера фрейма
-			it->second = http2_t::MAX_FRAME_SIZE_MIN;
+			i->second = http2_t::MAX_FRAME_SIZE_MIN;
 	}
 	// Если максимальный размер окна фрейма не установлен
 	if(this->_settings.count(http2_t::settings_t::WINDOW_SIZE) == 0)

@@ -48,12 +48,12 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept 
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
+			// Выполняем биндинг ядра локального таймера выполнения пинга
+			const_cast <client::core_t *> (this->_core)->bind(&this->_timer);
 			// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 			const uint16_t tid = this->_timer.interval(PING_INTERVAL);
 			// Выполняем добавление функции обратного вызова
 			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
-			// Выполняем биндинг ядра локального таймера выполнения пинга
-			const_cast <client::core_t *> (this->_core)->bind(&this->_timer);
 		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -466,7 +466,7 @@ void awh::client::Web::stop() noexcept {
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Если завершить работу разрешено
-		if(this->_unbind && (this->_core != nullptr))
+		if(this->_complete && (this->_core != nullptr))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
@@ -750,7 +750,7 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _nossl(false), _active(false), _stopped(false), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
@@ -767,7 +767,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _nossl(false), _active(false), _stopped(false), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);

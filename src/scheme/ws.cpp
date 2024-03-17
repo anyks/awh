@@ -51,11 +51,11 @@ void awh::server::scheme::WebSocket::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
-		auto it = this->_options.find(bid);
+		auto i = this->_options.find(bid);
 		// Если брокер найден, удаляем его
-		if(it != this->_options.end())
+		if(i != this->_options.end())
 			// Выполняем удаление брокеров
-			this->_options.erase(it);
+			this->_options.erase(i);
 	}
 }
 /**
@@ -69,11 +69,11 @@ const awh::server::scheme::WebSocket::options_t * awh::server::scheme::WebSocket
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера
-		auto it = this->_options.find(bid);
+		auto i = this->_options.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(it != this->_options.end())
+		if(i != this->_options.end())
 			// Выводим параметры подключения брокера
-			result = it->second.get();
+			result = i->second.get();
 	}
 	// Выводим результат
 	return result;

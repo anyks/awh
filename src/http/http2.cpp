@@ -2086,13 +2086,13 @@ bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & sett
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
 		// Выполняем поиск максимального размера буфера полезной нагрузки
-		auto it = settings.find(settings_t::PAYLOAD_SIZE);
+		auto i = settings.find(settings_t::PAYLOAD_SIZE);
 		// Если параметр настроек максимального размера буфера полезной нагрузки установлен
-		if(it != settings.end()){
+		if(i != settings.end()){
 			// Если максимальный размер буфера полезной нагрузки передан
-			if(it->second > 0){
+			if(i->second > 0){
 				// Выполняем установку максимального размера полезной нагрузки
-				const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, it->second);
+				const int rv = nghttp2_session_set_local_window_size(this->_session, NGHTTP2_FLAG_NONE, 0, i->second);
 				// Если настройки для сессии установить не удалось
 				if(!(result = !nghttp2_is_fatal(rv))){
 					// Выводим сообщение об ошибке

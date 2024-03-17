@@ -416,8 +416,6 @@ namespace awh {
 			// Идентификатор родительской схемы
 			uint16_t id;
 		public:
-			// Флаг ожидания входящих сообщений
-			bool wait;
 			// Флаг автоматического поддержания подключения
 			bool alive;
 		public:
@@ -474,8 +472,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-			 id(0), wait(false), alive(false), _fmk(fmk), _log(log) {}
+			Scheme(const fmk_t * fmk, const log_t * log) noexcept : id(0), alive(false), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

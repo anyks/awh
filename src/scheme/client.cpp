@@ -62,9 +62,9 @@ uint64_t awh::client::Scheme::bid() const noexcept {
 	// Если список брокеров получен
 	if(!this->_brokers.empty()){
 		// Получаем первого брокера из списка
-		auto it = this->_brokers.begin();
+		auto i = this->_brokers.begin();
 		// Получаем идентификатор брокера
-		result = it->first;
+		result = i->first;
 	}
 	// Выводим результат
 	return result;

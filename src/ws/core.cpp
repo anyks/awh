@@ -128,13 +128,13 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Строка со списком компрессоров
 				string compressors = "";
 				// Выполняем перебор всего списка компрессоров
-				for(auto it = http_t::_compressors.supports.rbegin(); it != http_t::_compressors.supports.rend(); ++it){
+				for(auto i = http_t::_compressors.supports.rbegin(); i != http_t::_compressors.supports.rend(); ++i){
 					// Если список компрессоров уже не пустой
 					if(!compressors.empty())
 						// Выполняем добавление разделителя
 						compressors.append(", ");
 					// Определяем метод сжатия который поддерживает клиент
-					switch(static_cast <uint8_t> (it->second)){
+					switch(static_cast <uint8_t> (i->second)){
 						// Если клиент поддерживает методот сжатия LZ4
 						case static_cast <uint8_t> (compressor_t::LZ4):
 							// Добавляем компрессор в список

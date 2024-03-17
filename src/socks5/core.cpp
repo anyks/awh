@@ -204,11 +204,11 @@ const string & awh::Socks5::message(const uint8_t code) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Выполняем поиск кода сообщения
-	auto it = this->messages.find(code);
+	auto i = this->messages.find(code);
 	// Если сообщение получено, выводим его
-	if(it != this->messages.end())
+	if(i != this->messages.end())
 		// Выполняем получение текстовое значение кода
-		return it->second;
+		return i->second;
 	// Выводим результат
 	return result;
 }
