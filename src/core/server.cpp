@@ -1059,7 +1059,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
 						}
 					}
-					*/
+					
 
 				// Запускаем таймер вновь на 100мс
 				} else {
