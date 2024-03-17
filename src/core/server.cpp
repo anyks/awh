@@ -682,6 +682,9 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 								broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 								// Выполняем получение контекста сертификата
 								this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+								
+								this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+								
 								{
 									// Выполняем блокировку потока
 									const lock_guard <recursive_mutex> lock(this->_mtx.accept);
@@ -2185,6 +2188,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 							broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 							// Выполняем получение контекста сертификата
 							this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+
+							this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+
 							{
 								// Выполняем блокировку потока
 								const lock_guard <recursive_mutex> lock(this->_mtx.accept);
