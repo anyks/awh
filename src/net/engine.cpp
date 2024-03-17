@@ -1665,7 +1665,7 @@ bool awh::Engine::Context::iserror() noexcept {
 		// Получаем код ошибки
 		const int32_t error = this->_addr->_socket.error(this->_addr->fd);
 		// Если ошибка обнаружена
-		if((result = (error != 0)))
+		if((result = (error > 0)))
 			// Выполняем вывод сообщения об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(error).c_str());
 	}
@@ -2978,6 +2978,12 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 			BIO_set_fd(target._bio, target._addr->fd, BIO_NOCLOSE);
 			// Выполняем установку объекта подключения в BIO
 			BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.client));
+		// Если передан неверный сокет
+		} else {
+			// Очищаем созданный контекст
+			target.clear();
+			// Выводим сообщение, что сокет не был инициализирован
+			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }
@@ -3279,9 +3285,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				target.clear();
 				// Выводим сообщение об ошибке
 				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
 			}
+		// Если передан неверный сокет
+		} else {
+			// Очищаем созданный контекст
+			target.clear();
+			// Выводим сообщение, что сокет не был инициализирован
+			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }
@@ -3594,8 +3604,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выходим из функции
 				return;
 			}
-		// Очищаем созданный контекст
-		} else target.clear();
+		// Если передан неверный сокет
+		} else {
+			// Очищаем созданный контекст
+			target.clear();
+			// Выводим сообщение, что сокет не был инициализирован
+			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
+		}
 	}
 }
 /**
@@ -3874,6 +3889,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 				// Выходим из функции
 				return;
 			}
+		// Если передан неверный сокет
+		} else {
+			// Очищаем созданный контекст
+			target.clear();
+			// Выводим сообщение, что сокет не был инициализирован
+			this->_log->print("Socket is not initialized", log_t::flag_t::WARNING);
 		}
 	}
 }

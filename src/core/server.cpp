@@ -632,6 +632,8 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 			auto j = shm->_brokers.find(bid);
 			// Если брокер подключения получен
 			if(j != shm->_brokers.end()){
+				// Идентификатор ошибки подключения
+				int32_t error = 0;
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 				// Выполняем ожидание входящих подключений
@@ -901,13 +903,15 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
 					}
 				// Если обнаружена ошибка сокета
-				} else if(shm->_ectx.iserror()) {
+				} else if((error = this->_socket.error(shm->_addr.fd)) > 0) {
+					// Получаем текст полученной ошибки
+					const string & message = this->_socket.message(error);
 					// Выводим сообщение об ошибке
-					this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
+					this->_log->print("%s, PID=%d", log_t::flag_t::CRITICAL, message.c_str(), ::getpid());
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("%s, PID=%d", message.c_str(), ::getpid()));
 					// Выполняем удаление объекта подключения
 					shm->_ectx.clear();
 					// Если сокет подключения получен
@@ -2433,8 +2437,8 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _socket(fmk, log),
+ _clusterSize(-1), _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов
@@ -2451,8 +2455,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _socket(fmk, log),
+ _clusterSize(-1), _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов

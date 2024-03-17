@@ -69,6 +69,9 @@ namespace awh {
 				// Объект кластера
 				cluster_t _cluster;
 			private:
+				// Объект работы с сокетами
+				socket_t _socket;
+			private:
 				// Размер кластера
 				int16_t _clusterSize;
 				// Флаг автоматического перезапуска упавших процессов

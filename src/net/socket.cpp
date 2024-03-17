@@ -236,13 +236,28 @@ int32_t awh::Socket::error(const SOCKET fd) const noexcept {
 	// Размер кода ошибки
 	socklen_t size = sizeof(result);
 	// Если мы получили ошибку, выходим сообщение
-	if(!static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
+	if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Выводим в лог информацию
-			this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем извлечение кода ошибки
+				result = WSAGetLastError();
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Выполняем извлечение кода ошибки
+				result = errno;
+			#endif
+			// Если код ошибки получен
+			if(result > 0)
+				// Выводим в лог информацию
+				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message(result).c_str());
 		#endif
 		// Выходим из функции
 		return -1;
