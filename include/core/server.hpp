@@ -94,13 +94,12 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void accept(const SOCKET fd, const uint16_t sid) noexcept;
-			private:
 				/**
-				 * dtls Метод вызова при активации DTLS-подключения
+				 * accept Метод вызова при активации DTLS-подключения
 				 * @param sid идентификатор схемы сети
 				 * @param bid идентификатор брокера
 				 */
-				void dtls(const uint16_t sid, const uint64_t bid) noexcept;
+				void accept(const uint16_t sid, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * launching Метод вызова при активации базы событий
@@ -136,6 +135,12 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void disable(const uint64_t bid) noexcept;
+			private:
+				/**
+				 * dtlsBroker Метод инициализации DTLS-брокера
+				 * @param sid идентификатор схемы сети
+				 */
+				void dtlsBroker(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
