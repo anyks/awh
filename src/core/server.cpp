@@ -961,7 +961,10 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("%s, PID=%d", message.c_str(), ::getpid()));
 					// Выполняем удаление объекта подключения
-					shm->_ectx.clear();
+					// shm->_ectx.clear();
+
+					shm->_addr.close();
+
 					// Если сокет подключения получен
 					if(this->create(sid)){
 						// Если разрешено выводить информационные сообщения
