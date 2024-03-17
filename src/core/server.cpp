@@ -668,7 +668,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 						// Если все данные получены
 						} else {
 							
-							
+							/*
 							{
 								// Создаём бъект активного брокера подключения
 								unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
@@ -703,6 +703,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 									} 
 								}
 							}
+							*/
 							
 							// Получаем адрес подключения клиента
 							broker->ip(broker->_addr.ip);
