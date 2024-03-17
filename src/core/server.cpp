@@ -637,13 +637,13 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Идентификатор ошибки подключения
-					const bool error = ((errno > 0) && (errno != WSAEWOULDBLOCK));
+					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != WSAEWOULDBLOCK));
 				/**
 				 * Для всех остальных операционных систем
 				 */
 				#else
 					// Если нужно попытаться ещё раз отправить сообщение
-					const bool error = ((errno > 0) && (errno != EWOULDBLOCK));
+					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK));
 				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
@@ -916,7 +916,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 				// Если обнаружена ошибка сокета
 				} else if(error) {
 					// Получаем текст полученной ошибки
-					const string & message = this->_socket.message(errno);
+					const string & message = this->_socket.message(AWH_ERROR());
 					// Выводим сообщение об ошибке
 					this->_log->print("%s, PID=%d", log_t::flag_t::CRITICAL, message.c_str(), ::getpid());
 					// Если функция обратного вызова установлена

@@ -58,7 +58,6 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-	#include <cerrno>
 	#include <sys/un.h>
 #endif
 

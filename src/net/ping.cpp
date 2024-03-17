@@ -173,7 +173,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 			// Если сокет находится в блокирующем режиме
 			if(result < 0){
 				// Определяем тип ошибки
-				switch(errno){
+				switch(AWH_ERROR()){
 					// Если ошибка не обнаружена, выходим
 					case 0: break;
 					/**
@@ -221,7 +221,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 						// Если разрешено выводить информацию в лог
 						if(this->_verb)
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(errno).c_str());
+							this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
 					}
 				}
 				// Выполняем закрытие подключения
@@ -235,7 +235,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		// Если сокет находится в блокирующем режиме
 		if(result < 0){
 			// Определяем тип ошибки
-			switch(errno){
+			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
 				/**
@@ -283,7 +283,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 					// Если разрешено выводить информацию в лог
 					if(this->_verb)
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(errno).c_str());
+						this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
 				}
 			}
 			// Выполняем закрытие подключения

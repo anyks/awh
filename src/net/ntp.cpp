@@ -250,7 +250,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
 						// Определяем тип ошибки
-						switch(errno){
+						switch(AWH_ERROR()){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
 							/**
@@ -280,7 +280,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str());
+								self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -320,23 +320,37 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 				// Если сокет находится в блокирующем режиме
 				if(bytes < 0){
 					// Определяем тип ошибки
-					switch(errno){
+					switch(AWH_ERROR()){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
-						// Если произведена неудачная запись в PIPE
-						case EPIPE:
-							// Выводим в лог сообщение
-							this->_self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
-						break;
-						// Если произведён сброс подключения
-						case ECONNRESET:
-							// Выводим в лог сообщение
-							this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
-						break;
+						/**
+						 * Если мы работаем не в MS Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если произведена неудачная запись в PIPE
+							case EPIPE:
+								// Выводим в лог сообщение
+								this->_self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
+							break;
+							// Если произведён сброс подключения
+							case ECONNRESET:
+								// Выводим в лог сообщение
+								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+							break;
+						/**
+						 * Методы только для OS Windows
+						 */
+						#else
+							// Если произведён сброс подключения
+							case WSAECONNRESET:
+								// Выводим в лог сообщение
+								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+							break;
+						#endif
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str());
+							this->_self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
 					}
 				}
 			}

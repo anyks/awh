@@ -812,13 +812,13 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем чтение данных из сокета в буфер данных
-		while(((result = _read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+		while(((result = _read(source->fd, buffer, size)) == -1) && (AWH_ERROR() == WSAEINTR));
 	/**
 	 * Для всех остальных операционных систем
 	 */
 	#else
 		// Выполняем чтение данных из сокета в буфер данных
-		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+		while(((result = ::read(source->fd, buffer, size)) == -1) && (AWH_ERROR() == EINTR));
 	#endif
 	// Если данные не прочитанны из сокета
 	if(result < 0)
@@ -1418,11 +1418,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Выполняем подписку на основной канал передачи данных
 					if(rv != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, this->_socket.message(errno).c_str());
+							this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_INIT, this->_socket.message(AWH_ERROR()).c_str());
 						// Выходим из функции
 						return false;
 					}
@@ -1437,11 +1437,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 							// Выполняем закрытие сокета для записи
 							::_close(fds[1]);
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, this->_socket.message(errno).c_str());
+								this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, this->_socket.message(AWH_ERROR()).c_str());
 							// Выходим из функции
 							return false;
 						}
@@ -1456,11 +1456,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 							// Выполняем закрытие сокета для записи
 							::close(fds[1]);
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, this->_socket.message(errno).c_str());
+								this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_PIPE_WRITE, this->_socket.message(AWH_ERROR()).c_str());
 							// Выходим из функции
 							return false;
 						}

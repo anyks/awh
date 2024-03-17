@@ -27,7 +27,7 @@
 /**
  * Наши модули
  */
-#include <sys/win.hpp>
+#include <sys/os.hpp>
 
 // Устанавливаем область видимости
 using namespace std;

@@ -411,7 +411,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
 						// Определяем тип ошибки
-						switch(errno){
+						switch(AWH_ERROR()){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
 							/**
@@ -441,7 +441,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str(), this->_domain.c_str());
+								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), this->_domain.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -661,7 +661,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 				// Если сокет находится в блокирующем режиме
 				if(bytes < 0){
 					// Определяем тип ошибки
-					switch(errno){
+					switch(AWH_ERROR()){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
@@ -691,7 +691,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str(), this->_domain.c_str());
+							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), this->_domain.c_str());
 					}
 				}
 			}
@@ -2192,7 +2192,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 					// Если хост мы не получили
 					if(domain == nullptr){
 						// Выполняем извлечение текста ошибки
-						DWORD error = WSAGetLastError();
+						DWORD error = AWH_ERROR();
 						// Если текст ошибки мы получили
 						if(error != 0){
 							// Если хост мы не нашли

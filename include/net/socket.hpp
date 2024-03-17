@@ -59,7 +59,6 @@
  * Для всех остальных операционных систем
  */
 #else
-	#include <cerrno>
 	#include <vector>
 	#include <csignal>
 	#include <fcntl.h>

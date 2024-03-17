@@ -428,14 +428,14 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем подписку на основной канал передачи данных
 						if(::pipe(broker->mfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
 						if(::pipe(broker->cfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
@@ -450,7 +450,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					// Выполняем подписку на основной канал передачи данных
 					if(::pipe(broker->mfds) != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						// Выполняем поиск завершившегося процесса
 						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений
@@ -463,7 +463,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 					// Выполняем подписку на дочерний канал передачи данных
 					if(::pipe(broker->cfds) != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(errno).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						// Выполняем поиск завершившегося процесса
 						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений

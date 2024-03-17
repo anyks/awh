@@ -36,7 +36,6 @@
  */
 #else
 	// Подключаем заголовочный файл
-	#include <cerrno>
 	#include <unistd.h>
 #endif
 

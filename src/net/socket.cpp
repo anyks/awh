@@ -241,19 +241,8 @@ int32_t awh::Socket::error(const SOCKET fd) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			/**
-			 * Методы только для OS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Выполняем извлечение кода ошибки
-				result = WSAGetLastError();
-			/**
-			 * Для всех остальных операционных систем
-			 */
-			#else
-				// Выполняем извлечение кода ошибки
-				result = errno;
-			#endif
+			// Выполняем извлечение кода ошибки
+			result = AWH_ERROR();
 			// Если код ошибки получен
 			if(result > 0)
 				// Выводим в лог информацию
@@ -271,16 +260,16 @@ int32_t awh::Socket::error(const SOCKET fd) const noexcept {
  * @return     текст сообщения описания кода ошибки
  */
 string awh::Socket::message(const int32_t code) const noexcept {
+	// Если код ошибки не передан
+	if(code == 0)
+		// Выполняем получение кода ошибки
+		const_cast <int32_t &> (code) = AWH_ERROR();
 	/**
 	 * Методы только для OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Создаём буфер сообщения ошибки
 		wchar_t message[256] = {0};
-		// Если код ошибки не передан
-		if(code == 0)
-			// Выполняем получение кода ошибки
-			const_cast <int32_t &> (code) = WSAGetLastError();
 		// Выполняем формирование текста ошибки
 		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
 		// Выводим текст полученной ошибки
@@ -289,10 +278,6 @@ string awh::Socket::message(const int32_t code) const noexcept {
 	 * Для всех остальных операционных систем
 	 */
 	#else
-		// Если код ошибки не передан
-		if(code == 0)
-			// Выполняем получение кода ошибки
-			const_cast <int32_t &> (code) = errno;
 		// Выводим текст полученной ошибки
 		return ::strerror(code);
 	#endif

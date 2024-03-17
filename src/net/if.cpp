@@ -990,7 +990,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 						// Подключаем сетевой интерфейс к сокету
 						if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 							// Пропускаем если ошибка не значительная
-							if(errno == ENXIO)
+							if(AWH_ERROR() == ENXIO)
 								// Выполняем пропуск
 								continue;
 							// Выходим из цикла

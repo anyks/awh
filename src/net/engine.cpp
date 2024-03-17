@@ -954,9 +954,9 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 					// Если ещё есть ошибки
 					} while((error = ERR_get_error()));
 				// Если данные записаны неверно
-				} else if((status == -1) && (errno != 0))
+				} else if((status == -1) && (AWH_ERROR() != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(errno).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(AWH_ERROR()).c_str());
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -973,7 +973,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 	// Если произошла ошибка
 	} else if(status < 0) {
 		// Определяем тип ошибки
-		switch(errno){
+		switch(AWH_ERROR()){
 			// Если ошибка не обнаружена, выходим
 			case 0: break;
 			/**
@@ -1006,7 +1006,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
 		}
 		// Выводим результат
-		return (errno != 0);
+		return (AWH_ERROR() != 0);
 	}
 	// Завершение работы не требуется
 	return false;
@@ -1199,7 +1199,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Если нужно попытаться ещё раз получить сообщение
-					if((result < 0) && (errno == WSAEWOULDBLOCK))
+					if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
 						// Повторяем попытку получить ещё раз
 						goto Read;
 				/**
@@ -1207,7 +1207,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				 */
 				#else
 					// Если нужно попытаться ещё раз получить сообщение
-					if((result < 0) && (errno == EWOULDBLOCK))
+					if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
 						// Повторяем попытку получить ещё раз
 						goto Read;
 				#endif
@@ -1218,7 +1218,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			// Получаем статус сокета
 			const bool status = this->isblock();
 			// Определяем тип ошибки
-			switch(errno){
+			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
 				/**
@@ -1357,7 +1357,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Если защищённый режим работы запрещён
-							} else if((errno == WSAEWOULDBLOCK) || (errno == WSAEINTR))
+							} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 								// Выполняем пропуск попытки
 								return result;
 						/**
@@ -1365,7 +1365,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						 */
 						#else
 							// Если защищённый режим работы запрещён
-							} else if((errno == EWOULDBLOCK) || (errno == EINTR))
+							} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
 								// Выполняем пропуск попытки
 								return result;
 						#endif
@@ -1524,7 +1524,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Если нужно попытаться ещё раз отправить сообщение
-					if((result < 0) && (errno == WSAEWOULDBLOCK))
+					if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
 						// Повторяем попытку отправить ещё раз
 						goto Send;
 				/**
@@ -1532,7 +1532,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				 */
 				#else
 					// Если нужно попытаться ещё раз отправить сообщение
-					if((result < 0) && (errno == EWOULDBLOCK))
+					if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
 						// Повторяем попытку отправить ещё раз
 						goto Send;
 				#endif
@@ -1543,7 +1543,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			// Получаем статус сокета
 			const bool status = this->isblock();
 			// Определяем тип ошибки
-			switch(errno){
+			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
 				/**
@@ -1682,7 +1682,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Если защищённый режим работы запрещён
-							} else if((errno == WSAEWOULDBLOCK) || (errno == WSAEINTR))
+							} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 								// Выполняем пропуск попытки
 								return result;
 						/**
@@ -1690,7 +1690,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						 */
 						#else
 							// Если защищённый режим работы запрещён
-							} else if((errno == EWOULDBLOCK) || (errno == EINTR))
+							} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
 								// Выполняем пропуск попытки
 								return result;
 						#endif
