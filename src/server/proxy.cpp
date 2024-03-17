@@ -1153,18 +1153,33 @@ void awh::server::Proxy::init(const string & socket, const http_t::compressor_t 
 	this->_server.init(socket);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
 	this->_compressor = compressor;
+	// Выполняем установку типа протокола интернета
+	this->_core.family(scheme_t::family_t::NIX);
 }
 /**
  * init Метод инициализации PROXY-сервера
  * @param port       порт сервера
  * @param host       хост сервера
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
+ * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
  */
-void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compressor_t compressor) noexcept {
+void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compressor_t compressor, const scheme_t::family_t family) noexcept {
 	// Выполняем инициализацию PROXY-сервера
 	this->_server.init(port, host);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
 	this->_compressor = compressor;
+	// Определяем тип интернет-протокола
+	switch(static_cast <uint8_t> (family)){
+		// Если активирован интернет-протокол IPv4
+		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+		// Если активирован интернет-протокол IPv6
+		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+			// Выполняем установку типа протокола интернета
+			this->_core.family(family);
+		break;
+		// Если установлен любой другой-интернет протокол
+		default: this->_core.family(scheme_t::family_t::IPV4);
+	}
 }
 /**
  * callbacks Метод установки функций обратного вызова

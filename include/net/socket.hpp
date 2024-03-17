@@ -82,6 +82,7 @@
 /**
  * Наши модули
  */
+#include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
 // Устанавливаем область видимости
@@ -107,6 +108,8 @@ namespace awh {
 				NOBLOCK = 0x04  // Сокет должен быть не блокирующим
 			};
 		private:
+			// Создаём объект фреймворка
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
 		public:
@@ -136,6 +139,19 @@ namespace awh {
 			 * @return     результат работы функции
 			 */
 			bool blocking(const SOCKET fd, const mode_t mode) const noexcept;
+		public:
+			/**
+			 * error Метод получения кода ошибки
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   код ошибки на сокете если присутствует
+			 */
+			int32_t error(const SOCKET fd) const noexcept;
+			/**
+			 * message Метод получения текста описания ошибки
+			 * @param code код ошибки для получения сообщения
+			 * @return     текст сообщения описания кода ошибки
+			 */
+			string message(const int32_t code = 0) const noexcept;
 		public:
 			/**
 			 * nodelay Метод отключения алгоритма Нейгла
@@ -223,9 +239,10 @@ namespace awh {
 		public:
 			/**
 			 * Socket Конструктор
+			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Socket(const log_t * log) noexcept : _log(log) {}
+			Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
 			 * ~Socket Деструктор
 			 */

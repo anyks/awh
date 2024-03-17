@@ -956,7 +956,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -989,7 +989,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 			// Для остальных ошибок
 			default:
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
 		}
 		// Выводим результат
 		return (errno != 0);
@@ -1255,7 +1255,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Если протокол не поддерживается
 				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
-					this->_log->print("READ: %s", log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("READ: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 					// Требуем завершения работы
 					result = 0;
 				} break;
@@ -1508,7 +1508,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Если протокол не поддерживается
 				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
-					this->_log->print("WRITE: %s", log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("WRITE: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 					// Требуем завершения работы
 					result = 0;
 				} break;
@@ -1652,6 +1652,25 @@ bool awh::Engine::Context::isblock() noexcept {
 		return !this->_addr->_async;
 	// Сообщаем что сокет в блокирующем режиме
 	return true;
+}
+/**
+ * iserror Метод проверки на наличии ошибки в сокете
+ * @return результат проверки наличия ошибки
+ */
+bool awh::Engine::Context::iserror() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Получаем код ошибки
+		const int32_t error = this->_addr->_socket.error(this->_addr->fd);
+		// Если ошибка обнаружена
+		if((result = (error != 0)))
+			// Выполняем вывод сообщения об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(error).c_str());
+	}
+	// Сообщаем, что ошибок нет
+	return result;
 }
 /**
  * proto Метод извлечения поддерживаемого протокола

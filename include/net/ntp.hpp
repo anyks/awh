@@ -260,8 +260,8 @@ namespace awh {
 					 * @param self   объект NTP-клиента
 					 */
 					Worker(const int family, const NTP * self) noexcept :
-					 _fd(INVALID_SOCKET), _mode(false),
-					 _family(family), _socket(self->_log), _self(self) {}
+					 _fd(INVALID_SOCKET), _mode(false), _family(family),
+					 _socket(self->_fmk, self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */

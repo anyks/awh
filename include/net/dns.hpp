@@ -307,7 +307,7 @@ namespace awh {
 					 */
 					Worker(const int family, const DNS * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
-					 _domain(""), _socket(self->_log), _self(self) {}
+					 _domain(""), _socket(self->_fmk, self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */

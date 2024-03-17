@@ -41,7 +41,7 @@ bool awh::Socket::noSigILL() const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SIG_IGN on signal SIGILL", log_t::flag_t::WARNING);
+				this->_log->print("Cannot set SIG_IGN on signal SIGILL [%s]", log_t::flag_t::WARNING, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -69,7 +69,7 @@ bool awh::Socket::cork(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	/**
@@ -85,7 +85,7 @@ bool awh::Socket::cork(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -113,7 +113,7 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 		// Определяем в каком статусе установлен флаг сокета
@@ -148,7 +148,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -163,7 +163,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -181,7 +181,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -199,7 +199,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим в лог информацию
-							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 						#endif
 					}
 				}
@@ -215,7 +215,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим в лог информацию
-							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 						#endif
 					}
 				}
@@ -224,6 +224,79 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	#endif
 	// Выводим результат
 	return result;
+}
+/**
+ * error Метод получения кода ошибки
+ * @param fd файловый дескриптор (сокет)
+ * @return   код ошибки на сокете если присутствует
+ */
+int32_t awh::Socket::error(const SOCKET fd) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	// Размер кода ошибки
+	socklen_t size = sizeof(result);
+	// Если мы получили ошибку, выходим сообщение
+	if(!static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог информацию
+			this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+		#endif
+		// Выходим из функции
+		return -1;
+	}
+	// Если на сокете есть ошибка
+	if(result != 0){
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем извлечение кода ошибки
+			result = WSAGetLastError();
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем извлечение кода ошибки
+			result = errno;
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * message Метод получения текста описания ошибки
+ * @param code код ошибки для получения сообщения
+ * @return     текст сообщения описания кода ошибки
+ */
+string awh::Socket::message(const int32_t code) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Создаём буфер сообщения ошибки
+		wchar_t message[256] = {0};
+		// Если код ошибки не передан
+		if(code == 0)
+			// Выполняем получение кода ошибки
+			const_cast <int32_t &> (code) = WSAGetLastError();
+		// Выполняем формирование текста ошибки
+		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
+		// Выводим текст полученной ошибки
+		return this->_fmk->convert(message);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Если код ошибки не передан
+		if(code == 0)
+			// Выполняем получение кода ошибки
+			const_cast <int32_t &> (code) = errno;
+		// Выводим текст полученной ошибки
+		return ::strerror(code);
+	#endif
 }
 /**
  * nodelay Метод отключения алгоритма Нейгла
@@ -242,7 +315,7 @@ bool awh::Socket::nodelay(const SOCKET fd) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим в лог информацию
-			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 		#endif
 	}
 	// Выводим результат
@@ -273,7 +346,7 @@ bool awh::Socket::events(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SCTP_EVENTS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set SCTP_EVENTS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -307,7 +380,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("%s", log_t::flag_t::WARNING, "Cannot set SIG_IGN on signal SIGPIPE");
+				this->_log->print("%s", log_t::flag_t::WARNING, "Cannot set SIG_IGN on signal SIGPIPE [%s]", this->message().c_str());
 			#endif
 		}
 		/*
@@ -329,7 +402,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_NOSIGPIPE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set SO_NOSIGPIPE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -357,7 +430,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	/**
@@ -373,7 +446,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -389,7 +462,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 			}
 		#endif
@@ -418,7 +491,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -432,7 +505,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 			}
 		}
@@ -458,7 +531,7 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const bool mode) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим в лог информацию
-			this->_log->print("Cannot set IPV6_V6ONLY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+			this->_log->print("Cannot set IPV6_V6ONLY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 		#endif
 	}
 	// Выводим результат
@@ -491,7 +564,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -504,7 +577,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -530,7 +603,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -543,7 +616,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -579,7 +652,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			/**
@@ -595,7 +668,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			/**
@@ -611,7 +684,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			#endif
@@ -631,7 +704,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			/**
@@ -647,7 +720,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			/**
@@ -663,7 +736,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			#endif
@@ -697,7 +770,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Setsockopt for SO_KEEPALIVE failed option on SOCKET=%d with ERROR=%u", log_t::flag_t::WARNING, fd, WSAGetLastError());
+					this->_log->print("Setsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -714,7 +787,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Getsockopt for SO_KEEPALIVE failed option on SOCKET=%d with ERROR=%u", log_t::flag_t::WARNING, fd, WSAGetLastError());
+					this->_log->print("Getsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -733,7 +806,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 		/*
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Getsockopt for TCP_KEEPIDLE and TCP_KEEPINTVL failed option on SOCKET=%d with ERROR=%u", log_t::flag_t::WARNING, fd, WSAGetLastError());
+					this->_log->print("Getsockopt for TCP_KEEPIDLE and TCP_KEEPINTVL failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 			}
 		}*/
@@ -750,7 +823,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set SO_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -762,7 +835,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -778,7 +851,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -794,7 +867,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -807,7 +880,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+				this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -836,7 +909,7 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Get buffer read size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Get buffer read size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 			}
 		} break;
@@ -849,7 +922,7 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим в лог информацию
-					this->_log->print("Get buffer write size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+					this->_log->print("Get buffer write size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 				#endif
 			}
 		} break;
@@ -887,7 +960,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_RCVBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 					// Выводим результат
 					return result;
@@ -899,7 +972,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			}
@@ -919,7 +992,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Cannot set SO_SNDBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 					// Выводим результат
 					return result;
@@ -931,7 +1004,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим в лог информацию
-						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, ::strerror(errno));
+						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
 					#endif
 				}
 			}

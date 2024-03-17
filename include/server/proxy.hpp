@@ -455,8 +455,9 @@ namespace awh {
 				 * @param port       порт сервера
 				 * @param host       хост сервера
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
+				 * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
 				 */
-				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE) noexcept;
+				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

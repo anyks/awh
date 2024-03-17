@@ -325,27 +325,47 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 									// Если порт установлен
 									if(broker->port() > 0){
-										// Выводим сообщение об ошибке
-										this->_log->print(
-											"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
-											log_t::flag_t::WARNING,
-											this->host(sid).c_str(),
-											this->port(sid),
-											::getpid(),
-											broker->ip().c_str(),
-											broker->port(),
-											broker->mac().c_str(),
-											broker->_addr.fd
-										);
-										// Если функция обратного вызова установлена
-										if(this->_callbacks.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-												"error",
-												log_t::flag_t::WARNING,
-												error_t::ACCEPT,
-												this->_fmk->format(
+										// Определяем тип протокола подключения
+										switch(static_cast <uint8_t> (this->_settings.family)){
+											// Если тип протокола подключения unix-сокет
+											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+												// Выводим сообщение об ошибке
+												this->_log->print(
+													"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+													log_t::flag_t::WARNING,
+													this->host(sid).c_str(),
+													::getpid(),
+													broker->ip().c_str(),
+													broker->port(),
+													broker->mac().c_str(),
+													broker->_addr.fd
+												);
+												// Если функция обратного вызова установлена
+												if(this->_callbacks.is("error"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+														"error",
+														log_t::flag_t::WARNING,
+														error_t::ACCEPT,
+														this->_fmk->format(
+															"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+															this->host(sid).c_str(),
+															::getpid(),
+															broker->ip().c_str(),
+															broker->port(),
+															broker->mac().c_str(),
+															broker->_addr.fd
+														)
+													);
+											} break;
+											// Если тип протокола подключения IPv4
+											case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+											// Если тип протокола подключения IPv6
+											case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+												// Выводим сообщение об ошибке
+												this->_log->print(
 													"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+													log_t::flag_t::WARNING,
 													this->host(sid).c_str(),
 													this->port(sid),
 													::getpid(),
@@ -353,38 +373,94 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 													broker->port(),
 													broker->mac().c_str(),
 													broker->_addr.fd
-												)
-											);
+												);
+												// Если функция обратного вызова установлена
+												if(this->_callbacks.is("error"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+														"error",
+														log_t::flag_t::WARNING,
+														error_t::ACCEPT,
+														this->_fmk->format(
+															"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+															this->host(sid).c_str(),
+															this->port(sid),
+															::getpid(),
+															broker->ip().c_str(),
+															broker->port(),
+															broker->mac().c_str(),
+															broker->_addr.fd
+														)
+													);
+											} break;
+										}
 									// Если порт не установлен
 									} else {
-										// Выводим сообщение об ошибке
-										this->_log->print(
-											"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
-											log_t::flag_t::WARNING,
-											this->host(sid).c_str(),
-											this->port(sid),
-											::getpid(),
-											broker->ip().c_str(),
-											broker->mac().c_str(),
-											broker->_addr.fd
-										);
-										// Если функция обратного вызова установлена
-										if(this->_callbacks.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-												"error",
-												log_t::flag_t::WARNING,
-												error_t::ACCEPT,
-												this->_fmk->format(
+										// Определяем тип протокола подключения
+										switch(static_cast <uint8_t> (this->_settings.family)){
+											// Если тип протокола подключения unix-сокет
+											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+												// Выводим сообщение об ошибке
+												this->_log->print(
+													"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+													log_t::flag_t::WARNING,
+													this->host(sid).c_str(),
+													::getpid(),
+													broker->ip().c_str(),
+													broker->mac().c_str(),
+													broker->_addr.fd
+												);
+												// Если функция обратного вызова установлена
+												if(this->_callbacks.is("error"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+														"error",
+														log_t::flag_t::WARNING,
+														error_t::ACCEPT,
+														this->_fmk->format(
+															"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+															this->host(sid).c_str(),
+															::getpid(),
+															broker->ip().c_str(),
+															broker->mac().c_str(),
+															broker->_addr.fd
+														)
+													);
+											} break;
+											// Если тип протокола подключения IPv4
+											case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+											// Если тип протокола подключения IPv6
+											case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+												// Выводим сообщение об ошибке
+												this->_log->print(
 													"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+													log_t::flag_t::WARNING,
 													this->host(sid).c_str(),
 													this->port(sid),
 													::getpid(),
 													broker->ip().c_str(),
 													broker->mac().c_str(),
 													broker->_addr.fd
-												)
-											);
+												);
+												// Если функция обратного вызова установлена
+												if(this->_callbacks.is("error"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+														"error",
+														log_t::flag_t::WARNING,
+														error_t::ACCEPT,
+														this->_fmk->format(
+															"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+															this->host(sid).c_str(),
+															this->port(sid),
+															::getpid(),
+															broker->ip().c_str(),
+															broker->mac().c_str(),
+															broker->_addr.fd
+														)
+													);
+											} break;
+										}
 									}
 									// Выполняем очистку контекста двигателя
 									broker->_ectx.clear();
@@ -438,31 +514,74 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								if(this->_verb){
 									// Если порт установлен
 									if(ret.first->second->port() > 0){
-										// Выводим в консоль информацию
-										this->_log->print(
-											"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
-											log_t::flag_t::INFO,
-											ret.first->second->ip().c_str(),
-											ret.first->second->port(),
-											ret.first->second->mac().c_str(),
-											ret.first->second->_addr.fd,
-											this->host(sid).c_str(),
-											this->port(sid),
-											::getpid()
-										);
+										// Определяем тип протокола подключения
+										switch(static_cast <uint8_t> (this->_settings.family)){
+											// Если тип протокола подключения unix-сокет
+											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+												// Выводим в консоль информацию
+												this->_log->print(
+													"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s] PID=%d",
+													log_t::flag_t::INFO,
+													ret.first->second->ip().c_str(),
+													ret.first->second->port(),
+													ret.first->second->mac().c_str(),
+													ret.first->second->_addr.fd,
+													this->host(sid).c_str(),
+													::getpid()
+												);
+											} break;
+											// Если тип протокола подключения IPv4
+											case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+											// Если тип протокола подключения IPv6
+											case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+												// Выводим в консоль информацию
+												this->_log->print(
+													"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
+													log_t::flag_t::INFO,
+													ret.first->second->ip().c_str(),
+													ret.first->second->port(),
+													ret.first->second->mac().c_str(),
+													ret.first->second->_addr.fd,
+													this->host(sid).c_str(),
+													this->port(sid),
+													::getpid()
+												);
+											} break;
+										}
 									// Если порт не установлен
 									} else {
-										// Выводим в консоль информацию
-										this->_log->print(
-											"Connected client [%s] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
-											log_t::flag_t::INFO,
-											ret.first->second->ip().c_str(),
-											ret.first->second->mac().c_str(),
-											ret.first->second->_addr.fd,
-											this->host(sid).c_str(),
-											this->port(sid),
-											::getpid()
-										);
+										// Определяем тип протокола подключения
+										switch(static_cast <uint8_t> (this->_settings.family)){
+											// Если тип протокола подключения unix-сокет
+											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+												// Выводим в консоль информацию
+												this->_log->print(
+													"Connected client [%s] MAC=%s, SOCKET=%d to server [%s] PID=%d",
+													log_t::flag_t::INFO,
+													ret.first->second->ip().c_str(),
+													ret.first->second->mac().c_str(),
+													ret.first->second->_addr.fd,
+													this->host(sid).c_str(),
+													::getpid()
+												);
+											} break;
+											// Если тип протокола подключения IPv4
+											case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+											// Если тип протокола подключения IPv6
+											case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+												// Выводим в консоль информацию
+												this->_log->print(
+													"Connected client [%s] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
+													log_t::flag_t::INFO,
+													ret.first->second->ip().c_str(),
+													ret.first->second->mac().c_str(),
+													ret.first->second->_addr.fd,
+													this->host(sid).c_str(),
+													this->port(sid),
+													::getpid()
+												);
+											} break;
+										}
 									}
 								}
 								// Выполняем установку функции обратного вызова на получении сообщений
@@ -545,27 +664,47 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 								// Если порт установлен
 								if(broker->port() > 0){
-									// Выводим сообщение об ошибке
-									this->_log->print(
-										"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
-										log_t::flag_t::WARNING,
-										this->host(sid).c_str(),
-										this->port(sid),
-										::getpid(),
-										broker->ip().c_str(),
-										broker->port(),
-										broker->mac().c_str(),
-										broker->_addr.fd
-									);
-									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-											"error",
-											log_t::flag_t::WARNING,
-											error_t::ACCEPT,
-											this->_fmk->format(
+									// Определяем тип протокола подключения
+									switch(static_cast <uint8_t> (this->_settings.family)){
+										// Если тип протокола подключения unix-сокет
+										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											// Выводим сообщение об ошибке
+											this->_log->print(
+												"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+												log_t::flag_t::WARNING,
+												this->host(sid).c_str(),
+												::getpid(),
+												broker->ip().c_str(),
+												broker->port(),
+												broker->mac().c_str(),
+												broker->_addr.fd
+											);
+											// Если функция обратного вызова установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+													"error",
+													log_t::flag_t::WARNING,
+													error_t::ACCEPT,
+													this->_fmk->format(
+														"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+														this->host(sid).c_str(),
+														::getpid(),
+														broker->ip().c_str(),
+														broker->port(),
+														broker->mac().c_str(),
+														broker->_addr.fd
+													)
+												);
+										} break;
+										// Если тип протокола подключения IPv4
+										case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+										// Если тип протокола подключения IPv6
+										case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+											// Выводим сообщение об ошибке
+											this->_log->print(
 												"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+												log_t::flag_t::WARNING,
 												this->host(sid).c_str(),
 												this->port(sid),
 												::getpid(),
@@ -573,38 +712,94 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 												broker->port(),
 												broker->mac().c_str(),
 												broker->_addr.fd
-											)
-										);
+											);
+											// Если функция обратного вызова установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+													"error",
+													log_t::flag_t::WARNING,
+													error_t::ACCEPT,
+													this->_fmk->format(
+														"Access to server [%s:%d] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
+														this->host(sid).c_str(),
+														this->port(sid),
+														::getpid(),
+														broker->ip().c_str(),
+														broker->port(),
+														broker->mac().c_str(),
+														broker->_addr.fd
+													)
+												);
+										} break;
+									}
 								// Если порт не установлен
 								} else {
-									// Выводим сообщение об ошибке
-									this->_log->print(
-										"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
-										log_t::flag_t::WARNING,
-										this->host(sid).c_str(),
-										this->port(sid),
-										::getpid(),
-										broker->ip().c_str(),
-										broker->mac().c_str(),
-										broker->_addr.fd
-									);
-									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("error"))
-										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
-											"error",
-											log_t::flag_t::WARNING,
-											error_t::ACCEPT,
-											this->_fmk->format(
+									// Определяем тип протокола подключения
+									switch(static_cast <uint8_t> (this->_settings.family)){
+										// Если тип протокола подключения unix-сокет
+										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											// Выводим сообщение об ошибке
+											this->_log->print(
+												"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+												log_t::flag_t::WARNING,
+												this->host(sid).c_str(),
+												::getpid(),
+												broker->ip().c_str(),
+												broker->mac().c_str(),
+												broker->_addr.fd
+											);
+											// Если функция обратного вызова установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+													"error",
+													log_t::flag_t::WARNING,
+													error_t::ACCEPT,
+													this->_fmk->format(
+														"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+														this->host(sid).c_str(),
+														::getpid(),
+														broker->ip().c_str(),
+														broker->mac().c_str(),
+														broker->_addr.fd
+													)
+												);
+										} break;
+										// Если тип протокола подключения IPv4
+										case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+										// Если тип протокола подключения IPv6
+										case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+											// Выводим сообщение об ошибке
+											this->_log->print(
 												"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+												log_t::flag_t::WARNING,
 												this->host(sid).c_str(),
 												this->port(sid),
 												::getpid(),
 												broker->ip().c_str(),
 												broker->mac().c_str(),
 												broker->_addr.fd
-											)
-										);
+											);
+											// Если функция обратного вызова установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> (
+													"error",
+													log_t::flag_t::WARNING,
+													error_t::ACCEPT,
+													this->_fmk->format(
+														"Access to server [%s:%d] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
+														this->host(sid).c_str(),
+														this->port(sid),
+														::getpid(),
+														broker->ip().c_str(),
+														broker->mac().c_str(),
+														broker->_addr.fd
+													)
+												);
+										} break;
+									}
 								}
 								// Выполняем отключение брокера
 								this->close(bid);
@@ -617,31 +812,74 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							if(this->_verb){
 								// Если порт установлен
 								if(broker->port() > 0){
-									// Выводим в консоль информацию
-									this->_log->print(
-										"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
-										log_t::flag_t::INFO,
-										broker->ip().c_str(),
-										broker->port(),
-										broker->mac().c_str(),
-										broker->_addr.fd,
-										this->host(sid).c_str(),
-										this->port(sid),
-										::getpid()
-									);
+									// Определяем тип протокола подключения
+									switch(static_cast <uint8_t> (this->_settings.family)){
+										// Если тип протокола подключения unix-сокет
+										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											// Выводим в консоль информацию
+											this->_log->print(
+												"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s] PID=%d",
+												log_t::flag_t::INFO,
+												broker->ip().c_str(),
+												broker->port(),
+												broker->mac().c_str(),
+												broker->_addr.fd,
+												this->host(sid).c_str(),
+												::getpid()
+											);
+										} break;
+										// Если тип протокола подключения IPv4
+										case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+										// Если тип протокола подключения IPv6
+										case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+											// Выводим в консоль информацию
+											this->_log->print(
+												"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
+												log_t::flag_t::INFO,
+												broker->ip().c_str(),
+												broker->port(),
+												broker->mac().c_str(),
+												broker->_addr.fd,
+												this->host(sid).c_str(),
+												this->port(sid),
+												::getpid()
+											);
+										} break;
+									}
 								// Если порт не установлен
 								} else {
-									// Выводим в консоль информацию
-									this->_log->print(
-										"Connected client [%s], MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
-										log_t::flag_t::INFO,
-										broker->ip().c_str(),
-										broker->mac().c_str(),
-										broker->_addr.fd,
-										this->host(sid).c_str(),
-										this->port(sid),
-										::getpid()
-									);
+									// Определяем тип протокола подключения
+									switch(static_cast <uint8_t> (this->_settings.family)){
+										// Если тип протокола подключения unix-сокет
+										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											// Выводим в консоль информацию
+											this->_log->print(
+												"Connected client [%s], MAC=%s, SOCKET=%d to server [%s] PID=%d",
+												log_t::flag_t::INFO,
+												broker->ip().c_str(),
+												broker->mac().c_str(),
+												broker->_addr.fd,
+												this->host(sid).c_str(),
+												::getpid()
+											);
+										} break;
+										// Если тип протокола подключения IPv4
+										case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+										// Если тип протокола подключения IPv6
+										case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+											// Выводим в консоль информацию
+											this->_log->print(
+												"Connected client [%s], MAC=%s, SOCKET=%d to server [%s:%d] PID=%d",
+												log_t::flag_t::INFO,
+												broker->ip().c_str(),
+												broker->mac().c_str(),
+												broker->_addr.fd,
+												this->host(sid).c_str(),
+												this->port(sid),
+												::getpid()
+											);
+										} break;
+									}
 								}
 							}
 							// Выполняем установку функции обратного вызова на получении сообщений
@@ -661,6 +899,58 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
 							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+					}
+				// Если обнаружена ошибка сокета
+				} else if(shm->_ectx.iserror()) {
+					// Выводим сообщение об ошибке
+					this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
+					// Если функция обратного вызова установлена
+					if(this->_callbacks.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+					// Выполняем удаление объекта подключения
+					shm->_ectx.clear();
+					// Если сокет подключения получен
+					if(this->create(sid)){
+						// Если разрешено выводить информационные сообщения
+						if(this->_verb){
+							// Если unix-сокет используется
+							if(this->_settings.family == scheme_t::family_t::NIX)
+								// Выводим информацию о запущенном сервере на unix-сокете
+								this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
+							else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+						}
+						// Выполняем поиск брокера в списке активных брокеров
+						auto i = this->_brokers.find(sid);
+						// Если активный брокер найден
+						if(i != this->_brokers.end()){
+							// Устанавливаем активный сокет сервера
+							i->second->_addr.fd = shm->_addr.fd;
+							// Активируем получение данных с клиента
+							i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+						}
+						// Выходим из функции
+						return;
+					// Если сокет не создан, выводим в консоль информацию
+					} else {
+						// Если unix-сокет используется
+						if(this->_settings.family == scheme_t::family_t::NIX){
+							// Выводим информацию об незапущенном сервере на unix-сокете
+							this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.sockname.c_str()));
+						// Если используется хост и порт
+						} else {
+							// Выводим сообщение об незапущенном сервере за порту
+							this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
+						}
 					}
 				// Запускаем таймер вновь на 100мс
 				} else {

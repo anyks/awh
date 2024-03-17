@@ -302,7 +302,7 @@ namespace awh {
 					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
 					 _async(false), _encrypted(false), status(status_t::DISCONNECTED),
 					 port(0), ip(""), mac(""), _fs(fmk, log), _ifnet(fmk, log),
-					 _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
+					 _socket(fmk, log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
@@ -422,6 +422,12 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					bool isblock() noexcept;
+				public:
+					/**
+					 * iserror Метод проверки на наличии ошибки в сокете
+					 * @return результат проверки наличия ошибки
+					 */
+					bool iserror() noexcept;
 				public:
 					/**
 					 * proto Метод извлечения поддерживаемого протокола
