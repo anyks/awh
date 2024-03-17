@@ -1047,16 +1047,18 @@ void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
 			broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+			// Выполняем блокировку потока
+			this->_mtx.accept.lock();
 			// Выполняем получение контекста сертификата
 			this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
-			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx.accept);
 			// Выполняем установку базы событий
 			broker->base(this->_dispatch.base);
 			// Добавляем созданного брокера в список брокеров
 			auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 			// Добавляем брокера в список подключений
 			node_t::_brokers.emplace(ret.first->first, sid);
+			// Выполняем разблокировку потока
+			this->_mtx.accept.unlock();
 			// Выполняем поиск таймера
 			auto j = this->_timers.find(sid);
 			// Если таймер найден
