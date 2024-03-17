@@ -933,16 +933,31 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 									}
 								}
 							}
+
+							/*
 							// Выполняем установку функции обратного вызова на получении сообщений
 							broker->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 							// Активируем получение данных с клиента
 							broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+							*/
+
+
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connect", bid, sid);
 
-							this->read(bid);
+
+							// Выполняем поиск таймера
+							auto i = this->_timers.find(sid);
+							// Если таймер найден
+							if(i != this->_timers.end()){
+								// Выполняем создание нового таймаута на 10 миллисекунд
+								const uint16_t tid = i->second->timeout(10);
+								// Выполняем добавление функции обратного вызова
+								i->second->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
+							}
+
 						}
 					// Подключение не установлено
 					} else {
@@ -1921,9 +1936,6 @@ void awh::server::Core::broadcast(const uint16_t wid, const char * buffer, const
  * @param bid идентификатор брокера
  */
 void awh::server::Core::read(const uint64_t bid) noexcept {
-	
-	cout << " ------------- " << bid << endl;
-	
 	// Если данные переданы
 	if(this->working() && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1952,12 +1964,18 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						unique_ptr <char []> buffer(new char [size]);
 						// Выполняем чтение данных с сокета
 						do {
+							
+							broker->_bev.locked.read = false;
+							
 							// Если подключение выполнено и чтение данных разрешено
 							if(!broker->_bev.locked.read){
 								// Выполняем обнуление буфера данных
 								::memset(buffer.get(), 0, size);
 								// Выполняем получение сообщения от клиента
 								bytes = broker->_ectx.read(buffer.get(), size);
+
+								cout << " ------------- " << bytes << endl;
+
 								// Если данные получены
 								if(bytes > 0){
 									// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -1996,6 +2014,20 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && this->has(bid))
 							// Запускаем событие на чтение базы событий
 							broker->_bev.events.read.start();
+						
+
+						if((this->_settings.sonet == scheme_t::sonet_t::DTLS) && this->has(bid)){
+							// Выполняем поиск таймера
+							auto i = this->_timers.find(shm->id);
+							// Если таймер найден
+							if(i != this->_timers.end()){
+								// Выполняем создание нового таймаута на 10 миллисекунд
+								const uint16_t tid = i->second->timeout(10);
+								// Выполняем добавление функции обратного вызова
+								i->second->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
+							}
+						}
+
 					/**
 					 * Если возникает ошибка
 					 */
