@@ -941,6 +941,8 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							if(this->_callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connect", bid, sid);
+
+							this->read(bid);
 						}
 					// Подключение не установлено
 					} else {
