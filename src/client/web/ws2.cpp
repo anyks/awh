@@ -964,7 +964,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Разрешаем перехватывать контекст компрессии для сервера
 					this->_hash.takeoverDecompress(this->_http.takeover(awh::web_t::hid_t::SERVER));
 					// Если разрешено в лог выводим информационные сообщения
-					if(!this->_noinfo)
+					if(this->_verb)
 						// Выводим в лог сообщение об удачной авторизации не Websocket-сервере
 						this->_log->print("Authorization on the Websocket-server was successful", log_t::flag_t::INFO);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -1710,8 +1710,8 @@ void awh::client::Websocket2::segmentSize(const size_t size) noexcept {
 void awh::client::Websocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
+	// Устанавливаем флаг разрешающий вывод информационных сообщений
+	this->_verb = (flags.count(flag_t::NOT_INFO) == 0);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
@@ -1907,8 +1907,8 @@ void awh::client::Websocket2::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(-1), _rid(0), _close(false), _shake(false),
- _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
+ web2_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
+ _shake(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
@@ -1923,8 +1923,8 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(-1), _rid(0), _close(false), _shake(false),
- _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
+ web2_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
+ _shake(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента

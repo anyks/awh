@@ -632,8 +632,19 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 			auto j = shm->_brokers.find(bid);
 			// Если брокер подключения получен
 			if(j != shm->_brokers.end()){
-				// Идентификатор ошибки подключения
-				int32_t error = 0;
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Идентификатор ошибки подключения
+					const bool error = ((errno > 0) && (errno != WSAEWOULDBLOCK));
+				/**
+				 * Для всех остальных операционных систем
+				 */
+				#else
+					// Если нужно попытаться ещё раз отправить сообщение
+					const bool error = ((errno > 0) && (errno != EWOULDBLOCK));
+				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 				// Выполняем ожидание входящих подключений
@@ -903,9 +914,9 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
 					}
 				// Если обнаружена ошибка сокета
-				} else if((error = this->_socket.error(shm->_addr.fd)) > 0) {
+				} else if(error) {
 					// Получаем текст полученной ошибки
-					const string & message = this->_socket.message(error);
+					const string & message = this->_socket.message(errno);
 					// Выводим сообщение об ошибке
 					this->_log->print("%s, PID=%d", log_t::flag_t::CRITICAL, message.c_str(), ::getpid());
 					// Если функция обратного вызова установлена

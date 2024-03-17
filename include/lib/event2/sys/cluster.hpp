@@ -46,6 +46,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/child.hpp>
+#include <net/socket.hpp>
 #include <lib/event2/sys/events.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -232,6 +233,9 @@ namespace awh {
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
 		private:
+			// Объект работы с сокетами
+			socket_t _socket;
+		private:
 			// Объект работы с дочерними процессами
 			awh::event_t _event;
 		private:
@@ -413,7 +417,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callbacks(log), _event(awh::event_t::type_t::SIGNAL, log), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callbacks(log), _socket(fmk, log),
+			 _event(awh::event_t::type_t::SIGNAL, log), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -421,7 +426,8 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(struct event_base * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callbacks(log), _event(awh::event_t::type_t::SIGNAL, log), _base(base), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _callbacks(log), _socket(fmk, log),
+			 _event(awh::event_t::type_t::SIGNAL, log), _base(base), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор
 			 */

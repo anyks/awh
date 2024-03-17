@@ -32,6 +32,8 @@
 	#define u_char unsigned char   // unsigned char
 	#define u_short unsigned short // unsigned short
 	#define __uint64_t uint64_t    // unsigned int 64
+	// Заменяем переменную ErrNo
+	#define errno WSAGetLastError()
 	// Заменяем вызов функции
 	#define getpid _getpid
 	#define getppid GetCurrentProcessId

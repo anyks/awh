@@ -19,7 +19,6 @@
  * Стандартные библиотеки
  */
 #include <cmath>
-#include <cerrno>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
@@ -31,6 +30,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+	#include <cerrno>
 	#define INVALID_SOCKET -1
 #endif
 

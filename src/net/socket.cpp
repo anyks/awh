@@ -262,22 +262,6 @@ int32_t awh::Socket::error(const SOCKET fd) const noexcept {
 		// Выходим из функции
 		return -1;
 	}
-	// Если на сокете есть ошибка
-	if(result != 0){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем извлечение кода ошибки
-			result = WSAGetLastError();
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем извлечение кода ошибки
-			result = errno;
-		#endif
-	}
 	// Выводим результат
 	return result;
 }

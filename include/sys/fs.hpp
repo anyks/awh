@@ -113,6 +113,13 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
+			 * message Метод получения текста описания ошибки
+			 * @param code код ошибки для получения сообщения
+			 * @return     текст сообщения описания кода ошибки
+			 */
+			string message(const int32_t code = 0) const noexcept;
+		public:
+			/**
 			 * uid Метод вывода идентификатора пользователя
 			 * @param name имя пользователя
 			 * @return     полученный идентификатор пользователя

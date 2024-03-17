@@ -44,6 +44,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/socket.hpp>
 #include <http/errors.hpp>
 
 /**
@@ -182,6 +183,9 @@ namespace awh {
 		private:
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
+		private:
+			// Объект работы с сокетами
+			socket_t _socket;
 		private:
 			// Список доступных источников для подключения
 			vector <string> _origins;
@@ -508,7 +512,7 @@ namespace awh {
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _callbacks(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			 _callbacks(log), _socket(fmk, log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Http2 Деструктор
 			 */

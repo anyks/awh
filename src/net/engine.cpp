@@ -956,7 +956,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(errno).c_str());
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -976,16 +976,30 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 		switch(errno){
 			// Если ошибка не обнаружена, выходим
 			case 0: break;
-			// Если произведена неудачная запись в PIPE
-			case EPIPE:
-				// Выводим в лог сообщение
-				this->_log->print("EPIPE", log_t::flag_t::WARNING);
-			break;
-			// Если произведён сброс подключения
-			case ECONNRESET:
-				// Выводим в лог сообщение
-				this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-			break;
+			/**
+			 * Если мы работаем не в MS Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Если произведена неудачная запись в PIPE
+				case EPIPE:
+					// Выводим в лог сообщение
+					this->_log->print("EPIPE", log_t::flag_t::WARNING);
+				break;
+				// Если произведён сброс подключения
+				case ECONNRESET:
+					// Выводим в лог сообщение
+					this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+				break;
+			/**
+			 * Методы только для OS Windows
+			 */
+			#else
+				// Если произведён сброс подключения
+				case WSAECONNRESET:
+					// Выводим в лог сообщение
+					this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+				break;
+			#endif
 			// Для остальных ошибок
 			default:
 				// Выводим в лог сообщение
@@ -1180,10 +1194,23 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				Read:
 				// Выполняем чтение данных из сокета
 				result = ::recvfrom(this->_addr->fd, buffer, size, 0, addr, &this->_addr->_peer.size);
-				// Если нужно попытаться ещё раз получить сообщение
-				if((result <= 0) && (errno == EAGAIN))
-					// Повторяем попытку получить ещё раз
-					goto Read;
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Если нужно попытаться ещё раз получить сообщение
+					if((result < 0) && (errno == WSAEWOULDBLOCK))
+						// Повторяем попытку получить ещё раз
+						goto Read;
+				/**
+				 * Для всех остальных операционных систем
+				 */
+				#else
+					// Если нужно попытаться ещё раз получить сообщение
+					if((result < 0) && (errno == EWOULDBLOCK))
+						// Повторяем попытку получить ещё раз
+						goto Read;
+				#endif
 			}
 		}
 		// Если данные прочитать не удалось
@@ -1194,30 +1221,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			switch(errno){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
-				// Если сработало событие таймаута
-				case ETIME:
-				// Если ошибка протокола
-				case EPROTO:
-				// Если в буфере закончились данные
-				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
-				// Если сеть отключена
-				case ENETDOWN:
-				// Если сокет не является сокетом
-				case ENOTSOCK:
-				// Если сокет не подключён
-				case ENOTCONN:
-				// Если подключение сброшено
-				case ENETRESET:
-				// Если произведён сброс подключения
-				case ETIMEDOUT:
-				// Если операция отменена
-				case ECANCELED:
-				// Если подключение сброшено
-				case ECONNRESET:
-				// Если протокол повреждён для сокета
-				case EPROTOTYPE:
 				/**
 				 * Если мы работаем в MacOS X
 				 */
@@ -1229,31 +1232,101 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				 * Если мы работаем не в MS Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если сработало событие таймаута
+					case ETIME:
+					// Если ошибка протокола
+					case EPROTO:
+					// Если в буфере закончились данные
+					case ENOBUFS:
+					// Если операция не поддерживается сокетом
+					case ENOTSUP:
+					// Если сеть отключена
+					case ENETDOWN:
+					// Если сокет не является сокетом
+					case ENOTSOCK:
+					// Если сокет не подключён
+					case ENOTCONN:
 					// Если хост не существует
 					case EHOSTDOWN:
 					// Если сокет отключён
 					case ESHUTDOWN:
+					// Если произведён сброс подключения
+					case ETIMEDOUT:
+					// Если подключение сброшено
+					case ENETRESET:
+					// Если операция отменена
+					case ECANCELED:
+					// Если подключение сброшено
+					case ECONNRESET:
+					// Если протокол повреждён для сокета
+					case EPROTOTYPE:
+					// Если протокол не поддерживается
+					case ENOPROTOOPT:
+					// Если сеть недоступна
+					case ENETUNREACH:
 					// Если протокол не поддерживается
 					case EPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case EAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case EHOSTUNREACH:
+					// Если подключение оборванно
+					case ECONNABORTED:
+					// Если требуется адрес назначения
+					case EDESTADDRREQ:
+					// Если в соединении отказанно
+					case ECONNREFUSED:
 					// Если тип сокета не поддерживается
 					case ESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case EPROTONOSUPPORT: {
+				/**
+				 * Методы только для OS Windows
+				 */
+				#else
+					// Если в буфере закончились данные
+					case WSAENOBUFS:
+					// Если сеть отключена
+					case WSAENETDOWN:
+					// Если сокет не является сокетом
+					case WSAENOTSOCK:
+					// Если сокет не подключён
+					case WSAENOTCONN:
+					// Если произведён сброс подключения
+					case WSAETIMEDOUT:
+					// Если сокет отключён
+					case WSAESHUTDOWN:
+					// Если хост не существует
+					case WSAEHOSTDOWN:
+					// Если подключение сброшено
+					case WSAENETRESET:
+					// Если протокол повреждён для сокета
+					case WSAEPROTOTYPE:
+					// Если подключение сброшено
+					case WSAECONNRESET:
+					// Если операция не поддерживается сокетом
+					case WSAEOPNOTSUPP:
+					// Если протокол не поддерживается
+					case WSAENOPROTOOPT:
+					// Если сеть недоступна
+					case WSAENETUNREACH:
+					// Если протокол не поддерживается
+					case WSAEPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case WSAEAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case WSAEHOSTUNREACH:
+					// Если подключение оборванно
+					case WSAECONNABORTED:
+					// Если требуется адрес назначения
+					case WSAEDESTADDRREQ:
+					// Если в соединении отказанно
+					case WSAECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case WSAESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case WSAEPROTONOSUPPORT: {
 				#endif
-				// Если протокол не поддерживается
-				case ENOPROTOOPT:
-				// Если сеть недоступна
-				case ENETUNREACH:
-				// Если протокол подключения не поддерживается
-				case EAFNOSUPPORT:
-				// Если роутинг к хосту не существует
-				case EHOSTUNREACH:
-				// Если подключение оборванно
-				case ECONNABORTED:
-				// Если требуется адрес назначения
-				case EDESTADDRREQ:
-				// Если в соединении отказанно
-				case ECONNREFUSED:
-				// Если протокол не поддерживается
-				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
 					this->_log->print("READ: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 					// Требуем завершения работы
@@ -1279,10 +1352,23 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							else if(this->error(result))
 								// Требуем завершения работы
 								result = 0;
-						// Если защищённый режим работы запрещён
-						} else if((errno == EWOULDBLOCK) || (errno == EINTR))
-							// Выполняем пропуск попытки
-							return result;
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Если защищённый режим работы запрещён
+							} else if((errno == WSAEWOULDBLOCK) || (errno == WSAEINTR))
+								// Выполняем пропуск попытки
+								return result;
+						/**
+						 * Для всех остальных операционных систем
+						 */
+						#else
+							// Если защищённый режим работы запрещён
+							} else if((errno == EWOULDBLOCK) || (errno == EINTR))
+								// Выполняем пропуск попытки
+								return result;
+						#endif
 						// Иначе выводим сообщение об ошибке
 						else if(this->error(result))
 							// Требуем завершения работы
@@ -1433,10 +1519,23 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				Send:
 				// Выполняем запись данных в сокет
 				result = ::sendto(this->_addr->fd, buffer, size, 0, addr, this->_addr->_peer.size);
-				// Если нужно попытаться ещё раз отправить сообщение
-				if((result <= 0) && (errno == EAGAIN))
-					// Повторяем попытку отправить ещё раз
-					goto Send;
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Если нужно попытаться ещё раз отправить сообщение
+					if((result < 0) && (errno == WSAEWOULDBLOCK))
+						// Повторяем попытку отправить ещё раз
+						goto Send;
+				/**
+				 * Для всех остальных операционных систем
+				 */
+				#else
+					// Если нужно попытаться ещё раз отправить сообщение
+					if((result < 0) && (errno == EWOULDBLOCK))
+						// Повторяем попытку отправить ещё раз
+						goto Send;
+				#endif
 			}
 		}
 		// Если данные записать не удалось
@@ -1447,30 +1546,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			switch(errno){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
-				// Если сработало событие таймаута
-				case ETIME:
-				// Если ошибка протокола
-				case EPROTO:
-				// Если в буфере закончились данные
-				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
-				// Если сеть отключена
-				case ENETDOWN:
-				// Если сокет не является сокетом
-				case ENOTSOCK:
-				// Если сокет не подключён
-				case ENOTCONN:
-				// Если подключение сброшено
-				case ENETRESET:
-				// Если произведён сброс подключения
-				case ETIMEDOUT:
-				// Если операция отменена
-				case ECANCELED:
-				// Если подключение сброшено
-				case ECONNRESET:
-				// Если протокол повреждён для сокета
-				case EPROTOTYPE:
 				/**
 				 * Если мы работаем в MacOS X
 				 */
@@ -1482,31 +1557,101 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				 * Если мы работаем не в MS Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если сработало событие таймаута
+					case ETIME:
+					// Если ошибка протокола
+					case EPROTO:
+					// Если в буфере закончились данные
+					case ENOBUFS:
+					// Если операция не поддерживается сокетом
+					case ENOTSUP:
+					// Если сеть отключена
+					case ENETDOWN:
+					// Если сокет не является сокетом
+					case ENOTSOCK:
+					// Если сокет не подключён
+					case ENOTCONN:
 					// Если хост не существует
 					case EHOSTDOWN:
 					// Если сокет отключён
 					case ESHUTDOWN:
+					// Если произведён сброс подключения
+					case ETIMEDOUT:
+					// Если подключение сброшено
+					case ENETRESET:
+					// Если операция отменена
+					case ECANCELED:
+					// Если подключение сброшено
+					case ECONNRESET:
+					// Если протокол повреждён для сокета
+					case EPROTOTYPE:
+					// Если протокол не поддерживается
+					case ENOPROTOOPT:
+					// Если сеть недоступна
+					case ENETUNREACH:
 					// Если протокол не поддерживается
 					case EPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case EAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case EHOSTUNREACH:
+					// Если подключение оборванно
+					case ECONNABORTED:
+					// Если требуется адрес назначения
+					case EDESTADDRREQ:
+					// Если в соединении отказанно
+					case ECONNREFUSED:
 					// Если тип сокета не поддерживается
 					case ESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case EPROTONOSUPPORT: {
+				/**
+				 * Методы только для OS Windows
+				 */
+				#else
+					// Если в буфере закончились данные
+					case WSAENOBUFS:
+					// Если сеть отключена
+					case WSAENETDOWN:
+					// Если сокет не является сокетом
+					case WSAENOTSOCK:
+					// Если сокет не подключён
+					case WSAENOTCONN:
+					// Если произведён сброс подключения
+					case WSAETIMEDOUT:
+					// Если сокет отключён
+					case WSAESHUTDOWN:
+					// Если хост не существует
+					case WSAEHOSTDOWN:
+					// Если подключение сброшено
+					case WSAENETRESET:
+					// Если протокол повреждён для сокета
+					case WSAEPROTOTYPE:
+					// Если подключение сброшено
+					case WSAECONNRESET:
+					// Если операция не поддерживается сокетом
+					case WSAEOPNOTSUPP:
+					// Если протокол не поддерживается
+					case WSAENOPROTOOPT:
+					// Если сеть недоступна
+					case WSAENETUNREACH:
+					// Если протокол не поддерживается
+					case WSAEPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case WSAEAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case WSAEHOSTUNREACH:
+					// Если подключение оборванно
+					case WSAECONNABORTED:
+					// Если требуется адрес назначения
+					case WSAEDESTADDRREQ:
+					// Если в соединении отказанно
+					case WSAECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case WSAESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case WSAEPROTONOSUPPORT: {
 				#endif
-				// Если протокол не поддерживается
-				case ENOPROTOOPT:
-				// Если сеть недоступна
-				case ENETUNREACH:
-				// Если протокол подключения не поддерживается
-				case EAFNOSUPPORT:
-				// Если роутинг к хосту не существует
-				case EHOSTUNREACH:
-				// Если подключение оборванно
-				case ECONNABORTED:
-				// Если требуется адрес назначения
-				case EDESTADDRREQ:
-				// Если в соединении отказанно
-				case ECONNREFUSED:
-				// Если протокол не поддерживается
-				case EPROTONOSUPPORT: {
 					// Выводим в лог сообщение
 					this->_log->print("WRITE: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 					// Требуем завершения работы
@@ -1532,10 +1677,23 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							else if(this->error(result))
 								// Требуем завершения работы
 								result = 0;
-						// Если защищённый режим работы запрещён
-						} else if((errno == EWOULDBLOCK) || (errno == EINTR))
-							// Выполняем пропуск попытки
-							return result;
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Если защищённый режим работы запрещён
+							} else if((errno == WSAEWOULDBLOCK) || (errno == WSAEINTR))
+								// Выполняем пропуск попытки
+								return result;
+						/**
+						 * Для всех остальных операционных систем
+						 */
+						#else
+							// Если защищённый режим работы запрещён
+							} else if((errno == EWOULDBLOCK) || (errno == EINTR))
+								// Выполняем пропуск попытки
+								return result;
+						#endif
 						// Иначе выводим сообщение об ошибке
 						else if(this->error(result))
 							// Требуем завершения работы
@@ -1652,25 +1810,6 @@ bool awh::Engine::Context::isblock() noexcept {
 		return !this->_addr->_async;
 	// Сообщаем что сокет в блокирующем режиме
 	return true;
-}
-/**
- * iserror Метод проверки на наличии ошибки в сокете
- * @return результат проверки наличия ошибки
- */
-bool awh::Engine::Context::iserror() noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если адрес присвоен
-	if(this->_addr != nullptr){
-		// Получаем код ошибки
-		const int32_t error = this->_addr->_socket.error(this->_addr->fd);
-		// Если ошибка обнаружена
-		if((result = (error > 0)))
-			// Выполняем вывод сообщения об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(error).c_str());
-	}
-	// Сообщаем, что ошибок нет
-	return result;
 }
 /**
  * proto Метод извлечения поддерживаемого протокола

@@ -176,31 +176,52 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 				switch(errno){
 					// Если ошибка не обнаружена, выходим
 					case 0: break;
-					// Если нужно повторить получение данных
-					case EAGAIN:
-						// Снова пробуем получить данные
-						goto Read;
-					break;
-					// Если произведена неудачная запись в PIPE
-					case EPIPE: {
-						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
-							// Выводим в лог сообщение
-							this->_log->print("EPIPE", log_t::flag_t::WARNING);
-					} break;
-					// Если произведён сброс подключения
-					case ECONNRESET: {
-						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
-							// Выводим в лог сообщение
-							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-					} break;
+					/**
+					 * Если мы работаем не в MS Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Если нужно повторить получение данных
+						case EWOULDBLOCK:
+							// Снова пробуем получить данные
+							goto Read;
+						break;
+						// Если произведена неудачная запись в PIPE
+						case EPIPE: {
+							// Если разрешено выводить информацию в лог
+							if(this->_verb)
+								// Выводим в лог сообщение
+								this->_log->print("EPIPE", log_t::flag_t::WARNING);
+						} break;
+						// Если произведён сброс подключения
+						case ECONNRESET: {
+							// Если разрешено выводить информацию в лог
+							if(this->_verb)
+								// Выводим в лог сообщение
+								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+						} break;
+					/**
+					 * Методы только для OS Windows
+					 */
+					#else
+						// Если нужно повторить получение данных
+						case WSAEWOULDBLOCK:
+							// Снова пробуем получить данные
+							goto Read;
+						break;
+						// Если произведён сброс подключения
+						case WSAECONNRESET: {
+							// Если разрешено выводить информацию в лог
+							if(this->_verb)
+								// Выводим в лог сообщение
+								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+						} break;
+					#endif
 					// Для остальных ошибок
 					default: {
 						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
+						if(this->_verb)
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+							this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(errno).c_str());
 					}
 				}
 				// Выполняем закрытие подключения
@@ -217,31 +238,52 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 			switch(errno){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
-				// Если нужно повторить получение данных
-				case EAGAIN:
-					// Снова пробуем отправить данные
-					goto Send;
-				break;
-				// Если произведена неудачная запись в PIPE
-				case EPIPE: {
-					// Если разрешено выводить информацию в лог
-					if(!this->_noInfo)
-						// Выводим в лог сообщение
-						this->_log->print("EPIPE", log_t::flag_t::WARNING);
-				} break;
-				// Если произведён сброс подключения
-				case ECONNRESET: {
-					// Если разрешено выводить информацию в лог
-					if(!this->_noInfo)
-						// Выводим в лог сообщение
-						this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-				} break;
+				/**
+				 * Если мы работаем не в MS Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если нужно повторить получение данных
+					case EWOULDBLOCK:
+						// Снова пробуем отправить данные
+						goto Send;
+					break;
+					// Если произведена неудачная запись в PIPE
+					case EPIPE: {
+						// Если разрешено выводить информацию в лог
+						if(this->_verb)
+							// Выводим в лог сообщение
+							this->_log->print("EPIPE", log_t::flag_t::WARNING);
+					} break;
+					// Если произведён сброс подключения
+					case ECONNRESET: {
+						// Если разрешено выводить информацию в лог
+						if(this->_verb)
+							// Выводим в лог сообщение
+							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+					} break;
+				/**
+				 * Методы только для OS Windows
+				 */
+				#else
+					// Если нужно повторить получение данных
+					case WSAEWOULDBLOCK:
+						// Снова пробуем получить данные
+						goto Read;
+					break;
+					// Если произведён сброс подключения
+					case WSAECONNRESET: {
+						// Если разрешено выводить информацию в лог
+						if(this->_verb)
+							// Выводим в лог сообщение
+							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+					} break;
+				#endif
 				// Для остальных ошибок
 				default: {
 					// Если разрешено выводить информацию в лог
-					if(!this->_noInfo)
+					if(this->_verb)
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+						this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(errno).c_str());
 				}
 			}
 			// Выполняем закрытие подключения
@@ -310,7 +352,7 @@ void awh::Ping::ping(const string & host) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Если разрешено выводить информацию в лог
-		if(!this->_noInfo)
+		if(this->_verb)
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
@@ -351,7 +393,7 @@ void awh::Ping::ping(const string & host) noexcept {
 					// Если IP-адрес не получен
 					else {
 						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
+						if(this->_verb)
 							// Выводим сообщение об ошибке
 							this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 						// Выходим из функции
@@ -373,7 +415,7 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Если разрешено выводить информацию в лог
-		if(!this->_noInfo)
+		if(this->_verb)
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
@@ -404,7 +446,7 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
 					// Выполняем пинг указанного адреса
 					std::thread(&ping_t::_work, this, family, ip).detach();
 				// Если результат не получен и разрешено выводить информацию в лог
-				else if(!this->_noInfo)
+				else if(this->_verb)
 					// Выводим сообщение об ошибке
 					this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 			}
@@ -527,7 +569,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 			// Если сокет не создан создан и работа резолвера не остановлена
 			if(this->_mode && (this->_fd == INVALID_SOCKET)){
 				// Если разрешено выводить информацию в лог
-				if(!this->_noInfo)
+				if(this->_verb)
 					// Выводим в лог сообщение
 					this->_log->print("File descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
 				// Выходим из приложения
@@ -565,7 +607,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Выполняем подсчёт количество прошедшего времени
 					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
-					if(!this->_noInfo)
+					if(this->_verb)
 						// Формируем сообщение для вывода в лог
 						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
 						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
@@ -607,7 +649,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Если разрешено выводить информацию в лог
-		if(!this->_noInfo)
+		if(this->_verb)
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
@@ -649,7 +691,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 					// Если IP-адрес не получен
 					else {
 						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
+						if(this->_verb)
 							// Выводим сообщение об ошибке
 							this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 						// Выходим из функции
@@ -677,7 +719,7 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Если разрешено выводить информацию в лог
-		if(!this->_noInfo)
+		if(this->_verb)
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
@@ -709,7 +751,7 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
 					// Выполняем пинг указанного адреса
 					result = this->_ping(family, ip, count);
 				// Если результат не получен и разрешено выводить информацию в лог
-				else if(!this->_noInfo)
+				else if(this->_verb)
 					// Выводим сообщение об ошибке
 					this->_log->print("Passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
 			}
@@ -838,7 +880,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 			// Если сокет не создан создан и работа резолвера не остановлена
 			if(this->_mode && (this->_fd == INVALID_SOCKET)){
 				// Если разрешено выводить информацию в лог
-				if(!this->_noInfo)
+				if(this->_verb)
 					// Выводим в лог сообщение
 					this->_log->print("File descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
 				// Выходим из приложения
@@ -874,7 +916,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					// Выполняем подсчёт количество прошедшего времени
 					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
-					if(!this->_noInfo)
+					if(this->_verb)
 						// Формируем сообщение для вывода в лог
 						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
 						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
@@ -895,7 +937,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Выполняем приведение число до 3-х знаков после запятой
 				result = this->_fmk->floor(result, 3);
 				// Если разрешено выводить информацию в лог
-				if(!this->_noInfo){
+				if(this->_verb){
 					// Если времени затрачено меньше 5-ти секунд
 					if(result < 5.0)
 						// Выводим сообщение результата в лог
@@ -910,14 +952,14 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 	return result;
 }
 /**
- * noInfo Метод запрещающий выводить информацию пинга в лог
+ * verbose Метод разрешающий/запрещающий выводить информационных сообщений
  * @param mode флаг для установки
  */
-void awh::Ping::noInfo(const bool mode) noexcept {
+void awh::Ping::verbose(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку флага запрещающего выводить информацию пинга в лог
-	this->_noInfo = mode;
+	this->_verb = mode;
 }
 /**
  * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
@@ -993,7 +1035,7 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 								// Выполняем добавление полученного хоста в список
 								this->_networkIPv4.push_back(ip);
 							// Если IP-адрес не получен и разрешено выводить информацию в лог
-							else if(!this->_noInfo)
+							else if(this->_verb)
 								// Выводим сообщение об ошибке
 								this->_log->print("Passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
 						}

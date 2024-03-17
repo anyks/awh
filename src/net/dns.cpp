@@ -414,20 +414,34 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 						switch(errno){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
-							// Если произведена неудачная запись в PIPE
-							case EPIPE:
-								// Выводим в лог сообщение
-								self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
-							break;
-							// Если произведён сброс подключения
-							case ECONNRESET:
-								// Выводим в лог сообщение
-								self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
-							break;
+							/**
+							 * Если мы работаем не в MS Windows
+							 */
+							#if !defined(_WIN32) && !defined(_WIN64)
+								// Если произведена неудачная запись в PIPE
+								case EPIPE:
+									// Выводим в лог сообщение
+									self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+								break;
+								// Если произведён сброс подключения
+								case ECONNRESET:
+									// Выводим в лог сообщение
+									self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+								break;
+							/**
+							 * Методы только для OS Windows
+							 */
+							#else
+								// Если произведён сброс подключения
+								case WSAECONNRESET:
+									// Выводим в лог сообщение
+									self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+								break;
+							#endif
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
+								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str(), this->_domain.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -650,20 +664,34 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 					switch(errno){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
-						// Если произведена неудачная запись в PIPE
-						case EPIPE:
-							// Выводим в лог сообщение
-							this->_self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
-						break;
-						// Если произведён сброс подключения
-						case ECONNRESET:
-							// Выводим в лог сообщение
-							this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
-						break;
+						/**
+						 * Если мы работаем не в MS Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если произведена неудачная запись в PIPE
+							case EPIPE:
+								// Выводим в лог сообщение
+								this->_self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+							break;
+							// Если произведён сброс подключения
+							case ECONNRESET:
+								// Выводим в лог сообщение
+								this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+							break;
+						/**
+						 * Методы только для OS Windows
+						 */
+						#else
+							// Если произведён сброс подключения
+							case WSAECONNRESET:
+								// Выводим в лог сообщение
+								this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), this->_domain.c_str());
+							break;
+						#endif
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, strerror(errno), to.c_str(), this->_domain.c_str());
+							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(errno).c_str(), to.c_str(), this->_domain.c_str());
 					}
 				}
 			}

@@ -642,7 +642,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Разрешаем перехватывать контекст компрессии для сервера
 					this->_hash.takeoverDecompress(this->_http.takeover(awh::web_t::hid_t::SERVER));
 					// Если разрешено в лог выводим информационные сообщения
-					if(!this->_noinfo)
+					if(this->_verb)
 						// Выводим в лог сообщение об удачной авторизации не Websocket-сервере
 						this->_log->print("Authorization on the Websocket-server was successful", log_t::flag_t::INFO);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -1345,8 +1345,8 @@ void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Websocket1::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
+	// Устанавливаем флаг разрешающий вывод информационных сообщений
+	this->_verb = (flags.count(flag_t::NOT_INFO) == 0);
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
@@ -1528,8 +1528,10 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _sid(-1), _rid(0), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ web_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
+ _shake(false), _freeze(false), _crypted(false), _inflate(false),
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1548,8 +1550,10 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _sid(-1), _rid(0), _close(false), _shake(false), _noinfo(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ web_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
+ _shake(false), _freeze(false), _crypted(false), _inflate(false),
+ _point(0), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

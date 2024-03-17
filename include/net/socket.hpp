@@ -41,7 +41,6 @@
  */
 #include <set>
 #include <ctime>
-#include <cerrno>
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -60,6 +59,7 @@
  * Для всех остальных операционных систем
  */
 #else
+	#include <cerrno>
 	#include <vector>
 	#include <csignal>
 	#include <fcntl.h>

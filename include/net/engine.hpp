@@ -49,7 +49,6 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <cerrno>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
@@ -59,6 +58,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+	#include <cerrno>
 	#include <sys/un.h>
 #endif
 
@@ -422,12 +422,6 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					bool isblock() noexcept;
-				public:
-					/**
-					 * iserror Метод проверки на наличии ошибки в сокете
-					 * @return результат проверки наличия ошибки
-					 */
-					bool iserror() noexcept;
 				public:
 					/**
 					 * proto Метод извлечения поддерживаемого протокола

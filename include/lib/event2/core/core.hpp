@@ -21,7 +21,6 @@
 #include <mutex>
 #include <chrono>
 #include <string>
-#include <cerrno>
 #include <cstdlib>
 #include <event2/util.h>
 #include <event2/event.h>
@@ -39,6 +38,7 @@
  */
 #else
 	// Подключаем заголовочный файл
+	#include <cerrno>
 	#include <unistd.h>
 #endif
 

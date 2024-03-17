@@ -150,9 +150,8 @@ namespace awh {
 		private:
 			// Флаг запуска работы
 			bool _mode;
-		private:
-			// Флаг запрещающий вывод информации
-			bool _noInfo;
+			// Флаг разрешающий вывод информации
+			bool _verb;
 		private:
 			// Объект для работы с сетью
 			net_t _net;
@@ -277,10 +276,10 @@ namespace awh {
 			double _ping(const int family, const string & ip, const uint16_t count) noexcept;
 		public:
 			/**
-			 * noInfo Метод запрещающий выводить информацию пинга в лог
+			 * verbose Метод разрешающий/запрещающий выводить информационных сообщений
 			 * @param mode флаг для установки
 			 */
-			void noInfo(const bool mode) noexcept;
+			void verbose(const bool mode) noexcept;
 		public:
 			/**
 			 * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
@@ -325,7 +324,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _fd(INVALID_SOCKET), _mode(false), _noInfo(false), _dns(fmk, log), _socket(fmk, log),
+			 _fd(INVALID_SOCKET), _mode(false), _verb(true), _dns(fmk, log), _socket(fmk, log),
 			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000), _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**
 			 * ~Ping Деструктор
