@@ -963,7 +963,7 @@ void awh::server::Core::dtls(const uint16_t sid, const uint64_t bid) noexcept {
 					// Выполняем удаление объекта подключения
 					// shm->_ectx.clear();
 
-					shm->_addr.close();
+					shm->_addr.clear();
 
 					// Если сокет подключения получен
 					if(this->create(sid)){
