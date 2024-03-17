@@ -569,14 +569,14 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 				// Выполняем создание нового таймера
 				auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				ret.first->second->verbose(false);
 				// Выполняем биндинг сетевого ядра таймера
 				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 				// Выполняем создание нового таймаута на 5 секунд
 				const uint16_t tid = ret.first->second->timeout(5000);
 				// Выполняем добавление функции обратного вызова
 				ret.first->second->set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
-				// Устанавливаем флаг запрещающий вывод информационных сообщений
-				ret.first->second->verbose(false);
 			}
 		/**
 		 * Если возникает ошибка
