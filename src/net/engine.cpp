@@ -149,7 +149,7 @@ bool awh::Engine::Address::list() noexcept {
 						// Выводим в лог информацию
 						this->_log->print("Unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
 						// Выходим из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					}
 				}
 			#endif
@@ -662,7 +662,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					// Выводим в лог сообщение
 					this->_log->print("Bind network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
 					// Выходим из приложения
-					exit(EXIT_FAILURE);
+					::exit(EXIT_FAILURE);
 				}
 			}
 		#endif
@@ -892,7 +892,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 						// Выводим в лог сообщение
 						this->_log->print("Bind network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 						// Выходим из приложения
-						exit(EXIT_FAILURE);
+						::exit(EXIT_FAILURE);
 					}
 				} break;
 				// Если приложение является клиентом
@@ -1080,7 +1080,7 @@ void awh::Engine::Context::info() const noexcept {
 			// Выводим в лог сообщение
 			this->_log->print("Major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
 			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			::exit(EXIT_FAILURE);
 		}
 	// Если всё хорошо, выводим версию OpenSSL
 	} else this->_log->print("Using %s", log_t::flag_t::INFO, OpenSSL_version(OPENSSL_VERSION));
@@ -1089,7 +1089,7 @@ void awh::Engine::Context::info() const noexcept {
 		// Выводим в лог сообщение
 		this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, OpenSSL_version(OPENSSL_VERSION));
 		// Выходим из приложения
-		exit(EXIT_FAILURE);
+		::exit(EXIT_FAILURE);
 	}
 	// Если объект подключения создан и сертификат передан
 	if(this->_ssl != nullptr){
@@ -4187,7 +4187,7 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		// Выводим в лог сообщение
 		this->_log->print("Rand poll is not allow", log_t::flag_t::CRITICAL);
 		// Выходим из приложения
-		exit(EXIT_FAILURE);
+		::exit(EXIT_FAILURE);
 	}
 }
 /**

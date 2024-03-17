@@ -104,7 +104,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-					// Если тип сокета UDP TLS
+					// Если тип сокета DTLS
 					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 						// Устанавливаем параметры сокета
 						broker->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
