@@ -16,6 +16,27 @@
 #include <lib/ev/core/core.hpp>
 
 /**
+ * Если операционной системой является Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * winsockInitialized Метод проверки на инициализацию WinSocksAPI
+	 * @return результат проверки
+	 */
+	static bool winsockInitialized() noexcept {
+		// Выполняем создание сокета
+		SOCKET fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		// Если сокет не создан
+		if(fd == INVALID_SOCKET)
+			// Сообщаем, что сокет не создан а значит WinSocksAPI не инициализирован
+			return false;
+		// Выполняем закрытие открытого сокета
+		closesocket(fd);
+		// Сообщаем, что WinSocksAPI уже инициализирован
+		return true;
+	}
+#endif
+/**
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
@@ -245,23 +266,24 @@ awh::Core::Dispatch::Dispatch(const log_t * log) noexcept :
 		 * Если операционной системой является Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Идентификатор ошибки
-			int error = 0;
-			// Выполняем инициализацию сетевого контекста
-			if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
-			// Выполняем проверку версии WinSocket
-			if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+			// Если WinSocksAPI ещё не инициализирована
+			if(!(this->_winSockInit = winsockInitialized())){
+				// Идентификатор ошибки
+				int error = 0;
+				// Выполняем инициализацию сетевого контекста
+				if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
+					// Очищаем сетевой контекст
+					WSACleanup();
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				}
+				// Выполняем проверку версии WinSocket
+				if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
+					// Очищаем сетевой контекст
+					WSACleanup();
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				}
 			}
 		#endif
 		// Выполняем инициализацию базы событий
@@ -291,8 +313,10 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 		 * Если операционной системой является MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			WSACleanup();
+			// Если WinSocksAPI была инициализированна в этой базе событий
+			if(!this->_winSockInit)
+				// Очищаем сетевой контекст
+				WSACleanup();
 		#endif
 	}
 }
