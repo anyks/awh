@@ -114,7 +114,7 @@ int main(int argc, char * argv[]){
 	core.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
-	// Устанавливаем тип сокета UDP TLS
+	// Устанавливаем тип сокета
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
@@ -126,7 +126,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
-	// Разрешаем перехват сигналов
+	// Запрещаем перехват сигналов
 	core.signalInterception(scheme_t::mode_t::DISABLED);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));

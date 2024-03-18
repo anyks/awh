@@ -101,6 +101,12 @@ namespace awh {
 				bool master() const noexcept;
 			public:
 				/**
+				 * pids Метод получения списка дочерних процессов
+				 * @return список дочерних процессов
+				 */
+				set <pid_t> pids() const noexcept;
+			public:
+				/**
 				 * send Метод отправки сообщение родительскому процессу
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера бинарных данных

@@ -79,7 +79,7 @@ namespace awh {
 			private:
 				// Хранилище функций обратного вызова
 				fn_t _callbacks;
-				// Объект рабочего
+				// Объект схемы сети
 				scheme::sample_t _scheme;
 			private:
 				// Размер шифрования передаваемых данных

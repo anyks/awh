@@ -88,6 +88,14 @@ bool awh::cluster::Core::master() const noexcept {
 	return (this->_pid == ::getpid());
 }
 /**
+ * pids Метод получения списка дочерних процессов
+ * @return список дочерних процессов
+ */
+set <pid_t> awh::cluster::Core::pids() const noexcept {
+	// Выполняем извлечение списка доступных идентификаторов процессов
+	return this->_cluster.pids(0);
+}
+/**
  * send Метод отправки сообщение родительскому процессу
  * @param buffer буфер бинарных данных
  * @param size   размер буфера бинарных данных
