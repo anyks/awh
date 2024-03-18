@@ -533,16 +533,13 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Идентификатор ошибки подключения
-					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != WSAEWOULDBLOCK));
+					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != WSAEWOULDBLOCK) && (AWH_ERROR() != WSAEINVAL));
 				/**
 				 * Для всех остальных операционных систем
 				 */
 				#else
-					
-					cout << " ==== " << AWH_ERROR() << endl;
-					
 					// Если нужно попытаться ещё раз отправить сообщение
-					const bool error = false; // ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK));
+					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK) && (AWH_ERROR() != EINVAL));
 				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
