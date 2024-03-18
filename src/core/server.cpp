@@ -543,10 +543,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
-
 				// Останавливаем событие подключения клиента
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::CONNECT);
-
 				// Выполняем ожидание входящих подключений
 				if(this->_engine.wait(broker->_ectx)){
 					// Устанавливаем параметры сокета
@@ -1058,18 +1056,12 @@ void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
 			this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
 			// Выполняем установку базы событий
 			broker->base(this->_dispatch.base);
-
-			
-
 			// Добавляем созданного брокера в список брокеров
 			auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 			// Добавляем брокера в список подключений
 			node_t::_brokers.emplace(ret.first->first, sid);
 			// Выполняем разблокировку потока
 			this->_mtx.accept.unlock();
-			
-
-
 			// Выполняем поиск таймера
 			auto j = this->_timers.find(sid);
 			// Если таймер ещё не создан
@@ -1087,37 +1079,6 @@ void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
 			ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
 			// Запускаем событие подключения клиента
 			ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
-
-		
-
-
-			
-
-			/*
-			// Выполняем поиск таймера
-			auto j = this->_timers.find(sid);
-			// Если таймер найден
-			if(j != this->_timers.end()){
-				// Выполняем создание нового таймаута на 10 миллисекунд
-				const uint16_t tid = j->second->timeout(10);
-				// Выполняем добавление функции обратного вызова
-				j->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
-			// Если таймер ещё не существует
-			} else {
-				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
-				// Выполняем создание нового таймера
-				auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
-				// Устанавливаем флаг запрещающий вывод информационных сообщений
-				ret.first->second->verbose(false);
-				// Выполняем биндинг сетевого ядра таймера
-				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
-				// Выполняем создание нового таймаута на 10 миллисекунд
-				const uint16_t tid = ret.first->second->timeout(10);
-				// Выполняем добавление функции обратного вызова
-				ret.first->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
-			}
-			*/
 		}
 	}
 }
@@ -1338,36 +1299,27 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						// Выполняем удаление старого подключения
 						shm->_addr.clear();
 						// Если сокет подключения получен
-						if(this->create(shm->id)){
-							// Если разрешено выводить информационные сообщения
-							if(this->_verb){
-								// Если unix-сокет используется
-								if(this->_settings.family == scheme_t::family_t::NIX)
-									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
-								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
-							}
+						if(this->create(shm->id))
 							// Выполняем создание нового DTLS-брокера
 							this->dtlsBroker(shm->id);
 						// Если сокет не создан, выводим в консоль информацию
-						} else {
+						else {
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+								this->_log->print("Server cannot be init [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.sockname.c_str()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s]", this->_settings.sockname.c_str()));
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
-								this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								this->_log->print("Server cannot be init [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s:%u]", shm->_host.c_str(), shm->_port));
 							}
 						}
 						// Удаляем блокировку брокера
