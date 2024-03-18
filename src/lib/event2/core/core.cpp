@@ -237,6 +237,23 @@ void awh::Core::Dispatch::on(const status_t status, function <void (const bool, 
 		break;
 	}
 }
+
+/**
+ * Если операционной системой является Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	bool WinsockInitialized()
+	{
+		SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (s == INVALID_SOCKET){
+			return false;
+		}
+
+		closesocket(s);
+		return true;
+	}
+#endif
+
 /**
  * Dispatch Конструктор
  * @param log объект для работы с логами
@@ -249,22 +266,24 @@ awh::Core::Dispatch::Dispatch(const log_t * log) noexcept :
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст
-		WSACleanup();
-		// Идентификатор ошибки
-		int error = 0;
-		// Выполняем инициализацию сетевого контекста
-		if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Выполняем проверку версии WinSocket
-		if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+		// WSACleanup();
+		if(!WinsockInitialized()){
+			// Идентификатор ошибки
+			int error = 0;
+			// Выполняем инициализацию сетевого контекста
+			if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
+			// Выполняем проверку версии WinSocket
+			if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
 		}
 	#endif
 	// Выполняем инициализацию базы событий
@@ -287,8 +306,9 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 		 * Если операционной системой является MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			WSACleanup();
+			if(WinsockInitialized())
+				// Очищаем сетевой контекст
+				WSACleanup();
 		#endif
 	}
 }
