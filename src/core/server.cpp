@@ -539,7 +539,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				 */
 				#else
 					// Если нужно попытаться ещё раз отправить сообщение
-					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK));
+					const bool error = false; // ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK));
 				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
