@@ -543,6 +543,10 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
+
+				// Останавливаем событие подключения клиента
+				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::CONNECT);
+
 				// Выполняем ожидание входящих подключений
 				if(this->_engine.wait(broker->_ectx)){
 					// Устанавливаем параметры сокета
@@ -808,7 +812,6 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								// Выполняем добавление функции обратного вызова
 								i->second->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
 							}
-
 						}
 					// Подключение не установлено
 					} else {
@@ -1049,16 +1052,48 @@ void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
 			broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 			// Выполняем блокировку потока
 			this->_mtx.accept.lock();
+			// Устанавливаем активный сокет сервера
+			broker->_addr.fd = shm->_addr.fd;
 			// Выполняем получение контекста сертификата
 			this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
 			// Выполняем установку базы событий
 			broker->base(this->_dispatch.base);
+
+			
+
 			// Добавляем созданного брокера в список брокеров
 			auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 			// Добавляем брокера в список подключений
 			node_t::_brokers.emplace(ret.first->first, sid);
 			// Выполняем разблокировку потока
 			this->_mtx.accept.unlock();
+			
+
+
+			// Выполняем поиск таймера
+			auto j = this->_timers.find(sid);
+			// Если таймер ещё не создан
+			if(j == this->_timers.end()){
+				// Выполняем блокировку потока
+				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
+				// Выполняем создание нового таймера
+				auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				ret.first->second->verbose(false);
+				// Выполняем биндинг сетевого ядра таймера
+				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
+			}
+			// Выполняем установку функции обратного вызова на получении сообщений
+			ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
+			// Запускаем событие подключения клиента
+			ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
+
+		
+
+
+			
+
+			/*
 			// Выполняем поиск таймера
 			auto j = this->_timers.find(sid);
 			// Если таймер найден
@@ -1082,6 +1117,7 @@ void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
 				// Выполняем добавление функции обратного вызова
 				ret.first->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
 			}
+			*/
 		}
 	}
 }
@@ -1299,9 +1335,6 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						if(callback.is(bid))
 							// Выполняем все функции обратного вызова
 							callback.bind(bid);
-						// Выполняем создание нового DTLS-брокера
-						// this->dtlsBroker(shm->id);
-
 						// Выполняем удаление старого подключения
 						shm->_addr.clear();
 						// Если сокет подключения получен
@@ -1337,7 +1370,6 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s:%u]", shm->_host.c_str(), shm->_port));
 							}
 						}
-
 						// Удаляем блокировку брокера
 						this->_busy.erase(bid);
 						// Выходим из функции
