@@ -16,6 +16,27 @@
 #include <lib/event2/core/core.hpp>
 
 /**
+ * Если операционной системой является Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * winsockInitialized Метод проверки на инициализацию WinSocksAPI
+	 * @return результат проверки
+	 */
+	static bool winsockInitialized() noexcept {
+		// Выполняем создание сокета
+		SOCKET fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		// Если сокет не создан
+		if(fd == INVALID_SOCKET)
+			// Сообщаем, что сокет не создан а значит WinSocksAPI не инициализирован
+			return false;
+		// Выполняем закрытие открытого сокета
+		closesocket(fd);
+		// Сообщаем, что WinSocksAPI уже инициализирован
+		return true;
+	}
+#endif
+/**
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
@@ -237,23 +258,6 @@ void awh::Core::Dispatch::on(const status_t status, function <void (const bool, 
 		break;
 	}
 }
-
-/**
- * Если операционной системой является Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	bool WinsockInitialized()
-	{
-		SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (s == INVALID_SOCKET){
-			return false;
-		}
-
-		closesocket(s);
-		return true;
-	}
-#endif
-
 /**
  * Dispatch Конструктор
  * @param log объект для работы с логами
@@ -265,9 +269,8 @@ awh::Core::Dispatch::Dispatch(const log_t * log) noexcept :
 	 * Если операционной системой является Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		// WSACleanup();
-		if(!WinsockInitialized()){
+		// Если WinSocksAPI ещё не инициализирована
+		if(!(this->_winSockInit = winsockInitialized())){
 			// Идентификатор ошибки
 			int error = 0;
 			// Выполняем инициализацию сетевого контекста
@@ -306,7 +309,8 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 		 * Если операционной системой является MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			if(WinsockInitialized())
+			// Если WinSocksAPI была инициализированна в этой базе событий
+			if(!this->_winSockInit)
 				// Очищаем сетевой контекст
 				WSACleanup();
 		#endif

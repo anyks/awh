@@ -125,6 +125,8 @@ namespace awh {
 					#if defined(_WIN32) || defined(_WIN64)
 						// Объект данных запроса
 						WSADATA _wsaData;
+						// Флаг инициализации WinSocksAPI
+						bool _winSockInit;
 					#endif
 				public:
 					/**
