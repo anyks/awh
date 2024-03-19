@@ -37,11 +37,7 @@ class Client {
 			// Если подключение выполнено
 			if(mode == client::sample_t::mode_t::CONNECT){
 				// Создаём текст сообщения для сервера
-				// const string message = "Hello World!!!";
-				const string message = R"({
-					"id": "1514",
-					"message": "{\"Message\":\"input line 2\",\"rs_agent_categories\":\"\",\"rs_agent_fqdn\":\"v-stand-19.pgr.local\",\"rs_agent_id\":\"619df239-b1b3-4877-9c85-46ed69b7cbe6\",\"rs_agent_input_module\":\"files\",\"rs_agent_input_tags\":[],\"rs_agent_ip\":\"172.30.254.79\",\"rs_agent_ts\":\"2023-11-07T16:48:30.241739034+03:00\"}"
-				})";
+				const string message = "Hello World!!!";
 				// Выполняем отправку сообщения серверу
 				sample->send(message.data(), message.size());
 			}
@@ -105,13 +101,13 @@ int main(int argc, char * argv[]){
 	ssl.key  = "./certs/certificates/client-key.pem";
 	ssl.cert = "./certs/certificates/client-cert.pem";
 	// Выполняем установку параметров SSL-шифрования
-	// core.ssl(ssl);
+	core.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета
-	// core.sonet(awh::scheme_t::sonet_t::DTLS);
+	core.sonet(awh::scheme_t::sonet_t::DTLS);
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.sonet(awh::scheme_t::sonet_t::UDP);
+	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем длительное подключение
@@ -123,7 +119,7 @@ int main(int argc, char * argv[]){
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 	// Выполняем инициализацию подключения
-	sample.init(1115, "127.0.0.1");
+	sample.init(2222, "127.0.0.1");
 	// sample.init("anyks");
 	// Выполняем запуск работы клиента
 	sample.start();
