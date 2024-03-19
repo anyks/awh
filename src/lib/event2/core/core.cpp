@@ -403,10 +403,10 @@ void awh::Core::bind(core_t * core) noexcept {
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
 	if((core != nullptr) && (core != this)){
+		// Выполняем остановку базы событий
+		core->stop();
 		// Если базы событий отличаются
 		if(core->_dispatch.base != this->_dispatch.base){
-			// Выполняем остановку базы событий
-			core->stop();
 			// Выполняем перевод базы событий в виртуальную
 			core->_dispatch.virt(true);
 			// Выполняем установку базы событий
@@ -439,12 +439,12 @@ void awh::Core::unbind(core_t * core) noexcept {
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
 	if((core != nullptr) && (core != this) && (core->_dispatch.base == this->_dispatch.base)){
+		// Выполняем остановку базы событий
+		core->stop();
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
 		// Уменьшаем количество подключённых потоков
 		this->_cores--;
-		// Запрещаем работу Websocket
-		core->_mode = false;
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Выполняем перевод базы событий в не виртуальную

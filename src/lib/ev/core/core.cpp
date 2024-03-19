@@ -407,6 +407,8 @@ void awh::Core::bind(core_t * core) noexcept {
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
 	if((core != nullptr) && (core != this)){
+		// Выполняем остановку базы событий
+		core->stop();
 		// Если базы событий совпадают
 		if(static_cast <struct ev_loop *> (core->_dispatch.base) == static_cast <struct ev_loop *> (this->_dispatch.base)){
 			// Выполняем блокировку потока
@@ -430,6 +432,8 @@ void awh::Core::unbind(core_t * core) noexcept {
 	// Если база событий активна и она совпадает с текущей базы событий
 	if((core != nullptr) && (core != this) &&
 	   (static_cast <struct ev_loop *> (core->_dispatch.base) == static_cast <struct ev_loop *> (this->_dispatch.base))){
+		// Выполняем остановку базы событий
+		core->stop();
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
 		// Уменьшаем количество подключённых потоков
