@@ -122,7 +122,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
 								// Переводим сокет в неблокирующий режим
-								ret.first->second->_ectx.block();
+								ret.first->second->_ectx.noblock();
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Активируем получение данных с клиента
@@ -717,7 +717,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								// Выходим
 								return;
 							}
-							// Переводим сокет в неблокирующий режим
+							// Переводим сокет в блокирующий режим
 							broker->_ectx.block();
 							// Если вывод информационных данных не запрещён
 							if(this->_verb){
@@ -1562,14 +1562,9 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 			// Если unix-сокет не используется, выполняем инициализацию сокета
 			else shm->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
 			// Если сокет подключения получен
-			if((shm->_addr.fd != INVALID_SOCKET) && (shm->_addr.fd < MAX_SOCKETS)){
-				// Если тип сокета установлен как DTLS
-				if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
-					// Переводим сокет в неблокирующий режим
-					this->_socket.blocking(shm->_addr.fd, socket_t::mode_t::NOBLOCK);
+			if((shm->_addr.fd != INVALID_SOCKET) && (shm->_addr.fd < MAX_SOCKETS))
 				// Выполняем прослушивание порта
 				result = static_cast <bool> (shm->_addr.list());
-			}
 		}
 	}
 	// Выводим результат создания сервера
@@ -1846,6 +1841,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 			if(i != this->_schemes.end()){
 				// Определяем тип сокета
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как UDP
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 					// Если тип сокета установлен как TCP/IP TLS
@@ -1896,6 +1893,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					if(bytes > 0){
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 							// Если тип сокета установлен как TCP/IP
 							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 							// Если тип сокета установлен как TCP/IP TLS

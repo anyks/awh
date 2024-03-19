@@ -37,7 +37,10 @@ class Client {
 			// Если подключение выполнено
 			if(mode == client::sample_t::mode_t::CONNECT){
 				// Создаём текст сообщения для сервера
-				const string message = "Hello World!!!";
+				// const string message = "Hello World!!!";
+
+				const string message = "{\"message\":\"Hello World!!!\"}";
+
 				// Выполняем отправку сообщения серверу
 				sample->send(message.data(), message.size());
 			}

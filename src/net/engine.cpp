@@ -565,12 +565,13 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->fd);
 			// Если сокет установлен TCP/IP
-			if(this->_type == SOCK_STREAM){
+			if(this->_type == SOCK_STREAM)
 				// Отключаем сигнал записи в оборванное подключение
 				this->_socket.noSigPIPE(this->fd);
+			// Если приложение является сервером
+			if(type == type_t::SERVER)
 				// Переводим сокет в не блокирующий режим
 				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
-			}
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
 			// Создаём объект подключения для сервера
@@ -852,12 +853,12 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Активируем KeepAlive
 					this->_socket.keepAlive(this->fd);
 			#endif
+			// Если приложение является сервером
+			if(type == type_t::SERVER)
+				// Переводим сокет в не блокирующий режим
+				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 			// Если сокет установлен TCP/IP
 			if(this->_type == SOCK_STREAM){
-				// Если приложение является сервером
-				if(type == type_t::SERVER)
-					// Переводим сокет в не блокирующий режим
-					this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
