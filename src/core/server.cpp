@@ -55,8 +55,6 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 							// Устанавливаем таймаут на запись данных в сокет
 							broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
-							// Устанавливаем таймаут на подключение к серверу
-							broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 							// Определяем тип протокола подключения
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения IPv4
@@ -121,8 +119,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								node_t::_brokers.emplace(ret.first->first, sid);
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
-								// Переводим сокет в неблокирующий режим
-								ret.first->second->_ectx.noblock();
+								// Переводим сокет в блокирующий режим
+								ret.first->second->_ectx.block();
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Активируем получение данных с клиента
@@ -1835,6 +1833,19 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							if(!broker->_bev.locked.read){
 								// Выполняем обнуление буфера данных
 								::memset(buffer.get(), 0, size);
+								// Определяем тип сокета
+								switch(static_cast <uint8_t> (this->_settings.sonet)){
+									// Если тип сокета установлен как DTLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+										// Выполняем установку таймаута ожидания чтения из сокета
+										broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
+									break;
+									// Если тип сокета установлен как UDP
+									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Выполняем установку таймаута ожидания чтения из сокета
+										this->_socket.timeout(broker->_addr.fd, broker->_timeouts.read * 1000, socket_t::mode_t::READ);
+									break;
+								}
 								// Выполняем получение сообщения от клиента
 								bytes = broker->_ectx.read(buffer.get(), size);
 								// Если данные получены
@@ -1925,8 +1936,6 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 			if(i != this->_schemes.end()){
 				// Определяем тип сокета
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
-					// Если тип сокета установлен как UDP
-					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 					// Если тип сокета установлен как TCP/IP TLS
@@ -1957,8 +1966,25 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						left = (size - offset);
 						// Определяем размер отправляемых данных
 						actual = (left >= max ? max : left);
-						// Выполняем установку таймаута ожидания записи в сокет
-						broker->_ectx.timeout(broker->_timeouts.write * 1000, engine_t::method_t::WRITE);
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как DTLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Выполняем установку таймаута ожидания записи в сокет
+								broker->_ectx.timeout(broker->_timeouts.write * 1000, engine_t::method_t::WRITE);
+							break;
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Выполняем установку таймаута ожидания записи в сокет
+								this->_socket.timeout(broker->_addr.fd, broker->_timeouts.write * 1000, socket_t::mode_t::WRITE);
+							break;
+						}
 						// Выполняем отправку сообщения клиенту
 						bytes = broker->_ectx.write(buffer + offset, actual);
 						// Если данные небыли записаны
@@ -1977,8 +2003,6 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					if(bytes > 0){
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							// Если тип сокета установлен как UDP
-							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 							// Если тип сокета установлен как TCP/IP
 							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 							// Если тип сокета установлен как TCP/IP TLS
@@ -2450,8 +2474,8 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _socket(fmk, log),
- _clusterSize(-1), _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов
@@ -2468,8 +2492,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _socket(fmk, log),
- _clusterSize(-1), _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов

@@ -1196,22 +1196,28 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Выполняем чтение данных из сокета
 				result = ::recvfrom(this->_addr->fd, buffer, size, 0, addr, &this->_addr->_peer.size);
 				/**
-				 * Методы только для OS Windows
+				 * Если приложение является клиентом, нужно получить вообще все данные ответа,
+				 * для сервера это не нужно, так-как данный контроль производится в другом месте.
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Если нужно попытаться ещё раз получить сообщение
-					if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
-						// Повторяем попытку получить ещё раз
-						goto Read;
-				/**
-				 * Для всех остальных операционных систем
-				 */
-				#else
-					// Если нужно попытаться ещё раз получить сообщение
-					if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
-						// Повторяем попытку получить ещё раз
-						goto Read;
-				#endif
+				if(this->_type == type_t::CLIENT){
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Если нужно попытаться ещё раз получить сообщение
+						if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
+							// Повторяем попытку получить ещё раз
+							goto Read;
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Если нужно попытаться ещё раз получить сообщение
+						if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
+							// Повторяем попытку получить ещё раз
+							goto Read;
+					#endif
+				}
 			}
 		}
 		// Если данные прочитать не удалось
@@ -1337,8 +1343,25 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				default: {
 					// Если сокет находится в блокирующем режиме
 					if((result < 0) && status){
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Если защищённый режим работы запрещён
+							if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+								// Выполняем пропуск попытки
+								return result;
+						/**
+						 * Для всех остальных операционных систем
+						 */
+						#else
+							// Если защищённый режим работы запрещён
+							if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+								// Выполняем пропуск попытки
+								return result;
+						#endif
 						// Выполняем обработку ошибок
-						if(this->error(result))
+						else if(this->error(result))
 							// Выполняем завершение работы
 							result = 0;
 					// Если произошла ошибка
@@ -1662,8 +1685,25 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				default: {
 					// Если сокет находится в блокирующем режиме
 					if((result < 0) && status){
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Если защищённый режим работы запрещён
+							if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+								// Выполняем пропуск попытки
+								return result;
+						/**
+						 * Для всех остальных операционных систем
+						 */
+						#else
+							// Если защищённый режим работы запрещён
+							if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+								// Выполняем пропуск попытки
+								return result;
+						#endif
 						// Выполняем обработку ошибок
-						if(this->error(result))
+						else if(this->error(result))
 							// Выполняем завершение работы
 							result = 0;
 					// Если произошла ошибка

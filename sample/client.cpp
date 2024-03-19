@@ -112,6 +112,8 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
+	// Устанавливаем таймеры ожидания по одной секунде на чтение и запись
+	sample.waitTimeDetect(1, 1);
 	// Подписываемся на событие получения сообщения
 	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
 	// Подписываемся на событие коннекта и дисконнекта клиента
