@@ -445,8 +445,16 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 							 */
 							#if defined(DEBUG_MODE)
 								{
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (this->_http);
+									// Выполняем создание объекта для вывода HTTP-ответа
+									http_t http(this->_fmk, this->_log);
+									// Устанавливаем заголовки ответа
+									http.headers(this->_http.headers());
+									// Устанавливаем параметры ответа
+									http.response(this->_http.response());
+									// Устанавливаем компрессор ответа
+									http.compression(this->_http.compression());
+									// Выполняем коммит полученного результата
+									http.commit();
 									// Получаем данные ответа
 									const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
 									// Если параметры ответа получены

@@ -200,8 +200,18 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							 */
 							#if defined(DEBUG_MODE)
 								{
-									// Получаем объект работы с HTTP-запросами
-									const http_t & http = reinterpret_cast <http_t &> (options->http);
+									// Выполняем создание объекта для вывода HTTP-запроса
+									http_t http(this->_fmk, this->_log);
+									// Устанавливаем тело ответа
+									http.body(options->http.body());
+									// Устанавливаем параметры запроса
+									http.request(options->http.request());
+									// Устанавливаем заголовки запроса
+									http.headers(options->http.headers());
+									// Устанавливаем компрессор запроса
+									http.compression(options->http.compression());
+									// Выполняем коммит полученного результата
+									http.commit();
 									// Получаем данные запроса
 									const auto & request = http.process(http_t::process_t::REQUEST, http.request());
 									// Если параметры запроса получены

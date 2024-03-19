@@ -151,7 +151,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 				case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 				// Если тип сокета установлен как TCP/IP TLS
 				case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-				// Если тип сокета установлен как SCTP DTLS
+				// Если тип сокета установлен как SCTP
 				case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 					/**
 					 * Выполняем отлов ошибок

@@ -3319,6 +3319,16 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								}
 							}
 						}
+						// Если сервер соответствует Websocket-серверу
+						if(this->_identity == identity_t::WS){
+							// Если заголовок не запрещён
+							if(!available[0] && !this->is(suite_t::BLACK, "Date")){
+								// Запоминаем, что заголовок даты уже указан
+								available[0] = !available[0];
+								// Добавляем заголовок даты в ответ
+								response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
+							}
+						}
 						// Если запрос должен содержать тело и тело ответа существует
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 							// Устанавливаем Content-Type если не передан
@@ -4150,6 +4160,16 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 											result.push_back(make_pair("proxy-authenticate", auth));
 									} break;
 								}
+							}
+						}
+						// Если сервер соответствует Websocket-серверу
+						if(this->_identity == identity_t::WS){
+							// Если заголовок не запрещён
+							if(!available[0] && !this->is(suite_t::BLACK, "date")){
+								// Запоминаем, что заголовок даты уже указан
+								available[0] = !available[0];
+								// Добавляем заголовок даты в ответ
+								result.push_back(make_pair("date", this->date()));
 							}
 						}
 						// Если запрос должен содержать тело и тело ответа существует

@@ -83,7 +83,7 @@ namespace awh {
 			partner_t _server;
 		protected:
 			// Компрессор для жатия данных
-			compressor_t _compressor;
+			compressors_t _compressors;
 		protected:
 			// Список выбранных сабпротоколов
 			set <string> _selectedProtocols;

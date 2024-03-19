@@ -76,9 +76,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 			// Добавляем заголовок отключения кеширования
 			this->header("Cache-Control", "No-Cache");
 			// Добавляем заголовок типа запроса
-			this->header("Sec-Fetch-Mode", "WebSocket");
+			this->header("Sec-Fetch-Mode", "websocket");
 			// Добавляем заголовок места назначения запроса
-			this->header("Sec-Fetch-Dest", "WebSocket");
+			this->header("Sec-Fetch-Dest", "websocket");
 			// Добавляем заголовок поддерживаемых языков
 			this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 			// Добавляем заголовок версии WebSocket
@@ -418,7 +418,7 @@ const string awh::WCore::sha1() const noexcept {
 		// Копируем полученные данные
 		SHA1_Final(digest, &ctx);
 		// Формируем ключ для клиента
-		result = base64_t().encode(string((const char *) digest, 20));
+		result = base64_t().encode(string(reinterpret_cast <const char *> (digest), 20));
 	}
 	// Выводим результат
 	return result;
@@ -1244,7 +1244,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 				// Удаляем заголовок ключ клиента
 				const_cast <ws_core_t *> (this)->rm(suite_t::HEADER, "Sec-WebSocket-Key");
 				// Добавляем заголовок апгрейд
-				const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
+				const_cast <ws_core_t *> (this)->header("Upgrade", "websocket");
 				// Добавляем заголовок подключения
 				const_cast <ws_core_t *> (this)->header("Connection", "Keep-Alive, Upgrade");
 				// Добавляем заголовок ключ клиента
@@ -1282,7 +1282,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 					// Добавляем заголовок подключения
 					const_cast <ws_core_t *> (this)->header("Connection", "Upgrade");
 					// Добавляем заголовок апгрейд
-					const_cast <ws_core_t *> (this)->header("Upgrade", "WebSocket");
+					const_cast <ws_core_t *> (this)->header("Upgrade", "websocket");
 				}
 				// Если версия протокола ниже 2.0
 				if((res.version < 2.0f) && (res.code == 101)){

@@ -295,7 +295,7 @@ int main(int argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
-	// Устанавливаем тип сокета UDP TLS
+	// Устанавливаем тип сокета DTLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);

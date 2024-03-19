@@ -613,10 +613,18 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								 */
 								#if defined(DEBUG_MODE)
 									{
-										// Получаем объект работы с HTTP-запросами
-										const http_t & http = reinterpret_cast <http_t &> (options->http);
-										// Получаем бинарные данные REST-ответа
-										const auto & buffer = http.process(http_t::process_t::REQUEST, options->http.request());
+										// Выполняем создание объекта для вывода HTTP-запроса
+										http_t http(this->_fmk, this->_log);
+										// Устанавливаем параметры запроса
+										http.request(options->http.request());
+										// Устанавливаем заголовки запроса
+										http.headers(options->http.headers());
+										// Устанавливаем компрессор запроса
+										http.compression(options->http.compression());
+										// Выполняем коммит полученного результата
+										http.commit();
+										// Получаем данные запроса
+										const auto & buffer = http.process(http_t::process_t::REQUEST, http.request());
 										// Если параметры ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
@@ -678,11 +686,19 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												 */
 												#if defined(DEBUG_MODE)
 													{
+														// Выполняем создание объекта для вывода HTTP-ответа
+														http_t http(this->_fmk, this->_log);
+														// Устанавливаем параметры ответа
+														http.response(response);
+														// Устанавливаем заголовки ответа
+														http.headers(options->http.headers());
+														// Устанавливаем компрессор ответа
+														http.compression(options->http.compression());
+														// Выполняем коммит полученного результата
+														http.commit();
 														// Выводим заголовок ответа
 														cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-														// Получаем объект работы с HTTP-запросами
-														const http_t & http = reinterpret_cast <http_t &> (options->http);
-														// Получаем бинарные данные REST-ответа
+														// Получаем данные ответа
 														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
@@ -751,11 +767,19 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 									 */
 									#if defined(DEBUG_MODE)
 										{
+											// Выполняем создание объекта для вывода HTTP-ответа
+											http_t http(this->_fmk, this->_log);
+											// Устанавливаем параметры ответа
+											http.response(response);
+											// Устанавливаем заголовки ответа
+											http.headers(options->http.headers());
+											// Устанавливаем компрессор ответа
+											http.compression(options->http.compression());
+											// Выполняем коммит полученного результата
+											http.commit();
 											// Выводим заголовок ответа
 											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-											// Получаем объект работы с HTTP-запросами
-											const http_t & http = reinterpret_cast <http_t &> (options->http);
-											// Получаем бинарные данные REST-ответа
+											// Получаем данные ответа
 											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
