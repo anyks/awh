@@ -413,8 +413,6 @@ void awh::Core::bind(core_t * core) noexcept {
 			core->_mtx.status.lock();
 			// Увеличиваем количество подключённых потоков
 			this->_cores++;
-			// Устанавливаем флаг запуска
-			core->_mode = true;
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		}
@@ -436,8 +434,6 @@ void awh::Core::unbind(core_t * core) noexcept {
 		core->_mtx.status.lock();
 		// Уменьшаем количество подключённых потоков
 		this->_cores--;
-		// Запрещаем работу WebSocket
-		core->_mode = false;
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Запускаем метод деактивации базы событий
@@ -484,6 +480,8 @@ void awh::Core::start() noexcept {
  * @param status флаг вывода события статуса
  */
 void awh::Core::launching(const bool mode, const bool status) noexcept {
+	// Блокируем неиспользуемую переменную
+	(void) mode;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
@@ -508,6 +506,8 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
  * @param status флаг вывода события статуса
  */
 void awh::Core::closedown(const bool mode, const bool status) noexcept {
+	// Блокируем неиспользуемую переменную
+	(void) mode;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
