@@ -133,7 +133,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.callback <void (const uint64_t, const vector <char> &, server::sample_t *)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

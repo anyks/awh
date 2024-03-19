@@ -37,10 +37,7 @@ class Client {
 			// Если подключение выполнено
 			if(mode == client::sample_t::mode_t::CONNECT){
 				// Создаём текст сообщения для сервера
-				// const string message = "Hello World!!!";
-
-				const string message = "{\"message\":\"Hello World!!!\"}";
-
+				const string message = "Hello World!!!";
 				// Выполняем отправку сообщения серверу
 				sample->send(message.data(), message.size());
 			}
@@ -116,9 +113,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Подписываемся на событие получения сообщения
-	sample.callback <void (const vector <char> &, client::sample_t *)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	sample.callback <void (const client::sample_t::mode_t, client::sample_t *)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
 	// Выполняем инициализацию подключения
 	sample.init(2222, "127.0.0.1");
 	// sample.init("anyks");

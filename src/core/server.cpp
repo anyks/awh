@@ -1469,26 +1469,110 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 						this->work(sid, shm->_host, AF_INET6);
 					} break;
 				}
-			// Если хост сервера является доменным именем и объект DNS-резолвера установлен
-			} else if(this->_dns != nullptr) {
-				// Определяем тип протокола подключения
-				switch(static_cast <uint8_t> (this->_settings.family)){
-					// Если тип протокола подключения unix-сокет
-					case static_cast <uint8_t> (scheme_t::family_t::NIX):
-					// Если тип протокола подключения IPv4
-					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-						// Выполняем резолвинг домена
-						const string & ip = const_cast <dns_t *> (this->_dns)->resolve(AF_INET, shm->_host);
+			// Если хост сервера является доменным именем
+			} else {
+				// Определяем тип передаваемого сервера
+				switch(static_cast <uint8_t> (this->_net.host(shm->_host))){
+					// Если домен является IPv4-адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем подключения к полученному IP-адресу
-						this->work(sid, ip, AF_INET);
-					} break;
-					// Если тип протокола подключения IPv6
-					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-						// Выполняем резолвинг домена
-						const string & ip = const_cast <dns_t *> (this->_dns)->resolve(AF_INET6, shm->_host);
+						this->work(sid, shm->_host, AF_INET);
+					break;
+					// Если домен является IPv6-адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV6):
 						// Выполняем подключения к полученному IP-адресу
-						this->work(sid, ip, AF_INET6);
+						this->work(sid, shm->_host, AF_INET6);
+					break;
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::FS): {
+						// Запоминаем переданный адрес
+						const string host = shm->_host;
+						// Объект для работы с сетевым интерфейсом
+						ifnet_t ifnet(this->_fmk, this->_log);
+						// Обновляем хост сервера
+						shm->_host = ifnet.ip(AF_INET);
+						// Выводим сообщение об незапущенном сервере за порту
+						this->_log->print("File system address [%s] was passed as server host, so we will use the address [%s] as server host", log_t::flag_t::WARNING, host.c_str(), shm->_host.c_str());
+						// Выполняем подключения к полученному IP-адресу
+						this->work(sid, shm->_host, AF_INET);
 					} break;
+					// Если домен является аппаратным адресом сетевого интерфейса
+					case static_cast <uint8_t> (net_t::type_t::MAC): {
+						// Запоминаем переданный адрес
+						const string host = shm->_host;
+						// Объект для работы с сетевым интерфейсом
+						ifnet_t ifnet(this->_fmk, this->_log);
+						// Обновляем хост сервера
+						shm->_host = ifnet.ip(AF_INET);
+						// Выводим сообщение об незапущенном сервере за порту
+						this->_log->print("MAC-address [%s] was passed as server host, so we will use the address [%s] as server host", log_t::flag_t::WARNING, host.c_str(), shm->_host.c_str());
+						// Выполняем подключения к полученному IP-адресу
+						this->work(sid, shm->_host, AF_INET);
+					} break;
+					// Если домен является URL-адресом
+					case static_cast <uint8_t> (net_t::type_t::URL): {
+						// Запоминаем переданный адрес
+						const string host = shm->_host;
+						// Объект для работы с сетевым интерфейсом
+						ifnet_t ifnet(this->_fmk, this->_log);
+						// Обновляем хост сервера
+						shm->_host = ifnet.ip(AF_INET);
+						// Выводим сообщение об незапущенном сервере за порту
+						this->_log->print("URL-address [%s] was passed as server host, so we will use the address [%s] as server host", log_t::flag_t::WARNING, host.c_str(), shm->_host.c_str());
+						// Выполняем подключения к полученному IP-адресу
+						this->work(sid, shm->_host, AF_INET);
+					} break;
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETWORK): {
+						// Запоминаем переданный адрес
+						const string host = shm->_host;
+						// Объект для работы с сетевым интерфейсом
+						ifnet_t ifnet(this->_fmk, this->_log);
+						// Обновляем хост сервера
+						shm->_host = ifnet.ip(AF_INET);
+						// Выводим сообщение об незапущенном сервере за порту
+						this->_log->print("Network-address [%s] was passed as server host, so we will use the address [%s] as server host", log_t::flag_t::WARNING, host.c_str(), shm->_host.c_str());
+						// Выполняем подключения к полученному IP-адресу
+						this->work(sid, shm->_host, AF_INET);
+					} break;
+					// Если домен является доменной зоной
+					case static_cast <uint8_t> (net_t::type_t::ZONE): {
+						// Если объект DNS-резолвера установлен
+						if(this->_dns != nullptr) {
+							// Определяем тип протокола подключения
+							switch(static_cast <uint8_t> (this->_settings.family)){
+								// Если тип протокола подключения unix-сокет
+								case static_cast <uint8_t> (scheme_t::family_t::NIX):
+								// Если тип протокола подключения IPv4
+								case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+									// Выполняем резолвинг домена
+									const string & ip = const_cast <dns_t *> (this->_dns)->resolve(AF_INET, shm->_host);
+									// Выполняем подключения к полученному IP-адресу
+									this->work(sid, ip, AF_INET);
+								} break;
+								// Если тип протокола подключения IPv6
+								case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+									// Выполняем резолвинг домена
+									const string & ip = const_cast <dns_t *> (this->_dns)->resolve(AF_INET6, shm->_host);
+									// Выполняем подключения к полученному IP-адресу
+									this->work(sid, ip, AF_INET6);
+								} break;
+							}
+						}
+					} break;
+					// Если в качестве хоста был передан мусор
+					default: {
+						// Запоминаем переданный адрес
+						const string host = shm->_host;
+						// Объект для работы с сетевым интерфейсом
+						ifnet_t ifnet(this->_fmk, this->_log);
+						// Обновляем хост сервера
+						shm->_host = ifnet.ip(AF_INET);
+						// Выводим сообщение об незапущенном сервере за порту
+						this->_log->print("Garbage [%s] was passed as server host, so we will use the address [%s] as server host", log_t::flag_t::WARNING, host.c_str(), shm->_host.c_str());
+						// Выполняем подключения к полученному IP-адресу
+						this->work(sid, shm->_host, AF_INET);
+					}
 				}
 			}
 		}

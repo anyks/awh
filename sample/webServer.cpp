@@ -337,13 +337,13 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	awh.callback <void (const uint64_t, const vector <char> &, const bool, server::awh_t *)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
+	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t, server::awh_t *)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
 	// Установливаем функцию обратного вызова на событие получения запроса
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, server::awh_t *)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
 	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &, server::awh_t *)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат

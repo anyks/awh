@@ -62,11 +62,11 @@ class Executor {
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 		/**
-		 * run Метод запуска сетевого ядра
+		 * status Метод запуска сетевого ядра
 		 * @param status флаг запуска сетевого ядра
 		 * @param timer  объект таймера
 		 */
-		void run(const awh::core_t::status_t status, awh::timer_t * timer){
+		void status(const awh::core_t::status_t status, awh::timer_t * timer){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -121,7 +121,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	timer.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::run, &executor, _1, &timer));
+	timer.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::status, &executor, _1, &timer));
 	// Выполняем запуск таймера
 	timer.start();
 	// Выводим результат

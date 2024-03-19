@@ -246,7 +246,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	ws.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.callback <void (const uint64_t, const vector <char> &, const bool, server::websocket_t *)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
+	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
 	ws.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск Websocket сервер

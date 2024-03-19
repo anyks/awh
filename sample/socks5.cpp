@@ -26,9 +26,6 @@ class Proxy {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект Сервера
-		proxy_socks5_t * _socks5;
 	public:
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
@@ -69,11 +66,10 @@ class Proxy {
 	public:
 		/**
 		 * Proxy Конструктор
-		 * @param fmk    объект фреймворка
-		 * @param log    объект логирования
-		 * @param sample объект сервера
+		 * @param fmk объект фреймворка
+		 * @param log объект логирования
 		 */
-		Proxy(const fmk_t * fmk, const log_t * log, proxy_socks5_t * socks5) : _fmk(fmk), _log(log), _socks5(socks5) {}
+		Proxy(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -92,7 +88,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект PROXY сервера
 	proxy_socks5_t proxy(&fmk, &log);
 	// Создаём объект исполнителя
-	Proxy executor(&fmk, &log, &proxy);
+	Proxy executor(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Proxy Socks5 Server");
 	// Устанавливаем формат времени

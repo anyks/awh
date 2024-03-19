@@ -127,10 +127,10 @@ int main(int argc, char * argv[]){
 	core.autoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
+	// Устанавливаем функцию обратного вызова при получении событий
+	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
 	// Устанавливаем функцию обработки входящих сообщений
 	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
-	// Устанавливаем функцию обратного вызова при получении событий
-	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t, cluster::core_t *)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат
