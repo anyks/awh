@@ -76,10 +76,10 @@ class Executor {
 			}
 		}
 		/**
-		 * run Метод запуска сетевого ядра
+		 * status Метод запуска сетевого ядра
 		 * @param status флаг запуска сетевого ядра
 		 */
-		void run(const awh::core_t::status_t status){
+		void status(const awh::core_t::status_t status){
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
@@ -126,7 +126,7 @@ int main(int argc, char * argv[]){
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.autoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::run, &executor, _1));
+	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
 	// Устанавливаем функцию обработки входящих сообщений
 	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
 	// Устанавливаем функцию обратного вызова при получении событий
