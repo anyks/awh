@@ -51,10 +51,15 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						} else {
 							// Создаём бъект активного брокера подключения
 							unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+							/**
+							 * !!!!!! ВНИМАНИЕ !!!!!!
+							 * Нельзя устанавливать таймаут на чтение и запись, так-как по истечению таймаута будет закрыт сокет сервера а не клиента
+							 * Примеры установки таймаутов здесь стоят для демонстрации, что их добавлять сюда не надо!!!
+							 */
 							// Устанавливаем таймаут начтение данных из сокета
-							broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+							// broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 							// Устанавливаем таймаут на запись данных в сокет
-							broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+							// broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 							// Определяем тип протокола подключения
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения IPv4
