@@ -65,9 +65,9 @@
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
 		// Выполняем поиск брокера
-		auto j = this->cluster->_jacks.find(this->wid);
+		auto j = this->cluster->_brokers.find(this->wid);
 		// Если брокер найден
-		if(j != this->cluster->_jacks.end()){
+		if(j != this->cluster->_brokers.end()){
 			// Выполняем поиск завершившегося процесса
 			for(auto & broker : j->second){
 				// Если процесс найден
@@ -129,9 +129,9 @@
 			// Идентификатор процесса приславший сообщение
 			pid_t pid = 0;
 			// Выполняем поиск текущего брокера
-			auto i = this->cluster->_jacks.find(this->wid);
+			auto i = this->cluster->_brokers.find(this->wid);
 			// Если текущий брокер найден
-			if(i != this->cluster->_jacks.end()){
+			if(i != this->cluster->_brokers.end()){
 				// Флаг найденного файлового дескриптора
 				bool found = false;
 				// Переходим по всему списку брокеров
@@ -215,9 +215,9 @@
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
 			// Выполняем поиск текущего брокера
-			auto i = this->cluster->_jacks.find(this->wid);
+			auto i = this->cluster->_brokers.find(this->wid);
 			// Если текущий брокер найден
-			if(i != this->cluster->_jacks.end()){
+			if(i != this->cluster->_brokers.end()){
 				// Получаем индекс текущего процесса
 				const uint16_t index = this->cluster->_pids.at(::getpid());
 				// Получаем объект текущего брокера
@@ -409,17 +409,17 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 			// Если не все форки созданы
 			if(index < i->second->count){
 				// Выполняем поиск брокера
-				auto j = this->_jacks.find(i->first);
+				auto j = this->_brokers.find(i->first);
 				// Если список брокеров ещё пустой
-				if((j == this->_jacks.end()) || j->second.empty()){
+				if((j == this->_brokers.end()) || j->second.empty()){
 					// Удаляем список дочерних процессов
 					this->_pids.clear();
 					// Если список брокеров еще не инициализирован
-					if(j == this->_jacks.end()){
+					if(j == this->_brokers.end()){
 						// Выполняем инициализацию списка брокеров
-						this->_jacks.emplace(i->first, vector <unique_ptr <broker_t>> ());
+						this->_brokers.emplace(i->first, vector <unique_ptr <broker_t>> ());
 						// Выполняем поиск брокера
-						j = this->_jacks.find(i->first);
+						j = this->_brokers.find(i->first);
 					}
 					// Выполняем создание указанное количество брокеров
 					for(size_t index = 0; index < i->second->count; index++){
@@ -507,6 +507,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, index);
 							{
+								// Выполняем активацию базы событий
+								event_reinit(this->_base);
 								// Получаем объект текущего брокера
 								broker_t * broker = j->second.at(index).get();
 								// Выполняем перебор всего списка брокеров
@@ -544,8 +546,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
 							}
-							// Выполняем активацию базы событий
-							event_reinit(this->_base);
 						// Если процесс превратился в зомби
 						} else {
 							// Процесс превратился в зомби, самоликвидируем его
@@ -596,9 +596,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 			// Если все процессы удачно созданы
 			} else if((i->second->working = !stop)) {
 				// Выполняем поиск брокера
-				auto j = this->_jacks.find(i->first);
+				auto j = this->_brokers.find(i->first);
 				// Если идентификатор воркера получен
-				if(j != this->_jacks.end()){
+				if(j != this->_brokers.end()){
 					// Если нужно отслеживать падение дочерних процессов
 					if(this->_trackCrash){
 						// Устанавливаем базу событий для перехвата сигналов дочерних процессов
@@ -647,9 +647,9 @@ set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
 	set <pid_t> result;
 	// Выполняем поиск брокеров
-	auto i = this->_jacks.find(wid);
+	auto i = this->_brokers.find(wid);
 	// Если брокер найден
-	if((i != this->_jacks.end()) && !i->second.empty()){
+	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -698,9 +698,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
 			// Выполняем поиск брокеров
-			auto i = this->_jacks.find(wid);
+			auto i = this->_brokers.find(wid);
 			// Если брокер найден
-			if((i != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((i != this->_brokers.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -747,9 +747,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
-			auto i = this->_jacks.find(wid);
+			auto i = this->_brokers.find(wid);
 			// Если брокер найден
-			if((i != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+			if((i != this->_brokers.end()) && (this->_pids.count(pid) > 0)){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -814,9 +814,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
-			auto i = this->_jacks.find(wid);
+			auto i = this->_brokers.find(wid);
 			// Если брокер найден
-			if((i != this->_jacks.end()) && !i->second.empty()){
+			if((i != this->_brokers.end()) && !i->second.empty()){
 				// Создаём объект сообщения
 				mess_t message;
 				// Смещение в буфере
@@ -879,15 +879,15 @@ void awh::Cluster::clear() noexcept {
 	// Удаляем список дочерних процессов
 	this->_pids.clear();
 	// Если список брокеров не пустой
-	if(!this->_jacks.empty()){
+	if(!this->_brokers.empty()){
 		// Переходим по всем брокерам
-		for(auto & item : this->_jacks)
+		for(auto & item : this->_brokers)
 			// Выполняем остановку процессов
 			this->stop(item.first);
 		// Выполняем очистку списка брокеров
-		this->_jacks.clear();
+		this->_brokers.clear();
 		// Выполняем освобождение выделенной памяти
-		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_jacks);
+		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
@@ -899,9 +899,9 @@ void awh::Cluster::clear() noexcept {
  */
 void awh::Cluster::close() noexcept {
 	// Если список брокеров не пустой
-	if(!this->_jacks.empty()){
+	if(!this->_brokers.empty()){
 		// Переходим по всем брокерам
-		for(auto & item : this->_jacks){
+		for(auto & item : this->_brokers){
 			/**
 			 * Если операционной системой не является Windows
 			 */
@@ -926,9 +926,9 @@ void awh::Cluster::close() noexcept {
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Выполняем поиск брокеров
-	auto i = this->_jacks.find(wid);
+	auto i = this->_brokers.find(wid);
 	// Если брокер найден
-	if((i != this->_jacks.end()) && !i->second.empty()){
+	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -952,9 +952,9 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
  */
 void awh::Cluster::stop(const uint16_t wid) noexcept {
 	// Выполняем поиск брокеров
-	auto j = this->_jacks.find(wid);
+	auto j = this->_brokers.find(wid);
 	// Если брокер найден
-	if((j != this->_jacks.end()) && !j->second.empty()){
+	if((j != this->_brokers.end()) && !j->second.empty()){
 		// Выполняем поиск воркера
 		auto i = this->_workers.find(j->first);
 		// Если процесс является родительским

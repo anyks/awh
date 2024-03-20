@@ -226,7 +226,7 @@ namespace awh {
 			// Список активных воркеров
 			map <uint16_t, unique_ptr <worker_t>> _workers;
 			// Список дочерних брокеров
-			map <uint16_t, vector <unique_ptr <broker_t>>> _jacks;
+			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект работы с базой событий
 			struct ev_loop * _base;
