@@ -56,10 +56,10 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							 * Нельзя устанавливать таймаут на чтение и запись, так-как по истечению таймаута будет закрыт сокет сервера а не клиента
 							 * Примеры установки таймаутов здесь стоят для демонстрации, что их добавлять сюда не надо!!!
 							 */
-							// Устанавливаем таймаут начтение данных из сокета
-							// broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
-							// Устанавливаем таймаут на запись данных в сокет
-							// broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
+							// Отключаем таймаут начтение данных из сокета
+							broker->timeout(0, engine_t::method_t::READ);
+							// Отключаем таймаут на запись данных в сокет
+							broker->timeout(0, engine_t::method_t::WRITE);
 							// Определяем тип протокола подключения
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения IPv4
@@ -1881,7 +1881,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							// Выходим из цикла
 							} else break;
 						// Выполняем чтение до тех пор, пока всё не прочитаем
-						} while(this->has(bid));
+						} while(((bytes == size) || (this->_settings.sonet != scheme_t::sonet_t::UDP)) && this->has(bid));
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
 						if((this->_settings.sonet != scheme_t::sonet_t::UDP) && this->has(bid))
 							// Запускаем событие на чтение базы событий
