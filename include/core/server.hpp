@@ -136,10 +136,10 @@ namespace awh {
 				void disable(const uint64_t bid) noexcept;
 			private:
 				/**
-				 * dtlsBroker Метод инициализации DTLS-брокера
+				 * initDTLS Метод инициализации DTLS-брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void dtlsBroker(const uint16_t sid) noexcept;
+				void initDTLS(const uint16_t sid) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента

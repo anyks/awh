@@ -1029,10 +1029,10 @@ void awh::server::Core::disable(const uint64_t bid) noexcept {
 	}
 }
 /**
- * dtlsBroker Метод инициализации DTLS-брокера
+ * initDTLS Метод инициализации DTLS-брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::dtlsBroker(const uint16_t sid) noexcept {
+void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 	// Если тип сокета установлен как DTLS и идентификатор схемы сети передан
 	if((this->_settings.sonet == scheme_t::sonet_t::DTLS) && this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
@@ -1304,7 +1304,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						// Если сокет подключения получен
 						if(this->create(shm->id))
 							// Выполняем создание нового DTLS-брокера
-							this->dtlsBroker(shm->id);
+							this->initDTLS(shm->id);
 						// Если сокет не создан, выводим в консоль информацию
 						else {
 							// Если unix-сокет используется
@@ -2128,7 +2128,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 								} break;
 							}
 							// Выполняем создание нового DTLS-брокера
-							this->dtlsBroker(sid);
+							this->initDTLS(sid);
 							// Выходим из функции
 							return;
 						// Если сокет не создан, выводим в консоль информацию
