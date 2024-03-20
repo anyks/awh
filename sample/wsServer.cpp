@@ -208,7 +208,7 @@ int main(int argc, char * argv[]){
 	// Выполняем установку параметров SSL-шифрования
 	core.ssl(ssl);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
-	// ws.clusterAutoRestart(true);
+	// core.clusterAutoRestart(true);
 	// Активируем максимальное количество рабочих процессов
 	core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Выполняем активацию многопоточности

@@ -526,7 +526,7 @@ void awh::server::ProxySocks5::total(const u_short total) noexcept {
  */
 void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 	// Выполняем установку флага автоматического перезапуска
-	this->_core.clusterAutoRestart(this->_scheme.id, mode);
+	this->_core.clusterAutoRestart(mode);
 }
 /**
  * cluster Метод установки количества процессов кластера
@@ -660,7 +660,7 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	// Добавляем схему сети в сетевое ядро
 	this->_core.scheme(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов
-	this->_core.clusterAutoRestart(this->_scheme.id, true);
+	this->_core.clusterAutoRestart(true);
 	// Выполняем биндинг сетевого ядра таймера
 	this->_core.bind(dynamic_cast <awh::core_t *> (&this->_timer));
 }

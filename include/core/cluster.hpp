@@ -147,12 +147,6 @@ namespace awh {
 				void callbacks(const fn_t & callbacks) noexcept;
 			public:
 				/**
-				 * async Метод установки флага асинхронного режима работы
-				 * @param wid  идентификатор воркера
-				 * @param mode флаг асинхронного режима работы
-				 */
-				void async(const bool mode) noexcept;
-				/**
 				 * size Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
@@ -162,6 +156,11 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void autoRestart(const bool mode) noexcept;
+				/**
+				 * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
+				 * @param mode флаг асинхронного режима обмена сообщениями
+				 */
+				void asyncMessages(const bool mode) noexcept;
 			public:
 				/**
 				 * Core Конструктор

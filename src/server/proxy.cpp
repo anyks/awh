@@ -1282,7 +1282,7 @@ void awh::server::Proxy::close(const uint64_t bid) noexcept {
  */
 void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
 	// Выполняем установку флага перезапуска процессов
-	this->_server.clusterAutoRestart(mode);
+	this->_core.clusterAutoRestart(mode);
 }
 /**
  * cluster Метод установки количества процессов кластера

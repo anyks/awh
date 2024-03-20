@@ -1069,19 +1069,6 @@ void awh::Cluster::trackCrash(const bool mode) noexcept {
 	this->_trackCrash = mode;
 }
 /**
- * async Метод установки флага асинхронного режима работы
- * @param wid  идентификатор воркера
- * @param mode флаг асинхронного режима работы
- */
-void awh::Cluster::async(const uint16_t wid, const bool mode) noexcept {
-	// Выполняем поиск идентификатора воркера
-	auto i = this->_workers.find(wid);
-	// Если вокер найден
-	if(i != this->_workers.end())
-		// Устанавливаем флаг асинхронного режима работы
-		i->second->async = mode;
-}
-/**
  * count Метод получения максимального количества процессов
  * @param wid идентификатор воркера
  * @return    максимальное количество процессов
@@ -1117,6 +1104,19 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 			// Устанавливаем один рабочий процесс
 			i->second->count = 1;
 	}
+}
+/**
+ * asyncMess Метод установки флага асинхронного режима обмена сообщениями
+ * @param wid  идентификатор воркера
+ * @param mode флаг асинхронного режима обмена сообщениями
+ */
+void awh::Cluster::asyncMess(const uint16_t wid, const bool mode) noexcept {
+	// Выполняем поиск идентификатора воркера
+	auto i = this->_workers.find(wid);
+	// Если вокер найден
+	if(i != this->_workers.end())
+		// Устанавливаем флаг асинхронного режима обмена сообщениями
+		i->second->async = mode;
 }
 /**
  * init Метод инициализации воркера

@@ -188,14 +188,6 @@ void awh::server::Websocket::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param mode флаг перезапуска процессов
- */
-void awh::server::Websocket::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага перезапуска процессов
-	this->_ws.clusterAutoRestart(mode);
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения

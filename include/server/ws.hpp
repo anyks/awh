@@ -196,11 +196,6 @@ namespace awh {
 				 */
 				void hosts(const string & filename) noexcept;
 				/**
-				 * clusterAutoRestart Метод установки флага перезапуска процессов
-				 * @param mode флаг перезапуска процессов
-				 */
-				void clusterAutoRestart(const bool mode) noexcept;
-				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения

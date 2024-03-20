@@ -403,14 +403,6 @@ void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
 	const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param mode флаг перезапуска процессов
- */
-void awh::server::Sample::clusterAutoRestart(const bool mode) noexcept {
-	// Выполняем установку флага автоматического перезапуска
-	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.id, mode);
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения

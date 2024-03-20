@@ -1441,6 +1441,8 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 					this->_cluster.trackCrash(this->_clusterAutoRestart);
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
 					this->_cluster.restart(sid, this->_clusterAutoRestart);
+					// Устанавливаем флаг асинхронного режима обмена сообщениями
+					this->_cluster.asyncMess(sid, this->_clusterAsyncMessages);
 					// Если количество процессов установленно
 					if(this->_clusterSize >= 0)
 						// Выполняем инициализацию кластера
@@ -2279,10 +2281,9 @@ void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept 
 }
 /**
  * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param sid  идентификатор схемы сети
  * @param mode флаг перезапуска процессов
  */
-void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) noexcept {
+void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -2291,6 +2292,31 @@ void awh::server::Core::clusterAutoRestart(const uint16_t sid, const bool mode) 
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * clusterAsyncMessages Метод установки флага асинхронного режима обмена сообщениями
+ * @param mode флаг асинхронного режима обмена сообщениями
+ */
+void awh::server::Core::clusterAsyncMessages(const bool mode) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Выполняем установку флага асинхронного режима обмена сообщениями
+		this->_clusterAsyncMessages = mode;
 	/**
 	 * Если операционной системой является Windows
 	 */

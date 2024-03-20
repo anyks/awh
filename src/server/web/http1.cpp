@@ -1508,16 +1508,6 @@ void awh::server::Http1::segmentSize(const size_t size) noexcept {
 	this->_ws1.segmentSize(size);
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
- * @param mode флаг перезапуска процессов
- */
-void awh::server::Http1::clusterAutoRestart(const bool mode) noexcept {
-	// Если объект сетевого ядра инициализирован
-	if(this->_core != nullptr)
-		// Выполняем установку флага автоматического перезапуска
-		const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.id, mode);
-}
-/**
  * keepAlive Метод установки жизни подключения
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения

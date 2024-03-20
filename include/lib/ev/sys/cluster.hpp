@@ -88,7 +88,7 @@ namespace awh {
 				public:
 					mutex mtx;         // Мютекс для блокировки потока
 					uint16_t wid;      // Идентификатор воркера
-					bool async;        // Флаг асинхронного режима работы
+					bool async;        // Флаг асинхронного режима обмена сообщениями
 					bool working;      // Флаг запуска работы
 					bool restart;      // Флаг автоматического перезапуска
 					uint16_t count;    // Количество рабочих процессов
@@ -328,13 +328,6 @@ namespace awh {
 			void trackCrash(const bool mode) noexcept;
 		public:
 			/**
-			 * async Метод установки флага асинхронного режима работы
-			 * @param wid  идентификатор воркера
-			 * @param mode флаг асинхронного режима работы
-			 */
-			void async(const uint16_t wid, const bool mode) noexcept;
-		public:
-			/**
 			 * count Метод получения максимального количества процессов
 			 * @param wid идентификатор воркера
 			 * @return    максимальное количество процессов
@@ -346,6 +339,13 @@ namespace awh {
 			 * @param count максимальное количество процессов
 			 */
 			void count(const uint16_t wid, const uint16_t count) noexcept;
+		public:
+			/**
+			 * asyncMess Метод установки флага асинхронного режима обмена сообщениями
+			 * @param wid  идентификатор воркера
+			 * @param mode флаг асинхронного режима обмена сообщениями
+			 */
+			void asyncMess(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * init Метод инициализации воркера

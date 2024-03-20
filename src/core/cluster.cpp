@@ -204,30 +204,6 @@ void awh::cluster::Core::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("message", callbacks);
 }
 /**
- * async Метод установки флага асинхронного режима работы
- * @param wid  идентификатор воркера
- * @param mode флаг асинхронного режима работы
- */
-void awh::cluster::Core::async(const bool mode) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем перевод кластера в асинхронный режим работы
-		this->_cluster.async(0, mode);
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
-}
-/**
  * size Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
@@ -267,6 +243,29 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 		this->_cluster.restart(0, this->_autoRestart);
 		// Устанавливаем флаг отслеживания упавших процессов
 		this->_cluster.trackCrash(this->_autoRestart);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
+ * @param mode флаг асинхронного режима обмена сообщениями
+ */
+void awh::cluster::Core::asyncMessages(const bool mode) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Устанавливаем флаг асинхронного режима обмена сообщениями
+		this->_cluster.asyncMess(0, mode);
 	/**
 	 * Если операционной системой является Windows
 	 */

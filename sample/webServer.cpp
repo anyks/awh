@@ -278,7 +278,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
-	// awh.clusterAutoRestart(true);
+	// core.clusterAutoRestart(true);
 	// Активируем максимальное количество рабочих процессов
 	core.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем режим мультипоточной обработки
