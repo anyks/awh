@@ -25,9 +25,6 @@ class Server {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект Сервера
-		server::sample_t * _sample;
 	public:
 		/**
 		 * accept Метод активации клиента на сервере

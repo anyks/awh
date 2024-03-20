@@ -26,9 +26,6 @@ class Executor {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект Websocket-сервера
-		server::websocket_t * _ws;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)

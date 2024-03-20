@@ -28,9 +28,6 @@ class WebClient {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
-	private:
-		// Объект веб-клиента
-		client::awh_t * _awh;
 	public:
 		/**
 		 * response Метод получения статуса результата запроса
@@ -50,8 +47,9 @@ class WebClient {
 		/**
 		 * active Метод идентификации активности на Web-клиенте
 		 * @param mode режим события подключения
+		 * @param awh  объект web-клиента
 		 */
-		void active(const client::web_t::mode_t mode){
+		void active(const client::web_t::mode_t mode, client::awh_t * awh){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			// Если подключение выполнено
@@ -69,9 +67,9 @@ class WebClient {
 				// Устанавливаем параметры запроса
 				req2.url = uri.parse("/api/v3/exchangeInfo?symbol=BTCUSDT");
 				// Выполняем первый запрос на сервер
-				this->_awh->send(std::move(req1));
+				awh->send(std::move(req1));
 				// Выполняем второй запрос на сервер
-				this->_awh->send(std::move(req2));
+				awh->send(std::move(req2));
 			}
 		}
 		/**
@@ -81,8 +79,9 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 * @param entity  тело ответа сервера
+		 * @param awh     объект web-клиента
 		 */
-		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity){
+		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -109,7 +108,7 @@ class WebClient {
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
-				this->_awh->stop();
+				awh->stop();
 		}
 		/**
 		 * headers Метод получения заголовков ответа сервера
@@ -136,8 +135,9 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param body    данные полученного тела сообщения
 		 * @param data    данные полученных заголовков сообщения
+		 * @param awh     объект web-клиента
 		 */
-		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers){
+		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -168,16 +168,15 @@ class WebClient {
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
-				this->_awh->stop();
+				awh->stop();
 		}
 	public:
 		/**
 		 * WebClient Конструктор
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
-		 * @param awh объект WEB-клиента
 		 */
-		WebClient(const fmk_t * fmk, const log_t * log, client::awh_t * awh) : _fmk(fmk), _log(log), _awh(awh) {}
+		WebClient(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
 /**
@@ -200,7 +199,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект WEB запроса
 	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
-	WebClient executor(&fmk, &log, &awh);
+	WebClient executor(&fmk, &log);
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
@@ -287,15 +286,15 @@ int main(int argc, char * argv[]){
 	 */
 	/*
 	// Устанавливаем метод активации подключения
-	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1));
+	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	// Устанавливаем метод получения сообщения сервера
 	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
 	// Устанавливаем метод получения заголовков
 	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения ответа с сервера
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6));
+	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы
