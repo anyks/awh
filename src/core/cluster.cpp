@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <cluster/core.hpp>
+#include <core/cluster.hpp>
 
 /**
  * active Метод вывода статуса работы сетевого ядра
@@ -31,12 +31,12 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (status_t::STOP): {
+			// Выполняем остановку кластера
+			this->_cluster.stop(0);
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
 				std::thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
-			// Выполняем остановку кластера
-			this->_cluster.stop(0);
 		} break;
 	}
 }
@@ -288,21 +288,14 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  awh::core_t(fmk, log), _pid(::getpid()), _size(1), _autoRestart(false), _cluster(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
-	// Выполняем установку базы данных
-	this->_cluster.base(this->_dispatch.base);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
+	// Выполняем установку базы данных
+	this->_cluster.base(this->_dispatch.base);
 	// Отключаем отслеживание упавших процессов
 	this->_cluster.trackCrash(this->_autoRestart);
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
-}
-/**
- * ~Core Деструктор
- */
-awh::cluster::Core::~Core() noexcept {
-	// Выполняем остановку сервера
-	this->stop();
 }

@@ -2240,7 +2240,7 @@ int main(int argc, char * argv[]){
 
 ### Example Cluster
 ```c++
-#include <cluster/core.hpp>
+#include <core/cluster.hpp>
 
 using namespace std;
 using namespace awh;

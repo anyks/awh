@@ -172,7 +172,7 @@ namespace awh {
 				/**
 				 * ~Core Деструктор
 				 */
-				~Core() noexcept;
+				~Core() noexcept {}
 		} core_t;
 	};
 };

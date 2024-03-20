@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cluster/core.hpp>
+#include <core/cluster.hpp>
 
 // Подключаем пространство имён
 using namespace std;
