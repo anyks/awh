@@ -50,7 +50,7 @@ void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const clus
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("events")){
 		// Определяем производится ли инициализация кластера
-		if(this->_pid == ::getpid()){
+		if(this->master()){
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
@@ -72,7 +72,7 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("message")){
 		// Определяем производится ли инициализация кластера
-		if(this->_pid == ::getpid())
+		if(this->master())
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", cluster_t::family_t::MASTER, pid, buffer, size);
 		// Если производится запуск воркера, если функция обратного вызова установлена
@@ -80,12 +80,12 @@ void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char
 	}
 }
 /**
- * master Метод проверки является ли процесс дочерним
+ * master Метод проверки является ли процесс родительским
  * @return результат проверки
  */
 bool awh::cluster::Core::master() const noexcept {
 	// Выводим результат проверки
-	return (this->_pid == ::getpid());
+	return this->_cluster.master();
 }
 /**
  * pids Метод получения списка дочерних процессов
@@ -128,7 +128,7 @@ void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const
  */
 void awh::cluster::Core::stop() noexcept {
 	// Если процесс является родительским
-	if(this->_pid == ::getpid()){
+	if(this->master()){
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система уже запущена
@@ -153,7 +153,7 @@ void awh::cluster::Core::stop() noexcept {
  */
 void awh::cluster::Core::start() noexcept {
 	// Если процесс является родительским
-	if(this->_pid == ::getpid()){
+	if(this->master()){
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если система ещё не запущена
@@ -237,12 +237,10 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Разрешаем автоматический перезапуск упавших процессов
-		this->_autoRestart = mode;
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
-		this->_cluster.restart(0, this->_autoRestart);
+		this->_cluster.restart(0, mode);
 		// Устанавливаем флаг отслеживания упавших процессов
-		this->_cluster.trackCrash(this->_autoRestart);
+		this->_cluster.trackCrash(mode);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -265,7 +263,7 @@ void awh::cluster::Core::asyncMessages(const bool mode) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Устанавливаем флаг асинхронного режима обмена сообщениями
-		this->_cluster.asyncMess(0, mode);
+		this->_cluster.asyncMessages(0, mode);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -283,16 +281,15 @@ void awh::cluster::Core::asyncMessages(const bool mode) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::core_t(fmk, log), _pid(::getpid()), _size(1), _autoRestart(false), _cluster(fmk, log) {
+awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _size(1), _cluster(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Отключаем отслеживание упавших процессов
+	this->_cluster.trackCrash(false);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
 	// Выполняем установку базы данных
 	this->_cluster.base(this->_dispatch.base);
-	// Отключаем отслеживание упавших процессов
-	this->_cluster.trackCrash(this->_autoRestart);
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений

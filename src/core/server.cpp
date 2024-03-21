@@ -38,7 +38,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					 */
 					try {
 						// Если процесс является дочерним
-						if(this->_pid != ::getpid()){
+						if(!this->master()){
 							// Выводим в консоль информацию
 							this->_log->print("Working in child processes for \"UDP-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 							// Если функция обратного вызова установлена
@@ -901,7 +901,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 		// Получаем объект подключения
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Определяем члена семейства кластера
-		const cluster_t::family_t family = (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
+		const cluster_t::family_t family = (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
@@ -997,7 +997,7 @@ void awh::server::Core::message(const uint16_t sid, const pid_t pid, const char 
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("message")){
 		// Определяем члена семейства кластера
-		switch(static_cast <uint8_t> (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+		switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 			// Если процесс является родительским
 			case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 				// Выполняем функцию обратного вызова
@@ -1084,6 +1084,14 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 			ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
 		}
 	}
+}
+/**
+ * master Метод проверки является ли процесс родительским
+ * @return результат проверки
+ */
+bool awh::server::Core::master() const noexcept {
+	// Выводим результат проверки
+	return this->_cluster.master();
 }
 /**
  * stop Метод остановки клиента
@@ -1442,7 +1450,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
 					this->_cluster.restart(sid, this->_clusterAutoRestart);
 					// Устанавливаем флаг асинхронного режима обмена сообщениями
-					this->_cluster.asyncMess(sid, this->_clusterAsyncMessages);
+					this->_cluster.asyncMessages(sid, this->_clusterAsyncMessages);
 					// Если количество процессов установленно
 					if(this->_clusterSize >= 0)
 						// Выполняем инициализацию кластера
@@ -1735,7 +1743,7 @@ set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
  */
 void awh::server::Core::send(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
@@ -1761,7 +1769,7 @@ void awh::server::Core::send(const uint16_t wid, const char * buffer, const size
  */
 void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения дочернему процессу
@@ -1786,7 +1794,7 @@ void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * b
  */
 void awh::server::Core::broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->_pid == ::getpid() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения всем дочерним процессам
@@ -2495,8 +2503,9 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(fmk, log), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterAsyncMessages(false),
+ _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов
@@ -2513,8 +2522,9 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _pid(::getpid()), _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ awh::node_t(dns, fmk, log), _cluster(fmk, log), _clusterSize(-1),
+ _clusterAutoRestart(false), _clusterAsyncMessages(false),
+ _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов

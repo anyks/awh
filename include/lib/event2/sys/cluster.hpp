@@ -263,6 +263,12 @@ namespace awh {
 			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
 		public:
 			/**
+			 * master Метод проверки является ли процесс родительским
+			 * @return результат проверки
+			 */
+			bool master() const noexcept;
+		public:
+			/**
 			 * working Метод проверки на запуск работы кластера
 			 * @param wid идентификатор воркера
 			 * @return    результат работы проверки
@@ -359,11 +365,11 @@ namespace awh {
 			void count(const uint16_t wid, const uint16_t count) noexcept;
 		public:
 			/**
-			 * asyncMess Метод установки флага асинхронного режима обмена сообщениями
+			 * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг асинхронного режима обмена сообщениями
 			 */
-			void asyncMess(const uint16_t wid, const bool mode) noexcept;
+			void asyncMessages(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * init Метод инициализации воркера

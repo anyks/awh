@@ -59,14 +59,8 @@ namespace awh {
 					OS_BROKEN = 0x03  // Ошибка неподдерживаемой ОС
 				};
 			private:
-				// Идентификатор активного дочернего прцоесса
-				pid_t _pid;
-			private:
 				// Размер кластера
 				uint16_t _size;
-			private:
-				// Флаг автоматического перезапуска упавших процессов
-				bool _autoRestart;
 			private:
 				// Объект кластера
 				cluster_t _cluster;
@@ -95,7 +89,7 @@ namespace awh {
 				void message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
-				 * master Метод проверки является ли процесс дочерним
+				 * master Метод проверки является ли процесс родительским
 				 * @return результат проверки
 				 */
 				bool master() const noexcept;

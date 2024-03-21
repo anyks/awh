@@ -624,6 +624,14 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 	#endif
 }
 /**
+ * master Метод проверки является ли процесс родительским
+ * @return результат проверки
+ */
+bool awh::Cluster::master() const noexcept {
+	// Выполняем проверку является ли процесс родительским
+	return (this->_pid == static_cast <pid_t> (::getpid()));
+}
+/**
  * working Метод проверки на запуск работы кластера
  * @param wid идентификатор воркера
  * @return    результат работы проверки
@@ -1106,11 +1114,11 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 	}
 }
 /**
- * asyncMess Метод установки флага асинхронного режима обмена сообщениями
+ * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
  * @param wid  идентификатор воркера
  * @param mode флаг асинхронного режима обмена сообщениями
  */
-void awh::Cluster::asyncMess(const uint16_t wid, const bool mode) noexcept {
+void awh::Cluster::asyncMessages(const uint16_t wid, const bool mode) noexcept {
 	// Выполняем поиск идентификатора воркера
 	auto i = this->_workers.find(wid);
 	// Если вокер найден

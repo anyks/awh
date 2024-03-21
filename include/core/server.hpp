@@ -64,8 +64,6 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
-				// Идентификатор активного дочернего прцоесса
-				pid_t _pid;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -140,6 +138,12 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void initDTLS(const uint16_t sid) noexcept;
+			public:
+				/**
+				 * master Метод проверки является ли процесс родительским
+				 * @return результат проверки
+				 */
+				bool master() const noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
