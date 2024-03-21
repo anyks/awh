@@ -54,28 +54,6 @@ namespace awh {
 		 * Message Структура сообщений удалённой стороны
 		 */
 		typedef class Message {
-			private:
-				/**
-				 * Коды сообщений
-				 */
-				map <uint16_t, pair <string, string>> codes = {
-					{1000, {"CLOSE_NORMAL", "Successful operation/regular socket shutdown"}},
-					{1001, {"CLOSE_GOING_AWAY", "Client is leaving (browser tab closing)"}},
-					{1002, {"CLOSE_PROTOCOL_ERROR", "Endpoint received a malformed frame"}},
-					{1003, {"CLOSE_UNSUPPORTED", "Endpoint received an unsupported frame (e.g. binary-only endpoint received text frame)"}},
-					{1004, {"CLOSE_RESERVED", "Reserved"}},
-					{1005, {"CLOSED_NO_STATUS", "Expected close status, received none"}},
-					{1006, {"CLOSE_ABNORMAL", "No close code frame has been receieved"}},
-					{1007, {"CLOSE_UNSUPPORTED_PAYLOAD", "Endpoint received inconsistent message (e.g. malformed UTF-8)"}},
-					{1008, {"CLOSE_POLICY_VIOLATION", "Generic code used for situations other than 1003 and 1009"}},
-					{1009, {"CLOSE_TOO_LARGE", "Endpoint won't process large frame"}},
-					{1010, {"CLOSE_MANDATORY_EXTENSION", "Client wanted an extension which server did not negotiate"}},
-					{1011, {"CLOSE_SERVER_ERROR", "Internal server error while operating"}},
-					{1012, {"CLOSE_SERVICE_RESTART", "Server/service is restarting"}},
-					{1013, {"CLOSE_TRY_AGAIN_LATER", "Temporary server condition forced blocking client's request"}},
-					{1014, {"CLOSE_BAD_GATEWAY", "Server acting as gateway received an invalid response"}},
-					{1015, {"CLOSE_TLS_HANDSHAKE_FAIL", "Transport Layer Security handshake failure"}}
-				};
 			public:
 				// Код сообщения
 				uint16_t code;
@@ -83,60 +61,53 @@ namespace awh {
 				string text, type;
 			private:
 				/**
+				 * Коды сообщений
+				 */
+				map <uint16_t, pair <string, string>> _codes;
+			private:
+				/**
 				 * find Метод поиска типа сообщения
 				 */
-				void find() noexcept {
-					// Если код сообщения передан
-					if(code > 0){
-						// Выполняем поиск типа сообщений
-						auto it = this->codes.find(this->code);
-						// Если тип сообщения найден, устанавливаем
-						if(it != this->codes.end()){
-							// Устанавливаем тип сообщения
-							this->type = it->second.first;
-							// Устанавливаем текст сообщения
-							if(this->text.empty()) this->text = it->second.second;
-						}
-					}
-				}
+				void find() noexcept;
+			private:
+				/**
+				 * init Метод инициализации модуля
+				 */
+				void init() noexcept;
 			public:
 				/**
 				 * operator= Оператор установки текстового сообщения
 				 * @param text текст сообщения
 				 * @return     ссылка на контекст объекта
 				 */
-				Message & operator=(const string & text) noexcept {
-					// Устанавливаем текст сообщения
-					if(!text.empty()) this->text = text;
-					// Выводим контекст текущего объекта
-					return (* this);
-				}
+				Message & operator = (const string & text) noexcept;
 				/**
 				 * operator= Оператор установки кода сообщения
 				 * @param code код сообщения
 				 * @return     ссылка на контекст объекта
 				 */
-				Message & operator=(const uint16_t code) noexcept {
-					// Если код сообщения передан
-					if(code > 0){
-						// Устанавливаем код сообщения
-						this->code = code;
-						// Выполняем поиск сообщения
-						this->find();
-					}
-					// Выводим контекст текущего объекта
-					return (* this);
-				}
+				Message & operator = (const uint16_t code) noexcept;
 			public:
+				/**
+				 * Message Конструктор
+				 */
+				Message() noexcept;
+				/**
+				 * Message Конструктор
+				 * @param code код сообщения
+				 */
+				Message(const uint16_t code) noexcept;
+				/**
+				 * Message Конструктор
+				 * @param text текст сообщения
+				 */
+				Message(const string & text) noexcept;
 				/**
 				 * Message Конструктор
 				 * @param code код сообщения
 				 * @param text текст сообщения
 				 */
-				Message(const uint16_t code = 0, const string & text = "") noexcept : code(code), text(text), type("") {
-					// Выполняем поиск сообщения
-					this->find();
-				}
+				Message(const uint16_t code, const string & text) noexcept;
 		} mess_t;
 		/**
 		 * Frame Класс для работы с фреймом WebSocket

@@ -180,8 +180,8 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 					// Есла данных передано больше чем обработано
 					if(this->_buffer.size() > bytes)
 						// Удаляем количество обработанных байт
-						// this->_buffer.assign(this->_buffer.begin() + bytes, this->_buffer.end());
-						vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+						this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes);
+						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
 					// Если данных в буфере больше нет, очищаем буфер собранных данных
 					else this->_buffer.clear();
 					// Если все данные получены
@@ -870,8 +870,8 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 				// Если размер буфера больше количества удаляемых байт
 				if((receive = (this->_buffer.size() >= head.frame)))
 					// Удаляем количество обработанных байт
-					// this->_buffer.assign(this->_buffer.begin() + head.frame, this->_buffer.end());
-					vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+					this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + head.frame);
+					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){
@@ -1053,7 +1053,7 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
 						// Выводим отправляемое сообщение
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
@@ -1087,9 +1087,10 @@ void awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 				/**
 				 * Если включён режим отладки
 				 */
+				/*
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << endl;
 					// Если отправляемое сообщение является текстом
 					if(text)
 						// Выводим параметры ответа
@@ -1097,6 +1098,7 @@ void awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 					// Выводим сообщение о выводе чанка полезной нагрузки
 					else cout << this->_fmk->format("<bytes %zu>", message.size()) << endl << endl;
 				#endif
+				*/
 				// Создаём объект заголовка для отправки
 				ws::frame_t::head_t head(true, true);
 				// Если нужно производить шифрование

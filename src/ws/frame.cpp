@@ -16,6 +16,116 @@
 #include <ws/frame.hpp>
 
 /**
+ * find Метод поиска типа сообщения
+ */
+void awh::ws::Message::find() noexcept {
+	// Если код сообщения передан
+	if(this->code > 0){
+		// Выполняем поиск типа сообщений
+		auto it = this->_codes.find(this->code);
+		// Если тип сообщения найден, устанавливаем
+		if(it != this->_codes.end()){
+			// Устанавливаем тип сообщения
+			this->type = it->second.first;
+			// Если текст сообщения получен
+			if(this->text.empty())
+				// Устанавливаем текст сообщения
+				this->text = it->second.second;
+		}
+	}
+}
+/**
+ * init Метод инициализации модуля
+ */
+void awh::ws::Message::init() noexcept {
+	// Выполняем установку расшифровки кодов ошибок
+	this->_codes = {
+		{1000, {"CLOSE_NORMAL", "Successful operation/regular socket shutdown"}},
+		{1001, {"CLOSE_GOING_AWAY", "Client is leaving (browser tab closing)"}},
+		{1002, {"CLOSE_PROTOCOL_ERROR", "Endpoint received a malformed frame"}},
+		{1003, {"CLOSE_UNSUPPORTED", "Endpoint received an unsupported frame (e.g. binary-only endpoint received text frame)"}},
+		{1004, {"CLOSE_RESERVED", "Reserved"}},
+		{1005, {"CLOSED_NO_STATUS", "Expected close status, received none"}},
+		{1006, {"CLOSE_ABNORMAL", "No close code frame has been receieved"}},
+		{1007, {"CLOSE_UNSUPPORTED_PAYLOAD", "Endpoint received inconsistent message (e.g. malformed UTF-8)"}},
+		{1008, {"CLOSE_POLICY_VIOLATION", "Generic code used for situations other than 1003 and 1009"}},
+		{1009, {"CLOSE_TOO_LARGE", "Endpoint won't process large frame"}},
+		{1010, {"CLOSE_MANDATORY_EXTENSION", "Client wanted an extension which server did not negotiate"}},
+		{1011, {"CLOSE_SERVER_ERROR", "Internal server error while operating"}},
+		{1012, {"CLOSE_SERVICE_RESTART", "Server/service is restarting"}},
+		{1013, {"CLOSE_TRY_AGAIN_LATER", "Temporary server condition forced blocking client's request"}},
+		{1014, {"CLOSE_BAD_GATEWAY", "Server acting as gateway received an invalid response"}},
+		{1015, {"CLOSE_TLS_HANDSHAKE_FAIL", "Transport Layer Security handshake failure"}}
+	};
+}
+/**
+ * operator= Оператор установки текстового сообщения
+ * @param text текст сообщения
+ * @return     ссылка на контекст объекта
+ */
+awh::ws::Message & awh::ws::Message::operator = (const string & text) noexcept {
+	// Если текст сообщения передан
+	if(!text.empty())
+		// Устанавливаем текст сообщения
+		this->text = text;
+	// Выводим контекст текущего объекта
+	return (* this);
+}
+/**
+ * operator= Оператор установки кода сообщения
+ * @param code код сообщения
+ * @return     ссылка на контекст объекта
+ */
+awh::ws::Message & awh::ws::Message::operator = (const uint16_t code) noexcept {
+	// Если код сообщения передан
+	if(code > 0){
+		// Устанавливаем код сообщения
+		this->code = code;
+		// Выполняем поиск сообщения
+		this->find();
+	}
+	// Выводим контекст текущего объекта
+	return (* this);
+}
+/**
+ * Message Конструктор
+ */
+awh::ws::Message::Message() noexcept : code(0), text{""}, type{""} {
+	// Выполняем инициализацию модуля
+	this->init();
+}
+/**
+ * Message Конструктор
+ * @param code код сообщения
+ */
+awh::ws::Message::Message(const uint16_t code) noexcept : code(code), text{""}, type{""} {
+	// Выполняем инициализацию модуля
+	this->init();
+	// Выполняем поиск сообщения
+	this->find();
+}
+/**
+ * Message Конструктор
+ * @param text текст сообщения
+ */
+awh::ws::Message::Message(const string & text) noexcept : code(0), text{text}, type{""} {
+	// Выполняем инициализацию модуля
+	this->init();
+	// Выполняем поиск сообщения
+	this->find();
+}
+/**
+ * Message Конструктор
+ * @param code код сообщения
+ * @param text текст сообщения
+ */
+awh::ws::Message::Message(const uint16_t code, const string & text) noexcept : code(code), text{text}, type{""} {
+	// Выполняем инициализацию модуля
+	this->init();
+	// Выполняем поиск сообщения
+	this->find();
+}
+/**
  * head Метод извлечения заголовка фрейма
  * @param head   объект для извлечения заголовка
  * @param buffer буфер с данными заголовка
@@ -24,18 +134,18 @@
 void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Если данные переданы
 	if((buffer != nullptr) && (size >= 2)){
-		// Получаем наличие маски
-		head.mask = (buffer[1] & 0x80);
-		// Получаем малый размер полезной нагрузки
-		head.payload = (buffer[1] & 0x7F);
 		// Определяем является ли сообщение последним
 		head.fin = (buffer[0] & 0x80);
+		// Получаем наличие маски
+		head.mask = (buffer[1] & 0x80);
 		// Определяем байты расширенного протокола
 		head.rsv[0] = (buffer[0] & 0x40);
 		head.rsv[1] = (buffer[0] & 0x20);
 		head.rsv[2] = (buffer[0] & 0x10);
 		// Получаем опкод
 		head.optcode = opcode_t(buffer[0] & 0x0F);
+		// Получаем малый размер полезной нагрузки
+		head.payload = static_cast <uint64_t> (buffer[1] & 0x7F);
 		// Если размер пересылаемых данных, имеет малый размер
 		if(head.payload < 0x7E)
 			// Получаем размер блока заголовков
@@ -49,7 +159,7 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 			// Получаем размер данных
 			::memcpy(&size, buffer + 2, sizeof(size));
 			// Преобразуем сетевой порядок расположения байтов
-			head.payload = ntohs(size);
+			head.payload = static_cast <uint64_t> (ntohs(size));
 		// Если размер пересылаемых данных, имеет очень большой размер
 		} else if((head.payload == 0x7F) && (size >= 10)) {
 			// Получаем размер блока заголовков
@@ -57,7 +167,7 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 			// Получаем размер данных
 			::memcpy(&head.payload, buffer + 2, sizeof(head.payload));
 			// Преобразуем сетевой порядок расположения байтов
-			head.payload = ntohl(head.payload);
+			head.payload = static_cast <uint64_t> (ntohl(head.payload));
 		}
 	}
 }
@@ -88,9 +198,9 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Увеличиваем память ещё на два байта
 			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t length = htons(static_cast <uint16_t> (size));
+			const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size)));
 			// Устанавливаем размер строки в следующие 2 байта
-			::memcpy(payload.data() + 2, &length, sizeof(length));
+			::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
 		// Если сообщение очень большого размера
 		} else {
 			// Устанавливаем смещение в буфере
@@ -100,9 +210,9 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Увеличиваем память ещё на восемь байт
 			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
-			const uint64_t length = htonl(size);
+			const uint64_t bytes = static_cast <uint64_t> (htonl(size));
 			// Устанавливаем размер строки в следующие 8 байт
-			::memcpy(payload.data() + 2, &length, sizeof(length));
+			::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
 		}
 		// Если нужно выполнить маскировку сообщения
 		if(mask){
@@ -153,7 +263,7 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 		// Размер смещения в буфере
 		uint16_t offset = 0;
 		// Размер передаваемых данных
-		uint64_t size = mess.text.size();
+		uint64_t size = static_cast <uint64_t> (mess.text.size());
 		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
 		if(size < 0x7E){
 			// Устанавливаем смещение в буфере
@@ -169,16 +279,18 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			// Заполняем второй байт максимальным значением
 			result.at(1) = (static_cast <char> (0x7F & 0x7E));
 			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t length = htons(static_cast <uint16_t> (size + 2));
+			const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size + 2)));
 			// Устанавливаем размер строки в следующие 2 байта
-			::memcpy(result.data() + 2, &length, sizeof(length));
+			::memcpy(result.data() + 2, &bytes, sizeof(bytes));
 		}
 		// Получаем код сообщения
 		const uint16_t code = htons(mess.code);
 		// Устанавливаем код сообщения
 		::memcpy(result.data() + offset, &code, sizeof(code));
-		// Выполняем копирования оставшихся данных в буфер
-		if(!mess.text.empty()) result.insert(result.end(), mess.text.begin(), mess.text.end());
+		// Если данные текстового сообщения получены
+		if(!mess.text.empty())
+			// Выполняем копирования оставшихся данных в буфер
+			result.insert(result.end(), mess.text.begin(), mess.text.end());
 	}
 	// Выводим результат
 	return result;
@@ -272,46 +384,48 @@ vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const n
 vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
-	// Выполняем чтение заголовков
-	this->head(head, buffer, size);
 	// Если данные переданы в достаточном объёме
-	if((buffer != nullptr) && (static_cast <size_t> (head.payload + head.size) <= size)){
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем чтение заголовков
+		this->head(head, buffer, size);
 		// Получаем размер смещения
-		head.frame = head.size;
-		// Проверяем являются ли данные Пингом
-		const bool modPing = (head.optcode == opcode_t::PING);
-		// Проверяем являются ли данные Понгом
-		const bool modPong = (head.optcode == opcode_t::PONG);
-		// Проверяем являются ли данные текстовыми
-		const bool modText = (head.optcode == opcode_t::TEXT);
-		// Проверяем являются ли данные бинарными
-		const bool modBin = (head.optcode == opcode_t::BINARY);
-		// Проверяем является ли сообщение закрытием
-		const bool modMess = (head.optcode == opcode_t::CLOSE);
-		// Проверяем является ли сообщение продолжением фрагментированного текста
-		const bool modCont = (head.optcode == opcode_t::CONTINUATION);
-		// Если входящие данные не являются мусоромы
-		if(modText || modBin || modPing || modPong || modMess || modCont){
-			// Бинарные данные маски
-			vector <u_char> mask(4);
-			// Если маска требуется, маскируем данные
-			if(head.mask){
-				// Считываем ключ маски
-				::memcpy(mask.data(), buffer + head.frame, 4);
-				// Увеличиваем размер смещения
-				head.frame += 4;
+		head.frame = static_cast <uint64_t> (head.size);
+		// Получаем общее количество байтов
+		uint64_t bytes = (head.payload + head.frame);
+		// Если данные переданы в достаточном объёме для проверки входящих данных
+		if(static_cast <size_t> (bytes) <= size){
+			// Если входящие данные не являются мусоромы
+			if((head.optcode == opcode_t::TEXT) || (head.optcode == opcode_t::BINARY) ||
+			   (head.optcode == opcode_t::PING) || (head.optcode == opcode_t::PONG) ||
+			   (head.optcode == opcode_t::CLOSE) || (head.optcode == opcode_t::CONTINUATION)){
+				// Если маска требуется, маскируем данные
+				if(head.mask)
+					// Увеличиваем количество ожидаемых байт
+					bytes += 4;
+				// Если ожидаемых байт фрейма достаточно для обработки
+				if(static_cast <size_t> (bytes) <= size){
+					// Бинарные данные маски
+					u_char mask[4];
+					// Если маска требуется, маскируем данные
+					if(head.mask){
+						// Считываем ключ маски
+						::memcpy(mask, buffer + head.frame, 4);
+						// Увеличиваем размер смещения
+						head.frame += 4;
+					}
+					// Получаем оставшиеся данные полезной нагрузки
+					result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
+					// Если маска требуется, размаскируем данные
+					if(head.mask){
+						// Выполняем перебор всех байт передаваемых данных
+						for(size_t i = 0; i < result.size(); i++)
+							// Выполняем шифрование данных
+							result.at(i) ^= mask[i % 4];
+					}
+					// Увеличиваем размер смещения
+					head.frame += head.payload;
+				}
 			}
-			// Получаем оставшиеся данные полезной нагрузки
-			result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
-			// Если маска требуется, размаскируем данные
-			if(head.mask){
-				// Выполняем перебор всех байт передаваемых данных
-				for(size_t i = 0; i < result.size(); i++)
-					// Выполняем шифрование данных
-					result.at(i) ^= mask[i % 4];
-			}
-			// Увеличиваем размер смещения
-			head.frame += head.payload;
 		}
 	}
 	// Выводим результат

@@ -551,8 +551,8 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										// Если размер буфера больше количества удаляемых байт
 										if((receive = (options->buffer.payload.size() >= head.frame)))
 											// Удаляем количество обработанных байт
-											// options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
-											vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+											options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
+											// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
 									}
 									// Если сообщения получены
 									if(!buffer.empty()){
@@ -1227,7 +1227,7 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим отправляемое сообщение
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
@@ -1271,7 +1271,7 @@ void awh::server::Websocket2::sendMessage(const uint64_t bid, const vector <char
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << endl;
 						// Если отправляемое сообщение является текстом
 						if(text)
 							// Выводим параметры ответа

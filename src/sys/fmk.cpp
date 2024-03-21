@@ -2892,52 +2892,59 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
  * @return    размер буфера в байтах
  */
 size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
-	/*
-	* Help - http://www.securitylab.ru/analytics/243414.php
-	*
-	* 0.04 - Пропускная способность сети 40 милисекунд
-	* 100 - Скорость в мегабитах (Мб) на пользователя
-	* 125000 - количество байт в мегабите
-	* (2 * 0.04) * (100 * 125000) = 1 МБ
-	*
-	*/
-	// Размер количество байт
-	size_t size = 0;
+	/**
+	 * Readme - http://www.securitylab.ru/analytics/243414.php
+	 * 
+	 * Example: 17520 Байт / .04 секунды = .44 МБ/сек = 3.5 Мб/сек
+	 * Description: Пропускная способность = размер буфера / задержка
+	 * 
+	 * 1. Количество байт в киллобайте: 1024
+	 * 2. Количество байт в мегабайте: 1024000
+	 * 3. Количество байт в гигабайте: 1024000000
+	 * 
+	 * Размер буфера: 65536
+	 * Задержка сети: .04
+	 * Количество бит в байте: 8
+	 * 
+	 * 65536 / .04 / 1024000 = 1.6 (МБ/сек) * 8 = 13 Мб/сек
+	 * 
+	 * Получение размера буфера
+	 * (13 / 8) * (1024000 * .04) = 66560
+	 * 
+	 */
+	// Результат работы функции
+	size_t result = 0;
 	// Выполняем проверку входящей строки
 	const auto & match = this->_regexp.exec(str, this->_buffers);
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность скорости
-		float dimension = 1.f;
+		float dimension = .0f;
 		// Получаем значение скорости
-		float speed = ::stof(match[1]);
+		const float speed = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-		bool isbite = !::fmod(speed / 8.f, 2.f);
+		const bool bytes = !::fmod(speed / 8.f, 2.f);
 		// Если это биты
 		if(match[2].compare("bps") == 0)
 			// Выполняем установку множителя
-			dimension = .125f;
+			dimension = 1.f;
 		// Если это размерность в киллобитах
 		else if(match[2].compare("kbps") == 0)
 			// Выполняем установку множителя
-			dimension = (isbite ? 100.f : 125.f);
+			dimension = (bytes ? 1000.f : 1024.f);
 		// Если это размерность в мегабитах
 		else if(match[2].compare("Mbps") == 0)
 			// Выполняем установку множителя
-			dimension = (isbite ? 100000.f : 125000.f);
+			dimension = (bytes ? 1000000.f : 1024000.f);
 		// Если это размерность в гигабитах
 		else if(match[2].compare("Gbps") == 0)
 			// Выполняем установку множителя
-			dimension = (isbite ? 1000000000.f : 2500000000.f);
-		// Размер буфера по умолчанию
-		size = static_cast <size_t> (speed);
-		// Если скорость установлена тогда расчитываем размер буфера
-		if(speed > -1.f)
-			// Выполняем получение размера в байтах
-			size = ((2.f * .04f) * (speed * dimension));
+			dimension = (bytes ? 1000000000.f : 1024000000.f);
+		// Выполняем получение размера в байтах
+		result = ((speed / 8) * (dimension * .04));
 	}
 	// Выводим результат
-	return size;
+	return result;
 }
 /**
  * Framework Конструктор

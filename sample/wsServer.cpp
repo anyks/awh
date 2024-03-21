@@ -75,12 +75,12 @@ class Executor {
 			// Определяем флаг события сервера
 			switch(static_cast <uint8_t> (mode)){
 				// Если клиент подключился к серверу
-				case static_cast <uint8_t> (server::web_t::mode_t::OPEN): {
+				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT):
 					// Выводим информацию в лог
 					this->_log->print("CONNECT", log_t::flag_t::INFO);
-				} break;
+				break;
 				// Если клиент отключился от сервера
-				case static_cast <uint8_t> (server::web_t::mode_t::CLOSE):
+				case static_cast <uint8_t> (server::web_t::mode_t::DISCONNECT):
 					// Выводим информацию в лог
 					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
 				break;

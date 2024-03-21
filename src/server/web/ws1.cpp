@@ -178,8 +178,8 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							// Если размер буфера больше количества удаляемых байт
 							if(options->buffer.payload.size() >= bytes)
 								// Удаляем количество обработанных байт
-								// options->buffer.payload.assign(options->buffer.payload.begin() + bytes, options->buffer.payload.end());
-								vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + bytes, options->buffer.payload.end()).swap(options->buffer.payload);
+								options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + bytes);
+								// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + bytes, options->buffer.payload.end()).swap(options->buffer.payload);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.payload.clear();
 						}
@@ -561,8 +561,8 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Если размер буфера больше количества удаляемых байт
 								if((receive = (options->buffer.payload.size() >= head.frame)))
 									// Удаляем количество обработанных байт
-									// options->buffer.payload.assign(options->buffer.payload.begin() + head.frame, options->buffer.payload.end());
-									vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+									options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
+									// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
 							}
 							// Если сообщения получены
 							if(!buffer.empty()){
@@ -956,7 +956,7 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
 						// Выводим отправляемое сообщение
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
@@ -993,7 +993,7 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << endl;
 					// Если отправляемое сообщение является текстом
 					if(text)
 						// Выводим параметры ответа

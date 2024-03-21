@@ -696,10 +696,10 @@ class Executor {
 			(void) bid;
 
 			switch(static_cast <uint8_t> (mode)){
-				case static_cast <uint8_t> (server::web_t::mode_t::OPEN):
+				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT):
 					this->_log->print("CONNECT", log_t::flag_t::INFO);
 				break;
-				case static_cast <uint8_t> (server::web_t::mode_t::CLOSE):
+				case static_cast <uint8_t> (server::web_t::mode_t::DISCONNECT):
 					this->_log->print("DISCONNECT", log_t::flag_t::INFO);
 				break;
 			}
