@@ -103,8 +103,6 @@ namespace awh {
 			net_t _net;
 			// Объект работы с URI-адресами
 			uri_t _uri;
-			// Объект работы с сокетами
-			socket_t _socket;
 			// Объект для работы с сетевым двигателем
 			engine_t _engine;
 			// Объект сетевых параметров
@@ -233,7 +231,7 @@ namespace awh {
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
+			virtual void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
 		public:
 			/**
 			 * events Метод активации/деактивации метода события сокета
@@ -305,8 +303,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _socket(fmk, log), _engine(fmk, log, &_uri), _dns(nullptr) {}
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri), _dns(nullptr) {}
 			/**
 			 * Core Конструктор
 			 * @param dns объект DNS-резолвера
@@ -314,8 +311,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _socket(fmk, log), _engine(fmk, log, &_uri), _dns(dns) {}
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri), _dns(dns) {}
 			/**
 			 * ~Node Деструктор
 			 */

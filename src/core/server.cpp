@@ -2498,12 +2498,65 @@ void awh::server::Core::init(const uint16_t sid, const u_int port, const string 
 	}
 }
 /**
+ * bandwidth Метод установки пропускной способности сети
+ * @param bid   идентификатор брокера
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const string & write) noexcept {
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Определяем тип сокета
+		switch(static_cast <uint8_t> (this->_settings.sonet)){
+			// Если тип сокета установлен как TCP/IP
+			case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+			// Если тип сокета установлен как TCP/IP TLS
+			case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+			// Если тип сокета установлен как DTLS
+			case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+			// Если тип сокета установлен как SCTP
+			case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+				// Устанавливаем размер буфера
+				broker->_ectx.buffer(
+					static_cast <int> (!read.empty() ? this->_fmk->sizeBuffer(read) : 0),
+					static_cast <int> (!write.empty() ? this->_fmk->sizeBuffer(write) : 0)
+				);
+			break;
+			// Если тип сокета установлен как UDP
+			case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
+				// Выполняем поиск идентификатора схемы сети
+				auto i = this->_schemes.find(broker->sid());
+				// Если идентификатор схемы сети найден
+				if(i != this->_schemes.end()){
+					// Получаем объект схемы сети
+					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+					// Если размер буфера данных для чтения передан
+					if(!read.empty())
+						// Выполняем установку размера буфера сокета для чтения данных
+						this->_socket.bufferSize(shm->_addr.fd, static_cast <int> (this->_fmk->sizeBuffer(read)), socket_t::mode_t::READ);
+					// Выполняем установку размера буфера сокета для чтения данных по умолчанию
+					else this->_socket.bufferSize(shm->_addr.fd, 0, socket_t::mode_t::READ);
+					// Если размер буфера данных для записи передан
+					if(!write.empty())
+						// Выполняем установку размера буфера сокета для записи данных
+						this->_socket.bufferSize(shm->_addr.fd, static_cast <int> (this->_fmk->sizeBuffer(write)), socket_t::mode_t::WRITE);
+					// Выполняем установку размера буфера сокета для записи данных по умолчанию
+					else this->_socket.bufferSize(shm->_addr.fd, 0, socket_t::mode_t::WRITE);
+				}
+			} break;
+		}
+	}
+}
+/**
  * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _cluster(fmk, log), _clusterSize(-1),
+ awh::node_t(fmk, log), _socket(fmk, log),
+ _cluster(fmk, log), _clusterSize(-1),
  _clusterAutoRestart(false), _clusterAsyncMessages(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра
@@ -2522,7 +2575,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _cluster(fmk, log), _clusterSize(-1),
+ awh::node_t(dns, fmk, log), _socket(fmk, log),
+ _cluster(fmk, log), _clusterSize(-1),
  _clusterAutoRestart(false), _clusterAsyncMessages(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED) {
 	// Устанавливаем тип запускаемого ядра

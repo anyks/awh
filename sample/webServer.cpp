@@ -72,10 +72,24 @@ class WebServer {
 		 * active Метод идентификации активности на Web сервере
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode режим события подключения
+		 * @param core объект сетевого ядра
 		 */
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			// Выводим информацию в лог
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const uint64_t bid, const server::web_t::mode_t mode, server::core_t * core){
+			// Определяем тип события
+			switch(static_cast <uint8_t> (mode)){
+				// Если произведено подключение клиента к серверу
+				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT): {
+					// Выполняем установку ограничения пропускной способности сети
+					core->bandwidth(bid, "1Mbps", "1Mbps");
+					// Выводим информацию в лог
+					this->_log->print("%s client", log_t::flag_t::INFO, "Connect");
+				} break;
+				// Если произведено отключение клиента от сервера
+				case static_cast <uint8_t> (server::web_t::mode_t::DISCONNECT):
+					// Выводим информацию в лог
+					this->_log->print("%s client", log_t::flag_t::INFO, "Disconnect");
+				break;
+			}
 		}
 		/**
 		 * error Метод вывода ошибок Websocket сервера
@@ -330,10 +344,10 @@ int main(int argc, char * argv[]){
 	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
-	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2, &core));
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений

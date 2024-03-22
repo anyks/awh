@@ -1248,15 +1248,12 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									::memset(buffer.get(), 0, size);
 									// Определяем тип сокета
 									switch(static_cast <uint8_t> (this->_settings.sonet)){
+										// Если тип сокета установлен как UDP
+										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 										// Если тип сокета установлен как DTLS
 										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 											// Выполняем установку таймаута ожидания чтения из сокета
 											broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
-										break;
-										// Если тип сокета установлен как UDP
-										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-											// Выполняем установку таймаута ожидания чтения из сокета
-											this->_socket.timeout(broker->_addr.fd, broker->_timeouts.read * 1000, socket_t::mode_t::READ);
 										break;
 									}
 									// Выполняем получение сообщения от клиента
@@ -1411,17 +1408,14 @@ void awh::client::Core::write(const char * buffer, const size_t size, const uint
 								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 								// Если тип сокета установлен как TCP/IP TLS
 								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 								// Если тип сокета установлен как DTLS
 								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 									// Выполняем установку таймаута ожидания записи в сокет
 									broker->_ectx.timeout(broker->_timeouts.write * 1000, engine_t::method_t::WRITE);
-								break;
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-									// Выполняем установку таймаута ожидания записи в сокет
-									this->_socket.timeout(broker->_addr.fd, broker->_timeouts.write * 1000, socket_t::mode_t::WRITE);
 								break;
 							}
 							// Выполняем отправку сообщения клиенту

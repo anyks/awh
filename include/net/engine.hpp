@@ -451,10 +451,9 @@ namespace awh {
 					 * buffer Метод установки размеров буфера
 					 * @param read  размер буфера на чтение
 					 * @param write размер буфера на запись
-					 * @param total максимальное количество подключений
 					 * @return      результат работы функции
 					 */
-					bool buffer(const int read, const int write, const u_int total) noexcept;
+					bool buffer(const int read, const int write) noexcept;
 				private:
 					/**
 					 * selectProto Метод выполнения выбора следующего протокола

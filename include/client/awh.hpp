@@ -348,6 +348,13 @@ namespace awh {
 				void extensions(const vector <vector <string>> & extensions) noexcept;
 			public:
 				/**
+				 * bandwidth Метод установки пропускной способности сети
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void bandwidth(const string & read, const string & write) noexcept;
+			public:
+				/**
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */

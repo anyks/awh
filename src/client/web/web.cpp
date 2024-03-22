@@ -547,6 +547,17 @@ void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("messageWebsocket", callbacks);
 }
 /**
+ * bandwidth Метод установки пропускной способности сети
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::client::Web::bandwidth(const string & read, const string & write) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем установку пропускной способности сети
+		const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
+}
+/**
  * bytesDetect Метод детекции сообщений по количеству байт
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи

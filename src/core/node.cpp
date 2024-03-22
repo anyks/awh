@@ -342,25 +342,13 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 void awh::Node::bandwidth(const uint64_t bid, const string & read, const string & write) noexcept {
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
-		/**
-		 * Если операционной системой является Nix-подобная
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Создаём бъект активного брокера подключения
-			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-			// Устанавливаем размер буфера
-			broker->_ectx.buffer(
-				(!read.empty() ? this->_fmk->sizeBuffer(read) : 0),
-				(!write.empty() ? this->_fmk->sizeBuffer(write) : 0), 1
-			);
-		/**
-		 * Если операционной системой является MS Windows
-		 */
-		#else
-			// Блокируем вывод переменных
-			(void) read;
-			(void) write;
-		#endif
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Устанавливаем размер буфера
+		broker->_ectx.buffer(
+			(!read.empty() ? static_cast <int> (this->_fmk->sizeBuffer(read)) : 0),
+			(!write.empty() ? static_cast <int> (this->_fmk->sizeBuffer(write)) : 0)
+		);
 	}
 }
 /**

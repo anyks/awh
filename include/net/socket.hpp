@@ -228,13 +228,12 @@ namespace awh {
 			int bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param size  устанавливаемый размер буфера
-			 * @param total максимальное количество подключений
-			 * @param mode  флаг установки типа сокета
-			 * @return      результат работы функции
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param size устанавливаемый размер буфера
+			 * @param mode флаг установки типа сокета
+			 * @return     результат работы функции
 			 */
-			bool bufferSize(const SOCKET fd, const int size, const u_int total, const mode_t mode) const noexcept;
+			bool bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept;
 		public:
 			/**
 			 * Socket Конструктор

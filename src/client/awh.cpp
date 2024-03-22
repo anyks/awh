@@ -615,6 +615,15 @@ void awh::client::AWH::extensions(const vector <vector <string>> & extensions) n
 	this->_http.extensions(extensions);
 }
 /**
+ * bandwidth Метод установки пропускной способности сети
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::client::AWH::bandwidth(const string & read, const string & write) noexcept {
+	// Выполняем установку пропускной способности сети
+	this->_http.bandwidth(read, write);
+}
+/**
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */

@@ -125,6 +125,15 @@ void awh::client::Websocket::extensions(const vector <vector <string>> & extensi
 	this->_ws.extensions(extensions);
 }
 /**
+ * bandwidth Метод установки пропускной способности сети
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::client::Websocket::bandwidth(const string & read, const string & write) noexcept {
+	// Выполняем установку пропускной способности сети
+	this->_ws.bandwidth(read, write);
+}
+/**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */

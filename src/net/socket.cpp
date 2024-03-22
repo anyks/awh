@@ -916,13 +916,12 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
 }
 /**
  * bufferSize Метод установки размеров буфера
- * @param fd    файловый дескриптор (сокет)
- * @param size  устанавливаемый размер буфера
- * @param total максимальное количество подключений
- * @param mode  флаг установки типа сокета
- * @return      результат работы функции
+ * @param fd   файловый дескриптор (сокет)
+ * @param size устанавливаемый размер буфера
+ * @param mode флаг установки типа сокета
+ * @return     результат работы функции
  */
-bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total, const mode_t mode) const noexcept {
+bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем размер массива опции
@@ -935,8 +934,6 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 			u_int bytes = (size > 0 ? size : BUFFER_SIZE_RCV);
 			// Если размер буфера установлен
 			if(bytes > 0){
-				// Выполняем перерасчет размера буфера
-				bytes = (bytes / total);
 				// Время между попытками
 				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					/**
@@ -967,8 +964,6 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 			u_int bytes = (size > 0 ? size : BUFFER_SIZE_SND);
 			// Если размер буфера установлен
 			if(bytes > 0){
-				// Выполняем перерасчет размера буфера
-				bytes = (bytes / total);
 				// Время между попытками
 				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					/**

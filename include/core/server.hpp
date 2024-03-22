@@ -64,6 +64,8 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
+				// Объект работы с сокетами
+				socket_t _socket;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -296,6 +298,14 @@ namespace awh {
 				 * @param host хост сервера
 				 */
 				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
+			public:
+				/**
+				 * bandwidth Метод установки пропускной способности сети
+				 * @param bid   идентификатор брокера
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * Core Конструктор

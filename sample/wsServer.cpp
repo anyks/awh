@@ -70,15 +70,18 @@ class Executor {
 		 * active Метод событий сервера
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode флаг события
+		 * @param core объект сетевого ядра
 		 */
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
+		void active(const uint64_t bid, const server::web_t::mode_t mode, server::core_t * core){
 			// Определяем флаг события сервера
 			switch(static_cast <uint8_t> (mode)){
 				// Если клиент подключился к серверу
-				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT):
+				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT): {
+					// Выполняем установку ограничения пропускной способности сети
+					core->bandwidth(bid, "1Mbps", "1Mbps");
 					// Выводим информацию в лог
 					this->_log->print("CONNECT", log_t::flag_t::INFO);
-				break;
+				} break;
 				// Если клиент отключился от сервера
 				case static_cast <uint8_t> (server::web_t::mode_t::DISCONNECT):
 					// Выводим информацию в лог
@@ -239,7 +242,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	ws.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2));
+	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, &core));
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	ws.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений

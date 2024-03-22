@@ -1935,17 +1935,16 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
  * buffer Метод установки размеров буфера
  * @param read  размер буфера на чтение
  * @param write размер буфера на запись
- * @param total максимальное количество подключений
  * @return      результат работы функции
  */
-bool awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
+bool awh::Engine::Context::buffer(const int read, const int write) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr)
 		// Если подключение выполнено
 		return (
 			(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-			this->_addr->_socket.bufferSize(this->_addr->fd, read, total, socket_t::mode_t::READ) &&
-			this->_addr->_socket.bufferSize(this->_addr->fd, write, total, socket_t::mode_t::WRITE) : false
+			this->_addr->_socket.bufferSize(this->_addr->fd, read, socket_t::mode_t::READ) &&
+			this->_addr->_socket.bufferSize(this->_addr->fd, write, socket_t::mode_t::WRITE) : false
 		);
 	// Иначе возвращаем неустановленный размер буфера
 	return false;

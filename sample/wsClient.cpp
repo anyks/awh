@@ -63,6 +63,8 @@ class Executor {
 			(void) rid;
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
+				// Выполняем установку ограничения пропускной способности сети
+				ws->bandwidth("1Mbps", "1Mbps");
 				// Выводим информацию в лог
 				this->_log->print("Handshake", log_t::flag_t::INFO);
 				// Создаём объект JSON
