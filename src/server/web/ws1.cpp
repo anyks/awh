@@ -159,12 +159,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Если подключение закрыто
-				if(options->close){
-					// Принудительно выполняем отключение лкиента
-					const_cast <server::core_t *> (this->_core)->close(bid);
+				if(options->close)
 					// Выходим из функции
 					return;
-				}
 				// Если разрешено получение данных
 				if(options->allow.receive){
 					// Добавляем полученные данные в буфер
@@ -303,7 +300,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 												cout << string(buffer.begin(), buffer.end()) << endl << endl;
 											#endif
 											// Выполняем отправку данных брокеру
-											const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+											const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 											// Выполняем извлечение параметров запроса
 											const auto & request = options->http.request();
 											// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -391,7 +388,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Получаем параметры ответа
 								const auto response = options->http.response();
 								// Выполняем отправку заголовков сообщения
-								const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+								const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 								// Получаем данные тела ответа
 								while(!(payload = http.payload()).empty()){
 									/**
@@ -404,7 +401,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									// Устанавливаем флаг закрытия подключения
 									options->stopped = (!http.is(http_t::state_t::ALIVE) && http.empty(awh::http_t::suite_t::BODY));
 									// Выполняем отправку чанков
-									const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+									const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 								}
 								// Если получение данных нужно остановить
 								if(options->stopped)
@@ -555,14 +552,14 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										return;
 									} break;
 								}
-							}
-							// Если парсер обработал какое-то количество байт
-							if((receive = ((head.frame > 0) && !options->buffer.payload.empty()))){
-								// Если размер буфера больше количества удаляемых байт
-								if((receive = (options->buffer.payload.size() >= head.frame)))
-									// Удаляем количество обработанных байт
-									options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
-									// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+								// Если парсер обработал какое-то количество байт
+								if((receive = ((head.frame > 0) && !options->buffer.payload.empty()))){
+									// Если размер буфера больше количества удаляемых байт
+									if((receive = (options->buffer.payload.size() >= head.frame)))
+										// Удаляем количество обработанных байт
+										options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
+										// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+								}
 							}
 							// Если сообщения получены
 							if(!buffer.empty()){
@@ -622,8 +619,8 @@ void awh::server::Websocket1::writeEvents(const char * buffer, const size_t size
 			if(!options->close && options->stopped){
 				// Устанавливаем флаг закрытия подключения
 				options->close = !options->close;
-				// Принудительно выполняем отключение лкиента
-				const_cast <server::core_t *> (this->_core)->close(bid);
+				// Выполняем отключение подключившегося брокера
+				this->disconnect(bid);
 			}
 		}
 	}
@@ -752,7 +749,7 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const vector <char>
 						// Выполняем запрет на получение входящих данных
 						const_cast <server::core_t *> (this->_core)->events(bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 						// Выполняем отправку сообщения брокеру
-						const_cast <server::core_t *> (this->_core)->write(data.data(), data.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(data.data(), data.size(), bid);
 					// Завершаем работу
 					} else const_cast <server::core_t *> (this->_core)->close(bid);
 				}
@@ -793,7 +790,7 @@ void awh::server::Websocket1::pong(const uint64_t bid, const string & message) n
 			// Если буфер данных получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения брокеру
-				const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+				const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 		}
 	}
 }
@@ -814,7 +811,7 @@ void awh::server::Websocket1::ping(const uint64_t bid, const string & message) n
 			// Если буфер данных получен
 			if(!buffer.empty())
 				// Выполняем отправку сообщения брокеру
-				const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+				const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 		}
 	}
 }
@@ -951,6 +948,8 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 				const auto & buffer = options->frame.methods.message(mess);
 				// Если данные сообщения получены
 				if((options->stopped = !buffer.empty())){
+					// Выполняем отправку сообщения брокеру
+					core->send(buffer.data(), buffer.size(), bid);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -960,8 +959,8 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 						// Выводим отправляемое сообщение
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
-					// Выполняем отправку сообщения брокеру
-					core->write(buffer.data(), buffer.size(), bid);
+					// Выводим сообщение об ошибке
+					this->error(bid, mess);
 					// Выходим из функции
 					return;
 				}
@@ -1090,7 +1089,7 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Отправляем серверу сообщение
-							const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+							const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 						// Иначе просто выходим
 						else break;
 						// Выполняем сброс RSV1
@@ -1107,7 +1106,7 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 					// Если бинарный буфер для отправки данных получен
 					if(!payload.empty())
 						// Отправляем серверу сообщение
-						const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 				}
 			}
 			// Выполняем разблокировку отправки сообщения
@@ -1125,7 +1124,7 @@ void awh::server::Websocket1::send(const uint64_t bid, const char * buffer, cons
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
+		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
 }
 /**
  * callbacks Метод установки функций обратного вызова
@@ -1350,17 +1349,17 @@ void awh::server::Websocket1::compressors(const vector <http_t::compressor_t> & 
  */
 void awh::server::Websocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+		const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * alive Метод установки долгоживущего подключения

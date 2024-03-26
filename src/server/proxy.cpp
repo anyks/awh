@@ -229,7 +229,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			ret.first->second->core.sonet(this->_settings.sonet);
 			// Если флаг синхронизации протоколов клиента и сервера установлен
-			if(this->_flags.count(flag_t::SYNCPROTO) > 0)
+			if(this->_flags.find(flag_t::SYNCPROTO) != this->_flags.end())
 				// Устанавливаем тип протокола с которого подключён клиент
 				ret.first->second->core.proto(this->_core.proto(bid));
 			// Устанавливаем тип протокола интернета HTTP/2
@@ -606,7 +606,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					// Если мы получили заголовок сообщающий о том, в каком формате закодированны данные
 					} else if(this->_fmk->exists("content-encoding", j->first)) {
 						// Если флаг рекомпрессии данных прокси-сервером не установлен
-						if(this->_flags.count(flag_t::RECOMPRESS) == 0){
+						if(this->_flags.find(flag_t::RECOMPRESS) == this->_flags.end()){
 							// Если данные пришли сжатые методом LZ4
 							if(this->_fmk->exists("lz4", j->second))
 								// Устанавливаем тип компрессии полезной нагрузки
@@ -641,7 +641,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 					++j;
 				}
 				// Если флаг рекомпрессии данных прокси-сервером установлен
-				if(this->_flags.count(flag_t::RECOMPRESS) > 0)
+				if(this->_flags.find(flag_t::RECOMPRESS) != this->_flags.end())
 					// Устанавливаем компрессор рекомпрессии
 					compressor = this->_compressor;
 				// Получаем объект HTTP-парсера
@@ -749,11 +749,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								client::web_t::flag_t::WEBSOCKET_ENABLE
 							};
 							// Если флаг разрешения выполнения редиректов установлен
-							if(this->_flags.count(flag_t::REDIRECTS) > 0)
+							if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 								// Устанавливаем флаг разрешения выполнения редиректов
 								flags.emplace(client::web_t::flag_t::REDIRECTS);
 							// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-							if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
+							if(this->_flags.find(flag_t::CONNECT_METHOD_CLIENT_ENABLE) != this->_flags.end())
 								// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 								flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 							// Если метод запроса не является методом CONNECT
@@ -765,7 +765,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
 								i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 							// Если метод CONNECT не разрешён для запроса
-							} else if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1) {
+							} else if(this->_flags.find(flag_t::CONNECT_METHOD_SERVER_ENABLE) == this->_flags.end()) {
 								// Формируем сообщение ответа
 								const string message = "CONNECT method is forbidden on the proxy-server";
 								// Формируем тело ответа
@@ -846,11 +846,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										client::web_t::flag_t::WEBSOCKET_ENABLE
 									};
 									// Если флаг разрешения выполнения редиректов установлен
-									if(this->_flags.count(flag_t::REDIRECTS) > 0)
+									if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 										// Устанавливаем флаг разрешения выполнения редиректов
 										flags.emplace(client::web_t::flag_t::REDIRECTS);
 									// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-									if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
+									if(this->_flags.find(flag_t::CONNECT_METHOD_CLIENT_ENABLE) != this->_flags.end())
 										// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 										flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 									// Если порт сервера не стандартный, устанавливаем схему протокола
@@ -926,7 +926,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Помечаем, что сервер занят
 									i->second->busy = !i->second->busy;
 									// Если метод CONNECT не разрешён для запроса
-									if(this->_flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) < 1){
+									if(this->_flags.find(flag_t::CONNECT_METHOD_SERVER_ENABLE) == this->_flags.end()){
 										// Формируем сообщение ответа
 										const string message = "CONNECT method is forbidden on the proxy-server";
 										// Формируем тело ответа
@@ -947,11 +947,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										client::web_t::flag_t::WEBSOCKET_ENABLE
 									};
 									// Если флаг разрешения выполнения редиректов установлен
-									if(this->_flags.count(flag_t::REDIRECTS) > 0)
+									if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 										// Устанавливаем флаг разрешения выполнения редиректов
 										flags.emplace(client::web_t::flag_t::REDIRECTS);
 									// Если флаг резрешающий метод CONNECT для прокси-клиента установлен
-									if(this->_flags.count(flag_t::CONNECT_METHOD_CLIENT_ENABLE) > 0)
+									if(this->_flags.find(flag_t::CONNECT_METHOD_CLIENT_ENABLE) != this->_flags.end())
 										// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 										flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 									// Устанавливаем флаги настроек модуля
@@ -1311,19 +1311,19 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 	// Создаём список флагов сервера
 	set <server::web_t::flag_t> server;
 	// Если флаг анбиндинга ядра сетевого модуля установлен
-	if(flags.count(flag_t::NOT_STOP) == 0)
+	if(flags.find(flag_t::NOT_STOP) == flags.end())
 		// Устанавливаем флаг анбиндинга ядра сетевого модуля
 		server.emplace(server::web_t::flag_t::NOT_STOP);
 	// Если флаг поддержания автоматического подключения установлен
-	if(flags.count(flag_t::ALIVE) > 0)
+	if(flags.find(flag_t::ALIVE) != flags.end())
 		// Устанавливаем флаг поддержания автоматического подключения
 		server.emplace(server::web_t::flag_t::ALIVE);
 	// Если флаг запрещающий вывод информационных сообщений установлен
-	if(flags.count(flag_t::NOT_INFO) > 0)
+	if(flags.find(flag_t::NOT_INFO) != flags.end())
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
 		server.emplace(server::web_t::flag_t::NOT_INFO);
 	// Если флаг разрешающий метод CONNECT установлен
-	if(flags.count(flag_t::CONNECT_METHOD_SERVER_ENABLE) > 0)
+	if(flags.find(flag_t::CONNECT_METHOD_SERVER_ENABLE) != flags.end())
 		// Выполняем установку флага сервера
 		server.emplace(server::web_t::flag_t::CONNECT_METHOD_ENABLE);
 	// Устанавливаем флаги настроек модуля

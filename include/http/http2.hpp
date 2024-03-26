@@ -18,6 +18,9 @@
 /**
  * Стандартные модули
  */
+#include <map>
+#include <cmath>
+#include <queue>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -143,14 +146,14 @@ namespace awh {
 		public:
 			// Количество потоков по умолчанию
 			static constexpr uint32_t CONCURRENT_STREAMS = 0x80;
+			// Максимальный размер буфера полезной нагрузки
+			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0xFFFF;
 			// Максимальный размер таблицы заголовков по умолчанию
 			static constexpr uint32_t HEADER_TABLE_SIZE = 0x1000;
-			// Минимальный размер фрейма по умолчанию
-			static constexpr uint32_t MAX_FRAME_SIZE_MIN = 0x4000;
 			// Максимальный размер окна по умолчанию
 			static constexpr uint32_t MAX_WINDOW_SIZE = 0x7FFFFFFF;
-			// Максимальный размер буфера полезной нагрузки
-			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0x6400000;
+			// Минимальный размер фрейма по умолчанию
+			static constexpr uint32_t MAX_FRAME_SIZE_MIN = 0x4000;
 			// Максимальный размер фрейма по умолчанию
 			static constexpr uint32_t MAX_FRAME_SIZE_MAX = 0xFFFFFF;
 		private:
@@ -169,9 +172,23 @@ namespace awh {
 				SEND_REJECT   = 0x08, // Событие отправки сброса подключения
 				SEND_HEADERS  = 0x09, // Событие отправки заголовков
 				SEND_TRAILERS = 0x0A, // Событие отправки трейлеров
-				SEND_SHUTDOWN = 0x0B, // Событие отправки сообщения о завершении работы
-				WINDOW_UPDATE = 0x0C  // Событие установки нового размера окна фрейма
+				SEND_SHUTDOWN = 0x0B  // Событие отправки сообщения о завершении работы
 			};
+		private:
+			/**
+			 * Payload Структура полезной нагрузки
+			 */
+			typedef struct Payload {
+				int32_t sid;                  // Идентификатор потока
+				flag_t flag;                  // Флаг передаваемого потока по сети
+				size_t size;                  // Размер буфера
+				size_t offset;                // Смещение в бинарном буфере
+				unique_ptr <uint8_t []> data; // Данные буфера
+				/**
+				 * Payload Конструктор
+				 */
+				Payload() noexcept : sid(0), flag(flag_t::NONE), size(0), offset(0), data(nullptr) {}
+			} payload_t;
 		private:
 			// Флаг требования закрыть подключение
 			bool _close;
@@ -189,6 +206,9 @@ namespace awh {
 		private:
 			// Список доступных источников для подключения
 			vector <string> _origins;
+		private:
+			// Буферы отправляемой полезной нагрузки
+			map <int32_t, queue <payload_t>> _payloads;
 		private:
 			// Список отправляемых альтернативных сервисов
 			unordered_multimap <string, string> _altsvc;
@@ -240,15 +260,6 @@ namespace awh {
 			 */
 			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
-			 * error Функция обратного вызова при получении ошибок
-			 * @param session объект сессии
-			 * @param msg     сообщение ошибки
-			 * @param size    размер текста ошибки
-			 * @param ctx     передаваемый промежуточный контекст
-			 * @return        статус обработки полученных данных
-			 */
-			static int error(nghttp2_session * session, const char * msg, const size_t size, void * ctx) noexcept;
-			/**
 			 * close Функция закрытия подключения
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
@@ -257,6 +268,16 @@ namespace awh {
 			 * @return        статус обработки полученных данных
 			 */
 			static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
+			/**
+			 * error Функция обратного вызова при получении ошибок
+			 * @param session объект сессии
+			 * @param code    код полученной ошибки
+			 * @param msg     сообщение ошибки
+			 * @param size    размер текста ошибки
+			 * @param ctx     передаваемый промежуточный контекст
+			 * @return        статус обработки полученных данных
+			 */
+			static int error(nghttp2_session * session, const int code, const char * msg, const size_t size, void * ctx) noexcept;
 			/**
 			 * chunk Функция обратного вызова при получении чанка
 			 * @param session объект сессии
@@ -280,7 +301,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int header(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
+			static int header(nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
 			 * send Функция обратного вызова при подготовки данных для отправки
@@ -306,6 +327,13 @@ namespace awh {
 			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
+			 * available Метод проверки сколько байт доступно для отправки
+			 * @param sid идентификатор потока
+			 * @return    количество байт доступных для отправки
+			 */
+			size_t available(const int32_t sid) const noexcept;
+		private:
+			/**
 			 * commit Метод применения изменений
 			 * @param event событие которому соответствует фиксация
 			 * @return      результат отправки
@@ -317,6 +345,22 @@ namespace awh {
 			 * @param event событие выполненной операции
 			 */
 			void completed(const event_t event) noexcept;
+		private:
+			/**
+			 * submit Метод подготовки отправки данных полезной нагрузки
+			 * @param sid  идентификатор потока 
+			 * @param flag флаг передаваемого потока по сети
+			 * @return     результат работы функции
+			 */
+			bool submit(const int32_t sid, const flag_t flag) noexcept;
+		private:
+			/**
+			 * windowUpdate Метод обновления размера окна фрейма
+			 * @param sid  идентификатор потока
+			 * @param size размер нового окна
+			 * @return     результат установки размера офна фрейма
+			 */
+			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		public:
 			/**
 			 * ping Метод выполнения пинга
@@ -345,14 +389,6 @@ namespace awh {
 			 * @return      результат отправки сообщения
 			 */
 			bool reject(const int32_t sid, const error_t error) noexcept;
-		public:
-			/**
-			 * windowUpdate Метод обновления размера окна фрейма
-			 * @param sid  идентификатор потока
-			 * @param size размер нового окна
-			 * @return     результат установки размера офна фрейма
-			 */
-			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		private:
 			/**
 			 * sendOrigin Метод отправки списка разрешённых источников

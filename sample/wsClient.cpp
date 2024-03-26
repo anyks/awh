@@ -63,6 +63,33 @@ class Executor {
 			(void) rid;
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
+				
+
+				// Выводим информацию в лог
+				this->_log->print("Handshake", log_t::flag_t::INFO);
+				
+				
+				// Отправляем миллион сообщений
+				for(u_int i = 0; i < 1000000; i++){
+				// for(u_int i = 0; i < 1000; i++){
+					// Создаём объект JSON
+					json data = json::parse(R"({
+						"id": "1514",
+						"message": "{\"Message\":\"input line 2\",\"rs_agent_categories\":\"\",\"rs_agent_fqdn\":\"v-stand-19.pgr.local\",\"rs_agent_id\":\"619df239-b1b3-4877-9c85-46ed69b7cbe6\",\"rs_agent_input_module\":\"files\",\"rs_agent_input_tags\":[],\"rs_agent_ip\":\"172.30.254.79\",\"rs_agent_ts\":\"2023-11-07T16:48:30.241739034+03:00\"}"
+					})");
+					// Получаем параметры запроса в виде строки
+					const string query = data.dump();
+					// Отправляем сообщение на сервер
+					ws->sendMessage(vector <char> (query.begin(), query.end()));
+				}
+
+				cout << " ALL SENT " << endl;
+				
+				//  ========= WINDOW SIZE4 104511600 === 2147137647
+				// ========= WINDOW SIZE4 104165600 === 2146791647
+
+				
+				/*
 				// Выполняем установку ограничения пропускной способности сети
 				ws->bandwidth("1Mbps", "1Mbps");
 				// Выводим информацию в лог
@@ -180,6 +207,7 @@ class Executor {
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
 				ws->sendMessage(vector <char> (query.begin(), query.end()));
+				*/
 			}
 		}
 	public:
@@ -282,7 +310,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Отключаем валидацию сертификата
-	ssl.verify = true;
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
 	ssl.ca = "./certs/ca.pem";
 	/*
@@ -304,7 +332,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем логин и пароль пользователя
-	// ws.user("user", "password");
+	ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
@@ -334,10 +362,12 @@ int main(int argc, char * argv[]){
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию Websocket клиента
-	ws.init("wss://stream.binance.com:9443/stream");
-	// ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
+	// ws.init("wss://stream.binance.com:9443/stream");
+	// ws.init("ws://172.30.254.154:8087", {awh::http_t::compressor_t::DEFLATE});
+	// ws.init("ws://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
+	ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://anyks.net:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://92.63.110.56:2222", {awh::http_t::compressor_t::DEFLATE});
 	// Устанавливаем длительное подключение

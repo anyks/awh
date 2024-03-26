@@ -533,7 +533,7 @@ namespace awh {
 			protected:
 				// Размер одного чанка бинарных данных
 				size_t _chunkSize;
-			private:
+			protected:
 				// Список параметров настроек протокола HTTP/2
 				map <http2_t::settings_t, uint32_t> _settings;
 			protected:
@@ -682,14 +682,6 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
-			public:
-				/**
-				 * windowUpdate Метод обновления размера окна фрейма
-				 * @param sid  идентификатор потока
-				 * @param size размер нового окна
-				 * @return     результат установки размера офна фрейма
-				 */
-				bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер

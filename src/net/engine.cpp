@@ -983,13 +983,10 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Если произведена неудачная запись в PIPE
 				case EPIPE:
-					// Выводим в лог сообщение
-					this->_log->print("EPIPE", log_t::flag_t::WARNING);
-				break;
 				// Если произведён сброс подключения
 				case ECONNRESET:
 					// Выводим в лог сообщение
-					this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 				break;
 			/**
 			 * Методы только для OS Windows
@@ -998,7 +995,7 @@ bool awh::Engine::Context::error(const int status) const noexcept {
 				// Если произведён сброс подключения
 				case WSAECONNRESET:
 					// Выводим в лог сообщение
-					this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 				break;
 			#endif
 			// Для остальных ошибок
@@ -1400,10 +1397,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					}
 				}
 			}
-			// Если подключение разорвано или сокет находится в блокирующем режиме
-			if((result == 0) || status)
-				// Выполняем отключение от сервера
-				result = 0;
 			// Если произошло отключение
 			if(result == 0)
 				// Устанавливаем статус отключён
@@ -1742,10 +1735,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					}
 				}
 			}
-			// Если подключение разорвано или сокет находится в блокирующем режиме
-			if((result == 0) || status)
-				// Выполняем отключение от сервера
-				result = 0;
 			// Если произошло отключение
 			if(result == 0)
 				// Устанавливаем статус отключён

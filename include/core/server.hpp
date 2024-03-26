@@ -210,6 +210,14 @@ namespace awh {
 				set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
+				 * send Метод асинхронной отправки буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
+				 * @param bid    идентификатор брокера
+				 */
+				void send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+			public:
+				/**
 				 * send Метод отправки сообщения родительскому процессу
 				 * @param wid    идентификатор воркера
 				 * @param buffer бинарный буфер для отправки сообщения
@@ -238,14 +246,20 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void read(const uint64_t bid) noexcept;
+				/**
+				 * write Метод записи данных в брокер
+				 * @param bid идентификатор брокера
+				 */
+				void write(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * write Метод записи буфера данных в сокет
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
 				 * @param bid    идентификатор брокера
+				 * @return       количество отправленных байт
 				 */
-				void write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				size_t write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * work Метод активации параметров запуска сервера

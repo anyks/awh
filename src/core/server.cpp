@@ -148,6 +148,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					 * Если возникает ошибка
 					 */
 					} catch(const bad_alloc &) {
+						// Выводим в лог сообщение
+						this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -485,6 +487,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								}
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
+								// Выполняем установку функции обратного вызова на отправку сообщений
+								ret.first->second->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Если функция обратного вызова установлена
@@ -505,6 +509,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					 * Если возникает ошибка
 					 */
 					} catch(const bad_alloc &) {
+						// Выводим в лог сообщение
+						this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -798,6 +804,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							}
 							// Выполняем установку функции обратного вызова на получении сообщений
 							broker->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
+							// Выполняем установку функции обратного вызова на отправку сообщений
+							broker->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
 							// Активируем получение данных с клиента
 							broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 							// Если функция обратного вызова установлена
@@ -947,20 +955,33 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 									i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 								// Если брокер не существует
 								} else {
-									// Выполняем блокировку потока
-									this->_mtx.accept.lock();
-									// Выполняем создание брокера подключения
-									auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
-									// Выполняем блокировку потока
-									this->_mtx.accept.unlock();
-									// Устанавливаем активный сокет сервера
-									ret.first->second->_addr.fd = shm->_addr.fd;
-									// Выполняем установку базы событий
-									ret.first->second->base(this->_dispatch.base);
-									// Выполняем установку функции обратного вызова на получении сообщений
-									ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
-									// Активируем получение данных с клиента
-									ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									/**
+									 * Выполняем отлов ошибок
+									 */
+									try {
+										// Выполняем блокировку потока
+										this->_mtx.accept.lock();
+										// Выполняем создание брокера подключения
+										auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
+										// Выполняем блокировку потока
+										this->_mtx.accept.unlock();
+										// Устанавливаем активный сокет сервера
+										ret.first->second->_addr.fd = shm->_addr.fd;
+										// Выполняем установку базы событий
+										ret.first->second->base(this->_dispatch.base);
+										// Выполняем установку функции обратного вызова на получении сообщений
+										ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
+										// Активируем получение данных с клиента
+										ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const bad_alloc &) {
+										// Выводим в лог сообщение
+										this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+										// Выходим из приложения
+										::exit(EXIT_FAILURE);
+									}
 								}
 							}
 						}
@@ -1039,49 +1060,62 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(i != this->_schemes.end()){
-			// Получаем объект схемы сети
-			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-			// Создаём бъект активного брокера подключения
-			unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
-			// Получаем идентификатор брокера подключения
-			const uint64_t bid = broker->id();
-			// Выполняем установку желаемого протокола подключения
-			broker->_ectx.proto(this->_settings.proto);
-			// Устанавливаем таймаут начтение данных из сокета
-			broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
-			// Устанавливаем таймаут на запись данных в сокет
-			broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
-			// Выполняем блокировку потока
-			this->_mtx.accept.lock();
-			// Устанавливаем активный сокет сервера
-			broker->_addr.fd = shm->_addr.fd;
-			// Выполняем получение контекста сертификата
-			this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
-			// Выполняем установку базы событий
-			broker->base(this->_dispatch.base);
-			// Добавляем созданного брокера в список брокеров
-			auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
-			// Добавляем брокера в список подключений
-			node_t::_brokers.emplace(ret.first->first, sid);
-			// Выполняем разблокировку потока
-			this->_mtx.accept.unlock();
-			// Выполняем поиск таймера
-			auto j = this->_timers.find(sid);
-			// Если таймер ещё не создан
-			if(j == this->_timers.end()){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Получаем объект схемы сети
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+				// Создаём бъект активного брокера подключения
+				unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+				// Получаем идентификатор брокера подключения
+				const uint64_t bid = broker->id();
+				// Выполняем установку желаемого протокола подключения
+				broker->_ectx.proto(this->_settings.proto);
+				// Устанавливаем таймаут начтение данных из сокета
+				broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
+				// Устанавливаем таймаут на запись данных в сокет
+				broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
-				// Выполняем создание нового таймера
-				auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
-				// Устанавливаем флаг запрещающий вывод информационных сообщений
-				ret.first->second->verbose(false);
-				// Выполняем биндинг сетевого ядра таймера
-				this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
+				this->_mtx.accept.lock();
+				// Устанавливаем активный сокет сервера
+				broker->_addr.fd = shm->_addr.fd;
+				// Выполняем получение контекста сертификата
+				this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
+				// Выполняем установку базы событий
+				broker->base(this->_dispatch.base);
+				// Добавляем созданного брокера в список брокеров
+				auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
+				// Добавляем брокера в список подключений
+				node_t::_brokers.emplace(ret.first->first, sid);
+				// Выполняем разблокировку потока
+				this->_mtx.accept.unlock();
+				// Выполняем поиск таймера
+				auto j = this->_timers.find(sid);
+				// Если таймер ещё не создан
+				if(j == this->_timers.end()){
+					// Выполняем блокировку потока
+					const lock_guard <recursive_mutex> lock(this->_mtx.timer);
+					// Выполняем создание нового таймера
+					auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
+					// Устанавливаем флаг запрещающий вывод информационных сообщений
+					ret.first->second->verbose(false);
+					// Выполняем биндинг сетевого ядра таймера
+					this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
+				}
+				// Выполняем установку функции обратного вызова на получении сообщений
+				ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
+				// Запускаем событие подключения клиента
+				ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const bad_alloc &) {
+				// Выводим в лог сообщение
+				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
 			}
-			// Выполняем установку функции обратного вызова на получении сообщений
-			ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
-			// Запускаем событие подключения клиента
-			ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
 		}
 	}
 }
@@ -1163,6 +1197,12 @@ void awh::server::Core::close() noexcept {
 						if(this->_callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const uint64_t, const uint16_t)> (i->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
+						// Ещем для указанного потока очередь полезной нагрузки
+						auto j = this->_payloads.find(i->first);
+						// Если для потока очередь полезной нагрузки получена
+						if(j != this->_payloads.end())
+							// Выполняем удаление всей очереди
+							this->_payloads.erase(j);
 						// Удаляем блокировку брокера
 						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
@@ -1241,6 +1281,12 @@ void awh::server::Core::remove() noexcept {
 						if(this->_callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
+						// Ещем для указанного потока очередь полезной нагрузки
+						auto k = this->_payloads.find(j->first);
+						// Если для потока очередь полезной нагрузки получена
+						if(k != this->_payloads.end())
+							// Выполняем удаление всей очереди
+							this->_payloads.erase(k);
 						// Удаляем блокировку брокера
 						this->_busy.erase(j->first);
 						// Удаляем брокера из списка
@@ -1301,6 +1347,12 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 					if(this->_callbacks.is("disconnect"))
 						// Устанавливаем полученную функцию обратного вызова
 						callback.set <void (const uint64_t, const uint16_t)> (bid, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, shm->id);
+					// Ещем для указанного потока очередь полезной нагрузки
+					auto j = this->_payloads.find(bid);
+					// Если для потока очередь полезной нагрузки получена
+					if(j != this->_payloads.end())
+						// Выполняем удаление всей очереди
+						this->_payloads.erase(j);
 					// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 					if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
 						// Если функция обратного вызова установлена
@@ -1409,6 +1461,12 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 						if(this->_callbacks.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
+						// Ещем для указанного потока очередь полезной нагрузки
+						auto k = this->_payloads.find(j->first);
+						// Если для потока очередь полезной нагрузки получена
+						if(k != this->_payloads.end())
+							// Выполняем удаление всей очереди
+							this->_payloads.erase(k);
 						// Удаляем брокера из списка подключений
 						node_t::_brokers.erase(j->first);
 						// Удаляем блокировку брокера
@@ -1736,6 +1794,16 @@ set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
 	return result;
 }
 /**
+ * send Метод асинхронной отправки буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param bid    идентификатор брокера
+ */
+void awh::server::Core::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Выполняем отправку сообщения асинхронным методом
+	node_t::send(buffer, size, bid);
+}
+/**
  * send Метод отправки сообщения родительскому процессу
  * @param wid    идентификатор воркера
  * @param buffer бинарный буфер для отправки сообщения
@@ -1842,7 +1910,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						int64_t bytes = -1;
 						// Создаём буфер входящих данных
 						unique_ptr <char []> buffer(new char [size]);
-						// Выполняем чтение данных с сокета
+						/**
+						 * Выполняем чтение данных с сокета
+						 */
 						do {
 							// Если подключение выполнено и чтение данных разрешено
 							if(!broker->_bev.locked.read){
@@ -1900,6 +1970,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 					 * Если возникает ошибка
 					 */
 					} catch(const bad_alloc &) {
+						// Выводим в лог сообщение
+						this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -1928,12 +2000,40 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * write Метод записи данных в брокер
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::write(const uint64_t bid) noexcept {
+	// Если данные переданы
+	if(this->working() && this->has(bid)){
+		// Ещем для указанного потока очередь полезной нагрузки
+		auto i = this->_payloads.find(bid);
+		// Если для потока очередь полезной нагрузки получена
+		if(i != this->_payloads.end()){
+			// Выполняем запись в сокет
+			const size_t bytes = this->write(i->second.front().data.get() + i->second.front().offset, i->second.front().size - i->second.front().offset, bid);
+			// Если данные записаны удачно
+			if((bytes > 0) && this->has(bid)){
+				// Увеличиваем смещение в бинарном буфере
+				i->second.front().offset += bytes;
+				// Если все данные записаны успешно, тогда удаляем результат
+				if(i->second.front().offset == i->second.front().size)
+					// Выполняем удаление текущей записи
+					this->pop(bid);
+			}
+		}
+	}
+}
+/**
  * write Метод записи буфера данных в сокет
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
+ * @return       количество отправленных байт
  */
-void awh::server::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+size_t awh::server::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Результат работы функции
+	size_t result = 0;
 	// Если данные переданы
 	if(this->working() && this->has(bid) && (buffer != nullptr) && (size > 0)){
 		// Создаём бъект активного брокера подключения
@@ -1968,8 +2068,6 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					int64_t max = broker->_ectx.buffer(engine_t::method_t::WRITE);
 					// Если максимальное установленное значение больше размеров буфера для записи, корректируем
 					max = ((max > 0) && (broker->_marker.write.max > max) ? max : broker->_marker.write.max);
-					// Активируем ожидание записи данных
-					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Получаем общий размер буфера данных
@@ -1992,7 +2090,7 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 						}
 						// Выполняем отправку сообщения клиенту
 						bytes = broker->_ectx.write(buffer + offset, actual);
-						// Если данные небыли записаны
+						// Если даныне не получены
 						if(bytes <= 0){
 							// Если запись не выполнена, закрываем подключение
 							if(bytes == 0)
@@ -2006,6 +2104,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 					}
 					// Если дисконнекта от сервера не произошло
 					if(bytes > 0){
+						// Запоминаем количество записанных байт
+						result = static_cast <size_t> (bytes);
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как TCP/IP
@@ -2018,17 +2118,13 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 								broker->_ectx.noblock();
 							break;
 						}
-						// Останавливаем запись данных
-						broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+						// Если функция обратного вызова на запись данных установлена
+						if(this->_callbacks.is("write"))
+							// Выводим функцию обратного вызова
+							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, shm->id);
 					}
-					// Если функция обратного вызова на запись данных установлена
-					if(this->_callbacks.is("write"))
-						// Выводим функцию обратного вызова
-						this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, shm->id);
 				// Если данных недостаточно для записи в сокет
 				} else {
-					// Останавливаем запись данных
-					broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 					// Если функция обратного вызова на запись данных установлена
 					if(this->_callbacks.is("write"))
 						// Выводим функцию обратного вызова
@@ -2059,6 +2155,8 @@ void awh::server::Core::write(const char * buffer, const size_t size, const uint
 				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::PROTOCOL, "Socket for write is not initialized");
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * work Метод активации параметров запуска сервера
@@ -2194,20 +2292,33 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 										i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
 									// Если брокер не существует
 									} else {
-										// Выполняем блокировку потока
-										this->_mtx.accept.lock();
-										// Выполняем создание брокера подключения
-										auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
-										// Выполняем блокировку потока
-										this->_mtx.accept.unlock();
-										// Устанавливаем активный сокет сервера
-										ret.first->second->_addr.fd = shm->_addr.fd;
-										// Выполняем установку базы событий
-										ret.first->second->base(this->_dispatch.base);
-										// Выполняем установку функции обратного вызова на получении сообщений
-										ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
-										// Активируем получение данных с клиента
-										ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+										/**
+										 * Выполняем отлов ошибок
+										 */
+										try {
+											// Выполняем блокировку потока
+											this->_mtx.accept.lock();
+											// Выполняем создание брокера подключения
+											auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
+											// Выполняем блокировку потока
+											this->_mtx.accept.unlock();
+											// Устанавливаем активный сокет сервера
+											ret.first->second->_addr.fd = shm->_addr.fd;
+											// Выполняем установку базы событий
+											ret.first->second->base(this->_dispatch.base);
+											// Выполняем установку функции обратного вызова на получении сообщений
+											ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
+											// Активируем получение данных с клиента
+											ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+										/**
+										 * Если возникает ошибка
+										 */
+										} catch(const bad_alloc &) {
+											// Выводим в лог сообщение
+											this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+											// Выходим из приложения
+											::exit(EXIT_FAILURE);
+										}
 									}
 								} break;
 							}

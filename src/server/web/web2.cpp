@@ -93,7 +93,7 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(reinterpret_cast <const char *> (buffer), size, bid);
+		const_cast <server::core_t *> (this->_core)->send(reinterpret_cast <const char *> (buffer), size, bid);
 }
 /**
  * close Метод выполнения закрытия подключения
@@ -371,11 +371,11 @@ void awh::server::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 		// Выполняем установку списка настроек
 		this->_settings = settings;
 	// Если максимальное количество потоков не установлено
-	if(this->_settings.count(http2_t::settings_t::STREAMS) == 0)
+	if(this->_settings.find(http2_t::settings_t::STREAMS) == this->_settings.end())
 		// Выполняем установку максимального количества потоков
 		this->_settings.emplace(http2_t::settings_t::STREAMS, http2_t::CONCURRENT_STREAMS);
 	// Если максимальный размер фрейма не установлен
-	if(this->_settings.count(http2_t::settings_t::FRAME_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::FRAME_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера фрейма
 		this->_settings.emplace(http2_t::settings_t::FRAME_SIZE, http2_t::MAX_FRAME_SIZE_MIN);
 	// Если максимальный размер фрейма установлен
@@ -392,19 +392,19 @@ void awh::server::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 			i->second = http2_t::MAX_FRAME_SIZE_MIN;
 	}
 	// Если максимальный размер окна фрейма не установлен
-	if(this->_settings.count(http2_t::settings_t::WINDOW_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::WINDOW_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера окна фрейма
 		this->_settings.emplace(http2_t::settings_t::WINDOW_SIZE, http2_t::MAX_WINDOW_SIZE);
 	// Если максимальный размер буфера полезной нагрузки не установлен
-	if(this->_settings.count(http2_t::settings_t::PAYLOAD_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::PAYLOAD_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера буфера полезной нагрузки
 		this->_settings.emplace(http2_t::settings_t::PAYLOAD_SIZE, http2_t::MAX_PAYLOAD_SIZE);
 	// Если максимальный размер блока заголовоков не установлен
-	if(this->_settings.count(http2_t::settings_t::HEADER_TABLE_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::HEADER_TABLE_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера блока заголовоков
 		this->_settings.emplace(http2_t::settings_t::HEADER_TABLE_SIZE, http2_t::HEADER_TABLE_SIZE);
 	// Если флаг разрешения принимать push-уведомления не установлено
-	if(this->_settings.count(http2_t::settings_t::ENABLE_PUSH) == 0)
+	if(this->_settings.find(http2_t::settings_t::ENABLE_PUSH) == this->_settings.end())
 		// Выполняем установку флага отключения принёма push-уведомлений
 		this->_settings.emplace(http2_t::settings_t::ENABLE_PUSH, 0);
 }

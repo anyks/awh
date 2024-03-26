@@ -445,7 +445,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+			if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 				// Получаем параметры активного клиента
 				scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -518,7 +518,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								// Если мы получили входящие данные тела ответа
 								case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 									// Если мы получили неустановленный флаг или флаг завершения потока
-									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 										// Извлекаем данные потока
 										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
 										// Если поток получен удачно
@@ -541,7 +541,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								// Если мы получили входящие данные заголовков ответа
 								case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
+									if(flags.find(awh::http2_t::flag_t::END_HEADERS) != flags.end()){
 										// Извлекаем данные потока
 										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
 										// Если поток получен удачно
@@ -559,7 +559,7 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 												// Выполняем функцию обратного вызова
 												this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", sid, bid, request.method, request.url, const_cast <scheme::web2_t::stream_t *> (stream)->http.headers());
 											// Если мы получили неустановленный флаг или флаг завершения потока
-											if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+											if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 												// Выполняем обработку полученных данных
 												this->prepare(sid, bid);
 												// Если функция обратного вызова активности потока установлена
@@ -1725,7 +1725,7 @@ void awh::server::Http2::send(const uint64_t bid, const char * buffer, const siz
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
+		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
 }
 /**
  * send Метод отправки трейлеров
@@ -2801,23 +2801,23 @@ void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для HTTP-сервера
 	this->_http1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
-	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
+	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
-	if(flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0)
+	if(flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end())
 		// Выполняем установку разрешения использования метода CONNECT
 		this->_settings.emplace(awh::http2_t::settings_t::CONNECT, 1);
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+		const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * alive Метод установки долгоживущего подключения

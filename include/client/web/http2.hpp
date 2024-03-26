@@ -305,14 +305,6 @@ namespace awh {
 				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
-				 * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
-				 * @param sid  идентификатор потока
-				 * @param size размер нового окна
-				 * @return     результат установки размера офна фрейма
-				 */
-				bool windowUpdate2(const int32_t sid, const int32_t size) noexcept;
-			public:
-				/**
 				 * send2 Метод HTTP/2 отправки сообщения на сервер
 				 * @param sid    идентификатор потока HTTP/2
 				 * @param buffer буфер бинарных данных передаваемых на сервер

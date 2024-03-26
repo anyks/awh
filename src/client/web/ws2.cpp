@@ -195,6 +195,16 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->stop();
 	}
+	// Выполняем сброс флага рукопожатия
+	this->_shake = false;
+	// Выполняем очистку параметров HTTP-запроса
+	this->_http.clear();
+	// Выполняем сброс состояния HTTP-парсера
+	this->_http.reset();
+	// Очищаем буфер собранных данных
+	this->_buffer.clear();
+	// Выполняем очистку оставшихся фрагментов
+	this->_fragmes.clear();
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
 	// Если функция обратного вызова при подключении/отключении установлена
@@ -221,12 +231,9 @@ void awh::client::Websocket2::readEvent(const char * buffer, const size_t size, 
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Если подключение закрыто
-			if(this->_close){
-				// Принудительно выполняем отключение лкиента
-				const_cast <client::core_t *> (this->_core)->close(bid);
+			if(this->_close)
 				// Выходим из функции
 				return;
-			}
 			// Если протокол подключения является HTTP/2
 			if(this->_core->proto(bid) == engine_t::proto_t::HTTP2){
 				// Если получение данных не разрешено
@@ -284,12 +291,9 @@ int awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * buff
 			// Если функция перехвата полученных чанков не установлена
 			else if(this->_core != nullptr) {
 				// Если подключение закрыто
-				if(this->_close){
-					// Принудительно выполняем отключение лкиента
-					const_cast <client::core_t *> (this->_core)->close(this->_bid);
+				if(this->_close)
 					// Выходим из функции
 					return 0;
-				}
 				// Если рукопожатие не выполнено
 				if(!this->_shake)
 					// Добавляем полученный чанк в тело данных
@@ -322,7 +326,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+			if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 				// Если необходимо выполнить закрыть подключение
 				if((this->_core != nullptr) && !this->_close && this->_stopped){
 					// Устанавливаем флаг закрытия подключения
@@ -353,7 +357,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 						// Если рукопожатие не выполнено
 						if(!this->_shake){
 							// Если мы получили флаг завершения потока
-							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+							if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 								// Выполняем фиксацию полученного результата
 								this->_http.commit();
 								/**
@@ -405,7 +409,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 						// Если рукопожатие выполнено
 						} else if(this->_allow.receive) {
 							// Если мы получили неустановленный флаг или флаг завершения потока
-							if(flags.empty() || (flags.count(http2_t::flag_t::END_STREAM) > 0)){
+							if(flags.empty() || (flags.find(http2_t::flag_t::END_STREAM) != flags.end())){
 								// Выполняем препарирование полученных данных
 								switch(static_cast <uint8_t> (this->prepare(sid, this->_bid))){
 									// Если необходимо выполнить остановку обработки
@@ -423,7 +427,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 								// Устанавливаем метку завершения работы
 								End:
 								// Если мы получили флаг завершения потока
-								if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+								if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 									// Если установлена функция отлова завершения запроса
 									if(this->_callbacks.is("end"))
 										// Выполняем функцию обратного вызова
@@ -437,7 +441,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 					// Если мы получили входящие данные заголовков ответа
 					case static_cast <uint8_t> (http2_t::frame_t::HEADERS): {
 						// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-						if(flags.count(http2_t::flag_t::END_HEADERS) > 0){
+						if(flags.find(http2_t::flag_t::END_HEADERS) != flags.end()){
 							// Выполняем фиксацию полученного результата
 							this->_http.commit();
 							/**
@@ -482,7 +486,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 								this->_scheme.proxy.http.commit();
 							}
 							// Если ответ пришел успешный или фрейм закрыт
-							if((response.code == 200) || (flags.count(http2_t::flag_t::END_STREAM) > 0)){
+							if((response.code == 200) || (flags.find(http2_t::flag_t::END_STREAM) != flags.end())){
 								// Получаем объект биндинга ядра TCP/IP
 								client::core_t * core = const_cast <client::core_t *> (this->_core);
 								// Выполняем препарирование полученных данных
@@ -502,7 +506,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 									// Если необходимо выполнить пропуск обработки данных
 									case static_cast <uint8_t> (status_t::SKIP): {
 										// Если мы получили флаг завершения потока
-										if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+										if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 											// Очищаем буфер собранных данных
 											this->_buffer.clear();
 											// Если установлена функция отлова завершения запроса
@@ -524,7 +528,7 @@ int awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direc
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", sid, this->_rid, response.code, response.message, this->_http.headers());
 							// Если мы получили флаг завершения потока
-							if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+							if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 								// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 								if(this->_callbacks.is("complete"))
 									// Выполняем функцию обратного вызова
@@ -815,7 +819,7 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
 				// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 				if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 					// Завершаем работу
-					const_cast <client::core_t *> (this->_core)->close(this->_bid);
+					web2_t::close(this->_bid);
 				// Отправляем запрос брокеру
 				else this->ping(::to_string(this->_bid));
 			// Если рукопожатие уже выполнено и пинг не прошёл
@@ -1148,18 +1152,20 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						this->_mess = this->_frame.methods.message(data);
 						// Выводим сообщение
 						this->error(this->_mess);
+						// Выполняем закрытие подключения
+						web2_t::close(bid);
 						// Выполняем реконнект
 						return status_t::NEXT;
-					} break;
+					}
 				}
-			}
-			// Если парсер обработал какое-то количество байт
-			if((receive = ((head.frame > 0) && !this->_buffer.empty()))){
-				// Если размер буфера больше количества удаляемых байт
-				if((receive = (this->_buffer.size() >= head.frame)))
-					// Удаляем количество обработанных байт
-					this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + head.frame);
-					// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+				// Если парсер обработал какое-то количество байт
+				if((receive = ((head.frame > 0) && !this->_buffer.empty()))){
+					// Если размер буфера больше количества удаляемых байт
+					if((receive = (this->_buffer.size() >= head.frame)))
+						// Удаляем количество обработанных байт
+						this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + head.frame);
+						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+				}
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){
@@ -1332,6 +1338,8 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 					const auto & buffer = this->_frame.methods.message(mess);
 					// Если данные сообщения получены
 					if((this->_stopped = !buffer.empty())){
+						// Выполняем отправку сообщения на сервер
+						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1341,8 +1349,6 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 							// Выводим отправляемое сообщение
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
-						// Выполняем отправку сообщения на сервер
-						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						// Выходим из функции
 						return;
 					}
@@ -1510,7 +1516,7 @@ void awh::client::Websocket2::send(const char * buffer, const size_t size) noexc
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->write(buffer, size, this->_bid);
+		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
 }
 /**
  * pause Метод установки на паузу клиента
@@ -1547,7 +1553,6 @@ void awh::client::Websocket2::stop() noexcept {
 			 * Если установлено постоянное подключение
 			 * нам нужно заблокировать автоматический реконнект.
 			 */
-			// Считываем значение флага
 			const bool alive = this->_scheme.alive;
 			// Выполняем отключение флага постоянного подключения
 			this->_scheme.alive = false;
@@ -1705,10 +1710,26 @@ void awh::client::Websocket2::chunk(const size_t size) noexcept {
 void awh::client::Websocket2::segmentSize(const size_t size) noexcept {
 	// Если размер передан, устанавливаем
 	if(size > 0){
+		// Если максимальный размер фрейма больше самого максимального значения
+		if(static_cast <uint32_t> (size) > http2_t::MAX_FRAME_SIZE_MAX)
+			// Выполняем уменьшение размера сегмента
+			const_cast <size_t &> (size) = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MAX);
+		// Если максимальный размер фрейма меньше самого минимального значения
+		else if(static_cast <uint32_t> (size) < http2_t::MAX_FRAME_SIZE_MIN)
+			// Выполняем уменьшение размера сегмента
+			const_cast <size_t &> (size) = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MIN);
 		// Устанавливаем размер сегментов фрейма
 		this->_frame.size = size;
 		// Устанавливаем размер сегментов фрейма для Websocket-клиента
 		this->_ws1.segmentSize(size);
+		// Выполняем извлечение максимального размера фрейма
+		auto i = this->_settings.find(http2_t::settings_t::FRAME_SIZE);
+		// Если размер максимального размера фрейма уже установлен
+		if(i != this->_settings.end())
+			// Выполняем замену максимального размера фрейма
+			i->second = static_cast <uint32_t> (this->_frame.size);
+		// Если размер максимального размера фрейма ещё не установлен
+		else this->_settings.emplace(http2_t::settings_t::FRAME_SIZE, static_cast <uint32_t> (this->_frame.size));
 	}
 }
 /**
@@ -1719,11 +1740,11 @@ void awh::client::Websocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг разрешающий вывод информационных сообщений
-	this->_verb = (flags.count(flag_t::NOT_INFO) == 0);
+	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeover = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeover = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
 	// Выполняем установку флагов настроек модуля
 	web2_t::mode(flags);
 }
@@ -1919,6 +1940,10 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
+	// Если размер фрейма не установлен
+	if(this->_frame.size == 0)
+		// Устанавливаем размер сегментов фрейма
+		this->_frame.size = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MIN);
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&ws2_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
@@ -1935,6 +1960,10 @@ awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * f
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
  _point(0), _threads(0), _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
+	// Если размер фрейма не установлен
+	if(this->_frame.size == 0)
+		// Устанавливаем размер сегментов фрейма
+		this->_frame.size = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MIN);
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&ws2_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок

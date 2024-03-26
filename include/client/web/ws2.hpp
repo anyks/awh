@@ -84,7 +84,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Frame(const fmk_t * fmk, const log_t * log) noexcept :
-					 size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+					 size(0), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
 			private:
 				// Идентификатор подключения

@@ -91,16 +91,6 @@ int32_t awh::client::AWH::send(const int32_t sid, const uri_t::url_t & url, cons
 	return this->_http.send(sid, url, method, headers, end);
 }
 /**
- * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param sid  идентификатор потока
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::client::AWH::windowUpdate2(const int32_t sid, const int32_t size) noexcept {
-	// Выполняем обновление размера окна фрейма
-	return this->_http.windowUpdate2(sid, size);
-}
-/**
  * send2 Метод HTTP/2 отправки сообщения на сервер
  * @param sid    идентификатор потока
  * @param buffer буфер бинарных данных передаваемых на сервер

@@ -232,7 +232,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
-			if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+			if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 				// Выполняем поиск идентификатора воркера
 				auto i = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
@@ -270,7 +270,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 						// Если получено push-уведомление от сервера
 						case static_cast <uint8_t> (awh::http2_t::frame_t::PUSH_PROMISE): {
 							// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-							if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
+							if(flags.find(awh::http2_t::flag_t::END_HEADERS) != flags.end()){
 								// Получаем данные запроса
 								const auto & query = i->second->http.request();
 								/**
@@ -303,7 +303,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если мы получили флаг завершения потока
-									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 										// Выполняем фиксацию полученного результата
 										i->second->http.commit();
 										// Получаем идентификатор запроса
@@ -371,7 +371,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-									if(flags.count(awh::http2_t::flag_t::END_HEADERS) > 0){
+									if(flags.find(awh::http2_t::flag_t::END_HEADERS) != flags.end()){
 										// Флаг полученных трейлеров из ответа сервера
 										bool trailers = false;
 										// Если трейлеры получены в ответе сервера
@@ -385,7 +385,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 												// Если такой заголовок трейлера не получен
 												if(!i->second->http.is(http_t::suite_t::HEADER, j->second)){
 													// Если мы получили флаг завершения потока
-													if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+													if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 														// Выводим сообщение об ошибке, что трейлер не существует
 														this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, j->second.c_str());
 														// Если функция обратного вызова на на вывод ошибок установлена
@@ -450,7 +450,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 											// Выполняем извлечение полученных данных полезной нагрузки
 											return this->frameSignal(sid, awh::http2_t::direct_t::RECV, awh::http2_t::frame_t::DATA, flags);
 										// Если мы получили флаг завершения потока
-										else if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0) {
+										else if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()) {
 											// Выполняем фиксацию полученного результата
 											i->second->http.commit();
 											// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
@@ -467,7 +467,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 										}
 									}
 									// Если мы получили флаг завершения потока
-									if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 										// Получаем идентификатор запроса
 										const uint64_t rid = i->second->id;
 										// Если функция обратного вызова на получение удачного ответа установлена
@@ -1420,7 +1420,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 									// Выполняем сброс заголовков прокси-сервера
 									this->_http1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 								// Если заголовок параметров подключения не установлен
-								if(request.headers.count("Proxy-Connection") < 1){
+								if(request.headers.find("Proxy-Connection") == request.headers.end()){
 									// Если установлено постоянное подключение к прокси-серверу
 									if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 										// Устанавливаем постоянное подключение к прокси-серверу
@@ -1462,7 +1462,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Выполняем сброс заголовков прокси-сервера
 							this->_ws2._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
 						// Если заголовок параметров подключения не установлен
-						if(request.headers.count("Proxy-Connection") < 1){
+						if(request.headers.find("Proxy-Connection") == request.headers.end()){
 							// Если установлено постоянное подключение к прокси-серверу
 							if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE))
 								// Устанавливаем постоянное подключение к прокси-серверу
@@ -1474,7 +1474,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Если флаг инициализации сессии HTTP/2 установлен
 					if(this->_http2.is()){
 						// Если протокол ещё не установлен
-						if(request.headers.count(":protocol") < 1)
+						if(request.headers.find(":protocol") == request.headers.end())
 							// Выполняем установку протокола Websocket
 							const_cast <request_t &> (request).headers.emplace(":protocol", "websocket");
 					}
@@ -1595,7 +1595,7 @@ void awh::client::Http2::send(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->write(buffer, size, this->_bid);
+		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
 }
 /**
  * send Метод отправки тела сообщения на сервер
@@ -1712,25 +1712,6 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 	}
 	// Выводим значение по умолчанию
 	return result;
-}
-/**
- * windowUpdate2 Метод HTTP/2 обновления размера окна фрейма
- * @param sid  идентификатор потока
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::client::Http2::windowUpdate2(const int32_t sid, const int32_t size) noexcept {
-	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
-	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
-		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
-		if((size >= 0) && this->_http2.is())
-			// Выполняем обновление размера окна фрейма
-			return web2_t::windowUpdate(sid, size);
-	}
-	// Выводим результат
-	return false;
 }
 /**
  * send2 Метод HTTP/2 отправки сообщения на сервер
@@ -1944,7 +1925,7 @@ void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	web2_t::mode(flags);
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
-	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
+	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 }
 /**
  * core Метод установки сетевого ядра

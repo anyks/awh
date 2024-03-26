@@ -176,17 +176,17 @@ namespace awh {
 				void extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept;
 			private:
 				/**
-				 * pong Метод ответа на проверку о доступности сервера
-				 * @param bid идентификатор брокера
-				 * @param     message сообщение для отправки
-				 */
-				void pong(const uint64_t bid, const string & message) noexcept;
-				/**
 				 * ping Метод проверки доступности сервера
 				 * @param bid идентификатор брокера
 				 * @param     message сообщение для отправки
 				 */
 				void ping(const uint64_t bid, const string & message) noexcept;
+				/**
+				 * pong Метод ответа на проверку о доступности сервера
+				 * @param bid идентификатор брокера
+				 * @param     message сообщение для отправки
+				 */
+				void pong(const uint64_t bid, const string & message) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся брокеров

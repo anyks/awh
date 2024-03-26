@@ -398,9 +398,9 @@ void awh::server::Sample::total(const u_short total) noexcept {
  */
 void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+	const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * keepAlive Метод установки жизни подключения

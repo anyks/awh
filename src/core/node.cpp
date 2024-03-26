@@ -334,6 +334,91 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
+ * pop Метод удаления отправленного буфера полезной нагрузки
+ * @param bid идентификатор брокера
+ */
+void awh::Node::pop(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
+	// Ещем для указанного потока очередь полезной нагрузки
+	auto i = this->_payloads.find(bid);
+	// Если для потока очередь полезной нагрузки получена
+	if(i != this->_payloads.end()){
+		// Если идентификатор брокера подключений существует
+		if((bid > 0) && this->has(bid)){
+			// Выполняем удаление буфера буфера полезной нагрузки
+			i->second.pop();
+			// Если очередь полностью пустая
+			if(i->second.empty())
+				// Выполняем удаление всей очереди
+				this->_payloads.erase(i);
+		// Выполняем удаление всей очереди
+		} else this->_payloads.erase(i);
+	}
+	// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
+	if(this->_payloads.find(bid) == this->_payloads.end()){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+			// Останавливаем ожидание записи данных
+			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+	}
+}
+/**
+ * send Метод асинхронной отправки буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param bid    идентификатор брокера
+ */
+void awh::Node::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Объект полезной нагрузки для отправки
+			payload_t payload;
+			// Устанавливаем размер буфера данных
+			payload.size = size;
+			// Выполняем создание буфера данных
+			payload.data = unique_ptr <char []> (new char [size]);
+			// Выполняем копирование буфера полезной нагрузки
+			::memcpy(payload.data.get(), buffer, size);
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end())
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				i->second.push(std::move(payload));
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			else {
+				// Создаём новую очередь полезной нагрузки
+				auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				ret.first->second.push(std::move(payload));
+			}
+			// Создаём бъект активного брокера подключения
+			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+			// Если сокет подключения активен
+			if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+				// Запускаем ожидание записи данных
+				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
+}
+/**
  * bandwidth Метод установки пропускной способности сети
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)

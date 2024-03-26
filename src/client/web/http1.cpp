@@ -856,7 +856,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				// Получаем объект биндинга ядра TCP/IP
 				client::core_t * core = const_cast <client::core_t *> (this->_core);
 				// Выполняем отправку заголовков запроса на сервер
-				core->write(buffer.data(), buffer.size(), this->_bid);
+				core->send(buffer.data(), buffer.size(), this->_bid);
 				// Получаем данные тела запроса
 				while(!(entity = this->_http.payload()).empty()){
 					/**
@@ -867,7 +867,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
 					#endif
 					// Выполняем отправку тела запроса на сервер
-					core->write(entity.data(), entity.size(), this->_bid);
+					core->send(entity.data(), entity.size(), this->_bid);
 				}
 			}
 			// Если установлена функция отлова завершения запроса
@@ -998,7 +998,7 @@ void awh::client::Http1::send(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->write(buffer, size, this->_bid);
+		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
 }
 /**
  * send Метод отправки тела сообщения на сервер
@@ -1034,7 +1034,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = (end && this->_http.empty(awh::http_t::suite_t::BODY));
 				// Выполняем отправку тела запроса на сервер
-				const_cast <client::core_t *> (this->_core)->write(entity.data(), entity.size(), this->_bid);
+				const_cast <client::core_t *> (this->_core)->send(entity.data(), entity.size(), this->_bid);
 			}
 		}
 	}
@@ -1101,7 +1101,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = end;
 				// Выполняем отправку заголовков запроса на сервер
-				const_cast <client::core_t *> (this->_core)->write(headers.data(), headers.size(), this->_bid);
+				const_cast <client::core_t *> (this->_core)->send(headers.data(), headers.size(), this->_bid);
 				// Устанавливаем результат
 				result = 1;
 			}
@@ -1235,21 +1235,21 @@ void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
 	// Если установлен флаг запрещающий переключение контекста SSL
-	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
+	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
+	this->_redirects = (flags.find(flag_t::REDIRECTS) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
-	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
+	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
-	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
+	this->_proxy.connect = (flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end());
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * core Метод установки сетевого ядра

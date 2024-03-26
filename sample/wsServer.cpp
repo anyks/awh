@@ -22,6 +22,8 @@ using namespace awh::server;
  */
 class Executor {
 	private:
+		uint32_t _count = 0;
+	private:
 		// Создаём объект фреймворка
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
@@ -121,6 +123,8 @@ class Executor {
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
 				ws->sendMessage(bid, buffer, text);
+
+				cout << " ---------MESSAGE COUNT " << (++this->_count) << endl;
 			}
 		}
 		/**
@@ -186,8 +190,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP2);
-	// core.proto(awh::engine_t::proto_t::HTTP1_1);
+	// core.proto(awh::engine_t::proto_t::HTTP2);
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

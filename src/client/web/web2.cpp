@@ -24,7 +24,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 	// Если сетевое ядро уже инициализированно
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков запроса на сервер
-		const_cast <client::core_t *> (this->_core)->write(reinterpret_cast <const char *> (buffer), size, this->_bid);
+		const_cast <client::core_t *> (this->_core)->send(reinterpret_cast <const char *> (buffer), size, this->_bid);
 }
 /**
  * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
@@ -42,7 +42,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 			// Если мы получили входящие данные тела ответа
 			case static_cast <uint8_t> (http2_t::frame_t::DATA): {
 				// Если мы получили флаг завершения потока
-				if(flags.count(http2_t::flag_t::END_STREAM) > 0){
+				if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 					// Выполняем коммит полученного результата
 					this->_scheme.proxy.http.commit();
 					/**
@@ -86,7 +86,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 			// Если мы получили входящие данные заголовков ответа
 			case static_cast <uint8_t> (http2_t::frame_t::HEADERS): {
 				// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
-				if(flags.count(http2_t::flag_t::END_HEADERS) > 0){
+				if(flags.find(http2_t::flag_t::END_HEADERS) != flags.end()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -111,7 +111,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
-					if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+					if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 						// Выполняем коммит полученного результата
 						this->_scheme.proxy.http.commit();
 						// Выполняем препарирование полученных данных
@@ -126,7 +126,7 @@ int awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct
 					}
 				}
 				// Если мы получили флаг завершения потока
-				if(flags.count(awh::http2_t::flag_t::END_STREAM) > 0){
+				if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 					// Если установлена функция отлова завершения запроса
 					if(this->_callbacks.is("end"))
 						// Выполняем функцию обратного вызова
@@ -481,33 +481,6 @@ void awh::client::Web2::close(const uint64_t bid) noexcept {
 	this->_http2.callback <void (void)> (1, std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid));
 }
 /**
- * windowUpdate Метод обновления размера окна фрейма
- * @param sid  идентификатор потока
- * @param size размер нового окна
- * @return     результат установки размера офна фрейма
- */
-bool awh::client::Web2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
-	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
-		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
-		if((result = ((this->_core != nullptr) && this->_core->working() && (size > 0)))){
-			// Выполняем отправку нового размера окна фрейма
-			if(!(result = this->_http2.windowUpdate(sid, size))){
-				// Выполняем закрытие подключения
-				const_cast <client::core_t *> (this->_core)->close(this->_bid);
-				// Выходим из функции
-				return result;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * send Метод отправки сообщения на сервер
  * @param sid    идентификатор потока
  * @param buffer буфер бинарных данных передаваемых на сервер
@@ -576,11 +549,11 @@ void awh::client::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 		// Выполняем установку списка настроек
 		this->_settings = settings;
 	// Если максимальное количество потоков не установлено
-	if(this->_settings.count(http2_t::settings_t::STREAMS) == 0)
+	if(this->_settings.find(http2_t::settings_t::STREAMS) == this->_settings.end())
 		// Выполняем установку максимального количества потоков
 		this->_settings.emplace(http2_t::settings_t::STREAMS, http2_t::CONCURRENT_STREAMS);
 	// Если максимальный размер фрейма не установлен
-	if(this->_settings.count(http2_t::settings_t::FRAME_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::FRAME_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера фрейма
 		this->_settings.emplace(http2_t::settings_t::FRAME_SIZE, http2_t::MAX_FRAME_SIZE_MIN);
 	// Если максимальный размер фрейма установлен
@@ -597,19 +570,19 @@ void awh::client::Web2::settings(const map <http2_t::settings_t, uint32_t> & set
 			i->second = http2_t::MAX_FRAME_SIZE_MIN;
 	}
 	// Если максимальный размер окна фрейма не установлен
-	if(this->_settings.count(http2_t::settings_t::WINDOW_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::WINDOW_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера окна фрейма
 		this->_settings.emplace(http2_t::settings_t::WINDOW_SIZE, http2_t::MAX_WINDOW_SIZE);
 	// Если максимальный размер буфера полезной нагрузки не установлен
-	if(this->_settings.count(http2_t::settings_t::PAYLOAD_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::PAYLOAD_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера буфера полезной нагрузки
 		this->_settings.emplace(http2_t::settings_t::PAYLOAD_SIZE, http2_t::MAX_PAYLOAD_SIZE);
 	// Если максимальный размер блока заголовоков не установлен
-	if(this->_settings.count(http2_t::settings_t::HEADER_TABLE_SIZE) == 0)
+	if(this->_settings.find(http2_t::settings_t::HEADER_TABLE_SIZE) == this->_settings.end())
 		// Выполняем установку максимального размера блока заголовоков
 		this->_settings.emplace(http2_t::settings_t::HEADER_TABLE_SIZE, http2_t::HEADER_TABLE_SIZE);
 	// Если флаг разрешения принимать push-уведомления не установлено
-	if(this->_settings.count(http2_t::settings_t::ENABLE_PUSH) == 0)
+	if(this->_settings.find(http2_t::settings_t::ENABLE_PUSH) == this->_settings.end())
 		// Выполняем установку флага отключения принёма push-уведомлений
 		this->_settings.emplace(http2_t::settings_t::ENABLE_PUSH, 0);
 }
@@ -629,19 +602,19 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
  */
 void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	// Если установлен флаг запрещающий переключение контекста SSL
-	this->_nossl = (flags.count(flag_t::NO_INIT_SSL) > 0);
+	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
+	this->_redirects = (flags.find(flag_t::REDIRECTS) != flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
-	this->_proxy.connect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
+	this->_proxy.connect = (flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end());
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * userAgent Метод установки User-Agent для HTTP-запроса

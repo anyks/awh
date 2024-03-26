@@ -97,7 +97,7 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 					// Если данные получены
 					if(!buffer.empty())
 						// Выполняем отправку сообщения на сервер
-						const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+						const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 				} break;
 				// Если прокси-сервер является HTTP
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
@@ -125,7 +125,7 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							// Выполняем отправку сообщения на сервер
-							const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+							const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 						}
 					// Если протокол подключения не является защищённым подключением
 					} else {
@@ -178,7 +178,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Выполняем очистку буфера данных
 							this->_buffer.clear();
 							// Выполняем отправку запроса на сервер
-							const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+							const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 							// Завершаем работу
 							return;
 						// Если данные все получены

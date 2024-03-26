@@ -20,6 +20,7 @@
  */
 #include <set>
 #include <map>
+#include <queue>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -68,6 +69,18 @@ namespace awh {
 			} ssl_t;
 		protected:
 			/**
+			 * Payload Структура полезной нагрузки
+			 */
+			typedef struct Payload {
+				size_t size;                  // Размер буфера
+				size_t offset;                // Смещение в бинарном буфере
+				unique_ptr <char []> data; // Данные буфера
+				/**
+				 * Payload Конструктор
+				 */
+				Payload() noexcept : size(0), offset(0), data(nullptr) {}
+			} payload_t;
+			/**
 			 * Settings Структура текущих параметров сети
 			 */
 			typedef struct Settings {
@@ -114,6 +127,8 @@ namespace awh {
 			map <uint64_t, uint16_t> _brokers;
 			// Список активных схем сети
 			map <uint16_t, const scheme_t *> _schemes;
+			// Буферы отправляемой полезной нагрузки
+			map <uint64_t, queue <payload_t>> _payloads;
 		protected:
 			// Создаём объект DNS-резолвера
 			const dns_t * _dns;
@@ -224,6 +239,20 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			void family(const scheme_t::family_t family) noexcept;
+		public:
+			/**
+			 * pop Метод удаления отправленного буфера полезной нагрузки
+			 * @param bid идентификатор брокера
+			 */
+			void pop(const uint64_t bid) noexcept;
+		public:
+			/**
+			 * send Метод асинхронной отправки буфера данных в сокет
+			 * @param buffer буфер для записи данных
+			 * @param size   размер записываемых данных
+			 * @param bid    идентификатор брокера
+			 */
+			virtual void send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 		public:
 			/**
 			 * bandwidth Метод установки пропускной способности сети

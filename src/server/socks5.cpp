@@ -78,7 +78,7 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					// Если данные получены
 					if(!buffer.empty())
 						// Выполняем запись полученных данных на сервер
-						this->_core.write(buffer.data(), buffer.size(), bid1);
+						this->_core.send(buffer.data(), buffer.size(), bid1);
 				}
 			} break;
 			// Если брокер является сервером
@@ -192,7 +192,7 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 					// Если данные получены
 					if((options->stopped = !buffer.empty()))
 						// Отправляем сообщение клиенту
-						this->_core.write(buffer.data(), buffer.size(), bid1);
+						this->_core.send(buffer.data(), buffer.size(), bid1);
 				}
 				// Выполняем закрытие подключения
 				this->close(bid1);
@@ -236,9 +236,9 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 						// Выводим данные полученного сообщения
 						if(this->_callbacks.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::RESPONSE, buffer, size))
 							// Отправляем ответ клиенту
-							this->_core.write(buffer, size, bid);
+							this->_core.send(buffer, size, bid);
 					// Отправляем ответ клиенту
-					} else this->_core.write(buffer, size, bid);
+					} else this->_core.send(buffer, size, bid);
 				}
 			} break;
 			// Если брокер является сервером
@@ -256,7 +256,7 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 						// Если данные получены
 						if(!buffer.empty())
 							// Выполняем запись полученных данных на сервер
-							this->_core.write(buffer.data(), buffer.size(), bid);
+							this->_core.send(buffer.data(), buffer.size(), bid);
 						// Если данные все получены
 						else if(options->socks5.is(socks5_t::state_t::END)) {
 							// Если рукопожатие выполнено
@@ -306,7 +306,7 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 								// Если данные получены
 								if((options->stopped = !buffer.empty()))
 									// Отправляем сообщение клиенту
-									this->_core.write(buffer.data(), buffer.size(), bid);
+									this->_core.send(buffer.data(), buffer.size(), bid);
 								// Принудительно выполняем отключение лкиента
 								else this->close(bid);
 							}
@@ -322,9 +322,9 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 								// Выводим данные полученного сообщения
 								if(this->_callbacks.call <bool (const uint64_t, const event_t, const char *, const size_t)> ("message", bid, event_t::REQUEST, buffer, size))
 									// Отправляем запрос на внешний сервер
-									i->second->write(buffer, size, options->id);
+									i->second->send(buffer, size, options->id);
 							// Отправляем запрос на внешний сервер
-							} else i->second->write(buffer, size, options->id);
+							} else i->second->send(buffer, size, options->id);
 						}
 					}
 				}
@@ -543,7 +543,7 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
  */
 void awh::server::ProxySocks5::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.verbose(flags.count(flag_t::NOT_INFO) == 0);
+	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * ipV6only Метод установки флага использования только сети IPv6

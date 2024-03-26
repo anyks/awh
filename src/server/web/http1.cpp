@@ -234,7 +234,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										cout << string(response.begin(), response.end()) << endl << endl;
 									#endif
 									// Отправляем ответ брокеру
-									const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
+									const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
 									// Получаем тело полезной нагрузки ответа
 									while(!(payload = options->http.payload()).empty()){
 										/**
@@ -249,7 +249,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 											options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 										// Выполняем отправку тела ответа клиенту
-										const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+										const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 									}
 								// Выполняем отключение брокера
 								} else const_cast <server::core_t *> (this->_core)->close(bid);
@@ -382,7 +382,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											cout << string(response.begin(), response.end()) << endl << endl;
 										#endif
 										// Отправляем ответ брокеру
-										const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
+										const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
 										// Получаем данные полезной нагрузки ответа
 										while(!(payload = options->http.payload()).empty()){
 											/**
@@ -397,7 +397,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 												options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 											// Отправляем тело ответа клиенту
-											const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+											const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 										}
 									// Выполняем отключение брокера
 									} else const_cast <server::core_t *> (this->_core)->close(bid);
@@ -655,7 +655,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Выполняем установку сетевого ядра
 						this->_ws1._core = this->_core;
 						// Выполняем отправку данных брокеру
-						const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 						// Выполняем извлечение параметров запроса
 						const auto & request = options->http.request();
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
@@ -702,7 +702,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Получаем параметры ответа
 					const auto response = options->http.response();
 					// Выполняем отправку заголовков сообщения
-					const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
 					// Получаем данные тела ответа
 					while(!(payload = web->http.payload()).empty()){
 						/**
@@ -717,7 +717,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !web->alive && !web->http.is(http_t::state_t::ALIVE));
 						// Выполняем отправку ответа клиенту
-						const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 					}
 					// Если получение данных нужно остановить
 					if(options->stopped)
@@ -1037,7 +1037,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = (end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
 					// Выполняем отправку ответа клиенту
-					const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(entity.data(), entity.size(), bid);
 				}
 				// Если список трейлеров установлен
 				if(options->http.trailers() > 0){
@@ -1060,7 +1060,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (end && (options->http.trailers() == 0));
 						// Выполняем отправку трейлера клиенту
-						const_cast <server::core_t *> (this->_core)->write(entity.data(), entity.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(entity.data(), entity.size(), bid);
 					}
 					/**
 					 * Если включён режим отладки
@@ -1126,7 +1126,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = end;
 					// Выполняем отправку заголовков запроса на сервер
-					const_cast <server::core_t *> (this->_core)->write(headers.data(), headers.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(headers.data(), headers.size(), bid);
 					// Устанавливаем результат
 					result = 1;
 				}
@@ -1146,7 +1146,7 @@ void awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->write(buffer, size, bid);
+		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
 }
 /**
  * send Метод отправки сообщения брокеру
@@ -1225,7 +1225,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
-				const_cast <server::core_t *> (this->_core)->write(response.data(), response.size(), bid);
+				const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
 				// Если код ответа содержит тело ответа
 				if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
 					// Получаем данные тела полезной нагрузки
@@ -1240,7 +1240,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 						// Отправляем тело ответа клиенту
-						const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 					}
 					// Если список трейлеров установлен
 					if(options->http.trailers() > 0){
@@ -1265,7 +1265,7 @@ void awh::server::Http1::send(const uint64_t bid, const u_int code, const string
 								// Устанавливаем флаг закрытия подключения
 								options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 							// Выполняем отправку трейлера клиенту
-							const_cast <server::core_t *> (this->_core)->write(payload.data(), payload.size(), bid);
+							const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 						}
 						/**
 						 * Если включён режим отладки
@@ -1537,17 +1537,17 @@ void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.count(flag_t::NOT_STOP) == 0);
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
-	this->_webSocket = (flags.count(flag_t::WEBSOCKET_ENABLE) > 0);
+	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 	// Устанавливаем флаг разрешающий выполнять метод CONNECT для сервера
-	this->_methodConnect = (flags.count(flag_t::CONNECT_METHOD_ENABLE) > 0);
+	this->_methodConnect = (flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end());
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <server::core_t *> (this->_core)->verbose(flags.count(flag_t::NOT_INFO) == 0);
+		const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * alive Метод установки долгоживущего подключения

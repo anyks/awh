@@ -196,8 +196,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.1.4
-	VER="3.1.4"
+	# Версия OpenSSL v3.2.1
+	VER="3.2.1"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -1533,7 +1533,7 @@ fi
 #	cd "$src" || exit 1
 #
 #	# Версия NgHttp3
-#	VER="1.1.0"
+#	VER="1.2.0"
 #
 #	# Переключаемся на main
 #	git checkout main
@@ -1613,7 +1613,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgTCP2
-	VER="1.1.0"
+	VER="1.4.0"
 
 	# Переключаемся на main
 	git checkout main
@@ -1738,7 +1738,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.58.0"
+	VER="1.60.0"
 
 	# Переключаемся на master
 	git checkout master
@@ -1787,131 +1787,64 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
-		# Если нужно собрать модуль LibEvent2
-		if [[ $LIBEVENT2 = "yes" ]]; then
-			cmake \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -DENABLE_STATIC_CRT="ON" \
-			 -DENABLE_APP="OFF" \
-			 -DENABLE_HPACK_TOOLS="OFF" \
-			 -DENABLE_EXAMPLES="OFF" \
-			 -DENABLE_LIB_ONLY="ON" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_HTTP3="OFF" \
-			 -DENABLE_DOC="OFF" \
-			 -DWITH_LIBXML2="ON" \
-			 -DWITH_MRUBY="OFF" \
-			 -DWITH_NEVERBLEED="OFF" \
-			 -DWITH_LIBBPF="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DZLIB_LIBRARY="$PREFIX/lib" \
-			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
-			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
-			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include/libevent2" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-		# Если нужно собрать модуль LibEv
-		else
-			cmake \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -DENABLE_STATIC_CRT="ON" \
-			 -DENABLE_APP="OFF" \
-			 -DENABLE_HPACK_TOOLS="OFF" \
-			 -DENABLE_EXAMPLES="OFF" \
-			 -DENABLE_LIB_ONLY="ON" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_HTTP3="OFF" \
-			 -DENABLE_DOC="OFF" \
-			 -DWITH_LIBXML2="ON" \
-			 -DWITH_MRUBY="OFF" \
-			 -DWITH_NEVERBLEED="OFF" \
-			 -DWITH_LIBBPF="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DZLIB_LIBRARY="$PREFIX/lib" \
-			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
-			 -DLIBEV_LIBRARY="$PREFIX/lib" \
-			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-		fi
+		cmake \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -DENABLE_STATIC_CRT="ON" \
+		 -DENABLE_APP="OFF" \
+		 -DENABLE_DOC="OFF" \
+		 -DWITH_MRUBY="OFF" \
+		 -DWITH_LIBXML2="ON" \
+		 -DWITH_LIBBPF="OFF" \
+		 -DWITH_NEVERBLEED="OFF" \
+		 -DENABLE_HTTP3="OFF" \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_EXAMPLES="OFF" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DENABLE_APP_DEFAULT="ON" \
+		 -DENABLE_HPACK_TOOLS="OFF" \
+		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+		 -DENABLE_WERROR="$ENABLE_DEBUG" \
+		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+		 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+		 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+		 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+		 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
 	else
-		# Если нужно собрать модуль LibEvent2
-		if [[ $LIBEVENT2 = "yes" ]]; then
-			cmake \
-			 -DENABLE_APP="OFF" \
-			 -DENABLE_HPACK_TOOLS="OFF" \
-			 -DENABLE_EXAMPLES="OFF" \
-			 -DENABLE_LIB_ONLY="ON" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_HTTP3="OFF" \
-			 -DENABLE_DOC="OFF" \
-			 -DWITH_LIBXML2="ON" \
-			 -DWITH_MRUBY="OFF" \
-			 -DWITH_NEVERBLEED="OFF" \
-			 -DWITH_LIBBPF="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
-			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DZLIB_LIBRARY="$PREFIX/lib" \
-			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
-			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
-			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include/libevent2" \
-			 .. || exit 1
-		# Если нужно собрать модуль LibEv
-		else
-			cmake \
-			 -DENABLE_APP="OFF" \
-			 -DENABLE_HPACK_TOOLS="OFF" \
-			 -DENABLE_EXAMPLES="OFF" \
-			 -DENABLE_LIB_ONLY="ON" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_HTTP3="OFF" \
-			 -DENABLE_DOC="OFF" \
-			 -DWITH_LIBXML2="ON" \
-			 -DWITH_MRUBY="OFF" \
-			 -DWITH_NEVERBLEED="OFF" \
-			 -DWITH_LIBBPF="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
-			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DZLIB_LIBRARY="$PREFIX/lib" \
-			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
-			 -DLIBEV_LIBRARY="$PREFIX/lib" \
-			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 .. || exit 1
-		fi
+		cmake \
+		 -DENABLE_APP="OFF" \
+		 -DENABLE_DOC="OFF" \
+		 -DWITH_MRUBY="OFF" \
+		 -DWITH_LIBXML2="ON" \
+		 -DWITH_LIBBPF="OFF" \
+		 -DWITH_NEVERBLEED="OFF" \
+		 -DENABLE_HTTP3="OFF" \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_EXAMPLES="OFF" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DENABLE_APP_DEFAULT="ON" \
+		 -DENABLE_HPACK_TOOLS="OFF" \
+		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+		 -DENABLE_WERROR="$ENABLE_DEBUG" \
+		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+		 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+		 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+		 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
+		 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
+		 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+		 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+		.. || exit 1
 	fi
 
 	# Выполняем сборку на всех логических ядрах
