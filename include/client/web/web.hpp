@@ -375,6 +375,12 @@ namespace awh {
 				}
 			public:
 				/**
+				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+				 */
+				engine_t::proto_t proto() const noexcept;
+			public:
+				/**
 				 * bandwidth Метод установки пропускной способности сети
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)

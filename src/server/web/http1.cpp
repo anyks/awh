@@ -986,8 +986,9 @@ void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) 
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -995,8 +996,10 @@ void awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
 		// Если агент соответствует Websocket-у
 		if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
 			// Выполняем передачу данных клиенту Websocket
-			this->_ws1.sendMessage(bid, message, text);
+			return this->_ws1.sendMessage(bid, message, text);
 	}
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки тела сообщения клиенту
@@ -1141,12 +1144,15 @@ int32_t awh::server::Http1::send(const uint64_t bid, const u_int code, const str
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+		return const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки сообщения брокеру
@@ -1652,11 +1658,11 @@ void awh::server::Http1::bytesDetect(const scheme_t::mark_t read, const scheme_t
 	// Если минимальный размер данных для чтения, не установлен
 	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * crypted Метод получения флага шифрования

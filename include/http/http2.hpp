@@ -146,12 +146,12 @@ namespace awh {
 		public:
 			// Количество потоков по умолчанию
 			static constexpr uint32_t CONCURRENT_STREAMS = 0x80;
-			// Максимальный размер буфера полезной нагрузки
-			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0xFFFF;
 			// Максимальный размер таблицы заголовков по умолчанию
 			static constexpr uint32_t HEADER_TABLE_SIZE = 0x1000;
+			// Максимальный размер буфера полезной нагрузки
+			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0xFFFF;
 			// Максимальный размер окна по умолчанию
-			static constexpr uint32_t MAX_WINDOW_SIZE = 0x7FFFFFFF;
+			static constexpr uint32_t MAX_WINDOW_SIZE = 0xFFFFFFF;
 			// Минимальный размер фрейма по умолчанию
 			static constexpr uint32_t MAX_FRAME_SIZE_MIN = 0x4000;
 			// Максимальный размер фрейма по умолчанию

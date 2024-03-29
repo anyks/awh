@@ -81,6 +81,17 @@ namespace awh {
 					 */
 					Settings() noexcept : verify(false) {}
 				} settings_t;
+				/**
+				 * Payload Структура полезной нагрузки
+				 */
+				typedef struct Payload {
+					size_t size;               // Размер буфера
+					unique_ptr <char []> data; // Данные буфера
+					/**
+					 * Payload Конструктор
+					 */
+					Payload() noexcept : size(0), data(nullptr) {}
+				} payload_t;
 			private:
 				// Порт сервера
 				u_int _port;
@@ -107,6 +118,13 @@ namespace awh {
 				// Объект рабочего для сервера
 				scheme::socks5_t _scheme;
 			private:
+				// Максимальный размер памяти для хранений полезной нагрузки всех брокеров
+				size_t _memoryAvailableSize;
+				// Максимальный размер хранимой полезной нагрузки для одного брокера
+				size_t _brokerAvailableSize;
+			private:
+				// Буферы отправляемой полезной нагрузки
+				map <uint64_t, queue <payload_t>> _payloads;
 				// Список активных клиентов
 				map <uint64_t, unique_ptr <client::core_t>> _clients;
 			private:
@@ -166,6 +184,24 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 */
 				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param size   размер буфера полезной нагрузки
+				 * @param core   объект сетевого ядра
+				 */
+				void available(const broker_t broker, const uint64_t bid, const size_t size, awh::core_t * core) noexcept;
+				/**
+				 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер полезной нагрузки которую не получилось отправить
+				 * @param size   размер буфера полезной нагрузки
+				 * @param core   объект сетевого ядра
+				 */
+				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключённых клиентов
@@ -258,6 +294,28 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+				 * @return размер памяти для хранения полезной нагрузки всех брокеров
+				 */
+				size_t memoryAvailableSize() const noexcept;
+				/**
+				 * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+				 * @param size размер памяти для хранения полезной нагрузки всех брокеров
+				 */
+				void memoryAvailableSize(const size_t size) noexcept;
+			public:
+				/**
+				 * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+				 * @return размер хранимой полезной нагрузки для одного брокера
+				 */
+				size_t brokerAvailableSize() const noexcept;
+				/**
+				 * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+				 * @param size размер хранимой полезной нагрузки для одного брокера
+				 */
+				void brokerAvailableSize(const size_t size) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

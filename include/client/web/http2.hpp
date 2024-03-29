@@ -251,12 +251,6 @@ namespace awh {
 				void stream(const int32_t sid, const mode_t mode) noexcept;
 			public:
 				/**
-				 * proto Метод извлечения поддерживаемого протокола подключения
-				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
-				 */
-				engine_t::proto_t proto() const noexcept;
-			public:
-				/**
 				 * sendError Метод отправки сообщения об ошибке
 				 * @param mess отправляемое сообщение об ошибке
 				 */
@@ -265,8 +259,9 @@ namespace awh {
 				 * sendMessage Метод отправки сообщения на сервер
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер
@@ -280,9 +275,9 @@ namespace awh {
 				 * send Метод отправки данных в бинарном виде серверу
 				 * @param buffer буфер бинарных данных передаваемых серверу
 				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
 				 */
-				void send(const char * buffer, const size_t size) noexcept;
-			public:
+				bool send(const char * buffer, const size_t size) noexcept;
 				/**
 				 * send Метод отправки тела сообщения на сервер
 				 * @param sid    идентификатор потока HTTP

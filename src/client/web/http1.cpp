@@ -779,10 +779,11 @@ void awh::client::Http1::sendError(const ws::mess_t & mess) noexcept {
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::client::Http1::sendMessage(const vector <char> & message, const bool text) noexcept {
+bool awh::client::Http1::sendMessage(const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения на Websocket-сервер
-	this->_ws1.sendMessage(message, text);
+	return this->_ws1.sendMessage(message, text);
 }
 /** 
  * submit Метод выполнения удалённого запроса на сервер
@@ -993,12 +994,15 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
  * send Метод отправки данных в бинарном виде серверу
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::client::Http1::send(const char * buffer, const size_t size) noexcept {
+bool awh::client::Http1::send(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+		return const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки тела сообщения на сервер

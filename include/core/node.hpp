@@ -69,11 +69,20 @@ namespace awh {
 			} ssl_t;
 		protected:
 			/**
+			 * Mutex Объект основных мютексов
+			 */
+			typedef struct Mutex {
+				// Для работы с параметрами модуля
+				recursive_mutex main;
+				// Для отправки сообщений
+				recursive_mutex send;
+			} mtx_t;
+			/**
 			 * Payload Структура полезной нагрузки
 			 */
 			typedef struct Payload {
-				size_t size;                  // Размер буфера
-				size_t offset;                // Смещение в бинарном буфере
+				size_t size;               // Размер буфера
+				size_t offset;             // Смещение в бинарном буфере
 				unique_ptr <char []> data; // Данные буфера
 				/**
 				 * Payload Конструктор
@@ -106,9 +115,9 @@ namespace awh {
 				 family(scheme_t::family_t::IPV4),
 				 sockname{""}, network{"0.0.0.0","[::]"} {}
 			} settings_t;
-		private:
+		protected:
 			// Мютекс для блокировки потоков
-			mutex _mtx;
+			mtx_t _mtx;
 		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
@@ -120,11 +129,18 @@ namespace awh {
 			engine_t _engine;
 			// Объект сетевых параметров
 			settings_t _settings;
+		private:
+			// Максимальный размер памяти для хранений полезной нагрузки всех брокеров
+			size_t _memoryAvailableSize;
+			// Максимальный размер хранимой полезной нагрузки для одного брокера
+			size_t _brokerAvailableSize;
 		protected:
 			// Список занятых процессов брокера
 			set <uint64_t> _busy;
 			// Список брокеров подключения
 			map <uint64_t, uint16_t> _brokers;
+			// Список свободной памяти хранения полезной нагрузки
+			map <uint64_t, size_t> _available;
 			// Список активных схем сети
 			map <uint16_t, const scheme_t *> _schemes;
 			// Буферы отправляемой полезной нагрузки
@@ -241,18 +257,47 @@ namespace awh {
 			void family(const scheme_t::family_t family) noexcept;
 		public:
 			/**
-			 * pop Метод удаления отправленного буфера полезной нагрузки
+			 * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 * @return размер памяти для хранения полезной нагрузки всех брокеров
+			 */
+			size_t memoryAvailableSize() const noexcept;
+			/**
+			 * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 * @param size размер памяти для хранения полезной нагрузки всех брокеров
+			 */
+			void memoryAvailableSize(const size_t size) noexcept;
+		public:
+			/**
+			 * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+			 * @return размер хранимой полезной нагрузки для одного брокера
+			 */
+			size_t brokerAvailableSize() const noexcept;
+			/**
+			 * brokerAvailableSize Метод получения размера хранимой полезной нагрузки для текущего брокера
+			 * @param bid идентификатор брокера
+			 * @return    размер хранимой полезной нагрузки для текущего брокера
+			 */
+			size_t brokerAvailableSize(const uint64_t bid) const noexcept;
+			/**
+			 * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+			 * @param size размер хранимой полезной нагрузки для одного брокера
+			 */
+			void brokerAvailableSize(const size_t size) noexcept;
+		protected:
+			/**
+			 * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
 			 * @param bid идентификатор брокера
 			 */
-			void pop(const uint64_t bid) noexcept;
+			void available(const uint64_t bid) noexcept;
 		public:
 			/**
 			 * send Метод асинхронной отправки буфера данных в сокет
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param bid    идентификатор брокера
+			 * @return       результат отправки сообщения
 			 */
-			virtual void send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+			virtual bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 		public:
 			/**
 			 * bandwidth Метод установки пропускной способности сети
@@ -332,7 +377,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri), _dns(nullptr) {}
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri),
+			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 			/**
 			 * Core Конструктор
 			 * @param dns объект DNS-резолвера
@@ -340,7 +386,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri), _dns(dns) {}
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri),
+			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 			/**
 			 * ~Node Деструктор
 			 */

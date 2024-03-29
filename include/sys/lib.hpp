@@ -73,22 +73,26 @@
  * Размеры буферов данных
  */
 
+// Максимальный размер передаваемого буфера полезной нагрузки
+#define AWH_PAYLOAD_SIZE 0xFFFFF
+// Максимальный размер окна всех хранимых данных полезной нагрузки
+#define AWH_WINDOW_SIZE 0x7FFFFFFF
 // Минимальный размер данных для чтения
-#define BUFFER_READ_MIN 1
+#define AWH_BUFFER_READ_MIN 1
 // Максимальный размер данных для чтения
-#define BUFFER_READ_MAX 0
+#define AWH_BUFFER_READ_MAX 0
 // Минимальный размер данных для записи
-#define BUFFER_WRITE_MIN 1
+#define AWH_BUFFER_WRITE_MIN 1
 // Максимальный размер данных для записи
-#define BUFFER_WRITE_MAX 1500
+#define AWH_BUFFER_WRITE_MAX 1500
 // Размер бинарного буфера
-#define BUFFER_SIZE 0xFA000
+#define AWH_BUFFER_SIZE 0xFA000
 // Размер чанка буфера для чтения из файла
-#define BUFFER_CHUNK 0x8000
+#define AWH_BUFFER_CHUNK 0x8000
 // Размер буфера на чтение
-#define BUFFER_SIZE_RCV 0x40000000
+#define AWH_BUFFER_SIZE_RCV 0x40000000
 // Размер буфера на запись
-#define BUFFER_SIZE_SND 0x40000000
+#define AWH_BUFFER_SIZE_SND 0x40000000
 
 /**
  * HTTP заголовки по умолчанию

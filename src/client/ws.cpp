@@ -16,6 +16,14 @@
 #include <client/ws.hpp>
 
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::client::Websocket::proto() const noexcept {
+	// Выполняем определение активного HTTP-протокола
+	return this->_ws.proto();
+}
+/**
  * sendTimeout Метод отправки сигнала таймаута
  */
 void awh::client::Websocket::sendTimeout() noexcept {
@@ -34,10 +42,11 @@ void awh::client::Websocket::sendError(const ws::mess_t & mess) noexcept {
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
  * @param utf8    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::client::Websocket::sendMessage(const vector <char> & message, const bool utf8) noexcept {
+bool awh::client::Websocket::sendMessage(const vector <char> & message, const bool utf8) noexcept {
 	// Выполняем отправку сообщения на сервер
-	this->_ws.sendMessage(message, utf8);
+	return this->_ws.sendMessage(message, utf8);
 }
 /**
  * pause Метод установки на паузу клиента

@@ -166,6 +166,15 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void connected(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * send Метод асинхронной отправки буфера данных в сокет
+				 * @param buffer буфер для записи данных
+				 * @param size   размер записываемых данных
+				 * @param bid    идентификатор брокера
+				 * @return       результат отправки сообщения
+				 */
+				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
 				 * read Метод чтения данных для брокера

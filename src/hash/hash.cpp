@@ -1099,13 +1099,11 @@ void awh::Hash::level(const level_t level) noexcept {
  */
 void awh::Hash::takeoverCompress(const bool flag) noexcept {
 	// Если флаг установлен
-	if(this->_takeOverCompress)
+	if(this->_takeOverCompress && !flag)
 		// Очищаем выделенную память для компрессора
 		::deflateEnd(&this->_zdef);
-	// Устанавливаем переданный флаг
-	this->_takeOverCompress = flag;
 	// Если флаг установлен
-	if(this->_takeOverCompress){
+	if(!this->_takeOverCompress && flag){
 		// Заполняем его нулями потока для компрессора
 		::memset(&this->_zdef, 0, sizeof(this->_zdef));
 		// Обнуляем структуру потока для компрессора
@@ -1131,6 +1129,8 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 			#endif
 		}
 	}
+	// Устанавливаем переданный флаг
+	this->_takeOverCompress = flag;
 }
 /**
  * takeoverDecompress Метод установки флага переиспользования контекста декомпрессии
@@ -1138,13 +1138,11 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
  */
 void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 	// Если флаг установлен
-	if(this->_takeOverDecompress)
+	if(this->_takeOverDecompress && !flag)
 		// Очищаем выделенную память для декомпрессора
 		::inflateEnd(&this->_zinf);
-	// Устанавливаем переданный флаг
-	this->_takeOverDecompress = flag;
 	// Если флаг установлен
-	if(this->_takeOverDecompress){
+	if(!this->_takeOverDecompress && flag){
 		// Заполняем его нулями потока для декомпрессора
 		::memset(&this->_zinf, 0, sizeof(this->_zinf));
 		// Обнуляем структуру потока для декомпрессора
@@ -1172,6 +1170,8 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 			#endif
 		}
 	}
+	// Устанавливаем переданный флаг
+	this->_takeOverDecompress = flag;
 }
 /**
  * ~Hash Деструктор

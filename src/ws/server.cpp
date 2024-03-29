@@ -333,5 +333,5 @@ awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(f
 	// Выполняем установку идентичность клиента к протоколу WebSocket
 	this->_identity = identity_t::WS;
 	// Устанавливаем тип HTTP-модуля (Сервер)
-	this->_web.hid(awh::web_t::hid_t::SERVER);	
+	this->_web.hid(awh::web_t::hid_t::SERVER);
 }

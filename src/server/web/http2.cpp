@@ -1415,15 +1415,6 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 	}
 }
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
- * @param bid идентификатор брокера
- * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
- */
-awh::engine_t::proto_t awh::server::Http2::proto(const uint64_t bid) const noexcept {
-	// Выводим идентификатор активного HTTP-протокола
-	return this->_core->proto(bid);
-}
-/**
  * parser Метод извлечения объекта HTTP-парсера
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
@@ -1669,8 +1660,9 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -1690,8 +1682,7 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем передачу данных клиенту
-								this->_http1.sendMessage(bid, message, text);
-							break;
+								return this->_http1.sendMessage(bid, message, text);
 						}
 					}
 				} break;
@@ -1706,26 +1697,30 @@ void awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем передачу данных клиенту Websocket
-								this->_ws2.sendMessage(bid, message, text);
-							break;
+								return this->_ws2.sendMessage(bid, message, text);
 						}
 					}
 				} break;
 			}
 		}
 	}
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки данных в бинарном виде клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::server::Http2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::Http2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+		return const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки трейлеров
@@ -2936,11 +2931,11 @@ void awh::server::Http2::bytesDetect(const scheme_t::mark_t read, const scheme_t
 	// Если минимальный размер данных для чтения, не установлен
 	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * realm Метод установки название сервера

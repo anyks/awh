@@ -47,6 +47,13 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @param bid идентификатор брокера
+				 * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+				 */
+				engine_t::proto_t proto(const uint64_t bid) const noexcept;
+			public:
+				/**
 				 * init Метод инициализации Websocket-сервера
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
@@ -71,8 +78,9 @@ namespace awh {
 				 * @param bid     идентификатор брокера
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

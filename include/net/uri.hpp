@@ -81,7 +81,7 @@ namespace awh {
 				/**
 				 * Params Конструктор
 				 */
-				Params() noexcept : port(0), host(""), user(""), pass("") {}
+				Params() noexcept : port(0), host{""}, user{""}, pass{""} {}
 			} params_t;
 			/**
 			 * URL Структура URL адреса

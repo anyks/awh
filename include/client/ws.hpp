@@ -46,6 +46,12 @@ namespace awh {
 				const client::core_t * _core;
 			public:
 				/**
+				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+				 */
+				engine_t::proto_t proto() const noexcept;
+			public:
+				/**
 				 * sendTimeout Метод отправки сигнала таймаута
 				 */
 				void sendTimeout() noexcept;
@@ -58,8 +64,9 @@ namespace awh {
 				 * sendMessage Метод отправки сообщения на сервер
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param utf8    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const vector <char> & message, const bool utf8 = true) noexcept;
+				bool sendMessage(const vector <char> & message, const bool utf8 = true) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента

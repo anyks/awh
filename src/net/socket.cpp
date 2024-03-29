@@ -931,7 +931,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode)
 		// Если необходимо установить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {
 			// Получаем количество байт для установки
-			u_int bytes = (size > 0 ? size : BUFFER_SIZE_RCV);
+			u_int bytes = (size > 0 ? size : AWH_BUFFER_SIZE_RCV);
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками
@@ -961,7 +961,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode)
 		// Если необходимо установить размер буфера на запись
 		case static_cast <uint8_t> (mode_t::WRITE): {
 			// Получаем количество байт для установки
-			u_int bytes = (size > 0 ? size : BUFFER_SIZE_SND);
+			u_int bytes = (size > 0 ? size : AWH_BUFFER_SIZE_SND);
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками

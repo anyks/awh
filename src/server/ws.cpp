@@ -16,6 +16,15 @@
 #include <server/ws.hpp>
 
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @param bid идентификатор брокера
+ * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::server::Websocket::proto(const uint64_t bid) const noexcept {
+	// Выполняем извлечения поддерживаемого протокола подключения
+	return this->_ws.proto(bid);
+}
+/**
  * init Метод инициализации Websocket-сервера
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
@@ -48,10 +57,11 @@ void awh::server::Websocket::sendError(const uint64_t bid, const ws::mess_t & me
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::server::Websocket::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::Websocket::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_ws.sendMessage(bid, message, text);
+	return this->_ws.sendMessage(bid, message, text);
 }
 /**
  * callbacks Метод установки функций обратного вызова

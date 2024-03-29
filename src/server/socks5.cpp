@@ -154,14 +154,24 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					ret.first->second->scheme(&options->scheme);
 					// Устанавливаем параметры сети клиента
 					ret.first->second->network(this->_settings.ips);
+					// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
+					ret.first->second->memoryAvailableSize(this->_memoryAvailableSize);
+					// Выполняем установку размера хранимой полезной нагрузки для одного брокера
+					ret.first->second->brokerAvailableSize(this->_brokerAvailableSize);
 					// Устанавливаем событие подключения
 					ret.first->second->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&proxy_socks5_t::connectEvents, this, broker_t::CLIENT, bid1, _1, _2));
 					// Устанавливаем событие отключения
 					ret.first->second->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::CLIENT, bid1, _1, _2));
 					// Устанавливаем функцию чтения данных
 					ret.first->second->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::CLIENT, _1, _2, bid1, _4));
+					// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+					ret.first->second->callback <void (const uint64_t, const size_t)> ("available", std::bind(&proxy_socks5_t::available, this, broker_t::CLIENT, _1, _2, ret.first->second.get()));
+					// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+					ret.first->second->callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&proxy_socks5_t::unavailable, this, broker_t::CLIENT, _1, _2, _3, ret.first->second.get()));
 					// Выполняем подключение клиента к сетевому ядру
 					this->_core.bind(ret.first->second.get());
+					// Выполняем запуск работы клиента
+					ret.first->second->start();
 				}
 			} break;
 		}
@@ -355,6 +365,108 @@ void awh::server::ProxySocks5::writeEvents(const broker_t broker, const char * b
 	}
 }
 /**
+ * available Метод получения событий освобождения памяти буфера полезной нагрузки
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param bid    идентификатор брокера
+ * @param size   размер буфера полезной нагрузки
+ * @param core   объект сетевого ядра
+ */
+void awh::server::ProxySocks5::available(const broker_t broker, const uint64_t bid, const size_t size, awh::core_t * core) noexcept {
+	// Ещем для указанного потока очередь полезной нагрузки
+	auto i = this->_payloads.find(bid);
+	// Если для потока очередь полезной нагрузки получена
+	if((i != this->_payloads.end()) && !i->second.empty()){
+		// Если места достаточно в буфере данных для отправки
+		if(i->second.front().size <= size){
+			// Если сетевое ядро уже инициализированно
+			if(core != nullptr){
+				// Флаг разрешения отправки ранее неотправленных данных из временного буфера полезной нагрузки
+				bool allow = true;
+				// Если функция обратного вызова установлена
+				if(this->_callbacks.is("available"))
+					// Выполняем функцию обратного вызова
+					allow = this->_callbacks.call <bool (const broker_t, const uint64_t, const size_t)> ("available", broker, bid, size);
+				// Если разрешено добавить неотправленную запись во временный буфер полезной нагрузки
+				if(allow){
+					// Определяем переданного брокера
+					switch(static_cast <uint8_t> (broker)){
+						// Если брокером является клиент
+						case static_cast <uint8_t> (broker_t::CLIENT): {
+							// Выполняем отправку заголовков запроса на сервер
+							if(dynamic_cast <client::core_t *> (core)->send(i->second.front().data.get(), i->second.front().size, bid))
+								// Выполняем удаление буфера полезной нагрузки
+								i->second.pop();
+						} break;
+						// Если брокером является сервер
+						case static_cast <uint8_t> (broker_t::SERVER): {
+							// Выполняем отправку заголовков запроса на сервер
+							if(dynamic_cast <server::core_t *> (core)->send(i->second.front().data.get(), i->second.front().size, bid))
+								// Выполняем удаление буфера полезной нагрузки
+								i->second.pop();
+						} break;
+					}
+				}
+			// Выполняем удаление буфера полезной нагрузки
+			} else i->second.pop();
+		}
+	}
+}
+/**
+ * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param bid    идентификатор брокера
+ * @param buffer буфер полезной нагрузки которую не получилось отправить
+ * @param size   размер буфера полезной нагрузки
+ * @param core   объект сетевого ядра
+ */
+void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size, awh::core_t * core) noexcept {
+	// Блокируем неиспользуемую переменную
+	(void) core;
+	// Флаг разрешения добавления неотправленных данных во временный буфер полезной нагрузки
+	bool allow = true;
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("unavailable"))
+		// Выполняем функцию обратного вызова
+		allow = this->_callbacks.call <bool (const broker_t, const uint64_t, const char *, const size_t)> ("unavailable", broker, bid, buffer, size);
+	// Если разрешено добавить неотправленную запись во временный буфер полезной нагрузки
+	if(allow){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Объект полезной нагрузки для отправки
+			payload_t payload;
+			// Устанавливаем размер буфера данных
+			payload.size = size;
+			// Выполняем создание буфера данных
+			payload.data = unique_ptr <char []> (new char [size]);
+			// Выполняем копирование буфера полезной нагрузки
+			::memcpy(payload.data.get(), buffer, size);
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end())
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				i->second.push(std::move(payload));
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			else {
+				// Создаём новую очередь полезной нагрузки
+				auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				ret.first->second.push(std::move(payload));
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
+}
+/**
  * erase Метод удаления отключённых клиентов
  * @param tid идентификатор таймера
  * @param bid идентификатор брокера
@@ -366,6 +478,8 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, const uint64_t bid) noe
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
 	if(i != this->_clients.end()){
+		// Выполняем остановку работы клиента
+		i->second->stop();
 		// Выполняем отключение клиента от сетевого ядра
 		this->_core.unbind(i->second.get());
 		// Удаляем активного клиента
@@ -377,6 +491,12 @@ void awh::server::ProxySocks5::erase(const uint16_t tid, const uint64_t bid) noe
 			// Выводим функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
+	// Выполняем поиск неотправленных буферов полезной нагрузки
+	auto j = this->_payloads.find(bid);
+	// Если неотправленные буферы полезной нагрузки найдены
+	if(j != this->_payloads.end())
+		// Выполняем удаление неотправленные буферы полезной нагрузки
+		this->_payloads.erase(j);
 }
 /**
  * init Метод инициализации брокера
@@ -426,6 +546,10 @@ void awh::server::ProxySocks5::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("accept", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения сообщений в бинарном виде
 	this->_callbacks.set("message", callbacks);
+	// Выполняем установку функции обратного вызова при освобождении буфера хранения полезной нагрузки
+	this->_callbacks.set("available", callbacks);
+	// Выполняем установку функции обратного вызова при заполнении буфера хранения полезной нагрузки
+	this->_callbacks.set("unavailable", callbacks);
 	// Выполняем установку функции обратного вызова для обработки авторизации
 	this->_callbacks.set("checkPassword", callbacks);
 }
@@ -483,6 +607,42 @@ void awh::server::ProxySocks5::close(const uint64_t bid) noexcept {
 	this->_core.close(bid);
 }
 /**
+ * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @return размер памяти для хранения полезной нагрузки всех брокеров
+ */
+size_t awh::server::ProxySocks5::memoryAvailableSize() const noexcept {
+	// Выводим размер памяти для хранения полезной нагрузки всех брокеров
+	return this->_core.memoryAvailableSize();
+}
+/**
+ * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @param size размер памяти для хранения полезной нагрузки всех брокеров
+ */
+void awh::server::ProxySocks5::memoryAvailableSize(const size_t size) noexcept {
+	// Запоминаем размер памяти для хранения полезной нагрузки всех брокеров
+	this->_memoryAvailableSize = size;
+	// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
+	this->_core.memoryAvailableSize(size);
+}
+/**
+ * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ * @return размер хранимой полезной нагрузки для одного брокера
+ */
+size_t awh::server::ProxySocks5::brokerAvailableSize() const noexcept {
+	// Выводим размер хранимой полезной нагрузки для одного брокера
+	return this->_core.brokerAvailableSize();
+}
+/**
+ * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ * @param size размер хранимой полезной нагрузки для одного брокера
+ */
+void awh::server::ProxySocks5::brokerAvailableSize(const size_t size) noexcept {
+	// Запоминаем размер хранимой полезной нагрузки для одного брокера
+	this->_brokerAvailableSize = size;
+	// Выполняем установку размера хранимой полезной нагрузки для одного брокера
+	this->_core.brokerAvailableSize(static_cast <size_t> (size));
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -506,11 +666,11 @@ void awh::server::ProxySocks5::bytesDetect(const scheme_t::mark_t read, const sc
 	// Если минимальный размер данных для чтения, не установлен
 	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -639,12 +799,17 @@ void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
  * @param log объект для работы с логами
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _callbacks(log),
- _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+ _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log),
+ _callbacks(log), _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log),
+ _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_timer.verbose(false);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.sonet(scheme_t::sonet_t::TCP);
+	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+	this->_core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&proxy_socks5_t::available, this, broker_t::SERVER, _1, _2, &this->_core));
+	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+	this->_core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&proxy_socks5_t::unavailable, this, broker_t::SERVER, _1, _2, _3, &this->_core));
 	// Устанавливаем событие на запуск системы
 	this->_core.callback <void (const uint16_t)> ("open", std::bind(&proxy_socks5_t::openEvents, this, _1));
 	// Устанавливаем событие подключения

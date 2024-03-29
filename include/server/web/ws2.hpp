@@ -53,7 +53,7 @@ namespace awh {
 				// Количество активных ядер
 				uint16_t _threads;
 			private:
-				// Минимальный размер сегмента
+				// Размер отправляемого сегмента
 				size_t _frameSize;
 			private:
 				// Объект тредпула для работы с потоками
@@ -230,16 +230,18 @@ namespace awh {
 				 * @param bid     идентификатор брокера
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки данных в бинарном виде клиенту
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых клиенту
 				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
 				 */
-				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

@@ -1053,51 +1053,22 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 		// Создаём объект шапки фрейма
 		ws::frame_t::head_t head;
 		// Выполняем обработку полученных данных
-		while(!this->_close && this->_allow.receive){
+		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
-			const auto & data = this->_frame.methods.get(head, this->_buffer.data(), this->_buffer.size());
+			const auto & payload = this->_frame.methods.get(head, this->_buffer.data(), this->_buffer.size());
 			// Если буфер данных получен
-			if(!data.empty()){
-				// Проверяем состояние флагов RSV2 и RSV3
-				if(head.rsv[1] || head.rsv[2]){
-					// Создаём сообщение
-					this->_mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
-					// Выводим сообщение
-					this->error(this->_mess);
-					// Выполняем реконнект
-					return status_t::NEXT;
-				}
-				// Если флаг компресси включён а данные пришли не сжатые
-				if(head.rsv[0] && ((this->_compressor == http_t::compressor_t::NONE) ||
-				  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
-				  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
-					// Создаём сообщение
-					this->_mess = ws::mess_t(1002, "RSV1 must be clear");
-					// Выводим сообщение
-					this->error(this->_mess);
-					// Выполняем реконнект
-					return status_t::NEXT;
-				}
-				// Если опкоды требуют финального фрейма
-				if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
-					// Создаём сообщение
-					this->_mess = ws::mess_t(1002, "FIN must be set");
-					// Выводим сообщение
-					this->error(this->_mess);
-					// Выполняем реконнект
-					return status_t::NEXT;
-				}
+			if(!payload.empty()){
 				// Определяем тип ответа
 				switch(static_cast <uint8_t> (head.optcode)){
 					// Если ответом является PING
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 						// Отправляем ответ серверу
-						this->pong(string(data.begin(), data.end()));
+						this->pong(string(payload.begin(), payload.end()));
 					break;
 					// Если ответом является PONG
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
 						// Если идентификатор брокера совпадает
-						if(::memcmp(::to_string(bid).c_str(), data.data(), data.size()) == 0)
+						if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 							// Обновляем контрольную точку
 							this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					break;
@@ -1130,18 +1101,18 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						// Если сообщение является не последнем
 						} else if(!head.fin)
 							// Заполняем фрагментированное сообщение
-							this->_fragmes.insert(this->_fragmes.end(), data.begin(), data.end());
+							this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
 						// Если сообщение является последним
-						else buffer = std::forward <const vector <char>> (data);
+						else buffer.assign(payload.begin(), payload.end());
 					} break;
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 						// Заполняем фрагментированное сообщение
-						this->_fragmes.insert(this->_fragmes.end(), data.begin(), data.end());
+						this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
 						// Если сообщение является последним
 						if(head.fin){
 							// Выполняем копирование всех собранных сегментов
-							buffer = std::forward <const vector <char>> (this->_fragmes);
+							buffer.assign(this->_fragmes.begin(), this->_fragmes.end());
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
 						}
@@ -1149,7 +1120,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если ответом является CLOSE
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
 						// Извлекаем сообщение
-						this->_mess = this->_frame.methods.message(data);
+						this->_mess = this->_frame.methods.message(payload);
 						// Выводим сообщение
 						this->error(this->_mess);
 						// Выполняем закрытие подключения
@@ -1159,13 +1130,21 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					}
 				}
 				// Если парсер обработал какое-то количество байт
-				if((receive = ((head.frame > 0) && !this->_buffer.empty()))){
+				if((head.frame > 0) && !this->_buffer.empty()){
 					// Если размер буфера больше количества удаляемых байт
 					if((receive = (this->_buffer.size() >= head.frame)))
 						// Удаляем количество обработанных байт
 						this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + head.frame);
 						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
 				}
+			// Если мы получили ошибку получения фрейма
+			} else if(head.state == ws::frame_t::state_t::BAD) {
+				// Создаём сообщение
+				this->_mess = this->_frame.methods.message(head, (this->_compressor != http_t::compressor_t::NONE));
+				// Выводим сообщение
+				this->error(this->_mess);
+				// Выполняем реконнект
+				return status_t::NEXT;
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){
@@ -1179,7 +1158,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				buffer.clear();
 			}
 			// Если данные мы все получили, выходим
-			if(!receive || this->_buffer.empty())
+			if(!receive || payload.empty() || this->_buffer.empty())
 				// Выходим из условия
 				break;
 		}
@@ -1363,12 +1342,15 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::client::Websocket2::sendMessage(const vector <char> & message, const bool text) noexcept {
+bool awh::client::Websocket2::sendMessage(const vector <char> & message, const bool text) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выполняем отправку сообщения на клиент Websocket
-		this->_ws1.sendMessage(message, text);
+		return this->_ws1.sendMessage(message, text);
 	// Если переключение протокола на HTTP/2 выполнено
 	else {
 		// Создаём объект холдирования
@@ -1483,13 +1465,17 @@ void awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на сервер
-								web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
+								result = web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 							// Выполняем сброс RSV1
 							head.rsv[0] = false;
 							// Устанавливаем опкод сообщения
 							head.optcode = ws::frame_t::opcode_t::CONTINUATION;
 							// Увеличиваем смещение в буфере
 							start = stop;
+							// Если запрос не отправлен
+							if(!result)
+								// Выходим из цикла
+								break;
 						}
 					// Если фрагментация сообщения не требуется
 					} else {
@@ -1498,7 +1484,7 @@ void awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Выполняем отправку сообщения на сервер
-							web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
+							result = web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 					}
 				}
 				// Выполняем разблокировку отправки сообщения
@@ -1506,17 +1492,22 @@ void awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 			}
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * send Метод отправки данных в бинарном виде серверу
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::client::Websocket2::send(const char * buffer, const size_t size) noexcept {
+bool awh::client::Websocket2::send(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+		return const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * pause Метод установки на паузу клиента

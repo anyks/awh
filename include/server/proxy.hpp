@@ -84,6 +84,17 @@ namespace awh {
 					unordered_multimap <string, string> headers; // Заголовки ответа
 				} response_t;
 				/**
+				 * Payload Структура полезной нагрузки
+				 */
+				typedef struct Payload {
+					size_t size;               // Размер буфера
+					unique_ptr <char []> data; // Данные буфера
+					/**
+					 * Payload Конструктор
+					 */
+					Payload() noexcept : size(0), data(nullptr) {}
+				} payload_t;
+				/**
 				 * KeepAlive Структура параметров жизни подключения
 				 */
 				typedef struct KeepAlive {
@@ -258,12 +269,19 @@ namespace awh {
 				// Объект активного сервера
 				awh_t _server;
 			private:
+				// Максимальный размер памяти для хранений полезной нагрузки всех брокеров
+				size_t _memoryAvailableSize;
+				// Максимальный размер хранимой полезной нагрузки для одного брокера
+				size_t _brokerAvailableSize;
+			private:
 				// Компрессор для рекомпрессии пересылаемых данных
 				http_t::compressor_t _compressor;
 			private:
 				// Список флагов приложения
 				set <flag_t> _flags;
 			private:
+				// Буферы отправляемой полезной нагрузки
+				map <uint64_t, queue <payload_t>> _payloads;
 				// Список активных клиентов
 				map <uint64_t, unique_ptr <client_t>> _clients;
 			private:
@@ -296,6 +314,24 @@ namespace awh {
 				 * @return     результат проверки
 				 */
 				bool acceptEvents(const string & ip, const string & mac, const u_int port) noexcept;
+			private:
+				/**
+				 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param size   размер буфера полезной нагрузки
+				 * @param core   объект сетевого ядра
+				 */
+				void available(const broker_t broker, const uint64_t bid, const size_t size, awh::core_t * core) noexcept;
+				/**
+				 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер полезной нагрузки которую не получилось отправить
+				 * @param size   размер буфера полезной нагрузки
+				 * @param core   объект сетевого ядра
+				 */
+				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
@@ -624,6 +660,28 @@ namespace awh {
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const uint64_t bid, const bool mode) noexcept;
+			public:
+				/**
+				 * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+				 * @return размер памяти для хранения полезной нагрузки всех брокеров
+				 */
+				size_t memoryAvailableSize() const noexcept;
+				/**
+				 * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+				 * @param size размер памяти для хранения полезной нагрузки всех брокеров
+				 */
+				void memoryAvailableSize(const size_t size) noexcept;
+			public:
+				/**
+				 * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+				 * @return размер хранимой полезной нагрузки для одного брокера
+				 */
+				size_t brokerAvailableSize() const noexcept;
+				/**
+				 * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+				 * @param size размер хранимой полезной нагрузки для одного брокера
+				 */
+				void brokerAvailableSize(const size_t size) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6

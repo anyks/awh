@@ -453,45 +453,22 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 						// Создаём объект шапки фрейма
 						ws::frame_t::head_t head;
 						// Выполняем обработку полученных данных
-						while(!options->close && options->allow.receive){
+						while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 							// Выполняем чтение фрейма Websocket
-							const auto & data = options->frame.methods.get(head, options->buffer.payload.data(), options->buffer.payload.size());
+							const auto & payload = options->frame.methods.get(head, options->buffer.payload.data(), options->buffer.payload.size());
 							// Если буфер данных получен
-							if(!data.empty()){
-								// Проверяем состояние флагов RSV2 и RSV3
-								if(head.rsv[1] || head.rsv[2]){
-									// Создаём сообщение
-									options->mess = ws::mess_t(1002, "RSV2 and RSV3 must be clear");
-									// Выполняем отключение брокера
-									goto Stop;
-								}
-								// Если флаг компресси включён а данные пришли не сжатые
-								if(head.rsv[0] && ((options->compressor == http_t::compressor_t::NONE) ||
-								  (head.optcode == ws::frame_t::opcode_t::CONTINUATION) ||
-								  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
-									// Создаём сообщение
-									options->mess = ws::mess_t(1002, "RSV1 must be clear");
-									// Выполняем отключение брокера
-									goto Stop;
-								}
-								// Если опкоды требуют финального фрейма
-								if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
-									// Создаём сообщение
-									options->mess = ws::mess_t(1002, "FIN must be set");
-									// Выполняем отключение брокера
-									goto Stop;
-								}
+							if(!payload.empty()){
 								// Определяем тип ответа
 								switch(static_cast <uint8_t> (head.optcode)){
 									// Если ответом является PING
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
 										// Отправляем ответ брокеру
-										this->pong(bid, string(data.begin(), data.end()));
+										this->pong(bid, string(payload.begin(), payload.end()));
 									break;
 									// Если ответом является PONG
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
 										// Если идентификатор брокера совпадает
-										if(::memcmp(::to_string(bid).c_str(), data.data(), data.size()) == 0)
+										if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 											// Обновляем контрольную точку
 											options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 									break;
@@ -520,18 +497,18 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										// Если сообщение является не последнем
 										} else if(!head.fin)
 											// Заполняем фрагментированное сообщение
-											options->buffer.fragmes.insert(options->buffer.fragmes.end(), data.begin(), data.end());
+											options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
 										// Если сообщение является последним
-										else buffer = std::forward <const vector <char>> (data);
+										else buffer.assign(payload.begin(), payload.end());
 									} break;
 									// Если ответом является CONTINUATION
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 										// Заполняем фрагментированное сообщение
-										options->buffer.fragmes.insert(options->buffer.fragmes.end(), data.begin(), data.end());
+										options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
 										// Если сообщение является последним
 										if(head.fin){
 											// Выполняем копирование всех собранных сегментов
-											buffer = std::forward <const vector <char>> (options->buffer.fragmes);
+											buffer.assign(options->buffer.fragmes.begin(), options->buffer.fragmes.end());
 											// Очищаем список фрагментированных сообщений
 											options->buffer.fragmes.clear();
 										}
@@ -539,7 +516,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									// Если ответом является CLOSE
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
 										// Создаём сообщение
-										options->mess = options->frame.methods.message(data);
+										options->mess = options->frame.methods.message(payload);
 										// Выводим сообщение об ошибке
 										this->error(bid, options->mess);
 										// Завершаем работу
@@ -550,16 +527,22 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", options->sid, bid, mode_t::CLOSE);
 										// Выходим из функции
 										return;
-									} break;
+									}
 								}
 								// Если парсер обработал какое-то количество байт
-								if((receive = ((head.frame > 0) && !options->buffer.payload.empty()))){
+								if((head.frame > 0) && !options->buffer.payload.empty()){
 									// Если размер буфера больше количества удаляемых байт
 									if((receive = (options->buffer.payload.size() >= head.frame)))
 										// Удаляем количество обработанных байт
 										options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
 										// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
 								}
+							// Если мы получили ошибку получения фрейма
+							} else if(head.state == ws::frame_t::state_t::BAD) {
+								// Создаём сообщение
+								options->mess = options->frame.methods.message(head, (options->compressor != http_t::compressor_t::NONE));
+								// Выполняем отключение брокера
+								goto Stop;
 							}
 							// Если сообщения получены
 							if(!buffer.empty()){
@@ -573,7 +556,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								buffer.clear();
 							}
 							// Если данные мы все получили, выходим
-							if(!receive || options->buffer.payload.empty())
+							if(!receive || payload.empty() || options->buffer.payload.empty())
 								// Выходим из условия
 								break;
 						}
@@ -975,8 +958,11 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working() && (bid > 0) && !message.empty()){
 		// Получаем параметры активного клиента
@@ -1089,7 +1075,7 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Отправляем серверу сообщение
-							const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+							result = const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 						// Иначе просто выходим
 						else break;
 						// Выполняем сброс RSV1
@@ -1098,6 +1084,10 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 						head.optcode = ws::frame_t::opcode_t::CONTINUATION;
 						// Увеличиваем смещение в буфере
 						start = stop;
+						// Если запрос не отправлен
+						if(!result)
+							// Выходим из цикла
+							break;
 					}
 				// Если фрагментация сообщения не требуется
 				} else {
@@ -1106,25 +1096,30 @@ void awh::server::Websocket1::sendMessage(const uint64_t bid, const vector <char
 					// Если бинарный буфер для отправки данных получен
 					if(!payload.empty())
 						// Отправляем серверу сообщение
-						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+						result = const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
 				}
 			}
 			// Выполняем разблокировку отправки сообщения
 			options->allow.send = !options->allow.send;
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * send Метод отправки данных в бинарном виде клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::server::Websocket1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::Websocket1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
-		const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+		return const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * callbacks Метод установки функций обратного вызова
@@ -1451,11 +1446,11 @@ void awh::server::Websocket1::bytesDetect(const scheme_t::mark_t read, const sch
 	// Если минимальный размер данных для чтения, не установлен
 	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * crypted Метод получения флага шифрования

@@ -187,8 +187,8 @@ namespace awh {
 				 * Marker Конструктор
 				 */
 				Marker() noexcept :
-				 read(BUFFER_READ_MIN, BUFFER_READ_MAX),
-				 write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
+				 read(AWH_BUFFER_READ_MIN, AWH_BUFFER_READ_MAX),
+				 write(AWH_BUFFER_WRITE_MIN, AWH_BUFFER_WRITE_MAX) {}
 			} marker_t;
 		private:
 			/**

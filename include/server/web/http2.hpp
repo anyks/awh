@@ -184,13 +184,6 @@ namespace awh {
 				void pinging(const uint16_t tid) noexcept;
 			public:
 				/**
-				 * proto Метод извлечения поддерживаемого протокола подключения
-				 * @param bid идентификатор брокера
-				 * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
-				 */
-				engine_t::proto_t proto(const uint64_t bid) const noexcept;
-			public:
-				/**
 				 * parser Метод извлечения объекта HTTP-парсера
 				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
@@ -239,17 +232,18 @@ namespace awh {
 				 * @param bid     идентификатор брокера
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки данных в бинарном виде клиенту
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых клиенту
 				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
 				 */
-				void send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
-			public:
+				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 				/**
 				 * send Метод отправки трейлеров
 				 * @param sid     идентификатор потока HTTP/2
@@ -258,7 +252,6 @@ namespace awh {
 				 * @return        результат отправки данных указанному клиенту
 				 */
 				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
-			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту
 				 * @param sid    идентификатор потока HTTP

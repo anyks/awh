@@ -30,6 +30,9 @@ class Executor {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
+	private:
+		// Буферы отправляемой полезной нагрузки
+		map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -51,6 +54,47 @@ class Executor {
 			}
 		}
 		/**
+		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+		 * @param bid  идентификатор брокера
+		 * @param size размер буфера полезной нагрузки
+		 * @param core объект сетевого ядра
+		 */
+		void available(const uint64_t bid, const size_t size, client::core_t * core){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if((i != this->_payloads.end()) && !i->second.empty()){
+				// Если места достаточно в буфере данных для отправки
+				if(i->second.front().size() <= size){
+					// Выполняем отправку заголовков запроса на сервер
+					if(core->send(i->second.front().data(), i->second.front().size(), bid))
+						// Выполняем удаление буфера полезной нагрузки
+						i->second.pop();
+				}
+			}
+		}
+		/**
+		 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+		 * @param bid    идентификатор брокера
+		 * @param buffer буфер полезной нагрузки которую не получилось отправить
+		 * @param size   размер буфера полезной нагрузки
+		 */
+		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end())
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				i->second.push(vector <char> (buffer, buffer + size));
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			else {
+				// Создаём новую очередь полезной нагрузки
+				auto ret = this->_payloads.emplace(bid, queue <vector <char>> ());
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				ret.first->second.push(vector <char> (buffer, buffer + size));
+			}
+		}
+		/**
 		 * handshake Метод рукопожатия
 		 * @param sid   идентификатор потока
 		 * @param rid   идентификатор запроса
@@ -63,37 +107,10 @@ class Executor {
 			(void) rid;
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
-				
-
 				// Выводим информацию в лог
 				this->_log->print("Handshake", log_t::flag_t::INFO);
-				
-				
-				// Отправляем миллион сообщений
-				for(u_int i = 0; i < 1000000; i++){
-				// for(u_int i = 0; i < 1000; i++){
-					// Создаём объект JSON
-					json data = json::parse(R"({
-						"id": "1514",
-						"message": "{\"Message\":\"input line 2\",\"rs_agent_categories\":\"\",\"rs_agent_fqdn\":\"v-stand-19.pgr.local\",\"rs_agent_id\":\"619df239-b1b3-4877-9c85-46ed69b7cbe6\",\"rs_agent_input_module\":\"files\",\"rs_agent_input_tags\":[],\"rs_agent_ip\":\"172.30.254.79\",\"rs_agent_ts\":\"2023-11-07T16:48:30.241739034+03:00\"}"
-					})");
-					// Получаем параметры запроса в виде строки
-					const string query = data.dump();
-					// Отправляем сообщение на сервер
-					ws->sendMessage(vector <char> (query.begin(), query.end()));
-				}
-
-				cout << " ALL SENT " << endl;
-				
-				//  ========= WINDOW SIZE4 104511600 === 2147137647
-				// ========= WINDOW SIZE4 104165600 === 2146791647
-
-				
-				/*
 				// Выполняем установку ограничения пропускной способности сети
 				ws->bandwidth("1Mbps", "1Mbps");
-				// Выводим информацию в лог
-				this->_log->print("Handshake", log_t::flag_t::INFO);
 				// Создаём объект JSON
 				json data = json::object();
 				// Формируем идентификатор объекта
@@ -207,7 +224,6 @@ class Executor {
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
 				ws->sendMessage(vector <char> (query.begin(), query.end()));
-				*/
 			}
 		}
 	public:
@@ -321,8 +337,8 @@ int main(int argc, char * argv[]){
 	// Выполняем установку параметров SSL-шифрования
 	core.ssl(ssl);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета DTLS
@@ -380,12 +396,15 @@ int main(int argc, char * argv[]){
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы
-	// ws.subprotocols({"test2", "test8", "test9"});
+	ws.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем поддерживаемые расширения
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
-	// Создаём локальный контейнер функций обратного вызова
+	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
+	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
+	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&Executor::unavailable, &executor, _1, _2, _3));
 	// Подписываемся на событие запуска/остановки сервера
 	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента

@@ -547,6 +547,18 @@ void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("messageWebsocket", callbacks);
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::client::Web::proto() const noexcept {
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr)
+		// Выводим идентификатор активного HTTP-протокола
+		return this->_core->proto(this->_bid);
+	// Выводим протокол по умолчанию
+	return engine_t::proto_t::NONE;
+}
+/**
  * bandwidth Метод установки пропускной способности сети
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -570,11 +582,11 @@ void awh::client::Web::bytesDetect(const scheme_t::mark_t read, const scheme_t::
 	// Если минимальный размер данных для чтения, не установлен
 	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

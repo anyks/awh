@@ -705,7 +705,10 @@ void awh::client::Core::disable(const uint64_t bid) noexcept {
  */
 void awh::client::Core::close() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
+	const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем перебор всех таймеров
@@ -745,16 +748,22 @@ void awh::client::Core::close() noexcept {
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(i->first);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("disconnect"))
-							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t)> (i->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
 						// Ещем для указанного потока очередь полезной нагрузки
 						auto j = this->_payloads.find(i->first);
 						// Если для потока очередь полезной нагрузки получена
 						if(j != this->_payloads.end())
 							// Выполняем удаление всей очереди
 							this->_payloads.erase(j);
+						// Ищем для указанного брокера список используемой памяти полезной нагрузки
+						auto k = this->_available.find(i->first);
+						// Если для брокера размер используемой памяти полезной нагрузки получен
+						if(k != this->_available.end())
+							// Выполняем удаление записи используемой памяти полезной нагрузки
+							this->_available.erase(k);
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("disconnect"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const uint64_t, const uint16_t)> (i->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
 						// Удаляем блокировку брокера
 						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
@@ -773,7 +782,10 @@ void awh::client::Core::close() noexcept {
  */
 void awh::client::Core::remove() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
+	const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Если список таймеров не пустой
@@ -816,16 +828,22 @@ void awh::client::Core::remove() noexcept {
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
 						this->_brokers.erase(j->first);
-						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("disconnect"))
-							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
 						// Ещем для указанного потока очередь полезной нагрузки
 						auto k = this->_payloads.find(j->first);
 						// Если для потока очередь полезной нагрузки получена
 						if(k != this->_payloads.end())
 							// Выполняем удаление всей очереди
 							this->_payloads.erase(k);
+						// Ищем для указанного брокера список используемой памяти полезной нагрузки
+						auto l = this->_available.find(j->first);
+						// Если для брокера размер используемой памяти полезной нагрузки получен
+						if(l != this->_available.end())
+							// Выполняем удаление записи используемой памяти полезной нагрузки
+							this->_available.erase(l);
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("disconnect"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
 						// Удаляем блокировку брокера
 						this->_busy.erase(j->first);
 						// Удаляем брокера из списка
@@ -948,10 +966,8 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 					shm->switchConnect();
 				// Выполняем очистку контекста двигателя
 				broker->_ectx.clear();
-				// Удаляем брокера из списка брокеров
-				shm->_brokers.erase(bid);
-				// Удаляем брокера из списка подключений
-				this->_brokers.erase(bid);
+				// Выполняем удаление параметров активного брокера
+				node_t::remove(bid);
 				// Устанавливаем флаг ожидания статуса
 				shm->status.wait = scheme_t::mode_t::DISCONNECT;
 				// Устанавливаем статус сетевого ядра
@@ -960,12 +976,6 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				if(this->_callbacks.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
 					callback.set <void (const uint64_t, const uint16_t)> ("disconnect", this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
-				// Ещем для указанного потока очередь полезной нагрузки
-				auto j = this->_payloads.find(bid);
-				// Если для потока очередь полезной нагрузки получена
-				if(j != this->_payloads.end())
-					// Выполняем удаление всей очереди
-					this->_payloads.erase(j);
 				// Если активированно постоянное подключение
 				if(shm->alive)
 					// Устанавливаем функцию обратного вызова
@@ -995,7 +1005,10 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
  */
 void awh::client::Core::remove(const uint16_t sid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
+	const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
 	// Выполняем поиск схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -1040,16 +1053,22 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					broker->_ectx.clear();
 					// Удаляем брокера из списка подключений
 					this->_brokers.erase(j->first);
-					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("disconnect"))
-						// Устанавливаем полученную функцию обратного вызова
-						callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
 					// Ещем для указанного потока очередь полезной нагрузки
 					auto k = this->_payloads.find(j->first);
 					// Если для потока очередь полезной нагрузки получена
 					if(k != this->_payloads.end())
 						// Выполняем удаление всей очереди
 						this->_payloads.erase(k);
+					// Ищем для указанного брокера список используемой памяти полезной нагрузки
+					auto l = this->_available.find(j->first);
+					// Если для брокера размер используемой памяти полезной нагрузки получен
+					if(l != this->_available.end())
+						// Выполняем удаление записи используемой памяти полезной нагрузки
+						this->_available.erase(l);
+					// Если функция обратного вызова установлена
+					if(this->_callbacks.is("disconnect"))
+						// Устанавливаем полученную функцию обратного вызова
+						callback.set <void (const uint64_t, const uint16_t)> (j->first, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
 					// Удаляем блокировку брокера
 					this->_busy.erase(j->first);
 					// Удаляем брокера из списка
@@ -1238,6 +1257,37 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * send Метод асинхронной отправки буфера данных в сокет
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param bid    идентификатор брокера
+ * @return       результат отправки сообщения
+ */
+bool awh::client::Core::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Если данные переданы
+	if(this->working() && this->has(bid)){
+		// Ещем для указанного потока очередь полезной нагрузки
+		auto i = this->_payloads.find(bid);
+		// Если для потока очередь полезной нагрузки получена
+		if((i != this->_payloads.end()) && !i->second.empty())
+			// Выполняем отправку сообщения асинхронным методом
+			return node_t::send(buffer, size, bid);
+		// Если очередь ещё не существует
+		else {
+			// Выполняем отправку данных клиенту
+			const size_t bytes = this->write(buffer, size, bid);
+			// Если данные отправлены не полностью
+			if(bytes < size)
+				// Выполняем отправку сообщения асинхронным методом
+				return node_t::send(buffer + bytes, size - bytes, bid);
+		}
+		// Сообщаем, что все данные отправлены успешно
+		return true;
+	}
+	// Сообщаем, что отправить сообщение неудалось
+	return false;
+}
+/**
  * read Метод чтения данных для брокера
  * @param bid идентификатор брокера
  */
@@ -1395,7 +1445,7 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 		// Ещем для указанного потока очередь полезной нагрузки
 		auto i = this->_payloads.find(bid);
 		// Если для потока очередь полезной нагрузки получена
-		if(i != this->_payloads.end()){			
+		if((i != this->_payloads.end()) && !i->second.empty()){
 			// Выполняем запись в сокет
 			const size_t bytes = this->write(i->second.front().data.get() + i->second.front().offset, i->second.front().size - i->second.front().offset, bid);
 			// Если данные записаны удачно
@@ -1404,8 +1454,8 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 				i->second.front().offset += bytes;
 				// Если все данные записаны успешно, тогда удаляем результат
 				if(i->second.front().offset == i->second.front().size)
-					// Выполняем удаление текущей записи
-					this->pop(bid);
+					// Выполняем освобождение памяти хранения полезной нагрузки
+					this->available(bid);
 			}
 		}
 	}
@@ -1479,9 +1529,13 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								break;
 							}
 							// Выполняем отправку сообщения клиенту
-							bytes = broker->_ectx.write(buffer + offset, actual);							
+							bytes = broker->_ectx.write(buffer + offset, actual);
+							// Если данные удачно отправленны
+							if(bytes > 0)
+								// Запоминаем количество записанных байт
+								result += static_cast <size_t> (bytes);
 							// Если даныне не получены
-							if(bytes <= 0){
+							else if(bytes <= 0){
 								// Если запись не выполнена, закрываем подключение
 								if(bytes == 0)
 									// Выполняем закрытие подключения
@@ -1490,12 +1544,10 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								break;
 							}
 							// Увеличиваем смещение в буфере
-							offset += bytes;
+							offset += static_cast <size_t> (bytes);
 						}
 						// Если дисконнекта от сервера не произошло
 						if(bytes > 0){
-							// Запоминаем количество записанных байт
-							result = static_cast <size_t> (bytes);
 							// Определяем тип сокета
 							switch(static_cast <uint8_t> (this->_settings.sonet)){
 								// Если тип сокета установлен как TCP/IP

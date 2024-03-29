@@ -379,7 +379,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-		  	// Создаём объект полезной нагрузки
+			// Создаём объект полезной нагрузки
 			payload_t payload;
 			// Устанавливаем флаг логирования
 			payload.flag = flag;

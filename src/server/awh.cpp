@@ -88,20 +88,22 @@ void awh::server::AWH::sendError(const uint64_t bid, const ws::mess_t & mess) no
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
-	this->_http.sendMessage(bid, message, text);
+	return this->_http.sendMessage(bid, message, text);
 }
 /**
  * send Метод отправки данных в бинарном виде клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных в бинарном виде клиенту
-	this->_http.send(bid, buffer, size);
+	return this->_http.send(bid, buffer, size);
 }
 /**
  * send Метод отправки тела сообщения на клиенту

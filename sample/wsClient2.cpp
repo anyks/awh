@@ -25,6 +25,9 @@ class WebClient {
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
+	private:
+		// Буферы отправляемой полезной нагрузки
+		map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -43,6 +46,47 @@ class WebClient {
 					// Выводим информацию в лог
 					this->_log->print("STOP", log_t::flag_t::INFO);
 				} break;
+			}
+		}
+		/**
+		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+		 * @param bid  идентификатор брокера
+		 * @param size размер буфера полезной нагрузки
+		 * @param core объект сетевого ядра
+		 */
+		void available(const uint64_t bid, const size_t size, client::core_t * core){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if((i != this->_payloads.end()) && !i->second.empty()){
+				// Если места достаточно в буфере данных для отправки
+				if(i->second.front().size() <= size){
+					// Выполняем отправку заголовков запроса на сервер
+					if(core->send(i->second.front().data(), i->second.front().size(), bid))
+						// Выполняем удаление буфера полезной нагрузки
+						i->second.pop();
+				}
+			}
+		}
+		/**
+		 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+		 * @param bid    идентификатор брокера
+		 * @param buffer буфер полезной нагрузки которую не получилось отправить
+		 * @param size   размер буфера полезной нагрузки
+		 */
+		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end())
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				i->second.push(vector <char> (buffer, buffer + size));
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			else {
+				// Создаём новую очередь полезной нагрузки
+				auto ret = this->_payloads.emplace(bid, queue <vector <char>> ());
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				ret.first->second.push(vector <char> (buffer, buffer + size));
 			}
 		}
 		/**
@@ -404,6 +448,10 @@ int main(int argc, char * argv[]){
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
+	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&WebClient::available, &executor, _1, _2, &core));
+	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&WebClient::unavailable, &executor, _1, _2, _3));
 	// Подписываемся на событие запуска/остановки сервера
 	awh.callback <void (const awh::core_t::status_t)> ("status", std::bind(&WebClient::status, &executor, _1));
 	// Устанавливаем метод активации подключения

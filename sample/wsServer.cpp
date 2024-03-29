@@ -22,12 +22,13 @@ using namespace awh::server;
  */
 class Executor {
 	private:
-		uint32_t _count = 0;
-	private:
 		// Создаём объект фреймворка
 		const fmk_t * _fmk;
 		// Создаём объект работы с логами
 		const log_t * _log;
+	private:
+		// Буферы отправляемой полезной нагрузки
+		map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
@@ -67,6 +68,47 @@ class Executor {
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
+		}
+		/**
+		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+		 * @param bid  идентификатор брокера
+		 * @param size размер буфера полезной нагрузки
+		 * @param core объект сетевого ядра
+		 */
+		void available(const uint64_t bid, const size_t size, server::core_t * core){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if((i != this->_payloads.end()) && !i->second.empty()){
+				// Если места достаточно в буфере данных для отправки
+				if(i->second.front().size() <= size){
+					// Выполняем отправку заголовков запроса на сервер
+					if(core->send(i->second.front().data(), i->second.front().size(), bid))
+						// Выполняем удаление буфера полезной нагрузки
+						i->second.pop();
+				}
+			}
+		}
+		/**
+		 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+		 * @param bid    идентификатор брокера
+		 * @param buffer буфер полезной нагрузки которую не получилось отправить
+		 * @param size   размер буфера полезной нагрузки
+		 */
+		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end())
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				i->second.push(vector <char> (buffer, buffer + size));
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			else {
+				// Создаём новую очередь полезной нагрузки
+				auto ret = this->_payloads.emplace(bid, queue <vector <char>> ());
+				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+				ret.first->second.push(vector <char> (buffer, buffer + size));
+			}
 		}
 		/**
 		 * active Метод событий сервера
@@ -123,8 +165,6 @@ class Executor {
 				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
 				ws->sendMessage(bid, buffer, text);
-
-				cout << " ---------MESSAGE COUNT " << (++this->_count) << endl;
 			}
 		}
 		/**
@@ -190,8 +230,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -239,9 +279,13 @@ int main(int argc, char * argv[]){
 	// ws.encryption(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test1", "test2", "test3"});
-	// Устанавливаем функцию извлечения пароля
+	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
+	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
+	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
+	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&Executor::unavailable, &executor, _1, _2, _3));
+	// Устанавливаем функцию извлечения пароля пользователя для авторизации
 	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
-	// Устанавливаем функцию проверки авторизации
+	// Устанавливаем функцию проверки авторизации прользователя
 	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	ws.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));

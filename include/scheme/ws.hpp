@@ -82,7 +82,7 @@ namespace awh {
 					 * Frame Объект фрейма WebSocket
 					 */
 					typedef struct Frame {
-						size_t size;                  // Минимальный размер сегмента
+						size_t size;                  // Размер отправляемого сегмента
 						ws::frame_t methods;          // Методы работы с фреймом WebSocket
 						ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 						/**
@@ -91,7 +91,7 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Frame(const fmk_t * fmk, const log_t * log) noexcept :
-						size(0xFA000), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+						size(AWH_PAYLOAD_SIZE), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
 					} frame_t;
 				public:
 					/**

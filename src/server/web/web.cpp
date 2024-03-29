@@ -258,6 +258,19 @@ void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("messageWebsocket", callbacks);
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @param bid идентификатор брокера
+ * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+ */
+awh::engine_t::proto_t awh::server::Web::proto(const uint64_t bid) const noexcept {
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr)
+		// Выводим идентификатор активного HTTP-протокола
+		return this->_core->proto(bid);
+	// Выводим протокол по умолчанию
+	return engine_t::proto_t::NONE;
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -333,7 +346,7 @@ void awh::server::Web::opaque(const string & opaque) noexcept {
  */
 void awh::server::Web::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->_chunkSize = (size > 0 ? size : BUFFER_CHUNK);
+	this->_chunkSize = (size > 0 ? size : AWH_BUFFER_CHUNK);
 }
 /**
  * maxRequests Метод установки максимального количества запросов
@@ -397,7 +410,7 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -411,7 +424,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

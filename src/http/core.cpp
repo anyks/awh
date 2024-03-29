@@ -1307,7 +1307,7 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", key.c_str(), val.c_str()));
 				}
 			} break;
-		}	
+		}
 	}
 }
 /**
@@ -2290,7 +2290,7 @@ vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 				result.push_back(make_pair(i->first, i->second));
 				// Выполняем удаление отправляемого трейлера из списка
 				i = const_cast <http_t *> (this)->_trailers.erase(i);
-			}		
+			}
 		}
 	}
 	// Выводим результат
@@ -4460,7 +4460,7 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _callbacks(log), _web(fmk, log), _auth(fmk, log), _hash(log),
- _crypted(false), _encryption(false), _precise(false), _chunk(BUFFER_CHUNK),
+ _crypted(false), _encryption(false), _precise(false), _chunk(AWH_BUFFER_CHUNK),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта

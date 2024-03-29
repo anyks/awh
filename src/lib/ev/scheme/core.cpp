@@ -369,7 +369,7 @@ void awh::Scheme::Broker::marker(const size_t min, const size_t max, const engin
 			// Если минимальный размер данных для чтения, не установлен
 			if(this->_marker.read.min == 0)
 				// Устанавливаем размер минимальных для чтения данных по умолчанию
-				this->_marker.read.min = BUFFER_READ_MIN;
+				this->_marker.read.min = AWH_BUFFER_READ_MIN;
 		} break;
 		// Режим работы ЗАПИСЬ
 		case static_cast <uint8_t> (engine_t::method_t::WRITE): {
@@ -380,7 +380,7 @@ void awh::Scheme::Broker::marker(const size_t min, const size_t max, const engin
 			// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
 			if(this->_marker.write.max == 0)
 				// Устанавливаем размер максимальных записываемых данных по умолчанию
-				this->_marker.write.max = BUFFER_WRITE_MAX;
+				this->_marker.write.max = AWH_BUFFER_WRITE_MAX;
 		} break;
 	}
 }

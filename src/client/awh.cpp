@@ -42,10 +42,11 @@ void awh::client::AWH::sendError(const ws::mess_t & mess) noexcept {
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::client::AWH::sendMessage(const vector <char> & message, const bool text) noexcept {
+bool awh::client::AWH::sendMessage(const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения на Websocket-сервер
-	this->_http.sendMessage(message, text);
+	return this->_http.sendMessage(message, text);
 }
 /**
  * send Метод отправки сообщения на сервер HTTP/2
@@ -60,10 +61,11 @@ int32_t awh::client::AWH::send(const web_t::request_t & request) noexcept {
  * send Метод отправки данных в бинарном виде серверу
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::client::AWH::send(const char * buffer, const size_t size) noexcept {
+bool awh::client::AWH::send(const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения на удалённый сервер в сыром виде
-	this->_http.send(buffer, size);
+	return this->_http.send(buffer, size);
 }
 /**
  * send Метод отправки тела сообщения на сервер

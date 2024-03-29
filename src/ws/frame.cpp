@@ -224,15 +224,11 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			mt19937 engine {device()};
 			// Устанавливаем диапазон генератора случайных чисел
 			uniform_int_distribution <u_char> dist {0, 255};
-			/**
-			 * generatorFn Функция генерации случайных чисел
-			 */
-			auto generatorFn = [&dist, &engine]{
+			// Выполняем заполнение маски случайными числами
+			generate(mask.begin(), mask.end(), [&dist, &engine]{
 				// Выполняем генерирование случайного числа
 				return dist(engine);
-			};
-			// Выполняем заполнение маски случайными числами
-			generate(mask.begin(), mask.end(), generatorFn);
+			});
 			// Выполняем перебор всех байт передаваемых данных
 			for(size_t i = 0; i < size; i++)
 				// Выполняем шифрование данных
@@ -343,6 +339,28 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 	return result;
 }
 /**
+ * message Метод извлечения сообщения из заголовка фрейма
+ * @param head       заголовки фрейма
+ * @param compressed флаг сжатых ожидаемых данных
+ * @return           сообщение в текстовом виде
+ */
+awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const bool compressed) const noexcept {
+	// Проверяем состояние флагов RSV2 и RSV3
+	if(head.rsv[1] || head.rsv[2])
+		// Создаём сообщение
+		return mess_t(1002, "RSV2 and RSV3 must be clear");
+	// Если флаг компресси включён а данные пришли не сжатые
+	else if(head.rsv[0] && (!compressed || (head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+		// Создаём сообщение
+		return mess_t(1002, "RSV1 must be clear");
+	// Если опкоды требуют финального фрейма
+	else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
+		// Создаём сообщение
+		return mess_t(1002, "FIN must be set");
+	// Выводим результат
+	return (head.state == state_t::BAD ? mess_t(1005) : mess_t(0));
+}
+/**
  * ping Метод создания фрейма пинга
  * @param mess данные сообщения
  * @param mask флаг выполнения маскировки сообщения
@@ -406,6 +424,8 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 				if(static_cast <size_t> (bytes) <= size){
 					// Бинарные данные маски
 					u_char mask[4];
+					// Флаг определения качества полученного фрейма
+					bool quality = true;
 					// Если маска требуется, маскируем данные
 					if(head.mask){
 						// Считываем ключ маски
@@ -424,8 +444,27 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 					}
 					// Увеличиваем размер смещения
 					head.frame += head.payload;
+					// Проверяем состояние флагов RSV2 и RSV3
+					if(head.rsv[1] || head.rsv[2])
+						// Устанавливаем статус битого фрейма
+						quality = false;
+					// Если флаг компресси включён а данные пришли не сжатые
+					else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+						// Устанавливаем статус битого фрейма
+						quality = false;
+					// Если опкоды требуют финального фрейма
+					else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
+						// Устанавливаем статус битого фрейма
+						quality = false;
+					// Если фрейм испорчен
+					if(!quality)
+						// Очищаем результирующий буфер
+						result.clear();					
+					// Устанавливаем статус фрейма
+					head.state = (quality ? state_t::GOOD : state_t::BAD);
 				}
-			}
+			// Устанавливаем статус битого фрейма
+			} else head.state = state_t::BAD;
 		}
 	}
 	// Выводим результат

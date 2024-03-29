@@ -114,8 +114,8 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	proxy.cluster(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем таймаут ожидания получения сообщений
-	// proxy.waitTimeDetect(10, 1);
-	// Выполняем инициализацию Websocket сервера
+	// proxy.waitTimeDetect(10, 10);
+	// Выполняем инициализацию Socks5-сервера
 	// proxy.init(2222, "anyks.net");
 	proxy.init(2222, "127.0.0.1");
 	// proxy.init("anyks");

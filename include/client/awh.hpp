@@ -74,8 +74,9 @@ namespace awh {
 				 * sendMessage Метод отправки сообщения на сервер
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
 				 */
-				void sendMessage(const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер HTTP/2
@@ -88,9 +89,9 @@ namespace awh {
 				 * send Метод отправки данных в бинарном виде серверу
 				 * @param buffer буфер бинарных данных передаваемых серверу
 				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
 				 */
-				void send(const char * buffer, const size_t size) noexcept;
-			public:
+				bool send(const char * buffer, const size_t size) noexcept;
 				/**
 				 * send Метод отправки тела сообщения на сервер
 				 * @param sid    идентификатор потока HTTP

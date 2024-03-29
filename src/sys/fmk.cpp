@@ -1269,7 +1269,7 @@ bool awh::Framework::isUTF8(const string & text) const noexcept {
 			  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
 			  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
 				// Выводим результат проверки
-			 	return false;
+				return false;
 		}
 		// Выводим результат
 		return true;

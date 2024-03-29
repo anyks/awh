@@ -1028,21 +1028,24 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 			// Выводим результат
 			return false;
 		}
-		// Фиксируем отправленный результат
-		rv = nghttp2_session_send(this->_session);
-		// Если зафиксифровать результат не вышло
-		if(nghttp2_is_fatal(rv)){
-			// Выводим сообщение об полученной ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callbacks.is("error"))
-				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
-			// Выходим из функции
-			return false;
+		// Если сессия инициализированна
+		if(this->_session != nullptr){
+			// Фиксируем отправленный результат
+			rv = nghttp2_session_send(this->_session);
+			// Если зафиксифровать результат не вышло
+			if(nghttp2_is_fatal(rv)){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callbacks.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::CRITICAL, http::error_t::HTTP2_SEND, nghttp2_strerror(rv));
+				// Выходим из функции
+				return false;
+			}
+			// Выводим результат
+			return true;
 		}
-		// Выводим результат
-		return true;
 	}
 	// Выводим результат
 	return false;

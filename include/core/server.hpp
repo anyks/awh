@@ -214,8 +214,9 @@ namespace awh {
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
 				 * @param bid    идентификатор брокера
+				 * @return       результат отправки сообщения
 				 */
-				void send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения родительскому процессу

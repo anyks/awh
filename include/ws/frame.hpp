@@ -115,6 +115,14 @@ namespace awh {
 		typedef class Frame {
 			public:
 				/**
+				 * Состояние фрейма
+				 */
+				enum class state_t : uint8_t {
+					NONE = 0x00, // Состояние фрейма не понятно
+					BAD  = 0x01, // Состояние фрейма плохое
+					GOOD = 0x02  // Состояние фрейма отличное
+				};
+				/**
 				 * Опкоды запроса
 				 */
 				enum class opcode_t : uint8_t {
@@ -127,6 +135,7 @@ namespace awh {
 					CONTINUATION  = 0x0, // Работа продолжается в текущем режиме
 					CONTROLUNUSED = 0xB  // Зарезервированы для будущих управляющих фреймов
 				};
+			public:
 				/**
 				 * Head Структура шапки
 				 */
@@ -135,6 +144,7 @@ namespace awh {
 					bool mask;        // Маска протокола
 					bool rsv[3];      // Расширения протокола
 					uint8_t size;     // Размер блока заголовков
+					state_t state;    // Состояние фрейма
 					uint64_t frame;   // Размер всего фрейма данных
 					uint64_t payload; // Размер полезной нагрузки
 					opcode_t optcode; // Опциональные коды
@@ -145,7 +155,8 @@ namespace awh {
 					 */
 					Head(const bool fin = true, const bool mask = true) noexcept :
 					fin(fin), mask(mask), rsv{false, false, false},
-					size(0), frame(0), payload(0), optcode(opcode_t::TEXT) {}
+					size(0), state(state_t::NONE), frame(0),
+					payload(0), optcode(opcode_t::TEXT) {}
 				} __attribute__((packed)) head_t;
 			private:
 				// Создаём объект фреймворка
@@ -181,6 +192,13 @@ namespace awh {
 				 * @return       сообщение в текстовом виде
 				 */
 				mess_t message(const vector <char> & buffer) const noexcept;
+				/**
+				 * message Метод извлечения сообщения из заголовка фрейма
+				 * @param head       заголовки фрейма
+				 * @param compressed флаг сжатых ожидаемых данных
+				 * @return           сообщение в текстовом виде
+				 */
+				mess_t message(const head_t & head, const bool compressed = false) const noexcept;
 			public:
 				/**
 				 * ping Метод создания фрейма пинга

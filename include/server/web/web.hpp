@@ -324,6 +324,13 @@ namespace awh {
 				}
 			public:
 				/**
+				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @param bid идентификатор брокера
+				 * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
+				 */
+				engine_t::proto_t proto(const uint64_t bid) const noexcept;
+			public:
+				/**
 				 * port Метод получения порта подключения брокера
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера

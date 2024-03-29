@@ -20,11 +20,16 @@
  */
 void awh::Node::remove() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
 	// Выполняем удаление всей схемы сети
 	this->_schemes.clear();
 	// Выполняем удаление списка брокеров подключения
 	this->_brokers.clear();
+	// Выполняем удаление очередей полезной нагрузки
+	this->_payloads.clear();
+	// Выполняем удаление списка используемой памяти буферов полезной нагрузки
+	this->_available.clear();
 }
 /**
  * remove Метод удаления схемы сети
@@ -34,13 +39,26 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock1(this->_mtx.main);
+		const lock_guard <recursive_mutex> lock2(this->_mtx.send);
 		// Выполняем поиск идентификатора схемы сети
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
-		if(i != this->_schemes.end())
+		if(i != this->_schemes.end()){
+			// Выполняем перебор всех брокеров схемы сети
+			for(auto j = i->second->_brokers.begin(); j != i->second->_brokers.end();){
+				// Выполняем удаление брокеров из локального списка
+				this->_brokers.erase(j->first);
+				// Выполняем удаление очереди полезной нагрузки
+				this->_payloads.erase(j->first);
+				// Выполняем удаление списка используемой памяти буфера полезной нагрузки
+				this->_available.erase(j->first);
+				// Выполняем удаление брокера подключения
+				j = const_cast <scheme_t *> (i->second)->_brokers.erase(j);
+			}
 			// Выполняем удаление схему сети
 			this->_schemes.erase(i);
+		}
 	}
 }
 /**
@@ -51,7 +69,8 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock1(this->_mtx.main);
+		const lock_guard <recursive_mutex> lock2(this->_mtx.send);
 		// Выполняем поиск брокера подключения
 		auto i = this->_brokers.find(bid);
 		// Если брокер подключения найден
@@ -61,12 +80,16 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 			// Если идентификатор схемы сети найден
 			if(j != this->_schemes.end()){
 				// Выполняем поиск брокера подключений
-				auto k = j->second->_brokers.find(bid);
+				auto k = j->second->_brokers.find(i->first);
 				// Если брокер подключения найден, удаляем его
 				if(k != j->second->_brokers.end())
 					// Выполняем удаление брокера подключения
 					const_cast <scheme_t *> (j->second)->_brokers.erase(k);
 			}
+			// Выполняем удаление очереди полезной нагрузки
+			this->_payloads.erase(i->first);
+			// Выполняем удаление списка используемой памяти буфера полезной нагрузки
+			this->_available.erase(i->first);
 			// Выполняем удаление брокера подключения
 			this->_brokers.erase(i);
 		}
@@ -144,7 +167,7 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
 	// Если схема сети передана и URL адрес существует
 	if(scheme != nullptr){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Устанавливаем идентификатор схемы сети
@@ -161,7 +184,7 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
  */
 void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
 	this->_engine.verify(ssl.verify);
 	// Выполняем установку алгоритмов шифрования
@@ -177,7 +200,7 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
  */
 void awh::Node::resolver(const dns_t * dns) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем DNS-резолвер
 	this->_dns = dns;
 }
@@ -188,7 +211,7 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
  */
 bool awh::Node::sockname(const string & name) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -257,7 +280,7 @@ awh::engine_t::proto_t awh::Node::proto(const uint64_t bid) const noexcept {
  */
 void awh::Node::proto(const engine_t::proto_t proto) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку поддерживаемого протокола подключения
 	this->_settings.proto = proto;
 }
@@ -275,7 +298,7 @@ awh::scheme_t::sonet_t awh::Node::sonet() const noexcept {
  */
 void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	/**
@@ -305,11 +328,11 @@ awh::scheme_t::family_t awh::Node::family() const noexcept {
  */
 void awh::Node::family(const scheme_t::family_t family) noexcept {
 	// Выполняем блокировку потока
-	this->_mtx.lock();
+	this->_mtx.main.lock();
 	// Устанавливаем тип активного интернет-подключения
 	this->_settings.family = family;
 	// Выполняем разблокировку потока
-	this->_mtx.unlock();
+	this->_mtx.main.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
 		// Если адрес файла unix-сокета ещё не инициализированно
@@ -323,7 +346,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <recursive_mutex> lock(this->_mtx.main);
 			// Если сокет в файловой системе уже существует, удаляем его
 			if(this->_fs.isSock(this->_settings.sockname))
 				// Удаляем файл сокета
@@ -334,16 +357,85 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
- * pop Метод удаления отправленного буфера полезной нагрузки
+ * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @return размер памяти для хранения полезной нагрузки всех брокеров
+ */
+size_t awh::Node::memoryAvailableSize() const noexcept {
+	// Выводим размер памяти для хранения полезной нагрузки всех брокеров
+	return this->_memoryAvailableSize;
+}
+/**
+ * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @param size размер памяти для хранения полезной нагрузки всех брокеров
+ */
+void awh::Node::memoryAvailableSize(const size_t size) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
+	this->_memoryAvailableSize = size;
+}
+/**
+ * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ * @return размер хранимой полезной нагрузки для одного брокера
+ */
+size_t awh::Node::brokerAvailableSize() const noexcept {
+	// Выводим размер хранимой полезной нагрузки для одного брокера
+	return this->_brokerAvailableSize;
+}
+/**
+ * brokerAvailableSize Метод получения размера хранимой полезной нагрузки для текущего брокера
+ * @param bid идентификатор брокера
+ * @return    размер хранимой полезной нагрузки для текущего брокера
+ */
+size_t awh::Node::brokerAvailableSize(const uint64_t bid) const noexcept {
+	// Выполняем поиск размера текущей полезной нагрузки для брокера
+	auto i = this->_available.find(bid);
+	// Если размер полезной нагрузки найден
+	if(i != this->_available.end())
+		// Выводим размер осташейся памяти
+		return i->second;
+	// Сообщаем, что ничего не найдено
+	return 0;
+}
+/**
+ * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ * @param size размер хранимой полезной нагрузки для одного брокера
+ */
+void awh::Node::brokerAvailableSize(const size_t size) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем установку размера хранимой полезной нагрузки для одного брокера
+	this->_brokerAvailableSize = size;
+}
+/**
+ * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
  * @param bid идентификатор брокера
  */
-void awh::Node::pop(const uint64_t bid) noexcept {
+void awh::Node::available(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.send);
+	// Объект работы с функциями обратного вызова
+	fn_t callback(this->_log);
 	// Ещем для указанного потока очередь полезной нагрузки
 	auto i = this->_payloads.find(bid);
 	// Если для потока очередь полезной нагрузки получена
-	if(i != this->_payloads.end()){
+	if((i != this->_payloads.end()) && !i->second.empty()){
+		// Выполняем блокировку потока
+		this->_mtx.main.lock();
+		// Выполняем поиск размера текущей полезной нагрузки для брокера
+		auto j = this->_available.find(bid);
+		// Если размер полезной нагрузки найден
+		if(j != this->_available.end())
+			// Выполняем уменьшение количества записанных байт
+			j->second -= i->second.front().size;
+		// Увеличиваем общее количество переданных данных
+		this->_memoryAvailableSize += i->second.front().size;
+		// Выполняем разблокировку потока
+		this->_mtx.main.unlock();
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("available"))
+			// Устанавливаем полученную функцию обратного вызова
+			callback.set <void (const uint64_t, const size_t)> (bid, this->_callbacks.get <void (const uint64_t, const size_t)> ("available"), bid, (this->_brokerAvailableSize < j->second) ? 0 : min(this->_brokerAvailableSize - j->second, this->_memoryAvailableSize));
 		// Если идентификатор брокера подключений существует
 		if((bid > 0) && this->has(bid)){
 			// Выполняем удаление буфера буфера полезной нагрузки
@@ -364,49 +456,86 @@ void awh::Node::pop(const uint64_t bid) noexcept {
 			// Останавливаем ожидание записи данных
 			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 	}
+	// Если функция обратного вызова установлена
+	if(callback.is(bid))
+		// Выполняем все функции обратного вызова
+		callback.bind(bid);
 }
 /**
  * send Метод асинхронной отправки буфера данных в сокет
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
+ * @return       результат отправки сообщения
  */
-void awh::Node::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Объект полезной нагрузки для отправки
-			payload_t payload;
-			// Устанавливаем размер буфера данных
-			payload.size = size;
-			// Выполняем создание буфера данных
-			payload.data = unique_ptr <char []> (new char [size]);
-			// Выполняем копирование буфера полезной нагрузки
-			::memcpy(payload.data.get(), buffer, size);
-			// Ещем для указанного потока очередь полезной нагрузки
-			auto i = this->_payloads.find(bid);
-			// Если для потока очередь полезной нагрузки получена
-			if(i != this->_payloads.end())
-				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				i->second.push(std::move(payload));
-			// Если для потока почередь полезной нагрузки ещё не сформированна
-			else {
-				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
-				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				ret.first->second.push(std::move(payload));
-			}
-			// Создаём бъект активного брокера подключения
-			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-			// Если сокет подключения активен
-			if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
-				// Запускаем ожидание записи данных
-				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			// Флаг недоступности свободной памяти в буфере обмена данными
+			bool unavailable = false;
+			// Выполняем поиск размера текущей полезной нагрузки для брокера
+			auto i = this->_available.find(bid);
+			// Если размер полезной нагрузки найден
+			if(i != this->_available.end())
+				// Если места не достаточно
+				unavailable = ((this->_brokerAvailableSize < i->second) || (min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize) < size));
+			// Если память ещё не потрачена для отправки
+			else unavailable = (min(this->_brokerAvailableSize, this->_memoryAvailableSize) < size);
+			// Если свободной памяти в буфере обмена данными достаточно
+			if(!unavailable){
+				// Объект полезной нагрузки для отправки
+				payload_t payload;
+				// Устанавливаем размер буфера данных
+				payload.size = size;
+				// Выполняем создание буфера данных
+				payload.data = unique_ptr <char []> (new char [size]);
+				// Выполняем копирование буфера полезной нагрузки
+				::memcpy(payload.data.get(), buffer, size);
+				// Ещем для указанного потока очередь полезной нагрузки
+				auto i = this->_payloads.find(bid);
+				// Если для потока очередь полезной нагрузки получена
+				if(i != this->_payloads.end())
+					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+					i->second.push(std::move(payload));
+				// Если для потока почередь полезной нагрузки ещё не сформированна
+				else {
+					// Создаём новую очередь полезной нагрузки
+					auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+					ret.first->second.push(std::move(payload));
+				}
+				// Создаём бъект активного брокера подключения
+				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+				// Если сокет подключения активен
+				if((result = ((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))))
+					// Запускаем ожидание записи данных
+					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+				// Выполняем блокировку потока
+				this->_mtx.main.lock();
+				// Выполняем поиск размера используемой памяти для хранения полезной нагрузки брокера
+				auto j = this->_available.find(bid);
+				// Если размер полезной нагрузки найден
+				if(j != this->_available.end())
+					// Выполняем увеличение количество записанных байт
+					j->second += size;
+				// Если память ещё не потрачена для отправки, добавляем размер передаваемых данных
+				else this->_available.emplace(bid, size);
+				// Уменьшаем общее количество переданных данных
+				this->_memoryAvailableSize -= size;
+				// Выполняем разблокировку потока
+				this->_mtx.main.unlock();
+			// Если функция обратного вызова установлена
+			} else if(this->_callbacks.is("unavailable"))
+				// Выводим функцию обратного вызова сигнализирующая о том, что передаваемые данные небыли отправленны
+				this->_callbacks.call <void (const uint64_t, const char *, const size_t)> ("unavailable", bid, buffer, size);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -417,6 +546,8 @@ void awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 			::exit(EXIT_FAILURE);
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * bandwidth Метод установки пропускной способности сети
@@ -446,7 +577,7 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Выполняем активацию/деактивацию метода события сокета
@@ -461,13 +592,13 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
  */
 void awh::Node::network(const vector <string> & ips, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
-	this->_mtx.lock();
+	this->_mtx.main.lock();
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
 	this->_settings.family = family;
 	// Выполняем разблокировку потока
-	this->_mtx.unlock();
+	this->_mtx.main.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
 		// Если адрес файла unix-сокета ещё не инициализированно
@@ -481,7 +612,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <recursive_mutex> lock(this->_mtx.main);
 			// Если сокет в файловой системе уже существует, удаляем его
 			if(this->_fs.isSock(this->_settings.sockname))
 				// Удаляем файл сокета
@@ -493,7 +624,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если IP-адреса переданы
 	if(!ips.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Если объект DNS-резолвера установлен
 		if(this->_dns != nullptr)
 			// Выполняем установку параметров сети для DNS-резолвера
@@ -623,10 +754,10 @@ awh::Node & awh::Node::operator = (const scheme_t::family_t family) noexcept {
  * ~Node Деструктор
  */
 awh::Node::~Node() noexcept {
+	// Выполняем удаление всех созданных объектов
+	this->remove();
 	// Выполняем блокировку потока
-	this->_mtx.lock();
-	// Выполняем удаление списка активных схем сети
-	this->_schemes.clear();
+	this->_mtx.main.lock();
 	// Если требуется использовать unix-сокет и ядро является сервером
 	if((this->_settings.family == scheme_t::family_t::NIX) && (this->_type == engine_t::type_t::SERVER)){
 		/**
@@ -640,5 +771,5 @@ awh::Node::~Node() noexcept {
 		#endif
 	}
 	// Выполняем разблокировку потока
-	this->_mtx.unlock();
+	this->_mtx.main.unlock();
 }

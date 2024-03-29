@@ -1209,14 +1209,6 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 	return status_t::STOP;
 }
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
- * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
- */
-awh::engine_t::proto_t awh::client::Http2::proto() const noexcept {
-	// Выводим идентификатор активного HTTP-протокола
-	return this->_core->proto(this->_bid);
-}
-/**
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */
@@ -1239,21 +1231,21 @@ void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
  */
-void awh::client::Http2::sendMessage(const vector <char> & message, const bool text) noexcept {
+bool awh::client::Http2::sendMessage(const vector <char> & message, const bool text) noexcept {
 	// Если список воркеров активен
 	if(!this->_workers.empty()){
 		// Выполняем перебор всего списка воркеров
 		for(auto & worker : this->_workers){
 			// Если найден воркер Websocket-клиента
-			if(worker.second->agent == agent_t::WEBSOCKET){
+			if(worker.second->agent == agent_t::WEBSOCKET)
 				// Выполняем отправку сообщения на Websocket-сервер
-				this->_ws2.sendMessage(message, text);
-				// Выходим из цикла
-				break;
-			}
+				return this->_ws2.sendMessage(message, text);
 		}
 	}
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки сообщения на сервер
@@ -1590,12 +1582,15 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
  * send Метод отправки данных в бинарном виде серверу
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
  */
-void awh::client::Http2::send(const char * buffer, const size_t size) noexcept {
+bool awh::client::Http2::send(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+		return const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+	// Сообщаем что ничего не найдено
+	return false;
 }
 /**
  * send Метод отправки тела сообщения на сервер
