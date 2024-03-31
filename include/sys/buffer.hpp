@@ -19,6 +19,7 @@
  * Стандартные модули
  */
 #include <vector>
+#include <memory>
 #include <string>
 #include <cstring>
 
