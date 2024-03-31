@@ -208,8 +208,6 @@ void awh::Node::createBuffer(const uint64_t bid) noexcept {
 					broker->_payload.size = size;
 					// Выполняем создание буфера данных
 					broker->_payload.data = unique_ptr <char []> (new char [size]);
-					// Выполняем зануление буфера данных
-					::memset(broker->_payload.data.get(), 0, broker->_payload.size);
 				/**
 				 * Если возникает ошибка
 				 */

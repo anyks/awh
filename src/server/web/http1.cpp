@@ -156,7 +156,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						return;
 					}
 					// Добавляем полученные данные в буфер
-					options->buffer.insert(options->buffer.end(), buffer, buffer + size);
+					options->buffer.emplace(buffer, size);
 					// Если функция обратного вызова активности потока установлена
 					if(!options->mode && (options->mode = this->_callbacks.is("stream")))
 						// Выполняем функцию обратного вызова
@@ -164,7 +164,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 					// Выполняем обработку полученных данных
 					while(!options->close){
 						// Выполняем парсинг полученных данных
-						size_t bytes = options->http.parse(options->buffer.data(), options->buffer.size());
+						const size_t bytes = options->http.parse(static_cast <buffer_t::data_t> (options->buffer), static_cast <size_t> (options->buffer));
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
@@ -423,17 +423,20 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !options->buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(options->buffer.size() >= bytes)
+							if(static_cast <size_t> (options->buffer) >= bytes)
 								// Удаляем количество обработанных байт
-								options->buffer.erase(options->buffer.begin(), options->buffer.begin() + bytes);
-								// vector <decltype(options->buffer)::value_type> (options->buffer.begin() + bytes, options->buffer.end()).swap(options->buffer);
+								options->buffer.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.clear();
 							// Если данных для обработки не осталось, выходим
-							if(options->buffer.empty()) break;
+							if(options->buffer.empty())
+								// Выходим из цикла
+								break;
 						// Если данных для обработки недостаточно, выходим
 						} else break;
 					}
+					// Фиксируем изменение в буфере
+					options->buffer.commit();
 				}
 			}
 		}

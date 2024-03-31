@@ -41,6 +41,8 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 				options->http.chunk(this->_chunkSize);
 				// Устанавливаем флаг шифрования
 				options->http.encryption(this->_encryption.mode);
+				// Устанавливаем режим работы буфера
+				options->buffer.payload = buffer_t::mode_t::COPY;
 				// Устанавливаем флаг перехвата контекста компрессии
 				options->server.takeover = this->_server.takeover;
 				// Устанавливаем флаг перехвата контекста декомпрессии
@@ -360,7 +362,7 @@ int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
 			// Если рукопожатие выполнено
 			else if(options->allow.receive)
 				// Добавляем полученные данные в буфер
-				options->buffer.payload.insert(options->buffer.payload.end(), buffer, buffer + size);
+				options->buffer.payload.emplace(reinterpret_cast <const char *> (buffer), size);
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callbacks.is("chunks"))
 				// Выполняем функцию обратного вызова
@@ -437,7 +439,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 								// Выполняем обработку полученных данных
 								while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 									// Выполняем чтение фрейма Websocket
-									const auto & payload = options->frame.methods.get(head, options->buffer.payload.data(), options->buffer.payload.size());
+									const auto & payload = options->frame.methods.get(head, static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
 									// Если буфер данных получен
 									if(!payload.empty()){
 										// Определяем тип ответа
@@ -519,10 +521,9 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										// Если парсер обработал какое-то количество байт
 										if((head.frame > 0) && !options->buffer.payload.empty()){
 											// Если размер буфера больше количества удаляемых байт
-											if((receive = (options->buffer.payload.size() >= head.frame)))
+											if((receive = (static_cast <size_t> (options->buffer.payload) >= head.frame)))
 												// Удаляем количество обработанных байт
-												options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
-												// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+												options->buffer.payload.erase(head.frame);
 										}
 									// Если мы получили ошибку получения фрейма
 									} else if(head.state == ws::frame_t::state_t::BAD) {
@@ -547,6 +548,8 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 										// Выходим из условия
 										break;
 								}
+								// Фиксируем изменение в буфере
+								options->buffer.payload.commit();
 								// Если мы получили флаг завершения потока
 								if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 									// Если установлена функция отлова завершения запроса

@@ -126,11 +126,11 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, rid, mode_t::OPEN);
 							// Добавляем полученные данные в буфер
-							this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+							this->_buffer.emplace(buffer, size);
 							// Выполняем обработку полученных данных
 							while(!this->_active){
 								// Выполняем парсинг полученных данных
-								size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
+								const size_t bytes = this->_http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 								// Если все данные получены
 								if((completed = this->_http.is(http_t::state_t::END))){
 									/**
@@ -176,14 +176,17 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 								// Если парсер обработал какое-то количество байт
 								if((receive = ((bytes > 0) && !this->_buffer.empty()))){
 									// Если размер буфера больше количества удаляемых байт
-									if((receive = (this->_buffer.size() >= bytes)))
+									if((receive = (static_cast <size_t> (this->_buffer) >= bytes)))
 										// Удаляем количество обработанных байт
-										this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes);
-										// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+										this->_buffer.erase(bytes);
 								}
 								// Если данные мы все получили, выходим
-								if(!receive || this->_buffer.empty()) break;
+								if(!receive || this->_buffer.empty())
+									// Выходим из цикла
+									break;
 							}
+							// Фиксируем изменение в буфере
+							this->_buffer.commit();
 							// Устанавливаем метку завершения работы
 							Stop:
 							// Если получение данных выполнено

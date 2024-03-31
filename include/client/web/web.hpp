@@ -30,6 +30,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/hold.hpp>
+#include <sys/buffer.hpp>
 #include <net/uri.hpp>
 #include <http/http2.hpp>
 #include <http/client.hpp>
@@ -188,12 +189,12 @@ namespace awh {
 				uint8_t _attempt;
 				// Общее количество попыток
 				uint8_t _attempts;
+			protected:
+				// Объект буфера данных
+				buffer_t _buffer;
 			private:
 				// Объект локального таймера
 				awh::timer_t _timer;
-			protected:
-				// Объект буфера данных
-				vector <char> _buffer;
 			protected:
 				// Список рабочих событий
 				stack <event_t> _events;

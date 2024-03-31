@@ -243,6 +243,8 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 							this->implementation(bid);
 							// Если флаг инициализации сессии HTTP/2 установлен
 							if(this->_http2.is()){
+								// Устанавливаем режим работы буфера
+								this->_buffer = buffer_t::mode_t::COPY;
 								// Создаём объек запроса
 								awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
 								/**

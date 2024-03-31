@@ -162,7 +162,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
-			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+			this->_buffer.emplace(buffer, size);
 			// Определяем тип прокси-сервера
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
@@ -170,7 +170,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 					// Если данные не получены
 					if(!this->_scheme.proxy.socks5.is(socks5_t::state_t::END)){
 						// Выполняем парсинг входящих данных
-						this->_scheme.proxy.socks5.parse(this->_buffer.data(), this->_buffer.size());
+						this->_scheme.proxy.socks5.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Получаем данные запроса
 						const auto & buffer = this->_scheme.proxy.socks5.get();
 						// Если данные получены
@@ -230,7 +230,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 					// Выполняем обработку полученных данных
 					while(!this->_active){
 						// Выполняем парсинг полученных данных
-						size_t bytes = this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
+						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Если все данные получены
 						if(this->_scheme.proxy.http.is(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
@@ -340,14 +340,17 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !this->_buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(this->_buffer.size() >= bytes)
+							if(static_cast <size_t> (this->_buffer) >= bytes)
 								// Удаляем количество обработанных байт
-								this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes);
-								// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + bytes, this->_buffer.end()).swap(this->_buffer);
+								this->_buffer.erase(bytes);
 						}
 						// Если данные мы все получили, выходим
-						if(this->_buffer.empty()) break;
+						if(this->_buffer.empty())
+							// Выходим из цикла
+							break;
 					}
+					// Фиксируем изменение в буфере
+					this->_buffer.commit();
 				} break;
 				// Иначе завершаем работу
 				default: const_cast <client::core_t *> (this->_core)->close(bid);

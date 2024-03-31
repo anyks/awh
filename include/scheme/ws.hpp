@@ -27,6 +27,7 @@
  */
 #include <ws/frame.hpp>
 #include <ws/server.hpp>
+#include <sys/buffer.hpp>
 #include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -53,7 +54,7 @@ namespace awh {
 					 * Buffer Структура буфера данных
 					 */
 					typedef struct Buffer {
-						vector <char> payload; // Бинарный буфер полезной нагрузки
+						awh::buffer_t payload; // Бинарный буфер полезной нагрузки
 						vector <char> fragmes; // Данные фрагметрированного сообщения
 					} buffer_t;
 					/**

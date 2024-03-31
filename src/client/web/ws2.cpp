@@ -101,6 +101,8 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 		web2_t::connectEvent(bid, sid);
 		// Если флаг инициализации сессии HTTP/2 установлен
 		if(this->_http2.is()){
+			// Устанавливаем режим работы буфера
+			this->_buffer = buffer_t::mode_t::COPY;
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Выполняем отправку запроса на удалённый сервер
@@ -301,7 +303,7 @@ int awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * buff
 				// Если рукопожатие выполнено
 				else if(this->_allow.receive)
 					// Добавляем полученные данные в буфер
-					this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+					this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
 				// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 				if(this->_callbacks.is("chunks"))
 					// Выполняем функцию обратного вызова
@@ -1055,7 +1057,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 		// Выполняем обработку полученных данных
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
-			const auto & payload = this->_frame.methods.get(head, this->_buffer.data(), this->_buffer.size());
+			const auto & payload = this->_frame.methods.get(head, static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 			// Если буфер данных получен
 			if(!payload.empty()){
 				// Определяем тип ответа
@@ -1132,10 +1134,9 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Если парсер обработал какое-то количество байт
 				if((head.frame > 0) && !this->_buffer.empty()){
 					// Если размер буфера больше количества удаляемых байт
-					if((receive = (this->_buffer.size() >= head.frame)))
+					if((receive = (static_cast <size_t> (this->_buffer) >= head.frame)))
 						// Удаляем количество обработанных байт
-						this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + head.frame);
-						// vector <decltype(this->_buffer)::value_type> (this->_buffer.begin() + head.frame, this->_buffer.end()).swap(this->_buffer);
+						this->_buffer.erase(head.frame);
 				}
 			// Если мы получили ошибку получения фрейма
 			} else if(head.state == ws::frame_t::state_t::BAD) {
@@ -1162,6 +1163,8 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Выходим из условия
 				break;
 		}
+		// Фиксируем изменение в буфере
+		this->_buffer.commit();
 	}
 	// Выполняем завершение работы
 	return status_t::STOP;

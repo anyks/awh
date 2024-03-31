@@ -25,6 +25,7 @@
 /**
  * Наши модули
  */
+#include <sys/buffer.hpp>
 #include <http/server.hpp>
 #include <scheme/server.hpp>
 
@@ -61,7 +62,7 @@ namespace awh {
 						time_t point;                    // Контрольная точка ответа на пинг
 						size_t requests;                 // Количество выполненных запросов
 						http_t http;                     // Создаём объект для работы с HTTP
-						vector <char> buffer;            // Буфер бинарных необработанных данных
+						buffer_t buffer;                 // Буфер бинарных необработанных данных
 						engine_t::proto_t proto;         // Активный прототип интернета
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**

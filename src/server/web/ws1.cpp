@@ -165,21 +165,22 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 				// Если разрешено получение данных
 				if(options->allow.receive){
 					// Добавляем полученные данные в буфер
-					options->buffer.payload.insert(options->buffer.payload.end(), buffer, buffer + size);
+					options->buffer.payload.emplace(buffer, size);
 					// Если рукопожатие не выполнено
 					if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = options->http.parse(options->buffer.payload.data(), options->buffer.payload.size());
+						const size_t bytes = options->http.parse(static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !options->buffer.payload.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(options->buffer.payload.size() >= bytes)
+							if(static_cast <size_t> (options->buffer.payload) >= bytes)
 								// Удаляем количество обработанных байт
-								options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + bytes);
-								// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + bytes, options->buffer.payload.end()).swap(options->buffer.payload);
+								options->buffer.payload.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.payload.clear();
 						}
+						// Фиксируем изменение в буфере
+						options->buffer.payload.commit();
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
 							// Буфер данных для записи в сокет
@@ -455,7 +456,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 						// Выполняем обработку полученных данных
 						while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 							// Выполняем чтение фрейма Websocket
-							const auto & payload = options->frame.methods.get(head, options->buffer.payload.data(), options->buffer.payload.size());
+							const auto & payload = options->frame.methods.get(head, static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
 							// Если буфер данных получен
 							if(!payload.empty()){
 								// Определяем тип ответа
@@ -532,10 +533,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Если парсер обработал какое-то количество байт
 								if((head.frame > 0) && !options->buffer.payload.empty()){
 									// Если размер буфера больше количества удаляемых байт
-									if((receive = (options->buffer.payload.size() >= head.frame)))
+									if((receive = (static_cast <size_t> (options->buffer.payload) >= head.frame)))
 										// Удаляем количество обработанных байт
-										options->buffer.payload.erase(options->buffer.payload.begin(), options->buffer.payload.begin() + head.frame);
-										// vector <decltype(options->buffer.payload)::value_type> (options->buffer.payload.begin() + head.frame, options->buffer.payload.end()).swap(options->buffer.payload);
+										options->buffer.payload.erase(head.frame);
 								}
 							// Если мы получили ошибку получения фрейма
 							} else if(head.state == ws::frame_t::state_t::BAD) {
@@ -560,6 +560,8 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Выходим из условия
 								break;
 						}
+						// Фиксируем изменение в буфере
+						options->buffer.payload.commit();
 						// Выходим из функции
 						return;
 					}
