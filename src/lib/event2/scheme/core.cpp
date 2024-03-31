@@ -225,7 +225,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Устанавливаем базу данных событий
 						this->_bev.events.read.set(this->_base);
 						// Устанавливаем тип события
-						this->_bev.events.read.set(this->_addr.fd, EV_READ);
+						this->_bev.events.read.set(this->_addr.fd, EV_READ | EV_PERSIST);
 						// Устанавливаем функцию обратного вызова
 						this->_bev.events.read.set(std::bind(&awh::scheme_t::broker_t::read, this, _1, _2));
 						// Выполняем запуск работы события
@@ -253,7 +253,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Устанавливаем базу данных событий
 						this->_bev.events.write.set(this->_base);
 						// Устанавливаем тип события
-						this->_bev.events.write.set(this->_addr.fd, EV_WRITE);
+						this->_bev.events.write.set(this->_addr.fd, EV_WRITE | EV_PERSIST);
 						// Устанавливаем функцию обратного вызова
 						this->_bev.events.write.set(std::bind(&awh::scheme_t::broker_t::write, this, _1, _2));
 						// Выполняем запуск работы события
