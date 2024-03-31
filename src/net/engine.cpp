@@ -1763,7 +1763,7 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 				 */
 				#if defined(__linux__) || defined(__FreeBSD__)
 					// Если протокол интернета установлен как SCTP
-					allow = (this->_protocol != IPPROTO_SCTP);
+					allow = (this->_addr->_protocol != IPPROTO_SCTP);
 				#endif
 				// Если разрешено активировать алгоритм TCP/CORK
 				if(allow){
@@ -1816,7 +1816,7 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 				 */
 				#if defined(__linux__) || defined(__FreeBSD__)
 					// Если протокол интернета установлен как SCTP
-					allow = (this->_protocol != IPPROTO_SCTP);
+					allow = (this->_addr->_protocol != IPPROTO_SCTP);
 				#endif
 				// Если разрешено активировать алгоритм Найгла
 				if(allow){
