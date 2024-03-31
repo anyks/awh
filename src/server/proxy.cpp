@@ -356,8 +356,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			ret.first->second->awh.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
 			// Устанавливаем параметры авторизации на удалённом сервере
 			ret.first->second->awh.authType(this->_settings.auth.type, this->_settings.auth.hash);
-			// Устанавливаем параметры маркеров детектирования обмена данных
-			ret.first->second->awh.bytesDetect(this->_settings.marker.read, this->_settings.marker.write);
 			// Выполняем установку сетевых параметров подключения
 			ret.first->second->awh.network(this->_settings.ips, this->_settings.ns, this->_settings.family);
 			// Устанавливаем параметры авторизации на удалённом прокси-сервере
@@ -1697,29 +1695,6 @@ void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t
 	}
 }
 /**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param read   количество байт для детекции по чтению
- * @param write  количество байт для детекции по записи
- */
-void awh::server::Proxy::bytesDetect(const broker_t broker, const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Определяем переданного брокера
-	switch(static_cast <uint8_t> (broker)){
-		// Если брокером является клиент
-		case static_cast <uint8_t> (broker_t::CLIENT): {
-			// Устанавливаем маркер детектирования чтения байт
-			this->_settings.marker.read = read;
-			// Устанавливаем маркер детектирования записи байт
-			this->_settings.marker.write = write;
-		} break;
-		// Если брокером является сервер
-		case static_cast <uint8_t> (broker_t::SERVER):
-			// Выполняем установку детекцию сообщений по количеству байт
-			this->_server.bytesDetect(read, write);
-		break;
-	}
-}
-/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param read    количество секунд для детекции по чтению
@@ -1964,6 +1939,60 @@ void awh::server::Proxy::setToDNSBlackList(const string & domain, const string &
 		this->_settings.dns.blacklist.emplace(domain, ip);
 }
 /**
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param bid    идентификатор брокера
+ * @param mode   режим применимой операции
+ * @return       результат выполенния операции
+ */
+bool awh::server::Proxy::cork(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept {
+	// Определяем переданного брокера
+	switch(static_cast <uint8_t> (broker)){
+		// Если брокером является клиент
+		case static_cast <uint8_t> (broker_t::CLIENT): {
+			// Выполняем поиск объекта клиента
+			auto i = this->_clients.find(bid);
+			// Если активный клиент найден
+			if(i != this->_clients.end())
+				// Выполняем отключение/включение алгоритма TCP/CORK
+				return i->second->core.cork(bid, mode);
+		} break;
+		// Если брокером является сервер
+		case static_cast <uint8_t> (broker_t::SERVER):
+			// Выполняем отключение/включение алгоритма TCP/CORK
+			return this->_core.cork(bid, mode);
+	}
+	// Сообщаем, что ничего не установлено
+	return false;
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param bid    идентификатор брокера
+ * @param mode   режим применимой операции
+ * @return       результат выполенния операции
+ */
+bool awh::server::Proxy::nodelay(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept {
+	// Определяем переданного брокера
+	switch(static_cast <uint8_t> (broker)){
+		// Если брокером является клиент
+		case static_cast <uint8_t> (broker_t::CLIENT): {
+			// Выполняем поиск объекта клиента
+			auto i = this->_clients.find(bid);
+			// Если активный клиент найден
+			if(i != this->_clients.end())
+				// Выполняем отключение/включение алгоритма Нейгла
+				return i->second->core.nodelay(bid, mode);
+		} break;
+		// Если брокером является сервер
+		case static_cast <uint8_t> (broker_t::SERVER):
+			// Выполняем отключение/включение алгоритма Нейгла
+			return this->_core.nodelay(bid, mode);
+	}
+	// Сообщаем, что ничего не установлено
+	return false;
+}
+/**
  * authTypeProxy Метод установки типа авторизации прокси-сервера
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
@@ -1999,12 +2028,12 @@ void awh::server::Proxy::authType(const broker_t broker, const awh::auth_t::type
 }
 /**
  * encrypt Метод активации шифрования для клиента
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
- * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param mode   флаг активации шифрования
  */
-void awh::server::Proxy::encrypt(const int32_t sid, const uint64_t bid, const broker_t broker, const bool mode) noexcept {
+void awh::server::Proxy::encrypt(const broker_t broker, const int32_t sid, const uint64_t bid, const bool mode) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент

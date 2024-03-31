@@ -93,6 +93,14 @@ namespace awh {
 	typedef class Engine {
 		public:
 			/**
+			 * Режим работы
+			 */
+			enum class mode_t : uint8_t {
+				NONE    = 0x00, // Экшен не установлен
+				ENABLE  = 0x01, // Экшен активации
+				DISABLE = 0x02  // Экшен деактивации
+			};
+			/**
 			 * Основные поддерживаемые протоколы
 			 */
 			enum class proto_t : uint8_t {
@@ -407,20 +415,29 @@ namespace awh {
 					int64_t write(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
-					 * block Метод установки блокирующего сокета
+					 * blocking Метод проверки на то, является ли сокет заблокированным
 					 * @return результат работы функции
 					 */
-					bool block() noexcept;
+					bool blocking() noexcept;
 					/**
-					 * noblock Метод установки неблокирующего сокета
-					 * @return результат работы функции
+					 * blocking Метод активации/деактивации блокирующего сокета
+					 * @param mode режим применимой операции
+					 * @return     результат работы функции
 					 */
-					bool noblock() noexcept;
+					bool blocking(const mode_t mode) noexcept;
+				public:
 					/**
-					 * isblock Метод проверки на то, является ли сокет заблокированным
-					 * @return результат работы функции
+					 * cork Метод отключения/включения алгоритма TCP/CORK
+					 * @param mode режим применимой операции
+					 * @return     результат выполенния операции
 					 */
-					bool isblock() noexcept;
+					bool cork(const mode_t mode) noexcept;
+					/**
+					 * nodelay Метод отключения/включения алгоритма Нейгла
+					 * @param mode режим применимой операции
+					 * @return     результат выполенния операции
+					 */
+					bool nodelay(const mode_t mode) noexcept;
 				public:
 					/**
 					 * proto Метод извлечения поддерживаемого протокола

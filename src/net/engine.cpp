@@ -471,27 +471,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
-				/**
-				 * Если операционной системой является Linux или FreeBSD
-				 */
-				#if defined(__linux__) || defined(__FreeBSD__)
-					// Если протокол интернета установлен как SCTP
-					if(this->_protocol != IPPROTO_SCTP){
-						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.nodelay(this->fd);
-						// Отключаем алгоритм Нейгла
-						BIO_set_tcp_ndelay(this->fd, 1);
-					}
-				/**
-				 * Если операционной системой не является Linux
-				 */
-				#else
-					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.nodelay(this->fd);
-					// Отключаем алгоритм Нейгла
-					BIO_set_tcp_ndelay(this->fd, 1);
-				#endif
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
 			}
 		} break;
 		/**
@@ -509,7 +489,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->fd);
 					// Переводим сокет в не блокирующий режим
-					this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
+					this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
 				}
 			} break;
 		#endif
@@ -571,7 +551,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если приложение является сервером
 			if(type == type_t::SERVER)
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
 			// Создаём объект подключения для сервера
@@ -821,7 +801,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(family == AF_INET6) this->_socket.onlyIPv6(this->fd, onlyV6);
+					if(family == AF_INET6)
+						// Выполняем активацию работы только IPv6 сети
+						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLE : socket_t::mode_t::DISABLE);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM) {
 					/**
@@ -847,7 +829,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(family == AF_INET6) this->_socket.onlyIPv6(this->fd, onlyV6);
+					if(family == AF_INET6)
+						// Выполняем активацию работы только IPv6 сети
+						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLE : socket_t::mode_t::DISABLE);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM)
 					// Активируем KeepAlive
@@ -856,32 +840,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			// Если приложение является сервером
 			if(type == type_t::SERVER)
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::NOBLOCK);
-			// Если сокет установлен TCP/IP
-			if(this->_type == SOCK_STREAM){
-				/**
-				 * Если операционной системой является Linux или FreeBSD
-				 */
-				#if defined(__linux__) || defined(__FreeBSD__)
-					// Если протокол интернета установлен как SCTP
-					if(this->_protocol != IPPROTO_SCTP){
-						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.nodelay(this->fd);
-						// Отключаем алгоритм Нейгла
-						BIO_set_tcp_ndelay(this->fd, 1);
-					}
-				/**
-				 * Если операционной системой не является Linux
-				 */
-				#else
-					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.nodelay(this->fd);
-					// Отключаем алгоритм Нейгла
-					BIO_set_tcp_ndelay(this->fd, 1);
-				#endif
-				// Устанавливаем разрешение на закрытие сокета при неиспользовании
-				// this->_socket.closeonexec(this->fd);
-			}
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->fd);
 			// Определяем тип запускаемого приложения
@@ -1219,8 +1178,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		}
 		// Если данные прочитать не удалось
 		if(result <= 0){
-			// Получаем статус сокета
-			const bool status = this->isblock();
 			// Определяем тип ошибки
 			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
@@ -1338,63 +1295,37 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если сокет находится в блокирующем режиме
-					if((result < 0) && status){
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Если защищённый режим работы запрещён
-							if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
-								// Выполняем пропуск попытки
-								return result;
-						/**
-						 * Для всех остальных операционных систем
-						 */
-						#else
-							// Если защищённый режим работы запрещён
-							if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
-								// Выполняем пропуск попытки
-								return result;
-						#endif
-						// Выполняем обработку ошибок
-						else if(this->error(result))
-							// Выполняем завершение работы
-							result = 0;
-					// Если произошла ошибка
-					} else if((result < 0) && !status) {
-						// Если защищённый режим работы разрешён
-						if(this->_encrypted && (this->_ssl != nullptr)){
-							// Получаем данные описание ошибки
-							if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
-								// Выполняем пропуск попытки
-								return result;
-							// Иначе выводим сообщение об ошибке
-							else if(this->error(result))
-								// Требуем завершения работы
-								result = 0;
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Если защищённый режим работы запрещён
-							} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
-								// Выполняем пропуск попытки
-								return result;
-						/**
-						 * Для всех остальных операционных систем
-						 */
-						#else
-							// Если защищённый режим работы запрещён
-							} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
-								// Выполняем пропуск попытки
-								return result;
-						#endif
+					// Если защищённый режим работы разрешён
+					if(this->_encrypted && (this->_ssl != nullptr)){
+						// Получаем данные описание ошибки
+						if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
+							// Выполняем пропуск попытки
+							return -1;
 						// Иначе выводим сообщение об ошибке
 						else if(this->error(result))
 							// Требуем завершения работы
 							result = 0;
-					}
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Если защищённый режим работы запрещён
+						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Если защищённый режим работы запрещён
+						} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#endif
+					// Иначе выводим сообщение об ошибке
+					else if(this->error(result))
+						// Требуем завершения работы
+						result = 0;
 				}
 			}
 			// Если произошло отключение
@@ -1557,8 +1488,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		}
 		// Если данные записать не удалось
 		if(result <= 0){
-			// Получаем статус сокета
-			const bool status = this->isblock();
 			// Определяем тип ошибки
 			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
@@ -1676,63 +1605,37 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если сокет находится в блокирующем режиме
-					if((result < 0) && status){
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Если защищённый режим работы запрещён
-							if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
-								// Выполняем пропуск попытки
-								return result;
-						/**
-						 * Для всех остальных операционных систем
-						 */
-						#else
-							// Если защищённый режим работы запрещён
-							if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
-								// Выполняем пропуск попытки
-								return result;
-						#endif
-						// Выполняем обработку ошибок
-						else if(this->error(result))
-							// Выполняем завершение работы
-							result = 0;
-					// Если произошла ошибка
-					} else if((result < 0) && !status) {
-						// Если защищённый режим работы разрешён
-						if(this->_encrypted){
-							// Получаем данные описание ошибки
-							if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
-								// Выполняем пропуск попытки
-								return result;
-							// Иначе выводим сообщение об ошибке
-							else if(this->error(result))
-								// Требуем завершения работы
-								result = 0;
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Если защищённый режим работы запрещён
-							} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
-								// Выполняем пропуск попытки
-								return result;
-						/**
-						 * Для всех остальных операционных систем
-						 */
-						#else
-							// Если защищённый режим работы запрещён
-							} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
-								// Выполняем пропуск попытки
-								return result;
-						#endif
+					// Если защищённый режим работы разрешён
+					if(this->_encrypted && (this->_ssl != nullptr)){
+						// Получаем данные описание ошибки
+						if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
+							// Выполняем пропуск попытки
+							return -1;
 						// Иначе выводим сообщение об ошибке
 						else if(this->error(result))
 							// Требуем завершения работы
 							result = 0;
-					}
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Если защищённый режим работы запрещён
+						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Если защищённый режим работы запрещён
+						} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#endif
+					// Иначе выводим сообщение об ошибке
+					else if(this->error(result))
+						// Требуем завершения работы
+						result = 0;
 				}
 			}
 			// Если произошло отключение
@@ -1780,66 +1683,174 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	return result;
 }
 /**
- * block Метод установки блокирующего сокета
+ * blocking Метод проверки на то, является ли сокет заблокированным
  * @return результат работы функции
  */
-bool awh::Engine::Context::block() noexcept {
-	// Если адрес присвоен
-	if(this->_addr != nullptr){
-		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
-			// Переводим сокет в блокирующий режим
-			this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::BLOCK);
-			// Если шифрование включено
-			if(this->_encrypted && (this->_ssl != nullptr)){
-				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				BIO_set_nbio(this->_bio, 0);
-				// Флаг необходимо установить только для неблокирующего сокета
-				SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-			}
-		}
-		// Выводим результат
-		return !this->_addr->_async;
-	}
-	// Сообщаем что сокет в блокирующем режиме
-	return true;
-}
-/**
- * noblock Метод установки неблокирующего сокета
- * @return результат работы функции
- */
-bool awh::Engine::Context::noblock() noexcept {
-	// Если адрес присвоен
-	if(this->_addr != nullptr){
-		// Если файловый дескриптор активен
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
-			// Переводим сокет в не блокирующий режим
-			this->_addr->_async = this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::NOBLOCK);
-			// Если шифрование включено
-			if(this->_encrypted && (this->_ssl != nullptr)){
-				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				BIO_set_nbio(this->_bio, 1);
-				// Флаг необходимо установить только для неблокирующего сокета
-				SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-			}
-		}
-		// Выводим результат
-		return this->_addr->_async;
-	}
-	// Сообщаем что сокет в блокирующем режиме
-	return false;
-}
-/**
- * isblock Метод проверки на то, является ли сокет заблокированным
- * @return результат работы функции
- */
-bool awh::Engine::Context::isblock() noexcept {
+bool awh::Engine::Context::blocking() noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr)
 		// Выводим результат проверки
 		return !this->_addr->_async;
 	// Сообщаем что сокет в блокирующем режиме
 	return true;
+}
+/**
+ * blocking Метод активации/деактивации блокирующего сокета
+ * @param mode режим применимой операции
+ * @return     результат работы функции
+ */
+bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Определяем режим применяемой операции
+			switch(static_cast <uint8_t> (mode)){
+				// Если необходимо перевести сокет в блокирующий режим
+				case static_cast <uint8_t> (mode_t::ENABLE): {
+					// Переводим сокет в блокирующий режим
+					this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::ENABLE);
+					// Если шифрование включено
+					if(this->_encrypted && (this->_ssl != nullptr)){
+						// Устанавливаем блокирующий режим ввода/вывода для сокета
+						BIO_set_nbio(this->_bio, 0);
+						// Заставляем OpenSSL автоматически повторять попытки отправки, после неудачно записи данных
+						SSL_set_mode(this->_ssl, SSL_MODE_AUTO_RETRY);
+						// Запрещаем передавать буфер с тем же содержимым при повторным вызове записи
+						SSL_clear_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+					}
+				} break;
+				// Если необходимо перевести сокет в неблокирующий режим
+				case static_cast <uint8_t> (mode_t::DISABLE): {
+					// Переводим сокет в не блокирующий режим
+					this->_addr->_async = this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::DISABLE);
+					// Если шифрование включено
+					if(this->_encrypted && (this->_ssl != nullptr)){
+						// Устанавливаем неблокирующий режим ввода/вывода для сокета
+						BIO_set_nbio(this->_bio, 1);
+						// Запрещаем OpenSSL автоматически повторять попытки отправки, после неудачно записи данных
+						SSL_clear_mode(this->_ssl, SSL_MODE_AUTO_RETRY);
+						// Разрешаем передавать буфер с тем же содержимым при повторным вызове записи
+						SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+					}
+				} break;
+			}
+		}
+		// Выводим результат
+		return !this->_addr->_async;
+	}
+	// Сообщаем что сокет в блокирующем режиме
+	return false;
+}
+/**
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::Engine::Context::cork(const mode_t mode) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Если сокет установлен TCP/IP
+			if(this->_addr->_type == SOCK_STREAM){
+				// Флаг разрешения активации алгоритма TCP/CORK
+				bool allow = true;
+				/**
+				 * Если операционной системой является Linux или FreeBSD
+				 */
+				#if defined(__linux__) || defined(__FreeBSD__)
+					// Если протокол интернета установлен как SCTP
+					allow = (this->_protocol != IPPROTO_SCTP);
+				#endif
+				// Если разрешено активировать алгоритм TCP/CORK
+				if(allow){
+					// Определяем режим применяемой операции
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо активировать алгоритм TCP/CORK
+						case static_cast <uint8_t> (mode_t::ENABLE): {
+							// Выполняем активирование алгоритма TCP/CORK
+							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::ENABLE);
+							// Если шифрование включено
+							if(this->_encrypted && (this->_ssl != nullptr))
+								// Запрещаем отправку частичных пакетов в соединение
+								SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+						} break;
+						// Если необходимо деактивировать алгоритм TCP/CORK
+						case static_cast <uint8_t> (mode_t::DISABLE): {
+							// Выполняем деактивирование алгоритма TCP/CORK
+							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::DISABLE);
+							// Если шифрование включено
+							if(this->_encrypted && (this->_ssl != nullptr))
+								// Разрешаем отправку частичных пакетов в соединение
+								SSL_set_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+						}
+					}
+				}
+			}
+		}
+	}
+	// Сообщаем что сокет в блокирующем режиме
+	return result;
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Если сокет установлен TCP/IP
+			if(this->_addr->_type == SOCK_STREAM){
+				// Флаг разрешения активации алгоритма Найгла
+				bool allow = true;
+				/**
+				 * Если операционной системой является Linux или FreeBSD
+				 */
+				#if defined(__linux__) || defined(__FreeBSD__)
+					// Если протокол интернета установлен как SCTP
+					allow = (this->_protocol != IPPROTO_SCTP);
+				#endif
+				// Если разрешено активировать алгоритм Найгла
+				if(allow){
+					// Определяем режим применяемой операции
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо деактивировать алгоритм Нейгла
+						case static_cast <uint8_t> (mode_t::ENABLE): {
+							// Если шифрование включено
+							if(this->_encrypted && (this->_ssl != nullptr)){
+								// Разрешаем отправку частичных пакетов в соединение
+								SSL_set_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+								// Отключаем алгоритм Нейгла
+								result = !static_cast <bool> (BIO_set_tcp_ndelay(this->_addr->fd, 1));
+							// Выполняем деактивирование алгоритма Нейгла
+							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::ENABLE);
+						} break;
+						// Если необходимо активировать алгоритм Нейгла
+						case static_cast <uint8_t> (mode_t::DISABLE): {
+							// Если шифрование включено
+							if(this->_encrypted && (this->_ssl != nullptr)){
+								// Запрещаем отправку частичных пакетов в соединение
+								SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+								// Включаем алгоритм Нейгла
+								result = !static_cast <bool> (BIO_set_tcp_ndelay(this->_addr->fd, 0));
+							// Выполняем активирование алгоритма Нейгла
+							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::DISABLE);
+						} break;
+					}
+				}
+			}
+		}
+	}
+	// Сообщаем что сокет в блокирующем режиме
+	return result;
 }
 /**
  * proto Метод извлечения поддерживаемого протокола
@@ -1866,22 +1877,19 @@ void awh::Engine::Context::proto(const proto_t proto) noexcept {
 bool awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Определяем тип метода
-		switch(static_cast <uint8_t> (method)){
-			// Если установлен метод чтения
-			case static_cast <uint8_t> (method_t::READ):
-				// Выполняем установку таймера на чтение данных из сокета
-				return (
-					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::READ) : false
-				);
-			// Если установлен метод записи
-			case static_cast <uint8_t> (method_t::WRITE):
-				// Выполняем установку таймера на запись данных в сокет
-				return (
-					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::WRITE) : false
-				);
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Определяем тип метода
+			switch(static_cast <uint8_t> (method)){
+				// Если установлен метод чтения
+				case static_cast <uint8_t> (method_t::READ):
+					// Выполняем установку таймера на чтение данных из сокета
+					return this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::READ);
+				// Если установлен метод записи
+				case static_cast <uint8_t> (method_t::WRITE):
+					// Выполняем установку таймера на запись данных в сокет
+					return this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::WRITE);
+			}
 		}
 	}
 	// Сообщаем, что операция не выполнена
@@ -1897,24 +1905,27 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
 	int result = 0;
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Определяем метод для работы с буфером
-		switch(static_cast <uint8_t> (method)){
-			// Если метод чтения
-			case static_cast <uint8_t> (method_t::READ):
-				// Получаем размер буфера для чтения
-				result = (
-					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::READ) : 0
-				);
-			break;
-			// Если метод записи
-			case static_cast <uint8_t> (method_t::WRITE):
-				// Получаем размер буфера для записи
-				result = (
-					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::WRITE) : 0
-				);
-			break;
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Определяем метод для работы с буфером
+			switch(static_cast <uint8_t> (method)){
+				// Если метод чтения
+				case static_cast <uint8_t> (method_t::READ):
+					// Получаем размер буфера для чтения
+					result = this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::READ);
+				break;
+				// Если метод записи
+				case static_cast <uint8_t> (method_t::WRITE):
+					// Получаем размер буфера для записи
+					result = this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::WRITE);
+					/*
+					// Если защищённый режим работы разрешён
+					if(this->_encrypted && (this->_ssl != nullptr))
+						// Выполняем определение минимального размера буфера который возможно отправить
+						result = min(result, BIO_get_write_guarantee(this->_bio));
+					*/
+				break;
+			}
 		}
 	}
 	// Выводим результат
@@ -1928,13 +1939,23 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
  */
 bool awh::Engine::Context::buffer(const int read, const int write) noexcept {
 	// Если адрес присвоен
-	if(this->_addr != nullptr)
-		// Если подключение выполнено
-		return (
-			(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-			this->_addr->_socket.bufferSize(this->_addr->fd, read, socket_t::mode_t::READ) &&
-			this->_addr->_socket.bufferSize(this->_addr->fd, write, socket_t::mode_t::WRITE) : false
-		);
+	if((this->_addr != nullptr) && (read > 0) && (write > 0)){
+		// Если сокет удачно инициализирован
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Если защищённый режим работы разрешён
+			if(this->_encrypted && (this->_ssl != nullptr)){
+				// Устанавливаем размер буфера данных на чтение в BIO SSL
+				BIO_set_read_buffer_size(this->_bio, static_cast <long> (read));
+				// Устанавливаем размер буфера данных на запись в BIO SSL
+				BIO_set_write_buffer_size(this->_bio, static_cast <long> (write));
+			}
+			// Выполняем установку буферов сокета на чтение и запись
+			return (
+				this->_addr->_socket.bufferSize(this->_addr->fd, read, socket_t::mode_t::READ) &&
+				this->_addr->_socket.bufferSize(this->_addr->fd, write, socket_t::mode_t::WRITE)
+			);
+		}
+	}
 	// Иначе возвращаем неустановленный размер буфера
 	return false;
 }
@@ -3314,8 +3335,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Запускаем кэширование
@@ -3429,7 +3448,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				target.noblock();
+				target.blocking(mode_t::DISABLE);
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**
@@ -3615,8 +3634,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выходим
 				return;
 			}
-			// Устанавливаем флаг режима автоматического повтора получения следующих данных
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если приложение является сервером
@@ -3746,7 +3763,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER): {
 						// Устанавливаем неблокирующий режим ввода/вывода для сокета
-						target.noblock();
+						target.blocking(mode_t::DISABLE);
 						// Включаем обмен куками
 						SSL_set_options(target._ssl, SSL_OP_COOKIE_EXCHANGE);
 					} break;
@@ -3900,8 +3917,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 					return;
 				}
 			}
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если цепочка сертификатов установлена
@@ -4024,7 +4039,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				target.block();
+				target.blocking(mode_t::ENABLE);
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**

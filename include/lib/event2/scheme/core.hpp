@@ -165,31 +165,16 @@ namespace awh {
 				BufferEvent(const log_t * log) noexcept : events(log) {}
 			} bev_t;
 			/**
-			 * Mark Структура маркера на размер детектируемых байт
+			 * Payload Структура полезной нагрузки
 			 */
-			typedef struct Mark {
-				size_t min; // Минимальный размер детектируемых байт
-				size_t max; // Максимальный размер детектируемых байт
+			typedef struct Payload {
+				size_t size;               // Размер буфера
+				unique_ptr <char []> data; // Данные буфера
 				/**
-				 * Mark Конструктор
-				 * @param min минимальный размер детектируемых байт
-				 * @param max максимальный размер детектируемых байт
+				 * Payload Конструктор
 				 */
-				Mark(const size_t min = 0, const size_t max = 0) : min(min), max(max) {}
-			} __attribute__((packed)) mark_t;
-			/**
-			 * Marker Структура маркеров
-			 */
-			typedef struct Marker {
-				mark_t read;  // Маркера размера детектируемых байт на чтение
-				mark_t write; // Маркера размера детектируемых байт на запись
-				/**
-				 * Marker Конструктор
-				 */
-				Marker() noexcept :
-				 read(AWH_BUFFER_READ_MIN, AWH_BUFFER_READ_MAX),
-				 write(AWH_BUFFER_WRITE_MIN, AWH_BUFFER_WRITE_MAX) {}
-			} marker_t;
+				Payload() noexcept : size(0), data(nullptr) {}
+			} payload_t;
 		private:
 			/**
 			 * Broker Класс брокера подключения
@@ -221,8 +206,8 @@ namespace awh {
 					// Хранилище функций обратного вызова
 					fn_t _callbacks;
 				public:
-					// Маркер размера детектируемых байт
-					marker_t _marker;
+					// Буфер полезной нагрузки
+					payload_t _payload;
 				public:
 					// Объект таймаутов
 					timeouts_t _timeouts;
@@ -379,13 +364,6 @@ namespace awh {
 					 * @param method  метод режима работы
 					 */
 					void timeout(const time_t seconds, const engine_t::method_t method) noexcept;
-					/**
-					 * marker Метод установки маркера на размер детектируемых байт
-					 * @param min    минимальный размер детектируемых байт
-					 * @param min    максимальный размер детектируемых байт
-					 * @param method метод режима работы
-					 */
-					void marker(const size_t min, const size_t max, const engine_t::method_t method) noexcept;
 				public:
 					/**
 					 * base Метод установки базы событий
@@ -418,9 +396,6 @@ namespace awh {
 		public:
 			// Флаг автоматического поддержания подключения
 			bool alive;
-		public:
-			// Маркер размера детектируемых байт
-			marker_t marker;
 		public:
 			// Объект таймаутов
 			timeouts_t timeouts;

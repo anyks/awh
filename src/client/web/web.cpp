@@ -559,6 +559,32 @@ awh::engine_t::proto_t awh::client::Web::proto() const noexcept {
 	return engine_t::proto_t::NONE;
 }
 /**
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::Web::cork(const engine_t::mode_t mode) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем отключение/включение алгоритма TCP/CORK
+		return const_cast <client::core_t *> (this->_core)->cork(this->_bid, mode);
+	// Сообщаем, что ничего не установлено
+	return false;
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::Web::nodelay(const engine_t::mode_t mode) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем отключение/включение алгоритма Нейгла
+		return const_cast <client::core_t *> (this->_core)->nodelay(this->_bid, mode);
+	// Сообщаем, что ничего не установлено
+	return false;
+}
+/**
  * bandwidth Метод установки пропускной способности сети
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -568,25 +594,6 @@ void awh::client::Web::bandwidth(const string & read, const string & write) noex
 	if(this->_core != nullptr)
 		// Выполняем установку пропускной способности сети
 		const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
-}
-/**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::client::Web::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Устанавливаем количество байт на чтение
-	this->_scheme.marker.read = read;
-	// Устанавливаем количество байт на запись
-	this->_scheme.marker.write = write;
-	// Если минимальный размер данных для чтения, не установлен
-	if(this->_scheme.marker.read.min == 0)
-		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_scheme.marker.read.min = AWH_BUFFER_READ_MIN;
-	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-	if(this->_scheme.marker.write.max == 0)
-		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_scheme.marker.write.max = AWH_BUFFER_WRITE_MAX;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

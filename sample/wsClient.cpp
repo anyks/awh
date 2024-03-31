@@ -347,6 +347,12 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
+	// Устанавливаем размер доступной кэш-памяти для одного подключения
+	// core.brokerAvailableSize(0x1FFFFFFF);
+	// Устанавливаем размер доступной кэш-памяти для всех подключений
+	// core.memoryAvailableSize(0x7FFFFFFF);
+	// Устанавливаем режим отправки сообщений
+	// core.sending(node_t::sending_t::DEFFER);
 	// Устанавливаем логин и пароль пользователя
 	ws.user("user", "password");
 	// Выполняем активацию многопоточности

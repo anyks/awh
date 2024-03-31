@@ -239,7 +239,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Добавляем созданного брокера в список брокеров
 					auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
-					this->_brokers.emplace(ret.first->first, sid);
+					this->_brokers.emplace(ret.first->first, ret.first->second.get());
 					// Выполняем блокировку потока
 					this->_mtx.connect.unlock();
 					// Если подключение к серверу не выполнено
@@ -1206,6 +1206,12 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 							const_cast <dns_t *> (this->_dns)->cancel(AF_INET);
 						// Запускаем чтение данных
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+						// Активируем ожидание записи данных
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+						// Останавливаем ожидание записи данных
+						broker->_bev.events.write.stop();
+						// Выполняем создание буфера полезной нагрузки
+						this->createBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
 						if(this->_verb)
 							// Выводим в лог сообщение
@@ -1223,6 +1229,12 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 							const_cast <dns_t *> (this->_dns)->cancel(AF_INET6);
 						// Запускаем чтение данных
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+						// Активируем ожидание записи данных
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+						// Останавливаем ожидание записи данных
+						broker->_bev.events.write.stop();
+						// Выполняем создание буфера полезной нагрузки
+						this->createBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
 						if(this->_verb)
 							// Выводим в лог сообщение
@@ -1232,6 +1244,12 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 					case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 						// Запускаем чтение данных
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+						// Активируем ожидание записи данных
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+						// Останавливаем ожидание записи данных
+						broker->_bev.events.write.stop();
+						// Выполняем создание буфера полезной нагрузки
+						this->createBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
 						if(this->_verb)
 							// Выводим в лог сообщение
@@ -1264,28 +1282,52 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
  * @return       результат отправки сообщения
  */
 bool awh::client::Core::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если данные переданы
 	if(this->working() && this->has(bid)){
-		// Ещем для указанного потока очередь полезной нагрузки
-		auto i = this->_payloads.find(bid);
-		// Если для потока очередь полезной нагрузки получена
-		if((i != this->_payloads.end()) && !i->second.empty())
-			// Выполняем отправку сообщения асинхронным методом
-			return node_t::send(buffer, size, bid);
-		// Если очередь ещё не существует
-		else {
-			// Выполняем отправку данных клиенту
-			const size_t bytes = this->write(buffer, size, bid);
-			// Если данные отправлены не полностью
-			if(bytes < size)
+		// Флаг активация ожидания готовности сокета
+		bool waiting = false;
+		// Определяем режим отправки сообщений
+		switch(static_cast <uint8_t> (this->_sending)){
+			// Если установлен флаг отправки отложенных сообщений
+			case static_cast <uint8_t> (sending_t::DEFFER):
 				// Выполняем отправку сообщения асинхронным методом
-				return node_t::send(buffer + bytes, size - bytes, bid);
+				waiting = result = node_t::send(buffer, size, bid);
+			break;
+			// Если установлен флаг отправки мгновенных сообщений
+			case static_cast <uint8_t> (sending_t::INSTANT): {
+				// Ещем для указанного потока очередь полезной нагрузки
+				auto i = this->_payloads.find(bid);
+				// Если для потока очередь полезной нагрузки получена
+				if((waiting = ((i != this->_payloads.end()) && !i->second.empty() && ((i->second.front().offset - i->second.front().pos) > 0))))
+					// Выполняем отправку сообщения асинхронным методом
+					result = node_t::send(buffer, size, bid);
+				// Если очередь ещё не существует
+				else {
+					// Выполняем отправку данных клиенту
+					const size_t bytes = this->write(buffer, size, bid);
+					// Если данные отправлены не полностью
+					if((waiting = (bytes < size)))
+						// Выполняем отправку сообщения асинхронным методом
+						result = node_t::send(buffer + bytes, size - bytes, bid);
+					// Если все данные добавлены успешно
+					else result = (bytes == size);
+				}
+			} break;
 		}
-		// Сообщаем, что все данные отправлены успешно
-		return true;
+		// Если необходимо активировать ожидание готовности сокета для записи
+		if(waiting && this->has(bid)){
+			// Создаём бъект активного брокера подключения
+			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+			// Если сокет подключения активен
+			if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+				// Запускаем ожидание записи данных
+				broker->_bev.events.write.start();
+		}
 	}
 	// Сообщаем, что отправить сообщение неудалось
-	return false;
+	return result;
 }
 /**
  * read Метод чтения данных для брокера
@@ -1306,104 +1348,49 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
-					// Останавливаем чтение данных с клиента
-					broker->_bev.events.read.stop();
-					// Получаем максимальный размер буфера
-					const int64_t size = broker->_ectx.buffer(engine_t::method_t::READ);
-					// Если размер буфера получен
-					if(size > 0){
-						/**
-						 * Выполняем отлов ошибок
-						 */
-						try {
-							// Количество полученных байт
-							int64_t bytes = -1;
-							// Создаём буфер входящих данных
-							unique_ptr <char []> buffer(new char [size]);
-							/**
-							 * Выполняем чтение данных с сокета
-							 */
-							do {
-								// Если подключение выполнено
-								if(!broker->_bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
-									// Выполняем обнуление буфера данных
-									::memset(buffer.get(), 0, size);
-									// Определяем тип сокета
-									switch(static_cast <uint8_t> (this->_settings.sonet)){
-										// Если тип сокета установлен как UDP
-										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-										// Если тип сокета установлен как DTLS
-										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-											// Выполняем установку таймаута ожидания чтения из сокета
-											broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
-										break;
-									}
-									// Выполняем получение сообщения от клиента
-									bytes = broker->_ectx.read(buffer.get(), size);
-									// Если данные получены
-									if(bytes > 0){
-										// Если данные считанные из буфера, больше размера ожидающего буфера
-										if((broker->_marker.read.max > 0) && (bytes >= broker->_marker.read.max)){
-											// Смещение в буфере и отправляемый размер данных
-											size_t offset = 0, actual = 0;
-											// Выполняем пересылку всех полученных данных
-											while((bytes - offset) > 0){
-												// Определяем размер отправляемых данных
-												actual = ((bytes - offset) >= broker->_marker.read.max ? broker->_marker.read.max : (bytes - offset));
-												// Если подключение производится через, прокси-сервер
-												if(shm->isProxy()){
-													// Если функция обратного вызова для вывода записи существует
-													if(this->_callbacks.is("readProxy"))
-														// Выводим функцию обратного вызова
-														this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get() + offset, actual, bid, i->first);
-												// Если прокси-сервер не используется
-												} else if(this->_callbacks.is("read"))
-													// Выводим функцию обратного вызова
-													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get() + offset, actual, bid, i->first);
-												// Увеличиваем смещение в буфере
-												offset += actual;
-											}
-										// Если данных достаточно
-										} else {
-											// Если подключение производится через, прокси-сервер
-											if(shm->isProxy()){
-												// Если функция обратного вызова для вывода записи существует
-												if(this->_callbacks.is("readProxy"))
-													// Выводим функцию обратного вызова
-													this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", buffer.get(), bytes, bid, i->first);
-											// Если прокси-сервер не используется
-											} else if(this->_callbacks.is("read"))
-												// Выводим функцию обратного вызова
-												this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", buffer.get(), bytes, bid, i->first);
-										}
-									// Если данные небыли получены
-									} else if(bytes <= 0) {
-										// Если чтение не выполнена, закрываем подключение
-										if(bytes == 0)
-											// Выполняем закрытие подключения
-											this->close(bid);
-										// Выходим из цикла
-										break;
-									}
-								// Если запись не выполнена, входим
-								} else break;
-							// Выполняем чтение до тех пор, пока всё не прочитаем
-							} while(this->has(bid));
-							// Если тип сокета не установлен как UDP, запускаем чтение дальше
-							if((this->_settings.sonet != scheme_t::sonet_t::UDP) && this->has(bid))
-								// Запускаем чтение данных с клиента
-								broker->_bev.events.read.start();
-						/**
-						 * Если возникает ошибка
-						 */
-						} catch(const bad_alloc &) {
-							// Выводим в лог сообщение
-							this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						}
-					// Выполняем отключение клиента
-					} else this->close(bid);
+					/**
+					 * Выполняем чтение данных с сокета
+					 */
+					do {
+						// Если подключение выполнено и чтение данных разрешено
+						if(!broker->_bev.locked.read && (broker->_payload.size > 0) && (shm->status.real == scheme_t::mode_t::CONNECT)){
+							// Определяем тип сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Выполняем установку таймаута ожидания чтения из сокета
+									broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
+								break;
+							}
+							// Выполняем получение сообщения от клиента
+							const int64_t bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
+							// Если данные получены
+							if(bytes > 0){
+								// Если подключение производится через, прокси-сервер
+								if(shm->isProxy()){
+									// Если функция обратного вызова для вывода записи существует
+									if(this->_callbacks.is("readProxy"))
+										// Выводим функцию обратного вызова
+										this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
+								// Если прокси-сервер не используется
+								} else if(this->_callbacks.is("read"))
+									// Выводим функцию обратного вызова
+									this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
+							// Если данные небыли получены
+							} else if(bytes <= 0) {
+								// Если чтение не выполнена, закрываем подключение
+								if(bytes == 0)
+									// Выполняем закрытие подключения
+									this->close(bid);
+								// Выходим из цикла
+								break;
+							}
+						// Если запись не выполнена, входим
+						} else break;
+					// Выполняем чтение до тех пор, пока всё не прочитаем
+					} while(this->has(bid));
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных
@@ -1446,17 +1433,32 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 		auto i = this->_payloads.find(bid);
 		// Если для потока очередь полезной нагрузки получена
 		if((i != this->_payloads.end()) && !i->second.empty()){
-			// Выполняем запись в сокет
-			const size_t bytes = this->write(i->second.front().data.get() + i->second.front().offset, i->second.front().size - i->second.front().offset, bid);
-			// Если данные записаны удачно
-			if((bytes > 0) && this->has(bid)){
-				// Увеличиваем смещение в бинарном буфере
-				i->second.front().offset += bytes;
-				// Если все данные записаны успешно, тогда удаляем результат
-				if(i->second.front().offset == i->second.front().size)
-					// Выполняем освобождение памяти хранения полезной нагрузки
-					this->available(bid);
-			}
+			// Создаём бъект активного брокера подключения
+			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+			// Если есть данные для отправки
+			if((i->second.front().offset - i->second.front().pos) > 0){
+				// Выполняем запись в сокет
+				const size_t bytes = this->write(i->second.front().data.get() + i->second.front().pos, i->second.front().offset - i->second.front().pos, bid);
+				// Если данные записаны удачно
+				if((bytes > 0) && this->has(bid)){
+					// Увеличиваем смещение в бинарном буфере
+					i->second.front().pos += bytes;
+					// Если все данные записаны успешно, тогда удаляем результат
+					if(i->second.front().pos == i->second.front().offset)
+						// Выполняем освобождение памяти хранения полезной нагрузки
+						this->available(bid);
+				}
+				// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
+				if(this->_payloads.find(bid) != this->_payloads.end()){
+					// Если сокет подключения активен
+					if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+						// Запускаем ожидание записи данных
+						broker->_bev.events.write.start();
+				}
+			// Если данных для отправки больше нет и сокет подключения активен
+			} else if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+				// Останавливаем детектирования возможности записи в сокет
+				broker->_bev.events.write.stop();
 		}
 	}
 }
@@ -1476,6 +1478,8 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
+			// Останавливаем детектирования возможности записи в сокет
+			broker->_bev.events.write.stop();
 			// Выполняем поиск идентификатора схемы сети
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
@@ -1493,61 +1497,41 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 						// Если тип сокета установлен как SCTP
 						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 							// Переводим сокет в блокирующий режим
-							broker->_ectx.block();
+							broker->_ectx.blocking(engine_t::mode_t::ENABLE);
 						break;
 					}
-					// Если данных достаточно для записи в сокет
-					if(size >= broker->_marker.write.min){
-						// Количество полученных байт
-						int64_t bytes = -1;
-						// Cмещение в буфере и отправляемый размер данных
-						size_t offset = 0, actual = 0, left = 0;
-						// Получаем максимальный размер буфера
-						int64_t max = broker->_ectx.buffer(engine_t::method_t::WRITE);
-						// Если максимальное установленное значение больше размеров буфера для записи, корректируем
-						max = ((max > 0) && (broker->_marker.write.max > max) ? max : broker->_marker.write.max);
-						// Выполняем отправку данных пока всё не отправим
-						while((size - offset) > 0){
-							// Получаем общий размер буфера данных
-							left = (size - offset);
-							// Определяем размер отправляемых данных
-							actual = (left >= max ? max : left);
-							// Определяем тип сокета
-							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как TCP/IP
-								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-								// Если тип сокета установлен как TCP/IP TLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-								// Если тип сокета установлен как SCTP
-								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-									// Выполняем установку таймаута ожидания записи в сокет
-									broker->_ectx.timeout(broker->_timeouts.write * 1000, engine_t::method_t::WRITE);
-								break;
-							}
-							// Выполняем отправку сообщения клиенту
-							bytes = broker->_ectx.write(buffer + offset, actual);
-							// Если данные удачно отправленны
-							if(bytes > 0)
-								// Запоминаем количество записанных байт
-								result += static_cast <size_t> (bytes);
-							// Если даныне не получены
-							else if(bytes <= 0){
-								// Если запись не выполнена, закрываем подключение
-								if(bytes == 0)
-									// Выполняем закрытие подключения
-									this->close(bid);
-								// Выходим из цикла
-								break;
-							}
-							// Увеличиваем смещение в буфере
-							offset += static_cast <size_t> (bytes);
+					// Получаем максимальный размер буфера
+					const int max = broker->_ectx.buffer(engine_t::method_t::WRITE);
+					// Если в буфере нет места
+					if(max > 0){
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+							// Если тип сокета установлен как DTLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Выполняем установку таймаута ожидания записи в сокет
+								broker->_ectx.timeout(broker->_timeouts.write * 1000, engine_t::method_t::WRITE);
+							break;
 						}
-						// Если дисконнекта от сервера не произошло
-						if(bytes > 0){
+						// Выполняем отправку сообщения клиенту
+						const int64_t bytes = broker->_ectx.write(buffer, (size >= static_cast <size_t> (max) ? static_cast <size_t> (max) : size));
+						// Если данные удачно отправленны
+						if(bytes > 0)
+							// Запоминаем количество записанных байт
+							result = static_cast <size_t> (bytes);
+						// Если запись не выполнена, закрываем подключение
+						else if(bytes == 0)
+							// Выполняем закрытие подключения
+							this->close(bid);
+						// Если дисконнекта не произошло
+						if(bytes != 0){
 							// Определяем тип сокета
 							switch(static_cast <uint8_t> (this->_settings.sonet)){
 								// Если тип сокета установлен как TCP/IP
@@ -1557,37 +1541,24 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 									// Переводим сокет в неблокирующий режим
-									broker->_ectx.noblock();
+									broker->_ectx.blocking(engine_t::mode_t::DISABLE);
 								break;
 							}
+						}
+						// Если данные удачно отправленны
+						if(bytes > 0){
 							// Если подключение производится через, прокси-сервер
 							if(shm->isProxy()){
 								// Если функция обратного вызова для вывода записи существует
 								if(this->_callbacks.is("writeProxy"))
 									// Выводим функцию обратного вызова
-									this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", buffer, offset, bid, i->first);
+									this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", buffer, static_cast <size_t> (bytes), bid, i->first);
 							// Если функция обратного вызова на запись данных установлена
 							} else if(this->_callbacks.is("write"))
 								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, offset, bid, i->first);
+								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, static_cast <size_t> (bytes), bid, i->first);
 						}
-					// Если данных недостаточно для записи в сокет
-					} else {
-						// Если подключение производится через, прокси-сервер
-						if(shm->isProxy()){
-							// Если функция обратного вызова для вывода записи существует
-							if(this->_callbacks.is("writeProxy"))
-								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", nullptr, 0, bid, i->first);
-						// Если функция обратного вызова на запись данных установлена
-						} else if(this->_callbacks.is("write"))
-							// Выводим функцию обратного вызова
-							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", nullptr, 0, bid, i->first);
 					}
-					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-					if((this->_settings.sonet == scheme_t::sonet_t::UDP) && this->has(bid))
-						// Запускаем чтение данных с клиента
-						broker->_bev.events.read.start();
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных

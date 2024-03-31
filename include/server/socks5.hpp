@@ -323,12 +323,6 @@ namespace awh {
 				 * @param write количество секунд для детекции по записи
 				 */
 				void waitTimeDetect(const time_t read, const time_t write) noexcept;
-				/**
-				 * bytesDetect Метод детекции сообщений по количеству байт
-				 * @param read  количество байт для детекции по чтению
-				 * @param write количество байт для детекции по записи
-				 */
-				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений
@@ -382,7 +376,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
+				void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
 				/**
 				 * network Метод установки параметров сети
 				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет

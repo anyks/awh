@@ -289,15 +289,6 @@ void awh::server::Websocket::waitTimeDetect(const time_t read, const time_t writ
 	this->_ws.waitTimeDetect(read, write);
 }
 /**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::server::Websocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Выполняем установку детекции сообщений по количеству байт
-	this->_ws.bytesDetect(read, write);
-}
-/**
  * addOrigin Метод добавления разрешённого источника
  * @param origin разрешённый источнико
  */

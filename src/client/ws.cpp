@@ -326,6 +326,24 @@ void awh::client::Websocket::setToDNSBlackList(const string & domain, const stri
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::Websocket::cork(const engine_t::mode_t mode) noexcept {
+	// Выполняем отключение/включение алгоритма TCP/CORK
+	return this->_ws.cork(mode);
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::Websocket::nodelay(const engine_t::mode_t mode) noexcept {
+	// Выполняем отключение/включение алгоритма TCP/CORK
+	return this->_ws.nodelay(mode);
+}
+/**
  * encryption Метод активации шифрования
  * @param mode флаг активации шифрования
  */
@@ -360,15 +378,6 @@ void awh::client::Websocket::authType(const auth_t::type_t type, const auth_t::h
 void awh::client::Websocket::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Выполняем установку типа авторизации на прокси-сервере
 	this->_ws.authTypeProxy(type, hash);
-}
-/**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::client::Websocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Выполняем установку детекции сообщений по количеству байт
-	this->_ws.bytesDetect(read, write);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

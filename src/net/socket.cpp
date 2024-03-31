@@ -49,263 +49,6 @@ bool awh::Socket::noSigILL() const noexcept {
 	return result;
 }
 /**
- * cork Метод активации tcp_cork
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-bool awh::Socket::cork(const SOCKET fd) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если это Linux
-	 */
-	#ifdef __linux__
-		// Устанавливаемый флаг
-		const int mode = 1;
-		// Устанавливаем TCP_CORK
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_CORK, &mode, sizeof(mode))))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-			#endif
-		}
-	/**
-	 * Если это FreeBSD или MacOS X
-	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__
-		// Устанавливаемый флаг
-		const int mode = 1;
-		// Устанавливаем TCP_NOPUSH
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &mode, sizeof(mode))))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-			#endif
-		}
-	#endif
-	// Все удачно
-	return result;
-}
-/**
- * blocking Метод проверки сокета блокирующий режим
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-bool awh::Socket::blocking(const SOCKET fd) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Методы для всех ОС кроме OS Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Флаги файлового дескриптора
-		int flags = 0;
-		// Получаем флаги файлового дескриптора
-		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-			#endif
-		}
-		// Определяем в каком статусе установлен флаг сокета
-		result = !static_cast <bool> (flags & O_NONBLOCK);
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * blocking Метод установки блокирующего сокета
- * @param fd   файловый дескриптор (сокет)
- * @param mode флаг установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Определяем флаг блокировки
-		switch(static_cast <uint8_t> (mode)){
-			// Если необходимо перевести сокет в блокирующий режим
-			case static_cast <uint8_t> (mode_t::BLOCK): {
-				// Формируем флаг разблокировки
-				u_long flag = 0;
-				// Выполняем разблокировку сокета
-				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим в лог информацию
-						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-					#endif
-				}
-			} break;
-			// Если необходимо перевести сокет в неблокирующий режим
-			case static_cast <uint8_t> (mode_t::NOBLOCK): {
-				// Формируем флаг разблокировки
-				u_long flag = 1;
-				// Выполняем разблокировку сокета
-				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим в лог информацию
-						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-					#endif
-				}
-			} break;
-		}
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Флаги файлового дескриптора
-		int flags = 0;		
-		// Получаем флаги файлового дескриптора
-		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-			#endif
-			// Выходим из функции
-			return result;
-		}
-		// Определяем флаг блокировки
-		switch(static_cast <uint8_t> (mode)){
-			// Если необходимо перевести сокет в блокирующий режим
-			case static_cast <uint8_t> (mode_t::BLOCK): {
-				// Если флаг уже установлен
-				if(flags & O_NONBLOCK){
-					// Устанавливаем неблокирующий режим
-					if(!(result = (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим в лог информацию
-							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-						#endif
-					}
-				}
-			} break;
-			// Если необходимо перевести сокет в неблокирующий режим
-			case static_cast <uint8_t> (mode_t::NOBLOCK): {
-				// Если флаг ещё не установлен
-				if(!(flags & O_NONBLOCK)){
-					// Устанавливаем неблокирующий режим
-					if(!(result = (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим в лог информацию
-							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-						#endif
-					}
-				}
-			} break;
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * error Метод получения кода ошибки
- * @param fd файловый дескриптор (сокет)
- * @return   код ошибки на сокете если присутствует
- */
-int32_t awh::Socket::error(const SOCKET fd) const noexcept {
-	// Результат работы функции
-	int32_t result = 0;
-	// Размер кода ошибки
-	socklen_t size = sizeof(result);
-	// Если мы получили ошибку, выходим сообщение
-	if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выполняем извлечение кода ошибки
-			result = AWH_ERROR();
-			// Если код ошибки получен
-			if(result > 0)
-				// Выводим в лог информацию
-				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message(result).c_str());
-		#endif
-		// Выходим из функции
-		return -1;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * message Метод получения текста описания ошибки
- * @param code код ошибки для получения сообщения
- * @return     текст сообщения описания кода ошибки
- */
-string awh::Socket::message(const int32_t code) const noexcept {
-	// Если код ошибки не передан
-	if(code == 0)
-		// Выполняем получение кода ошибки
-		const_cast <int32_t &> (code) = AWH_ERROR();
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Создаём буфер сообщения ошибки
-		wchar_t message[256] = {0};
-		// Выполняем формирование текста ошибки
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
-		// Выводим текст полученной ошибки
-		return this->_fmk->convert(message);
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Выводим текст полученной ошибки
-		return ::strerror(code);
-	#endif
-}
-/**
- * nodelay Метод отключения алгоритма Нейгла
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-bool awh::Socket::nodelay(const SOCKET fd) const noexcept {
-	// Устанавливаем параметр
-	const int on = 1;
-	// Результат работы функции
-	bool result = false;
-	// Устанавливаем TCP_NODELAY
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&on), sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим в лог информацию
-			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * events Метод активации получения событий SCTP для сокета
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
@@ -498,16 +241,314 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 	return result;
 }
 /**
- * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
+ * blocking Метод проверки сокета блокирующий режим
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+bool awh::Socket::blocking(const SOCKET fd) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Методы для всех ОС кроме OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Флаги файлового дескриптора
+		int flags = 0;
+		// Получаем флаги файлового дескриптора
+		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог информацию
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			#endif
+		}
+		// Определяем в каком статусе установлен флаг сокета
+		result = !static_cast <bool> (flags & O_NONBLOCK);
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * blocking Метод установки блокирующего сокета
  * @param fd   файловый дескриптор (сокет)
- * @param mode активация или деактивация режима
+ * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::onlyIPv6(const SOCKET fd, const bool mode) const noexcept {
+bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Определяем режим блокировки
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо перевести сокет в блокирующий режим
+			case static_cast <uint8_t> (mode_t::ENABLE): {
+				// Формируем флаг разблокировки
+				u_long flag = 0;
+				// Выполняем разблокировку сокета
+				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог информацию
+						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					#endif
+				}
+			} break;
+			// Если необходимо перевести сокет в неблокирующий режим
+			case static_cast <uint8_t> (mode_t::DISABLE): {
+				// Формируем флаг разблокировки
+				u_long flag = 1;
+				// Выполняем разблокировку сокета
+				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог информацию
+						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					#endif
+				}
+			} break;
+		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Флаги файлового дескриптора
+		int flags = 0;		
+		// Получаем флаги файлового дескриптора
+		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог информацию
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			#endif
+			// Выходим из функции
+			return result;
+		}
+		// Определяем режим блокировки
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо перевести сокет в блокирующий режим
+			case static_cast <uint8_t> (mode_t::ENABLE): {
+				// Если флаг уже установлен
+				if(flags & O_NONBLOCK){
+					// Устанавливаем неблокирующий режим
+					if(!(result = (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог информацию
+							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						#endif
+					}
+				}
+			} break;
+			// Если необходимо перевести сокет в неблокирующий режим
+			case static_cast <uint8_t> (mode_t::DISABLE): {
+				// Если флаг ещё не установлен
+				if(!(flags & O_NONBLOCK)){
+					// Устанавливаем неблокирующий режим
+					if(!(result = (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог информацию
+							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						#endif
+					}
+				}
+			} break;
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * cork Метод активации TCP/CORK
+ * @param fd   файловый дескриптор (сокет)
+ * @param mode режим установки типа сокета
+ * @return     результат работы функции
+ */
+bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если это Linux
+	 */
+	#ifdef __linux__
+		// Флаг активации или деактивации алгоритма TCP/CORK
+		int flag = -1;
+		// Определяем режим установки типа сокета
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо активировать алгоритм TCP/CORK
+			case static_cast <uint8_t> (mode_t::ENABLE):
+				// Активируем алгоритм TCP/CORK
+				flag = 1;
+			break;
+			// Если необходимо деактивировать алгоритм TCP/CORK
+			case static_cast <uint8_t> (mode_t::DISABLE):
+				// Деактивируем алгоритм TCP/CORK
+				flag = 0;
+			break;
+		}
+		// Устанавливаем TCP_CORK
+		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог информацию
+				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			#endif
+		}
+	/**
+	 * Если это FreeBSD или MacOS X
+	 */
+	#elif __APPLE__ || __MACH__ || __FreeBSD__
+		// Флаг активации или деактивации алгоритма TCP/CORK
+		int flag = -1;
+		// Определяем режим установки типа сокета
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо активировать алгоритм TCP/CORK
+			case static_cast <uint8_t> (mode_t::ENABLE):
+				// Активируем алгоритм TCP/CORK
+				flag = 1;
+			break;
+			// Если необходимо деактивировать алгоритм TCP/CORK
+			case static_cast <uint8_t> (mode_t::DISABLE):
+				// Деактивируем алгоритм TCP/CORK
+				flag = 0;
+			break;
+		}
+		// Устанавливаем TCP_NOPUSH
+		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &flag, sizeof(flag))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог информацию
+				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			#endif
+		}
+	#endif
+	// Все удачно
+	return result;
+}
+/**
+ * nodelay Метод отключения алгоритма Нейгла
+ * @param fd   файловый дескриптор (сокет)
+ * @param mode режим установки типа сокета
+ * @return     результат работы функции
+ */
+bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
+	// Флаг активации или деактивации алгоритма TCP/NODELAY
+	int flag = -1;
+	// Результат работы функции
+	bool result = false;
+	// Определяем режим установки типа сокета
+	switch(static_cast <uint8_t> (mode)){
+		// Если необходимо активировать алгоритм TCP/NODELAY
+		case static_cast <uint8_t> (mode_t::ENABLE):
+			// Активируем алгоритм TCP/NODELAY
+			flag = 1;
+		break;
+		// Если необходимо деактивировать алгоритм TCP/NODELAY
+		case static_cast <uint8_t> (mode_t::DISABLE):
+			// Деактивируем алгоритм TCP/NODELAY
+			flag = 0;
+		break;
+	}
+	// Устанавливаем TCP_NODELAY
+	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&flag), sizeof(flag))))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог информацию
+			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * error Метод получения кода ошибки
+ * @param fd файловый дескриптор (сокет)
+ * @return   код ошибки на сокете если присутствует
+ */
+int32_t awh::Socket::error(const SOCKET fd) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	// Размер кода ошибки
+	socklen_t size = sizeof(result);
+	// Если мы получили ошибку, выходим сообщение
+	if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выполняем извлечение кода ошибки
+			result = AWH_ERROR();
+			// Если код ошибки получен
+			if(result > 0)
+				// Выводим в лог информацию
+				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message(result).c_str());
+		#endif
+		// Выходим из функции
+		return -1;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * message Метод получения текста описания ошибки
+ * @param code код ошибки для получения сообщения
+ * @return     текст сообщения описания кода ошибки
+ */
+string awh::Socket::message(const int32_t code) const noexcept {
+	// Если код ошибки не передан
+	if(code == 0)
+		// Выполняем получение кода ошибки
+		const_cast <int32_t &> (code) = AWH_ERROR();
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Создаём буфер сообщения ошибки
+		wchar_t message[256] = {0};
+		// Выполняем формирование текста ошибки
+		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
+		// Выводим текст полученной ошибки
+		return this->_fmk->convert(message);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Выводим текст полученной ошибки
+		return ::strerror(code);
+	#endif
+}
+/**
+ * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
+ * @param fd   файловый дескриптор (сокет)
+ * @param mode режим активации или деактивации
+ * @return     результат работы функции
+ */
+bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Устанавливаем параметр
-	const u_int on = (mode ? 1 : 0);
+	const u_int on = static_cast <u_int> (mode == mode_t::ENABLE);
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on))))){
 		/**
@@ -525,7 +566,7 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const bool mode) const noexcept {
  * timeout Метод установки таймаута на чтение из сокета
  * @param fd   файловый дескриптор (сокет)
  * @param msec время таймаута в миллисекундах
- * @param mode флаг установки типа сокета
+ * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
 bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode) const noexcept {
@@ -874,7 +915,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 /**
  * bufferSize Метод получения размера буфера
  * @param fd   файловый дескриптор (сокет)
- * @param mode флаг установки типа сокета
+ * @param mode режим установки типа сокета
  * @return     запрашиваемый размер буфера
  */
 int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
@@ -918,7 +959,7 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
  * bufferSize Метод установки размеров буфера
  * @param fd   файловый дескриптор (сокет)
  * @param size устанавливаемый размер буфера
- * @param mode флаг установки типа сокета
+ * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
 bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept {

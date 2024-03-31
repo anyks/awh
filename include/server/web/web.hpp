@@ -399,12 +399,6 @@ namespace awh {
 				 * @param write количество секунд для детекции по записи
 				 */
 				virtual void waitTimeDetect(const time_t read, const time_t write) noexcept = 0;
-				/**
-				 * bytesDetect Метод детекции сообщений по количеству байт
-				 * @param read  количество байт для детекции по чтению
-				 * @param write количество байт для детекции по записи
-				 */
-				virtual void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept = 0;
 			public:
 				/**
 				 * realm Метод установки название сервера

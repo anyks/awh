@@ -228,7 +228,6 @@ namespace awh {
 					uint8_t attempts;                          // Количество попыток выполнения редиректов
 					scheme_t::sonet_t sonet;                   // Тип сокета подключения (TCP / UDP)
 					scheme_t::family_t family;                 // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
-					scheme_t::marker_t marker;                 // Объект маркеров детектирования обмена данных
 					proxy_t proxy;                             // Параметры прокси-клиента для подключения к прокси-серверу
 					string login;                              // Логин пользователя для авторизации на сервере
 					string password;                           // Пароль пользователя для авторизации на сервере
@@ -694,7 +693,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const size_t bid, const string & read, const string & write) noexcept;
+				void bandwidth(const size_t bid, const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
@@ -725,13 +724,6 @@ namespace awh {
 				 */
 				void compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept;
 			public:
-				/**
-				 * bytesDetect Метод детекции сообщений по количеству байт
-				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param read   количество байт для детекции по чтению
-				 * @param write  количество байт для детекции по записи
-				 */
-				void bytesDetect(const broker_t broker, const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
@@ -832,6 +824,23 @@ namespace awh {
 				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
 			public:
 				/**
+				 * cork Метод отключения/включения алгоритма TCP/CORK
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param mode   режим применимой операции
+				 * @return       результат выполенния операции
+				 */
+				bool cork(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept;
+				/**
+				 * nodelay Метод отключения/включения алгоритма Нейгла
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param bid    идентификатор брокера
+				 * @param mode   режим применимой операции
+				 * @return       результат выполенния операции
+				 */
+				bool nodelay(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept;
+			public:
+				/**
 				 * authTypeProxy Метод установки типа авторизации прокси-сервера
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
@@ -847,12 +856,12 @@ namespace awh {
 			public:
 				/**
 				 * encrypt Метод активации шифрования для клиента
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
-				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param mode   флаг активации шифрования
 				 */
-				void encrypt(const int32_t sid, const uint64_t bid, const broker_t broker, const bool mode) noexcept;
+				void encrypt(const broker_t broker, const int32_t sid, const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * encryption Метод активации шифрования

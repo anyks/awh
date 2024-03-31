@@ -350,41 +350,6 @@ void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t
 	}
 }
 /**
- * marker Метод установки маркера на размер детектируемых байт
- * @param min    минимальный размер детектируемых байт
- * @param min    максимальный размер детектируемых байт
- * @param method метод режима работы
- */
-void awh::Scheme::Broker::marker(const size_t min, const size_t max, const engine_t::method_t method) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
-	// Определяем метод режима работы
-	switch(static_cast <uint8_t> (method)){
-		// Режим работы ЧТЕНИЕ
-		case static_cast <uint8_t> (engine_t::method_t::READ): {
-			// Устанавливаем минимальный размер байт
-			this->_marker.read.min = min;
-			// Устанавливаем максимальный размер байт
-			this->_marker.read.max = max;
-			// Если минимальный размер данных для чтения, не установлен
-			if(this->_marker.read.min == 0)
-				// Устанавливаем размер минимальных для чтения данных по умолчанию
-				this->_marker.read.min = AWH_BUFFER_READ_MIN;
-		} break;
-		// Режим работы ЗАПИСЬ
-		case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-			// Устанавливаем минимальный размер байт
-			this->_marker.write.min = min;
-			// Устанавливаем максимальный размер байт
-			this->_marker.write.max = max;
-			// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-			if(this->_marker.write.max == 0)
-				// Устанавливаем размер максимальных записываемых данных по умолчанию
-				this->_marker.write.max = AWH_BUFFER_WRITE_MAX;
-		} break;
-	}
-}
-/**
  * base Метод установки базы событий
  * @param base база событий для установки
  */

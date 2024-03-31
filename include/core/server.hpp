@@ -320,7 +320,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
+				void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

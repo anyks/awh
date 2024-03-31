@@ -97,14 +97,14 @@ namespace awh {
 	typedef class Socket {
 		public:
 			/**
-			 * mode_t Флаги для работы с сокетами
+			 * Режимы работы с сокетами
 			 */
 			enum class mode_t : uint8_t {
 				NONE    = 0x00, // Флаг сокета не установлен
-				READ    = 0x01, // Параметры сокета на на чтение
-				WRITE   = 0x02, // Параметры сокета на на запись
-				BLOCK   = 0x03, // Сокет должен быть блокирующим
-				NOBLOCK = 0x04  // Сокет должен быть не блокирующим
+				READ    = 0x01, // Параметры сокета на чтение
+				WRITE   = 0x02, // Параметры сокета на запись
+				ENABLE  = 0x03, // Активация режима работы сокета
+				DISABLE = 0x04  // Деактивация режима работы сокета
 			};
 		private:
 			// Создаём объект фреймворка
@@ -118,46 +118,6 @@ namespace awh {
 			 */
 			bool noSigILL() const noexcept;
 		public:
-			/**
-			 * cork Метод активации tcp_cork
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			bool cork(const SOCKET fd) const noexcept;
-		public:
-			/**
-			 * blocking Метод проверки сокета блокирующий режим
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			bool blocking(const SOCKET fd) const noexcept;
-			/**
-			 * blocking Метод установки блокирующего сокета
-			 * @param fd   файловый дескриптор (сокет)
-			 * @param mode флаг установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool blocking(const SOCKET fd, const mode_t mode) const noexcept;
-		public:
-			/**
-			 * error Метод получения кода ошибки
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   код ошибки на сокете если присутствует
-			 */
-			int32_t error(const SOCKET fd) const noexcept;
-			/**
-			 * message Метод получения текста описания ошибки
-			 * @param code код ошибки для получения сообщения
-			 * @return     текст сообщения описания кода ошибки
-			 */
-			string message(const int32_t code = 0) const noexcept;
-		public:
-			/**
-			 * nodelay Метод отключения алгоритма Нейгла
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			bool nodelay(const SOCKET fd) const noexcept;
 			/**
 			 * events Метод активации получения событий SCTP для сокета
 			 * @param fd файловый дескриптор (сокет)
@@ -184,18 +144,60 @@ namespace awh {
 			bool closeOnExec(const SOCKET fd) const noexcept;
 		public:
 			/**
-			 * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
+			 * blocking Метод проверки сокета блокирующий режим
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool blocking(const SOCKET fd) const noexcept;
+			/**
+			 * blocking Метод установки блокирующего сокета
 			 * @param fd   файловый дескриптор (сокет)
-			 * @param mode активация или деактивация режима
+			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool onlyIPv6(const SOCKET fd, const bool mode = false) const noexcept;
+			bool blocking(const SOCKET fd, const mode_t mode) const noexcept;
+		public:
+			/**
+			 * cork Метод активации TCP/CORK
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool cork(const SOCKET fd, const mode_t mode) const noexcept;
+			/**
+			 * nodelay Метод отключения алгоритма Нейгла
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool nodelay(const SOCKET fd, const mode_t mode) const noexcept;
+		public:
+			/**
+			 * error Метод получения кода ошибки
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   код ошибки на сокете если присутствует
+			 */
+			int32_t error(const SOCKET fd) const noexcept;
+			/**
+			 * message Метод получения текста описания ошибки
+			 * @param code код ошибки для получения сообщения
+			 * @return     текст сообщения описания кода ошибки
+			 */
+			string message(const int32_t code = 0) const noexcept;
+		public:
+			/**
+			 * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode режим активации или деактивации
+			 * @return     результат работы функции
+			 */
+			bool onlyIPv6(const SOCKET fd, const mode_t mode = mode_t::DISABLE) const noexcept;
 		public:
 			/**
 			 * timeout Метод установки таймаута на чтение из сокета
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param msec время таймаута в миллисекундах
-			 * @param mode флаг установки типа сокета
+			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
 			bool timeout(const SOCKET fd, const time_t msec, const mode_t mode) const noexcept;
@@ -222,7 +224,7 @@ namespace awh {
 			/**
 			 * bufferSize Метод получения размера буфера
 			 * @param fd   файловый дескриптор (сокет)
-			 * @param mode флаг установки типа сокета
+			 * @param mode режим установки типа сокета
 			 * @return     запрашиваемый размер буфера
 			 */
 			int bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
@@ -230,7 +232,7 @@ namespace awh {
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param size устанавливаемый размер буфера
-			 * @param mode флаг установки типа сокета
+			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
 			bool bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept;

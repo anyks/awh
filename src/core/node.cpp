@@ -76,7 +76,7 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 		// Если брокер подключения найден
 		if(i != this->_brokers.end()){
 			// Выполняем поиск идентификатора схемы сети
-			auto j = this->_schemes.find(i->second);
+			auto j = this->_schemes.find(i->second->sid());
 			// Если идентификатор схемы сети найден
 			if(j != this->_schemes.end()){
 				// Выполняем поиск брокера подключений
@@ -126,10 +126,104 @@ uint16_t awh::Node::sid(const uint64_t bid) const noexcept {
 		// Если брокер подключения найден
 		if(i != this->_brokers.end())
 			// Выводим результат
-			return i->second;
+			return i->second->sid();
 	}
 	// Выводим пустой результат
 	return 0;
+}
+/**
+ * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+ * @param bid идентификатор брокера
+ */
+void awh::Node::available(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.send);
+	// Ещем для указанного потока очередь полезной нагрузки
+	auto i = this->_payloads.find(bid);
+	// Если для потока очередь полезной нагрузки получена
+	if((i != this->_payloads.end()) && !i->second.empty()){
+		// Выполняем блокировку потока
+		this->_mtx.main.lock();
+		// Выполняем поиск размера текущей полезной нагрузки для брокера
+		auto j = this->_available.find(bid);
+		// Если размер полезной нагрузки найден
+		if(j != this->_available.end())
+			// Выполняем уменьшение количества записанных байт
+			j->second -= i->second.front().offset;
+		// Увеличиваем общее количество переданных данных
+		this->_memoryAvailableSize += i->second.front().offset;
+		// Выполняем разблокировку потока
+		this->_mtx.main.unlock();
+		// Если идентификатор брокера подключений существует
+		if((bid > 0) && this->has(bid)){
+			// Выполняем удаление буфера буфера полезной нагрузки
+			i->second.pop();
+			// Если очередь полностью пустая
+			if(i->second.empty())
+				// Выполняем удаление всей очереди
+				this->_payloads.erase(i);
+		// Выполняем удаление всей очереди
+		} else this->_payloads.erase(i);
+	}
+	// Если опередей полезной нагрузки нет, выполняем функцию обратного вызова
+	if(this->_payloads.find(bid) == this->_payloads.end()){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("available")){
+			// Выполняем поиск размера текущей полезной нагрузки для брокера
+			auto i = this->_available.find(bid);
+			// Если размер полезной нагрузки найден
+			if(i != this->_available.end())
+				// Выполняем функцию обратного вызова сообщая об освобождении памяти
+				this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < i->second) ? 0 : min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize));
+		}
+	}
+}
+/**
+ * createBuffer Метод инициализации буфера полезной нагрузки
+ * @param bid идентификатор брокера
+ */
+void awh::Node::createBuffer(const uint64_t bid) noexcept {
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
+			// Если буфер полезной нагрузки уже инициализирован
+			if(broker->_payload.size != 0){
+				// Выполняем зануление размера буфера данных
+				broker->_payload.size = 0;
+				// Выполняем удаление буфера данных
+				broker->_payload.data.reset(nullptr);
+			}
+			// Получаем максимальный размер буфера
+			const int64_t size = broker->_ectx.buffer(engine_t::method_t::READ);
+			// Если размер буфера получен
+			if(size > 0){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Устанавливаем размер буфера данных
+					broker->_payload.size = size;
+					// Выполняем создание буфера данных
+					broker->_payload.data = unique_ptr <char []> (new char [size]);
+					// Выполняем зануление буфера данных
+					::memset(broker->_payload.data.get(), 0, broker->_payload.size);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const bad_alloc &) {
+					// Выводим в лог сообщение
+					this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				}
+				// Получаем максимальный размер буфера
+				this->_payloadSize = broker->_ectx.buffer(engine_t::method_t::WRITE);
+			}
+		}
+	}
 }
 /**
  * broker Метод извлечения брокера подключения
@@ -140,21 +234,72 @@ const awh::scheme_t::broker_t * awh::Node::broker(const uint64_t bid) const noex
 	// Выполняем поиск брокера подключения
 	auto i = this->_brokers.find(bid);
 	// Если брокер подключения найден
-	if(i != this->_brokers.end()){
-		// Выполняем поиск идентификатора схемы сети
-		auto j = this->_schemes.find(i->second);
-		// Если идентификатор схемы сети найден
-		if(j != this->_schemes.end()){
-			// Выполняем поиск брокера подключений
-			auto k = j->second->_brokers.find(bid);
-			// Если брокер подключения найден, удаляем его
-			if(k != j->second->_brokers.end())
-				// Выполняем вывод брокера подключения
-				return k->second.get();
-		}
-	}
+	if(i != this->_brokers.end())
+		// Выполняем вывод брокера подключения
+		return i->second;
 	// Выводим пустой результат
 	return nullptr;
+}
+/**
+ * emplace Метод добавления нового буфера полезной нагрузки
+ * @param buffer бинарный буфер полезной нагрузки
+ * @param size   размер бинарного буфера полезной нагрузки
+ * @param bid    идентификатор брокера
+ */
+void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid) && (buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Смещение в переданном буфере данных
+			size_t offset = 0, actual = 0;
+			/**
+			 * Выполняем создание нужного количества буферов
+			 */
+			do {
+				// Объект полезной нагрузки для отправки
+				payload_t payload;
+				// Устанавливаем размер буфера данных
+				payload.size = this->_payloadSize;
+				// Выполняем создание буфера данных
+				payload.data = unique_ptr <char []> (new char [this->_payloadSize]);
+				// Получаем размер данных который возможно скопировать
+				actual = ((this->_payloadSize >= (size - offset)) ? (size - offset) : this->_payloadSize);
+				// Выполняем копирование буфера полезной нагрузки
+				::memcpy(payload.data.get(), buffer + offset, size - offset);
+				// Выполняем смещение в буфере
+				offset += actual;
+				// Увеличиваем смещение в буфере полезной нагрузки
+				payload.offset += actual;
+				// Ещем для указанного потока очередь полезной нагрузки
+				auto i = this->_payloads.find(bid);
+				// Если для потока очередь полезной нагрузки получена
+				if(i != this->_payloads.end())
+					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+					i->second.push(std::move(payload));
+				// Если для потока почередь полезной нагрузки ещё не сформированна
+				else {
+					// Создаём новую очередь полезной нагрузки
+					auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+					ret.first->second.push(std::move(payload));
+				}
+			/**
+			 * Если не все данные полезной нагрузки установлены, создаём новый буфер
+			 */
+			} while(offset < size);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
 }
 /**
  * scheme Метод добавления схемы сети
@@ -257,19 +402,9 @@ awh::engine_t::proto_t awh::Node::proto(const uint64_t bid) const noexcept {
 		// Выполняем поиск брокера подключения
 		auto i = this->_brokers.find(bid);
 		// Если брокер подключения найден
-		if(i != this->_brokers.end()){
-			// Выполняем поиск идентификатора схемы сети
-			auto j = this->_schemes.find(i->second);
-			// Если идентификатор схемы сети найден
-			if(j != this->_schemes.end()){
-				// Выполняем поиск брокера подключений
-				auto k = j->second->_brokers.find(bid);
-				// Если брокер подключения найден, удаляем его
-				if(k != j->second->_brokers.end())
-					// Выполняем извлечение активного протокола подключения
-					return this->_engine.proto(const_cast <awh::scheme_t::broker_t *> (k->second.get())->_ectx);
-			}
-		}
+		if(i != this->_brokers.end())
+			// Выполняем извлечение активного протокола подключения
+			return this->_engine.proto(const_cast <awh::scheme_t::broker_t *> (i->second)->_ectx);
 	}
 	// Выводим результат
 	return engine_t::proto_t::NONE;
@@ -357,6 +492,24 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
+ * sending Метод получения режима отправки сообщений
+ * @return установленный режим отправки сообщений
+ */
+awh::Node::sending_t awh::Node::sending() const noexcept {
+	// Выполняем получение режима отправки сообщений
+	return this->_sending;
+}
+/**
+ * sending Метод установки режима отправки сообщений
+ * @param sending режим отправки сообщений для установки
+ */
+void awh::Node::sending(const sending_t sending) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем установку режима отправки сообщений
+	this->_sending = sending;
+}
+/**
  * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
  * @return размер памяти для хранения полезной нагрузки всех брокеров
  */
@@ -408,58 +561,48 @@ void awh::Node::brokerAvailableSize(const size_t size) noexcept {
 	this->_brokerAvailableSize = size;
 }
 /**
- * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
- * @param bid идентификатор брокера
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param bid  идентификатор брокера
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
  */
-void awh::Node::available(const uint64_t bid) noexcept {
+bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.send);
-	// Объект работы с функциями обратного вызова
-	fn_t callback(this->_log);
-	// Ещем для указанного потока очередь полезной нагрузки
-	auto i = this->_payloads.find(bid);
-	// Если для потока очередь полезной нагрузки получена
-	if((i != this->_payloads.end()) && !i->second.empty()){
-		// Выполняем блокировку потока
-		this->_mtx.main.lock();
-		// Выполняем поиск размера текущей полезной нагрузки для брокера
-		auto j = this->_available.find(bid);
-		// Если размер полезной нагрузки найден
-		if(j != this->_available.end())
-			// Выполняем уменьшение количества записанных байт
-			j->second -= i->second.front().size;
-		// Увеличиваем общее количество переданных данных
-		this->_memoryAvailableSize += i->second.front().size;
-		// Выполняем разблокировку потока
-		this->_mtx.main.unlock();
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("available"))
-			// Устанавливаем полученную функцию обратного вызова
-			callback.set <void (const uint64_t, const size_t)> (bid, this->_callbacks.get <void (const uint64_t, const size_t)> ("available"), bid, (this->_brokerAvailableSize < j->second) ? 0 : min(this->_brokerAvailableSize - j->second, this->_memoryAvailableSize));
-		// Если идентификатор брокера подключений существует
-		if((bid > 0) && this->has(bid)){
-			// Выполняем удаление буфера буфера полезной нагрузки
-			i->second.pop();
-			// Если очередь полностью пустая
-			if(i->second.empty())
-				// Выполняем удаление всей очереди
-				this->_payloads.erase(i);
-		// Выполняем удаление всей очереди
-		} else this->_payloads.erase(i);
-	}
-	// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
-	if(this->_payloads.find(bid) == this->_payloads.end()){
+	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
-			// Останавливаем ожидание записи данных
-			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+			// Выполняем активирование/деактивирование алгоритма TCP/CORK
+			return broker->_ectx.cork(mode);
 	}
-	// Если функция обратного вызова установлена
-	if(callback.is(bid))
-		// Выполняем все функции обратного вызова
-		callback.bind(bid);
+	// Сообщаем, что ничего не установлено
+	return false;
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param bid  идентификатор брокера
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::Node::nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+	// Если идентификатор брокера подключений существует
+	if((bid > 0) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+			// Выполняем активирование/деактивирование алгоритма Нейгла
+			return broker->_ectx.nodelay(mode);
+	}
+	// Сообщаем, что ничего не установлено
+	return false;
 }
 /**
  * send Метод асинхронной отправки буфера данных в сокет
@@ -474,77 +617,61 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
-	if((bid > 0) && this->has(bid)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Флаг недоступности свободной памяти в буфере обмена данными
-			bool unavailable = false;
-			// Выполняем поиск размера текущей полезной нагрузки для брокера
-			auto i = this->_available.find(bid);
+	if((bid > 0) && this->has(bid) && (buffer != nullptr) && (size > 0)){
+		// Флаг недоступности свободной памяти в буфере обмена данными
+		bool unavailable = false;
+		// Выполняем поиск размера текущей полезной нагрузки для брокера
+		auto i = this->_available.find(bid);
+		// Если размер полезной нагрузки найден
+		if(i != this->_available.end())
+			// Если места не достаточно
+			unavailable = ((this->_brokerAvailableSize < i->second) || (min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize) < size));
+		// Если память ещё не потрачена для отправки
+		else unavailable = (min(this->_brokerAvailableSize, this->_memoryAvailableSize) < size);
+		// Если свободной памяти в буфере обмена данными достаточно
+		if((result = !unavailable)){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if(i != this->_payloads.end()){
+				// Если ещё есть место в буфере данных
+				if(i->second.back().offset < i->second.back().size){
+					// Смещение в переданном буфере данных
+					size_t offset = 0;
+					// Получаем размер данных который возможно скопировать
+					const size_t actual = ((i->second.back().size - i->second.back().offset) >= size ? size : (i->second.back().size - i->second.back().offset));
+					// Выполняем копирование переданного буфера данных в временный буфер данных
+					::memcpy(i->second.back().data.get() + i->second.back().offset, buffer, actual);
+					// Выполняем смещение в переданном буфере данных
+					offset += actual;
+					// Выполняем смещение в основном буфере данных
+					i->second.back().offset += actual;
+					// Если не все данные были скопированы
+					if(offset < size)
+						// Выполняем создание нового фрейма
+						this->emplace(buffer + offset, size - offset, bid);
+				// Если места в буфере данных больше нет
+				} else this->emplace(buffer, size, bid);
+			// Если для потока почередь полезной нагрузки ещё не сформированна
+			} else this->emplace(buffer, size, bid);
+			// Выполняем блокировку потока
+			this->_mtx.main.lock();
+			// Выполняем поиск размера используемой памяти для хранения полезной нагрузки брокера
+			auto j = this->_available.find(bid);
 			// Если размер полезной нагрузки найден
-			if(i != this->_available.end())
-				// Если места не достаточно
-				unavailable = ((this->_brokerAvailableSize < i->second) || (min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize) < size));
-			// Если память ещё не потрачена для отправки
-			else unavailable = (min(this->_brokerAvailableSize, this->_memoryAvailableSize) < size);
-			// Если свободной памяти в буфере обмена данными достаточно
-			if(!unavailable){
-				// Объект полезной нагрузки для отправки
-				payload_t payload;
-				// Устанавливаем размер буфера данных
-				payload.size = size;
-				// Выполняем создание буфера данных
-				payload.data = unique_ptr <char []> (new char [size]);
-				// Выполняем копирование буфера полезной нагрузки
-				::memcpy(payload.data.get(), buffer, size);
-				// Ещем для указанного потока очередь полезной нагрузки
-				auto i = this->_payloads.find(bid);
-				// Если для потока очередь полезной нагрузки получена
-				if(i != this->_payloads.end())
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					i->second.push(std::move(payload));
-				// Если для потока почередь полезной нагрузки ещё не сформированна
-				else {
-					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					ret.first->second.push(std::move(payload));
-				}
-				// Создаём бъект активного брокера подключения
-				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-				// Если сокет подключения активен
-				if((result = ((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))))
-					// Запускаем ожидание записи данных
-					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
-				// Выполняем блокировку потока
-				this->_mtx.main.lock();
-				// Выполняем поиск размера используемой памяти для хранения полезной нагрузки брокера
-				auto j = this->_available.find(bid);
-				// Если размер полезной нагрузки найден
-				if(j != this->_available.end())
-					// Выполняем увеличение количество записанных байт
-					j->second += size;
-				// Если память ещё не потрачена для отправки, добавляем размер передаваемых данных
-				else this->_available.emplace(bid, size);
-				// Уменьшаем общее количество переданных данных
-				this->_memoryAvailableSize -= size;
-				// Выполняем разблокировку потока
-				this->_mtx.main.unlock();
-			// Если функция обратного вызова установлена
-			} else if(this->_callbacks.is("unavailable"))
-				// Выводим функцию обратного вызова сигнализирующая о том, что передаваемые данные небыли отправленны
-				this->_callbacks.call <void (const uint64_t, const char *, const size_t)> ("unavailable", bid, buffer, size);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
+			if(j != this->_available.end())
+				// Выполняем увеличение количество записанных байт
+				j->second += size;
+			// Если память ещё не потрачена для отправки, добавляем размер передаваемых данных
+			else this->_available.emplace(bid, size);
+			// Уменьшаем общее количество переданных данных
+			this->_memoryAvailableSize -= size;
+			// Выполняем разблокировку потока
+			this->_mtx.main.unlock();
+		// Если функция обратного вызова установлена
+		} else if(this->_callbacks.is("unavailable"))
+			// Выводим функцию обратного вызова сигнализирующая о том, что передаваемые данные небыли отправленны
+			this->_callbacks.call <void (const uint64_t, const char *, const size_t)> ("unavailable", bid, buffer, size);
 	}
 	// Выводим результат
 	return result;
@@ -562,9 +689,11 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Устанавливаем размер буфера
 		broker->_ectx.buffer(
-			(!read.empty() ? static_cast <int> (this->_fmk->sizeBuffer(read)) : 0),
-			(!write.empty() ? static_cast <int> (this->_fmk->sizeBuffer(write)) : 0)
+			static_cast <int> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
+			static_cast <int> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
 		);
+		// Выполняем создание буфера полезной нагрузки
+		this->createBuffer(bid);
 	}
 }
 /**

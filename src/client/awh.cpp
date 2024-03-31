@@ -799,6 +799,24 @@ void awh::client::AWH::setToDNSBlackList(const string & domain, const string & i
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
+ * cork Метод отключения/включения алгоритма TCP/CORK
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::AWH::cork(const engine_t::mode_t mode) noexcept {
+	// Выполняем отключение/включение алгоритма TCP/CORK
+	return this->_http.cork(mode);
+}
+/**
+ * nodelay Метод отключения/включения алгоритма Нейгла
+ * @param mode режим применимой операции
+ * @return     результат выполенния операции
+ */
+bool awh::client::AWH::nodelay(const engine_t::mode_t mode) noexcept {
+	// Выполняем отключение/включение алгоритма TCP/CORK
+	return this->_http.nodelay(mode);
+}
+/**
  * crypted Метод получения флага шифрования
  * @param sid идентификатор потока
  * @return    результат проверки
@@ -842,15 +860,6 @@ void awh::client::AWH::authType(const auth_t::type_t type, const auth_t::hash_t 
 void awh::client::AWH::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Выполняем установку типа авторизации на прокси-сервере
 	this->_http.authTypeProxy(type, hash);
-}
-/**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::client::AWH::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Выполняем установку детекции сообщений по количеству байт
-	this->_http.bytesDetect(read, write);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

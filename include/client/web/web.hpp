@@ -381,18 +381,25 @@ namespace awh {
 				engine_t::proto_t proto() const noexcept;
 			public:
 				/**
+				 * cork Метод отключения/включения алгоритма TCP/CORK
+				 * @param mode режим применимой операции
+				 * @return     результат выполенния операции
+				 */
+				bool cork(const engine_t::mode_t mode) noexcept;
+				/**
+				 * nodelay Метод отключения/включения алгоритма Нейгла
+				 * @param mode режим применимой операции
+				 * @return     результат выполенния операции
+				 */
+				bool nodelay(const engine_t::mode_t mode) noexcept;
+			public:
+				/**
 				 * bandwidth Метод установки пропускной способности сети
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const string & read, const string & write) noexcept;
+				void bandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
-				/**
-				 * bytesDetect Метод детекции сообщений по количеству байт
-				 * @param read  количество байт для детекции по чтению
-				 * @param write количество байт для детекции по записи
-				 */
-				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению

@@ -267,12 +267,6 @@ namespace awh {
 				 * @param write количество секунд для детекции по записи
 				 */
 				void waitTimeDetect(const time_t read, const time_t write) noexcept;
-				/**
-				 * bytesDetect Метод детекции сообщений по количеству байт
-				 * @param read  количество байт для детекции по чтению
-				 * @param write количество байт для детекции по записи
-				 */
-				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
 				 * addOrigin Метод добавления разрешённого источника

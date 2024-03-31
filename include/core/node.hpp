@@ -47,6 +47,14 @@ namespace awh {
 	typedef class Node : public awh::core_t {
 		public:
 			/**
+			 * Режим отправки сообщений
+			 */
+			enum class sending_t : uint8_t {
+				DEFFER  = 0x01, // Режим отложенной отправки
+				INSTANT = 0x02  // Режим мгновенной отправки
+			};
+		public:
+			/**
 			 * SSL Структура SSL-параметров
 			 */
 			typedef struct SSL {
@@ -81,13 +89,14 @@ namespace awh {
 			 * Payload Структура полезной нагрузки
 			 */
 			typedef struct Payload {
+				size_t pos;                // Позиция в буфере
 				size_t size;               // Размер буфера
 				size_t offset;             // Смещение в бинарном буфере
 				unique_ptr <char []> data; // Данные буфера
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : size(0), offset(0), data(nullptr) {}
+				Payload() noexcept : pos(0), size(0), offset(0), data(nullptr) {}
 			} payload_t;
 			/**
 			 * Settings Структура текущих параметров сети
@@ -127,8 +136,13 @@ namespace awh {
 			uri_t _uri;
 			// Объект для работы с сетевым двигателем
 			engine_t _engine;
+			// Режим отправки сообщений
+			sending_t _sending;
 			// Объект сетевых параметров
 			settings_t _settings;
+		protected:
+			// Размер буфера полезной нагрузки
+			size_t _payloadSize;
 		private:
 			// Максимальный размер памяти для хранений полезной нагрузки всех брокеров
 			size_t _memoryAvailableSize;
@@ -137,14 +151,14 @@ namespace awh {
 		protected:
 			// Список занятых процессов брокера
 			set <uint64_t> _busy;
-			// Список брокеров подключения
-			map <uint64_t, uint16_t> _brokers;
 			// Список свободной памяти хранения полезной нагрузки
 			map <uint64_t, size_t> _available;
 			// Список активных схем сети
 			map <uint16_t, const scheme_t *> _schemes;
 			// Буферы отправляемой полезной нагрузки
 			map <uint64_t, queue <payload_t>> _payloads;
+			// Список брокеров подключения
+			map <uint64_t, const scheme_t::broker_t *> _brokers;
 		protected:
 			// Создаём объект DNS-резолвера
 			const dns_t * _dns;
@@ -185,11 +199,30 @@ namespace awh {
 			uint16_t sid(const uint64_t bid) const noexcept;
 		protected:
 			/**
+			 * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+			 * @param bid идентификатор брокера
+			 */
+			void available(const uint64_t bid) noexcept;
+			/**
+			 * createBuffer Метод инициализации буфера полезной нагрузки
+			 * @param bid идентификатор брокера
+			 */
+			void createBuffer(const uint64_t bid) noexcept;
+		protected:
+			/**
 			 * broker Метод извлечения брокера подключения
 			 * @param bid идентификатор брокера
 			 * @return    объект брокера подключения
 			 */
 			const scheme_t::broker_t * broker(const uint64_t bid) const noexcept;
+		private:
+			/**
+			 * emplace Метод добавления нового буфера полезной нагрузки
+			 * @param buffer бинарный буфер полезной нагрузки
+			 * @param size   размер бинарного буфера полезной нагрузки
+			 * @param bid    идентификатор брокера
+			 */
+			void emplace(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 		public:
 			/**
 			 * scheme Метод добавления схемы сети
@@ -257,6 +290,17 @@ namespace awh {
 			void family(const scheme_t::family_t family) noexcept;
 		public:
 			/**
+			 * sending Метод получения режима отправки сообщений
+			 * @return установленный режим отправки сообщений
+			 */
+			sending_t sending() const noexcept;
+			/**
+			 * sending Метод установки режима отправки сообщений
+			 * @param sending режим отправки сообщений для установки
+			 */
+			void sending(const sending_t sending) noexcept;
+		public:
+			/**
 			 * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
 			 * @return размер памяти для хранения полезной нагрузки всех брокеров
 			 */
@@ -283,12 +327,21 @@ namespace awh {
 			 * @param size размер хранимой полезной нагрузки для одного брокера
 			 */
 			void brokerAvailableSize(const size_t size) noexcept;
-		protected:
+		public:
 			/**
-			 * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
-			 * @param bid идентификатор брокера
+			 * cork Метод отключения/включения алгоритма TCP/CORK
+			 * @param bid  идентификатор брокера
+			 * @param mode режим применимой операции
+			 * @return     результат выполенния операции
 			 */
-			void available(const uint64_t bid) noexcept;
+			bool cork(const uint64_t bid, const engine_t::mode_t mode) noexcept;
+			/**
+			 * nodelay Метод отключения/включения алгоритма Нейгла
+			 * @param bid  идентификатор брокера
+			 * @param mode режим применимой операции
+			 * @return     результат выполенния операции
+			 */
+			bool nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcept;
 		public:
 			/**
 			 * send Метод асинхронной отправки буфера данных в сокет
@@ -305,7 +358,7 @@ namespace awh {
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			virtual void bandwidth(const uint64_t bid, const string & read, const string & write) noexcept;
+			virtual void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
 		public:
 			/**
 			 * events Метод активации/деактивации метода события сокета
@@ -377,7 +430,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri),
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
 			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 			/**
 			 * Core Конструктор
@@ -386,7 +440,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk), _engine(fmk, log, &_uri),
+			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
 			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 			/**
 			 * ~Node Деструктор

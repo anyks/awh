@@ -502,15 +502,6 @@ void awh::server::AWH::waitTimeDetect(const time_t read, const time_t write) noe
 	this->_http.waitTimeDetect(read, write);
 }
 /**
- * bytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::server::AWH::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
-	// Выполняем установку детекции сообщений по количеству байт
-	this->_http.bytesDetect(read, write);
-}
-/**
  * ident Метод установки идентификации сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса
