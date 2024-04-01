@@ -730,8 +730,6 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 	} else if(this->_allow.receive) {
 		// Флаг удачного получения данных
 		bool receive = false;
-		// Создаём буфер сообщения
-		vector <char> buffer;
 		// Создаём объект шапки фрейма
 		ws::frame_t::head_t head;
 		// Выполняем обработку полученных данных
@@ -793,7 +791,14 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							// Заполняем фрагментированное сообщение
 							this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
 						// Если сообщение является последним
-						else buffer.assign(payload.begin(), payload.end());
+						else {
+							// Если тредпул активирован
+							if(this->_thr.is())
+								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+								this->_thr.push(std::bind(&ws1_t::extraction, this, payload, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+							// Если тредпул не активирован, выполняем извлечение полученных сообщений
+							else this->extraction(payload, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+						}
 					} break;
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
@@ -801,8 +806,12 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
 						// Если сообщение является последним
 						if(head.fin){
-							// Выполняем копирование всех собранных сегментов
-							buffer.assign(this->_fragmes.begin(), this->_fragmes.end());
+							// Если тредпул активирован
+							if(this->_thr.is())
+								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+								this->_thr.push(std::bind(&ws1_t::extraction, this, this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+							// Если тредпул не активирован, выполняем извлечение полученных сообщений
+							else this->extraction(this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
 						}
@@ -842,17 +851,6 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					this->_resultCallback.set <void (const int32_t, const uint64_t, const mode_t)> ("stream", this->_callbacks.get <void (const int32_t, const uint64_t, const mode_t)> ("stream"), sid, this->_rid, mode_t::CLOSE);
 				// Выполняем реконнект
 				return status_t::NEXT;
-			}
-			// Если сообщения получены
-			if(!buffer.empty()){
-				// Если тредпул активирован
-				if(this->_thr.is())
-					// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-					this->_thr.push(std::bind(&ws1_t::extraction, this, buffer, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
-				// Если тредпул не активирован, выполняем извлечение полученных сообщений
-				else this->extraction(buffer, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
-				// Очищаем буфер полученного сообщения
-				buffer.clear();
 			}
 			// Если данные мы все получили, выходим
 			if(!receive || payload.empty() || this->_buffer.empty())

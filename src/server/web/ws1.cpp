@@ -449,8 +449,6 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 					} else if(options->allow.receive) {
 						// Флаг удачного получения данных
 						bool receive = false;
-						// Создаём буфер сообщения
-						vector <char> buffer;
 						// Создаём объект шапки фрейма
 						ws::frame_t::head_t head;
 						// Выполняем обработку полученных данных
@@ -500,7 +498,14 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											// Заполняем фрагментированное сообщение
 											options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
 										// Если сообщение является последним
-										else buffer.assign(payload.begin(), payload.end());
+										else {
+											// Если тредпул активирован
+											if(this->_thr.is())
+												// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+												this->_thr.push(std::bind(&ws1_t::extraction, this, bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+											// Если тредпул не активирован, выполняем извлечение полученных сообщений
+											else this->extraction(bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
+										}
 									} break;
 									// Если ответом является CONTINUATION
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
@@ -508,8 +513,12 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
 										// Если сообщение является последним
 										if(head.fin){
-											// Выполняем копирование всех собранных сегментов
-											buffer.assign(options->buffer.fragmes.begin(), options->buffer.fragmes.end());
+											// Если тредпул активирован
+											if(this->_thr.is())
+												// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+												this->_thr.push(std::bind(&ws1_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+											// Если тредпул не активирован, выполняем извлечение полученных сообщений
+											else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 											// Очищаем список фрагментированных сообщений
 											options->buffer.fragmes.clear();
 										}
@@ -543,17 +552,6 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								options->mess = options->frame.methods.message(head, (options->compressor != http_t::compressor_t::NONE));
 								// Выполняем отключение брокера
 								goto Stop;
-							}
-							// Если сообщения получены
-							if(!buffer.empty()){
-								// Если тредпул активирован
-								if(this->_thr.is())
-									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws1_t::extraction, this, bid, buffer, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
-								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(bid, buffer, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
-								// Очищаем буфер полученного сообщения
-								buffer.clear();
 							}
 							// Если данные мы все получили, выходим
 							if(!receive || payload.empty() || options->buffer.payload.empty())
