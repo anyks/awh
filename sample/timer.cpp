@@ -115,7 +115,31 @@ int main(int argc, char * argv[]){
 	
 	os_t os;
 
-	cout << " ---- " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
+	// kernel.shmmax = 18446744073692774399
+	// kernel.acct = 4	2
+	// kernel.osrelease = 4.19.0-26-amd64
+	// fs.epoll.max_user_watches = 33797775
+	// kernel.sem_next_id = -1
+
+	
+	// vm.lowmem_reserve_ratio = 256   256     32      0       0
+	// net.ipv4.udp_mem = 3858531      5144708 7717062
+	// net.ipv4.tcp_notsent_lowat = 4294967295
+	// net.ipv4.tcp_fastopen_key = 00000000-00000000-00000000-00000000
+	// net.ipv4.tcp_available_congestion_control = reno cubic htcp bbr
+	// kernel.seccomp.actions_logged = kill_process kill_thread trap errno trace log
+	// kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost = 8276
+	// kernel.sched_domain.cpu5.domain0.max_interval = 20
+	
+	// kernel.watchdog_cpumask = 0-19
+	// net.core.netdev_rss_key = 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+
+	cout << " ---- net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
+	cout << " ---- kernel.shmmax= " << os.sysctl <uint64_t> ("kernel.shmmax") << endl;
+	cout << " ---- kernel.acct= " << os.sysctl <vector <uint16_t>> ("kernel.acct")[1] << endl;
+	cout << " ---- kernel.osrelease= " << os.sysctl("kernel.osrelease") << endl;
+	cout << " ---- fs.epoll.max_user_watches= " << os.sysctl <uint32_t> ("fs.epoll.max_user_watches") << endl;
+	cout << " ---- kernel.sem_next_id= " << os.sysctl <int16_t> ("kernel.sem_next_id") << endl;
 	
 	return 0;
 	
