@@ -115,7 +115,7 @@ int main(int argc, char * argv[]){
 	
 	os_t os;
 
-	os.sysctl <uint32_t> ("net.core.rmem_max", 31);
+	cout << " ---- " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
 	
 	return 0;
 	

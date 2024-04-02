@@ -40,10 +40,6 @@
 	 */
 	#include <wchar.h>
 #endif
-
-#include <sys/syscall.h>
-#include <linux/sysctl.h>
-
 /**
  * boost Метод применение сетевой оптимизации операционной системы
  * @return результат работы
@@ -418,22 +414,6 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		return false;
 	#endif
 }
-
-int
-sysctlnametomib(const char *name, int *mibp, size_t *sizep)
-{
-	int oid[2];
-	int error;
-
-	oid[0] = 0;
-	oid[1] = 3;
-
-	*sizep *= sizeof (int);
-	error = sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
-	*sizep /= sizeof (int);
-	return (error);
-}
-
 /**
  * sysctl Метод извлечения настроек ядра операционной системы
  * @param name   название записи для получения настроек
@@ -477,7 +457,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			const string & result = this->exec(command, false);
 			// Если результат получен
 			if(!result.empty()){
-			
+
+				cout << " ********** " << result << endl;
+
 			}
 		#endif
 	}
@@ -501,40 +483,6 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 		 * Операционной системой является Linux
 		 */
 		#elif __linux__
-			
-			int mib[16];
-
-			size_t sz = sizeof(mib) / sizeof(mib[0]);
-
-			cout << " === sysctlnametomib= " << sysctlnametomib(name.c_str(), mib, &sz) << " == " << name << endl;
-
-			cout << " ===1 " << mib[0] << " == " << mib[1] << endl;
-
-			// int mib[] = { CTL_KERN, KERN_OSTYPE };
-			
-			struct __sysctl_args args;
-
-			char osname[100];
-			size_t osnamelth;
-
-			::memset(&args, 0, sizeof(struct __sysctl_args));
-
-			args.name = mib;
-			args.nlen = sizeof(mib) / sizeof(mib[0]);
-
-			args.oldval = osname;
-			args.oldlenp = &osnamelth;
-			osnamelth = sizeof(osname);
-
-			if (::sysctl(mib, sz, osname, &osnamelth, nullptr, 0) == -1) {
-				perror("_sysctl");
-				// exit(EXIT_FAILURE);
-			}
-
-			printf("Эта машина работает в %*s\n", osnamelth, osname);
-			
-			
-			/*
 			// Создаём комманду запуска
 			string command = "sysctl -w";
 			// Добавляем разделитель
@@ -547,7 +495,6 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 			command.append(string(buffer.begin(), buffer.end()));
 			// Выполняем установку параметров ядра
 			return !this->exec(command, false).empty();
-			*/
 		#endif
 	}
 	// Сообщаем, что ничего не установленно
