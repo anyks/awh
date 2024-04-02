@@ -529,7 +529,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 					// Добавляем полученный результат
 					result.append(str, strlen(str));
 					
-					cout << " ±±±±±±±±± " << str << endl;
+					cout << " ±±±±±±±±± " << result << " == " << result.size() << endl;
 					
 					// Зануляем буфер для чтения
 					::memset(buffer, 0, sizeof(buffer));
