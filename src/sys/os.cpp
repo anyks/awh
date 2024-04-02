@@ -476,7 +476,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
-					if(item == ' '){
+					if(item == (' ') || (item == '\t') || (item == '\n') || (item == '\r')){
 						// Выполняем создание блока данных
 						pair <string, bool> record = make_pair("", true);
 						// Выполняем добавление записи в очередь
@@ -498,7 +498,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						cout << " ***** " << data.front().first << endl;
 
 					// Если символ является простым символом		  
-					} else if((item != 0) && (item != '\r') && (item != '\n') && (item != '\t')) {
+					} else if(item != 0) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
