@@ -388,8 +388,8 @@ int main(int argc, char * argv[]){
 	// Выполняем инициализацию Websocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream");
 	// ws.init("ws://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
-	ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
-	// ws.init("wss://anyks.net:2222", {awh::http_t::compressor_t::DEFLATE});
+	// ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
+	ws.init("wss://anyks.net:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://92.63.110.56:2222", {awh::http_t::compressor_t::DEFLATE});
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
