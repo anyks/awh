@@ -482,6 +482,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
 							  (item == '6') || (item == '7') || (item == '8') || (item == '9')) {
+						
+						cout << " *****1 " << string(1, item) << endl;
+						
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -492,6 +495,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						} else data.front().first.append(1, item);
 					// Если символ является простым символом		  
 					} else if((item != 0) && (item != '\r') && (item != '\n') && (item != '\t')) {
+						
+						cout << " *****2 " << string(1, item) << endl;
+						
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -509,23 +515,23 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				}
 				// Выполняем перебор всей очереди собранных данных
 				while(!data.empty()){
-					// Если запись является числом
-					if(data.front().second){
-						
-						cout << " ***** " << data.front().first << endl;
-						
-						// Выполняем получение числа
-						const uint64_t value1 = ::stoull(data.front().first);
-						// Пытаемся уменьшить число
-						if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
-							// Выполняем преобразование в unsigned int 32
-							const uint32_t value2 = static_cast <uint32_t> (value1);
+					// Если запись существует
+					if(!data.front().first.empty()){
+						// Если запись является числом
+						if(data.front().second){
+							// Выполняем получение числа
+							const uint64_t value1 = ::stoull(data.front().first);
+							// Пытаемся уменьшить число
+							if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
+								// Выполняем преобразование в unsigned int 32
+								const uint32_t value2 = static_cast <uint32_t> (value1);
+								// Выполняем добавление новой записи в буфер
+								buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
 							// Выполняем добавление новой записи в буфер
-							buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
-						// Выполняем добавление новой записи в буфер
-						} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
-					// Если запись является текстом
-					} else buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+							} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+						// Если запись является текстом
+						} else buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+					}
 					// Удаляем используемую запись
 					data.pop();
 				}
