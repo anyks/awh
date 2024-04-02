@@ -112,6 +112,13 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	
+	os_t os;
+
+	os.sysctl <uint32_t> ("net.core.rmem_max", 31);
+	
+	return 0;
+	
 	// Создаём объект исполнителя
 	Executor executor(&log);
 	// Создаём объект таймера

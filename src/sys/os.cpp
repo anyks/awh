@@ -505,13 +505,29 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			cout << " === sysctlnametomib= " << sysctlnametomib("vm.swap_info", mib, &sz) << endl;
 
+			// int mib[] = { CTL_KERN, KERN_OSTYPE };
 			
-			size_t length = 0;
+			struct __sysctl_args args;
+
+			char osname[100];
+			size_t osnamelth;
+
+			::memset(&args, 0, sizeof(struct __sysctl_args));
+
+			args.name = mib;
+			args.nlen = sizeof(mib) / sizeof(mib[0]);
+
+			args.oldval = osname;
+			args.oldlenp = &osnamelth;
+			osnamelth = sizeof(osname);
+
+			if (syscall(SYS__sysctl, &args) == -1) {
+				perror("_sysctl");
+				exit(EXIT_FAILURE);
+			}
+
+			printf("Эта машина работает в %*s\n", osnamelth, osname);
 			
-
-			cout << " ^^^^1 " << sysctl(mib, sz, nullptr, &length, nullptr, 0) << endl;
-
-			cout << " ^^^^2 " << length << endl;
 			
 			/*
 			// Создаём комманду запуска
