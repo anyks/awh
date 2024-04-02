@@ -115,11 +115,11 @@ int main(int argc, char * argv[]){
 	
 	os_t os;
 
-	cout << " ----1 net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
+	cout << " ----1 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
 
-	os.sysctl("net.core.rmem_max", 134217728);
+	os.sysctl("kern.ipc.maxsockbuf", 16777216);
 
-	cout << " ----2 net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
+	cout << " ----2 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
 
 	os.boost();
 	
