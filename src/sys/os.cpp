@@ -486,9 +486,6 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					          (item == '3') || (item == '4') || (item == '5') ||
 							  (item == '6') || (item == '7') || (item == '8') ||
 							  (item == '9') || ((item == '-') && (data.empty() || data.front().first.empty()))) {
-						
-						cout << " *****1 " << string(1, item) << endl;
-						
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -497,11 +494,11 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							data.push(std::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.front().first.append(1, item);
+
+						cout << " ***** " << data.front().first << endl;
+
 					// Если символ является простым символом		  
 					} else if((item != 0) && (item != '\r') && (item != '\n') && (item != '\t')) {
-						
-						cout << " *****2 " << string(1, item) << endl;
-						
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
