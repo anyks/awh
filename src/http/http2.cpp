@@ -694,10 +694,12 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 				self->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_HTTP_1_1_REQUIRED, self->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
+	/*
 	// Если функция обратного вызова установлена
 	if(self->_callbacks.is("close"))
 		// Выполняем функцию обратного вызова
 		return self->_callbacks.call <int (const int32_t, const error_t)> ("close", sid, code);
+	*/
 	// Выводим значение по умолчанию
 	return 0;
 }
