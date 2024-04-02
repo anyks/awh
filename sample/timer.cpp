@@ -130,7 +130,7 @@ int main(int argc, char * argv[]){
 	// net.core.netdev_rss_key = 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
 
 	cout << " ---- net.ipv4.udp_mem= " << os.sysctl <vector <uint32_t>> ("net.ipv4.udp_mem")[1] << endl;
-	cout << " ---- net.ipv4.tcp_notsent_lowat= " << os.sysctl <uint64_t> ("net.ipv4.tcp_notsent_lowat") << endl;
+	cout << " ---- net.ipv4.tcp_notsent_lowat= " << os.sysctl <uint32_t> ("net.ipv4.tcp_notsent_lowat") << endl;
 	cout << " ---- vm.lowmem_reserve_ratio= " << os.sysctl <vector <uint32_t>> ("vm.lowmem_reserve_ratio")[2] << endl;
 	cout << " ---- net.ipv4.tcp_fastopen_key= " << os.sysctl <string> ("net.ipv4.tcp_fastopen_key") << endl;
 	cout << " ---- kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost= " << os.sysctl <uint32_t> ("kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost") << endl;
