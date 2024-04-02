@@ -528,6 +528,9 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 				while((str = ::fgets(buffer, sizeof(buffer), stream)) != nullptr){
 					// Добавляем полученный результат
 					result.append(str, strlen(str));
+					
+					cout << " ±±±±±±±±± " << str << endl;
+					
 					// Зануляем буфер для чтения
 					::memset(buffer, 0, sizeof(buffer));
 					// Если это не мультилайн
