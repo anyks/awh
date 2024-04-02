@@ -470,9 +470,6 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			if(!result.empty()){
 				// Очередь собранных данных
 				queue <pair <string, bool>> data;
-				
-				cout << " @@@@@1 " << result << endl;
-				
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -485,9 +482,6 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
 							  (item == '6') || (item == '7') || (item == '8') || (item == '9')) {
-						
-						cout << " @@@@@2 " << string(1, item) << endl;
-						
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -497,7 +491,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.front().first.append(1, item);
 					// Если символ является простым символом		  
-					} else {
+					} else if(item != 0) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -515,6 +509,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				}
 				// Выполняем перебор всей очереди собранных данных
 				while(!data.empty()){
+					
+					cout << " *****0 " << data.front().first << " == " << data.front().second << endl;
+					
 					// Если запись является числом
 					if(data.front().second){
 						// Выполняем получение числа
