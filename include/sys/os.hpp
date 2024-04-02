@@ -311,6 +311,58 @@ namespace awh {
 				return false;
 			}
 			/**
+			 * @tparam Шаблон метода установки настроек ядра операционной системы
+			 */
+			template <typename T>
+			/**
+			 * sysctl Метод установки настроек ядра операционной системы
+			 * @param name  название записи для установки настроек
+			 * @param value значение записи для установки настроек
+			 * @return      результат выполнения установки
+			 */
+			bool sysctl(const string & name, const vector <T> & value) const noexcept {
+				// Если название записи для установки настроек передано
+				if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
+					/**
+					 * Если это Linux
+					 */
+					#ifdef __linux__
+						// Выполняем преобразование числа в строку
+						string param = "";
+						// Выполняем перебор всего списка параметров
+						for(auto & item : value){
+							// Если строка уже сформированна
+							if(!param.empty())
+								// Выполняем добавление пробела
+								param.append(1, ' ');
+							// Добавляем полученное значение в список
+							param.append(to_string(item));
+						}
+						// Выполняем установку буфера бинарных данных
+						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
+					/**
+					 * Если это другая операционная система
+					 */
+					#else
+						// Смещение в бинарном буфере
+						size_t offset = 0;
+						// Буфер результата по умолчанию
+						vector <uint8_t> buffer(value.size() * sizeof(T), 0);
+						// Выполняем перебор всего списка параметров
+						for(auto & item : value){
+							// Выполняем установку результата по умолчанию
+							::memcpy(buffer.data() + offset, &item, sizeof(item));
+							// Выполняем увеличение смещения в буфере
+							offset += sizeof(item);
+						}
+						// Выполняем установку буфера бинарных данных
+						return this->sysctl(name, buffer);
+					#endif
+				}
+				// Сообщаем, что ничего не установленно
+				return false;
+			}
+			/**
 			 * sysctl Метод установки настроек ядра операционной системы
 			 * @param name  название записи для установки настроек
 			 * @param value значение записи для установки настроек
