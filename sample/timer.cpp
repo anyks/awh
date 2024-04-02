@@ -112,19 +112,6 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	
-	os_t os;
-
-	cout << " ----1 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
-
-	os.sysctl("kern.ipc.maxsockbuf", 6291456);
-
-	cout << " ----2 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
-
-	os.boost();
-	
-	return 0;
-	
 	// Создаём объект исполнителя
 	Executor executor(&log);
 	// Создаём объект таймера

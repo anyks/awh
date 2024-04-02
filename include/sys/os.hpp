@@ -87,8 +87,6 @@
 	#include <codecvt>
 #endif
 
-#include <iostream>
-
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
