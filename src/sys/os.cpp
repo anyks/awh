@@ -508,7 +508,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			cout << " === sysctlnametomib= " << sysctlnametomib(name.c_str(), mib, &sz) << " == " << name << endl;
 
-			cout << " ===1 " << mib[0] << endl;
+			cout << " ===1 " << mib[0] << " == " << mib[1] << endl;
 
 			// int mib[] = { CTL_KERN, KERN_OSTYPE };
 			
@@ -528,7 +528,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			if (::sysctl(mib, sz, osname, &osnamelth, nullptr, 0) == -1) {
 				perror("_sysctl");
-				exit(EXIT_FAILURE);
+				// exit(EXIT_FAILURE);
 			}
 
 			printf("Эта машина работает в %*s\n", osnamelth, osname);
