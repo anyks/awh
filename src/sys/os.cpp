@@ -511,6 +511,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				while(!data.empty()){
 					// Если запись является числом
 					if(data.front().second){
+						
+						cout << " ***** " << data.front().first << endl;
+						
 						// Выполняем получение числа
 						const uint64_t value1 = ::stoull(data.front().first);
 						// Пытаемся уменьшить число
