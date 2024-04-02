@@ -144,7 +144,7 @@ void awh::OS::boost() const noexcept {
 		 * Для хостов 10G было бы неплохо увеличить это значение,
 		 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
 		 */
-		this->sysctl("kern.ipc.maxsockbuf", 16777216);
+		this->sysctl("kern.ipc.maxsockbuf", 6291456);
 		// Увеличиваем максимальный размер буферов для отправки
 		this->sysctl("net.inet.tcp.sendspace", 1042560);
 		// Увеличиваем максимальный размер буферов для чтения
