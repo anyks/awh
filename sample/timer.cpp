@@ -115,26 +115,17 @@ int main(int argc, char * argv[]){
 	
 	os_t os;
 
-	
-	// vm.lowmem_reserve_ratio = 256   256     32      0       0
-	// net.ipv4.udp_mem = 3858531      5144708 7717062
-	// net.ipv4.tcp_notsent_lowat = 4294967295
-	// net.ipv4.tcp_fastopen_key = 00000000-00000000-00000000-00000000
-	// kernel.sched_domain.cpu5.domain0.max_interval = 20
-	// kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost = 8276
-
 
 	// net.ipv4.tcp_available_congestion_control = reno cubic htcp bbr
 	// kernel.seccomp.actions_logged = kill_process kill_thread trap errno trace log
 	// kernel.watchdog_cpumask = 0-19
 	// net.core.netdev_rss_key = 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
 
-	cout << " ---- net.ipv4.udp_mem= " << os.sysctl <vector <uint32_t>> ("net.ipv4.udp_mem")[1] << endl;
-	cout << " ---- net.ipv4.tcp_notsent_lowat= " << os.sysctl <uint32_t> ("net.ipv4.tcp_notsent_lowat") << endl;
-	cout << " ---- vm.lowmem_reserve_ratio= " << os.sysctl <vector <uint32_t>> ("vm.lowmem_reserve_ratio")[2] << endl;
-	cout << " ---- net.ipv4.tcp_fastopen_key= " << os.sysctl <string> ("net.ipv4.tcp_fastopen_key") << endl;
-	cout << " ---- kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost= " << os.sysctl <uint32_t> ("kernel.sched_domain.cpu5.domain0.max_newidle_lb_cost") << endl;
-	cout << " ---- kernel.sched_domain.cpu5.domain0.max_interval= " << os.sysctl <int16_t> ("kernel.sched_domain.cpu5.domain0.max_interval") << endl;
+	cout << " ---- net.ipv4.tcp_available_congestion_control= " << os.sysctl <string> ("net.ipv4.tcp_available_congestion_control") << endl;
+	cout << " ---- kernel.seccomp.actions_logged= " << os.sysctl <string> ("kernel.seccomp.actions_logged") << endl;
+	cout << " ---- kernel.watchdog_cpumask= " << os.sysctl <string> ("kernel.watchdog_cpumask") << endl;
+	cout << " ---- net.core.netdev_rss_key= " << os.sysctl <string> ("net.core.netdev_rss_key") << endl;
+
 	
 	return 0;
 	
