@@ -41,6 +41,9 @@
 	#include <wchar.h>
 #endif
 
+#include <sys/syscall.h>
+#include <linux/sysctl.h>
+
 /**
  * boost Метод применение сетевой оптимизации операционной системы
  * @return результат работы
