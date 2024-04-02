@@ -286,13 +286,17 @@ namespace awh {
 			 */
 			bool sysctl(const string & name, const T value) const noexcept {
 				// Если название записи для установки настроек передано
-				if(!name.empty()){
+				if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 					/**
 					 * Если это Linux
 					 */
 					#ifdef __linux__
 						// Выполняем преобразование числа в строку
-						const string param = to_string(value);
+						const string param = (
+							is_floating_point <T>::value ?
+							to_string(static_cast <double> (value)) :
+							to_string(static_cast <int64_t> (value))
+						);
 						// Выполняем установку буфера бинарных данных
 						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
 					/**
