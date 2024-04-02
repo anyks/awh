@@ -253,6 +253,10 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				} else if(this->_allow.receive) {
 					// Добавляем полученные данные в буфер
 					this->_buffer.emplace(buffer, size);
+					// Обнуляем время последнего ответа на пинг
+					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Обновляем время отправленного пинга
+					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Выполняем препарирование полученных данных
 					switch(static_cast <uint8_t> (this->prepare(this->_sid, bid))){
 						// Если необходимо выполнить остановку обработки
@@ -477,8 +481,10 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 		if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 			// Завершаем работу
 			const_cast <client::core_t *> (this->_core)->close(this->_bid);
-		// Отправляем запрос брокеру
-		else this->ping(::to_string(this->_bid));
+		// Если время с предыдущего пинга прошло больше половины времени пинга
+		else if((stamp - this->_pinging) > (PING_INTERVAL / 2))
+			// Отправляем запрос брокеру
+			this->ping(::to_string(this->_bid));
 	}
 }
 /**
@@ -493,9 +499,12 @@ void awh::client::Websocket1::ping(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.ping(message, true);
 			// Если бинарный буфер получен
-			if(!buffer.empty())
+			if(!buffer.empty()){
 				// Выполняем отправку сообщения на сервер
-				const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), this->_bid);
+				if(const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), this->_bid))
+					// Обновляем время отправленного пинга
+					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			}
 		}
 	}
 }

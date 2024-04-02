@@ -801,7 +801,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
  _nossl(false), _active(false), _stopped(false), _complete(true), _redirects(false),
- _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _pinging(0), _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

@@ -166,6 +166,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 				if(options->allow.receive){
 					// Добавляем полученные данные в буфер
 					options->buffer.payload.emplace(buffer, size);
+					// Обнуляем время последнего ответа на пинг
+					options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Обновляем время отправленного пинга
+					options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Если рукопожатие не выполнено
 					if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 						// Выполняем парсинг полученных данных
@@ -792,9 +796,12 @@ void awh::server::Websocket1::ping(const uint64_t bid, const string & message) n
 			// Создаём буфер для отправки
 			const auto & buffer = options->frame.methods.ping(message);
 			// Если буфер данных получен
-			if(!buffer.empty())
+			if(!buffer.empty()){
 				// Выполняем отправку сообщения брокеру
-				const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+				if(const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid))
+					// Обновляем время отправленного пинга
+					options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			}
 		}
 	}
 }
@@ -876,8 +883,10 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 			if(item.second->close || ((stamp - item.second->point) >= (PING_INTERVAL * 5)))
 				// Завершаем работу
 				const_cast <server::core_t *> (this->_core)->close(item.first);
-			// Отправляем запрос брокеру
-			else this->ping(item.first, ::to_string(item.first));
+			// Если время с предыдущего пинга прошло больше половины времени пинга
+			else if((stamp - item.second->pinging) > (PING_INTERVAL / 2))
+				// Отправляем запрос брокеру
+				this->ping(item.first, ::to_string(item.first));
 		}
 	}
 }

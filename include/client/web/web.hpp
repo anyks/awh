@@ -185,6 +185,9 @@ namespace awh {
 				// Флаг выполнения редиректов
 				bool _redirects;
 			protected:
+				// Время отправленного пинга
+				time_t _pinging;
+			protected:
 				// Количество попыток
 				uint8_t _attempt;
 				// Общее количество попыток

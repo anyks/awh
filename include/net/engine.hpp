@@ -320,18 +320,20 @@ namespace awh {
 			 * Cert Структура адресов файлов сертификатов
 			 */
 			typedef struct Cert {
-				// Доверенный сертификат (CA-файл)
+				// Сертификат центра сертификации (CA-файл)
 				string ca;
+				// Сертификат отозванных сертификатов (CRL-файл)
+				string crl;
 				// Приватный ключ сертификата
 				string key;
 				// Основной сертификат или цепочка сертификатов
-				string chain;
-				// Каталог с доверенными сертификатами (CA-файлами)
-				string capath;
+				string pem;
+				// Каталог с сертификатами центра сертификации (CA-файлами)
+				string path;
 				/**
 				 * Cert Конструктор
 				 */
-				Cert() noexcept : ca{SSL_CA_FILE}, key{""}, chain{""}, capath{""} {}
+				Cert() noexcept : ca{SSL_CA_FILE}, crl{""}, key{""}, pem{""}, path{""} {}
 			} cert_t;
 			/**
 			 * Verify Структура параметров для валидации доменов
@@ -382,6 +384,9 @@ namespace awh {
 					// Создаём объект работы с логами
 					const log_t * _log;
 				private:
+					// Объект CRL-файла сертификата
+					const X509_CRL * _crl;
+				private:
 					/**
 					 * error Метод вывода информации об ошибке
 					 * @param status статус ошибки
@@ -398,6 +403,12 @@ namespace awh {
 					 * info Метод вывода информации о сертификате
 					 */
 					void info() const noexcept;
+				public:
+					/**
+					 * crl Метод установки CRL-файла сертификата
+					 * @param crl CRL-файл сертификат
+					 */
+					void crl(const X509_CRL * crl) noexcept;
 				public:
 					/**
 					 * read Метод чтения данных из сокета
@@ -526,6 +537,9 @@ namespace awh {
 			static bool _cookieInit;
 			// Буфер для создания куков
 			static u_char _cookies[16];
+		private:
+			// Объект CRL-файла сертификата
+			X509_CRL * _crl;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -692,11 +706,17 @@ namespace awh {
 			validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
 		private:
 			/**
-			 * storeCA Метод инициализации магазина доверенных сертификатов
+			 * storeCA Метод инициализации магазина CA-файлов сертификатов
 			 * @param ctx объект контекста SSL
 			 * @return    результат инициализации
 			 */
 			bool storeCA(SSL_CTX * ctx) const noexcept;
+			/**
+			 * storeCRL Метод инициализации магазина CRL-файлов сертификатов
+			 * @param ctx объект контекста SSL
+			 * @return    результат инициализации
+			 */
+			bool storeCRL(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
 			 * wait Метод ожидания рукопожатия
@@ -755,7 +775,7 @@ namespace awh {
 			void wrap(ctx_t & target, addr_t * address) noexcept;
 		public:
 			/**
-			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * wrap Метод обертывания файлового дескриптора для клиента/сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
@@ -793,17 +813,22 @@ namespace awh {
 			void ciphers(const vector <string> & ciphers) noexcept;
 		public:
 			/**
-			 * ca Метод установки доверенного сертификата (CA-файла)
-			 * @param ca   адрес доверенного сертификата (CA-файла)
+			 * crl Метод установки CRL-файла отозванных сертификатов центром сертификации
+			 * @param crl адрес CRL-файла отозванных сертификатов центром сертификации
+			 */
+			void crl(const string & crl) noexcept;
+			/**
+			 * ca Метод установки сертификата центра сертификации (CA-файла)
+			 * @param ca   адрес сертификата центра сертификации (CA-файла)
 			 * @param path адрес каталога где находится сертификат (CA-файл)
 			 */
 			void ca(const string & ca, const string & path = "") noexcept;
 			/**
 			 * certificate Метод установки файлов сертификата
-			 * @param chain файл цепочки сертификатов
-			 * @param key   приватный ключ сертификата (если требуется)
+			 * @param pem файл цепочки сертификатов
+			 * @param key приватный ключ сертификата (если требуется)
 			 */
-			void certificate(const string & chain, const string & key = "") noexcept;
+			void certificate(const string & pem, const string & key = "") noexcept;
 		public:
 			/**
 			 * Engine Конструктор

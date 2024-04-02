@@ -301,9 +301,14 @@ int awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * buff
 					// Добавляем полученный чанк в тело данных
 					this->_http.payload(vector <char> (buffer, buffer + size));
 				// Если рукопожатие выполнено
-				else if(this->_allow.receive)
+				else if(this->_allow.receive) {
+					// Обнуляем время последнего ответа на пинг
+					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Обновляем время отправленного пинга
+					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Добавляем полученные данные в буфер
 					this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
+				}
 				// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 				if(this->_callbacks.is("chunks"))
 					// Выполняем функцию обратного вызова
@@ -822,8 +827,10 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
 				if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
 					// Завершаем работу
 					web2_t::close(this->_bid);
-				// Отправляем запрос брокеру
-				else this->ping(::to_string(this->_bid));
+				// Если время с предыдущего пинга прошло больше половины времени пинга
+				else if((stamp - this->_pinging) > (PING_INTERVAL / 2))
+					// Отправляем запрос брокеру
+					this->ping(::to_string(this->_bid));
 			// Если рукопожатие уже выполнено и пинг не прошёл
 			} else if(!web2_t::ping())
 				// Выполняем закрытие подключения
@@ -843,9 +850,12 @@ void awh::client::Websocket2::ping(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.methods.ping(message, true);
 			// Если бинарный буфер получен
-			if(!buffer.empty())
+			if(!buffer.empty()){
 				// Выполняем отправку сообщения на сервер
-				web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
+				if(web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::NONE))
+					// Обновляем время отправленного пинга
+					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			}
 		}
 	}
 }

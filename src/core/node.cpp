@@ -332,6 +332,8 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	this->_engine.verify(ssl.verify);
 	// Выполняем установку алгоритмов шифрования
 	this->_engine.ciphers(ssl.ciphers);
+	// Устанавливаем адрес CRL-файла
+	this->_engine.crl(ssl.crl);
 	// Устанавливаем адрес CA-файла
 	this->_engine.ca(ssl.ca, ssl.capath);
 	// Устанавливаем файлы сертификата

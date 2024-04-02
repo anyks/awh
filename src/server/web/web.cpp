@@ -409,8 +409,9 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _complete(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(AWH_BUFFER_CHUNK),
+ _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -423,8 +424,9 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _complete(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(AWH_BUFFER_CHUNK),
+ _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

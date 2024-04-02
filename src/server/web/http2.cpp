@@ -407,10 +407,12 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
 					// Определяем тип активного протокола
 					switch(static_cast <uint8_t> (i->second)){
 						// Если протокол соответствует HTTP-протоколу
-						case static_cast <uint8_t> (agent_t::HTTP):
+						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Добавляем полученный чанк в тело данных
 							stream->http.payload(vector <char> (buffer, buffer + size));
-						break;
+							// Обновляем время отправленного пинга
+							options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						} break;
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
 							// Выполняем передачу сигнала полученных чанков в модуль Websocket
@@ -1397,10 +1399,17 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
-								// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
-								if(!this->ping(item.first))
-									// Выполняем закрытие подключения
-									web2_t::close(item.first);
+								// Получаем текущий штамп времени
+								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								// Если время с предыдущего пинга прошло больше половины времени пинга
+								if((stamp - item.second->pinging) > (PING_INTERVAL / 2)){
+									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
+									if(!this->ping(item.first))
+										// Выполняем закрытие подключения
+										web2_t::close(item.first);
+									// Обновляем время отправленного пинга
+									else item.second->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								}
 							} break;
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET):

@@ -60,20 +60,22 @@ namespace awh {
 			typedef struct SSL {
 				// Флаг выполнения валидации доменного имени
 				bool verify;
-				// Адрес CA-файла
+				// Сертификат центра сертификации (CA-файл)
 				string ca;
-				// Адрес ключа сертификата
+				// Сертификат отозванных сертификатов (CRL-файл)
+				string crl;
+				// Приватный ключ сертификата
 				string key;
-				// Адрес файла сертификата
+				// Основной сертификат или цепочка сертификатов
 				string cert;
-				// Путь где хранится CA-файл
+				// Каталог с сертификатами центра сертификации (CA-файлами)
 				string capath;
 				// Список алгоритмов шифрования для установки
 				vector <string> ciphers;
 				/**
 				 * SSL Конструктор
 				 */
-				SSL() noexcept : verify(true), ca{""}, key{""}, cert{""}, capath{""} {}
+				SSL() noexcept : verify(true), ca{""}, crl{""}, key{""}, cert{""}, capath{""} {}
 			} ssl_t;
 		protected:
 			/**

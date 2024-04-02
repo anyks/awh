@@ -360,9 +360,14 @@ int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
 				// Добавляем полученный чанк в тело данных
 				options->http.payload(vector <char> (buffer, buffer + size));
 			// Если рукопожатие выполнено
-			else if(options->allow.receive)
+			else if(options->allow.receive) {
+				// Обнуляем время последнего ответа на пинг
+				options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				// Обновляем время отправленного пинга
+				options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Добавляем полученные данные в буфер
 				options->buffer.payload.emplace(reinterpret_cast <const char *> (buffer), size);
+			}
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callbacks.is("chunks"))
 				// Выполняем функцию обратного вызова
@@ -1008,9 +1013,12 @@ void awh::server::Websocket2::ping(const uint64_t bid, const string & message) n
 			// Создаём буфер для отправки
 			const auto & buffer = options->frame.methods.ping(message);
 			// Если буфер данных получен
-			if(!buffer.empty())
+			if(!buffer.empty()){
 				// Выполняем отправку сообщения клиенту
-				web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::NONE);
+				if(web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::NONE))
+					// Обновляем время отправленного пинга
+					options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			}
 		}
 	}
 }
@@ -1141,8 +1149,10 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 					if(item.second->close || ((stamp - item.second->point) >= (PING_INTERVAL * 5)))
 						// Завершаем работу
 						const_cast <server::core_t *> (this->_core)->close(item.first);
-					// Отправляем запрос брокеру
-					else this->ping(item.first, ::to_string(item.first));
+					// Если время с предыдущего пинга прошло больше половины времени пинга
+					else if((stamp - item.second->pinging) > (PING_INTERVAL / 2))
+						// Отправляем запрос брокеру
+						this->ping(item.first, ::to_string(item.first));
 				// Если рукопожатие не выполнено и пинг не прошёл
 				} else if(!web2_t::ping(item.first))
 					// Выполняем закрытие подключения

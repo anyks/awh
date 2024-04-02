@@ -201,6 +201,8 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 					case static_cast <uint8_t> (agent_t::HTTP): {
 						// Добавляем полученный чанк в тело данных
 						i->second->http.payload(vector <char> (buffer, buffer + size));
+						// Обновляем время отправленного пинга
+						this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(this->_callbacks.is("chunks"))
 							// Выполняем функцию обратного вызова
@@ -959,10 +961,17 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 			switch(static_cast <uint8_t> (worker.second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
-					if(!this->ping())
-						// Выполняем закрытие подключения
-						web2_t::close(this->_bid);
+					// Получаем текущий штамп времени
+					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Если время с предыдущего пинга прошло больше половины времени пинга
+					if((stamp - this->_pinging) > (PING_INTERVAL / 2)){
+						// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
+						if(!this->ping())
+							// Выполняем закрытие подключения
+							web2_t::close(this->_bid);
+						// Обновляем время отправленного пинга
+						else this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					}
 				} break;
 				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):

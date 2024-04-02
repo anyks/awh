@@ -1072,10 +1072,20 @@ void awh::Engine::Context::info() const noexcept {
 			printf("Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(this->_ssl)));
 			// Выводим конечный разделитель
 			printf ("\n------------------------------------------------------------\n\n");
-			// Очищаем объект сертификата
-			// X509_free(cert);
 		}
 	}
+	// Если объект CRL-файла сертификата создан
+	if(this->_crl != nullptr)
+		// Выводим информацию об отозванном сертификате
+		X509_CRL_print(this->_bio, const_cast <X509_CRL *> (this->_crl));
+}
+/**
+ * crl Метод установки CRL-файла сертификата
+ * @param crl CRL-файл сертификат
+ */
+void awh::Engine::Context::crl(const X509_CRL * crl) noexcept {
+	// Выполняем установку объекта CRL-файла сертификата
+	this->_crl = crl;
 }
 /**
  * read Метод чтения данных из сокета
@@ -2728,7 +2738,7 @@ awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const
 	return result;
 }
 /**
- * storeCA Метод инициализации магазина доверенных сертификатов
+ * storeCA Метод инициализации магазина CA-файлов сертификатов
  * @param ctx объект контекста SSL
  * @return    результат инициализации
  */
@@ -2737,10 +2747,10 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	bool result = false;
 	// Если контекст SSL передан
 	if(ctx != nullptr){
-		// Если доверенный сертификат (CA-файл) найден и адрес файла указан
-		if(!this->_cert.ca.empty() && (this->_fs.isFile(this->_cert.ca) || this->_fs.isDir(this->_cert.capath))){
+		// Если сертификат центра сертификации (CA-файл) найден и адрес файла указан
+		if(!this->_cert.ca.empty() && (this->_fs.isFile(this->_cert.ca) || this->_fs.isDir(this->_cert.path))){
 			// Определяем путь где хранятся сертификаты
-			const char * path = (!this->_cert.capath.empty() ? this->_cert.capath.c_str() : nullptr);
+			const char * path = (!this->_cert.path.empty() ? this->_cert.path.c_str() : nullptr);
 			// Выполняем проверку
 			if(SSL_CTX_load_verify_locations(ctx, this->_cert.ca.c_str(), path) != 1){
 				// Выводим в лог сообщение
@@ -2751,7 +2761,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если каталог получен
 			if(path != nullptr){
 				// Получаем полный адрес
-				const string & dir = this->_fs.realPath(this->_cert.capath, false);
+				const string & dir = this->_fs.realPath(this->_cert.path, false);
 				// Если адрес существует
 				if(this->_fs.isDir(dir) && !this->_fs.isFile(this->_cert.ca)){
 					/**
@@ -2768,20 +2778,20 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							path.push_back(this->_cert.ca);
 							// Формируем полный адарес файла
 							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, FS_SEPARATOR).c_str());
-							// Выполняем проверку доверенного сертификата
+							// Выполняем проверку CRL-файла сертификата
 							if(!filename.empty()){
 								// Выполняем декодирование адреса файла
 								filename = this->_uri->decode(filename);
 								// Если адрес файла существует
 								if((result = this->_fs.isFile(filename))){
-									// Выполняем проверку доверенного сертификата
+									// Выполняем проверку CRL-файла сертификата
 									SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(filename.c_str()));
 									// Переходим к следующей итерации
 									goto Next;
 								}
 							}
 						}
-						// Выполняем очистку адреса доверенного сертификата
+						// Выполняем очистку адреса CRL-файла сертификата
 						this->_cert.ca.clear();
 					/**
 					 * Если операционной системой является Nix-подобная
@@ -2793,7 +2803,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						path.push_back(this->_cert.ca);
 						// Формируем полный адарес файла
 						string filename = this->_uri->joinPath(path, FS_SEPARATOR);
-						// Выполняем проверку доверенного сертификата
+						// Выполняем проверку CRL-файла сертификата
 						if(!filename.empty()){
 							// Выполняем декодирование адреса файла
 							filename = this->_uri->decode(filename);
@@ -2805,24 +2815,24 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 								goto Next;
 							}
 						}
-						// Выполняем очистку адреса доверенного сертификата
+						// Выполняем очистку адреса CRL-файла сертификата
 						this->_cert.ca.clear();
 					#endif
 				// Если адрес файла существует
 				} else if((result = this->_fs.isFile(this->_cert.ca)))
-					// Выполняем проверку доверенного сертификата
+					// Выполняем проверку CRL-файла сертификата
 					SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_cert.ca.c_str()));
-				// Выполняем очистку адреса доверенного сертификата
+				// Выполняем очистку адреса CRL-файла сертификата
 				else this->_cert.ca.clear();
 			// Если адрес файла существует
 			} else if((result = this->_fs.isFile(this->_cert.ca)))
-				// Выполняем проверку доверенного сертификата
+				// Выполняем проверку CRL-файла сертификата
 				SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_cert.ca.c_str()));
-		// Выполняем очистку адреса доверенного сертификата
+		// Выполняем очистку адреса CRL-файла сертификата
 		} else this->_cert.ca.clear();
 		// Метка следующей итерации
 		Next:
-		// Если доверенный сертификат не указан
+		// Если сертификат центра сертификации не указан
 		if(this->_cert.ca.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(ctx);
@@ -2890,6 +2900,77 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 				// Выводим в лог сообщение
 				this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
 		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * storeCRL Метод инициализации магазина CRL-файлов сертификатов
+ * @param ctx объект контекста SSL
+ * @return    результат инициализации
+ */
+bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если контекст SSL передан
+	if(ctx != nullptr){
+		// Если сертификат (CRL-файл) найден и адрес файла указан
+		if(!this->_cert.crl.empty() && this->_fs.isFile(this->_cert.crl)){
+			// Получаем данные стора
+			X509_STORE * store = SSL_CTX_get_cert_store(ctx);
+			// Получаем объект поиска отозванных сертификатов в центре сертификации
+			X509_LOOKUP * lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+			// Выполняем загружку CRL-файла сертификата
+			// result = (X509_load_crl_file(lookup, this->_cert.crl.c_str(), X509_FILETYPE_PEM) != 0);
+			result = (X509_load_cert_crl_file(lookup, this->_cert.crl.c_str(), X509_FILETYPE_PEM) != 0);
+			// Если CRL-файл сертификата удачно загружен
+			if(result){
+				// Если CRL-файл сертификата уже создан
+				if(this->_crl != nullptr)
+					// Выполняем освобождение памяти
+					X509_CRL_free(this->_crl);
+				// Создаём объект BIO для загрузки файла
+				BIO * bio = BIO_new(BIO_s_file());
+				// Если BIO не создан
+				if(bio == nullptr){
+					// Получаем данные описание ошибки
+					u_long error = ERR_get_error();
+					// Если ошибка получена
+					if(error != 0){
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						/**
+						 * Выполняем извлечение остальных ошибок
+						 */
+						do {
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						// Если ещё есть ошибки
+						} while((error = ERR_get_error()));
+					}
+					// Выходим из функции
+					return result;
+				}
+				// Выполняем чтение CRL-файла сертификата
+				if(BIO_read_filename(bio, this->_cert.crl.c_str()) <= 0){
+					// Выводим в лог сообщение
+					this->_log->print("CRLfile is corrupted or unreadable", log_t::flag_t::CRITICAL);
+					// Завершаем работу
+					goto End;
+				}
+				// Выполняем создание объекта CRL-файла сертификата
+				const_cast <engine_t *> (this)->_crl = PEM_read_bio_X509_CRL(bio, nullptr, nullptr, nullptr);
+				// Если объект CRL-файла сертификата не создан
+				if(this->_crl == nullptr)
+					// Выводим в лог сообщение
+					this->_log->print("Unable to load CRLfile", log_t::flag_t::CRITICAL);
+				// Устанавливаем метку завершения работы
+				End:
+				// Выполняем очистку памяти BIO
+				BIO_free(bio);
+			}
+		// Выполняем очистку адреса CRL-файла сертификата
+		} else this->_cert.crl.clear();
 	}
 	// Выводим результат
 	return result;
@@ -3209,7 +3290,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Выходим из функции
 			return;
 		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_cert.key.empty() && !this->_cert.chain.empty()){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_cert.key.empty() && !this->_cert.pem.empty()){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3326,13 +3407,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			// Выполняем инициализацию доверенного сертификата
-			if(!this->storeCA(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
@@ -3340,9 +3414,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
-			if(!this->_cert.chain.empty()){
+			if(!this->_cert.pem.empty()){
 				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.chain.c_str()) < 1){
+				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.pem.c_str()) < 1){
 					// Выводим в лог сообщение
 					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
@@ -3372,10 +3446,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 					return;
 				}
 			}
-			// Если доверенный сертификат недействителен
+			// Если сертификат центра сертификации недействителен
 			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
 				// Выводим в лог сообщение
-				this->_log->print("CA certificate is invalid", log_t::flag_t::CRITICAL);
+				this->_log->print("CAfile is invalid", log_t::flag_t::CRITICAL);
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
@@ -3471,7 +3545,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 	}
 }
 /**
- * wrap Метод обертывания файлового дескриптора для сервера
+ * wrap Метод обертывания файлового дескриптора для клиента/сервера
  * @param target  контекст назначения
  * @param address объект подключения
  * @param type    тип активного приложения
@@ -3634,6 +3708,22 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выходим
 				return;
 			}
+			// Если приложение является клиентом
+			if(type == type_t::CLIENT){
+				// Выполняем инициализацию CA-файла сертификата
+				if(!this->storeCA(target._ctx)){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+				// Выполняем инициализацию CRL-файла сертификата
+				this->storeCRL(target._ctx);
+				// Если объект CRL-файла сертификата получен
+				if(this->_crl != nullptr)
+					// Выполняем установку объект CRL-файла сертификата
+					target.crl(this->_crl);
+			}
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если приложение является сервером
@@ -3641,13 +3731,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выполняем отключение SSL кеша
 				SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_OFF);
 			// Если цепочка сертификатов установлена
-			if(!this->_cert.chain.empty()){
+			if(!this->_cert.pem.empty()){
 				// Определяем тип активного приложения
 				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
 					case static_cast <uint8_t> (type_t::CLIENT):
 						// Если цепочка сертификатов не установлена
-						if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.chain.c_str(), SSL_FILETYPE_PEM) < 1){
+						if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.pem.c_str(), SSL_FILETYPE_PEM) < 1){
 							// Выводим в лог сообщение
 							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
@@ -3659,7 +3749,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER):
 						// Если цепочка сертификатов не установлена
-						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.chain.c_str()) < 1){
+						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.pem.c_str()) < 1){
 							// Выводим в лог сообщение
 							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
@@ -3815,7 +3905,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
 		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) &&
-		  ((!this->_cert.key.empty() && !this->_cert.chain.empty()) || this->encrypted(target))){
+		  ((!this->_cert.key.empty() && !this->_cert.pem.empty()) || this->encrypted(target))){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3898,13 +3988,19 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 					this->httpUpgrade(target);
 				break;
 			}
-			// Выполняем инициализацию доверенного сертификата
+			// Выполняем инициализацию CA-файла сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
 				return;
 			}
+			// Выполняем инициализацию CRL-файла сертификата
+			this->storeCRL(target._ctx);
+			// Если объект CRL-файла сертификата получен
+			if(this->_crl != nullptr)
+				// Выполняем установку объект CRL-файла сертификата
+				target.crl(this->_crl);
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -3920,9 +4016,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если цепочка сертификатов установлена
-			if(!this->_cert.chain.empty()){
+			if(!this->_cert.pem.empty()){
 				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.chain.c_str(), SSL_FILETYPE_PEM) < 1){
+				if(SSL_CTX_use_certificate_file(target._ctx, this->_cert.pem.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
 					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
@@ -4092,30 +4188,40 @@ void awh::Engine::ciphers(const vector <string> & ciphers) noexcept {
 	}
 }
 /**
- * ca Метод установки доверенного сертификата (CA-файла)
- * @param ca   адрес доверенного сертификата (CA-файла)
+ * crl Метод установки CRL-файла отозванных сертификатов центром сертификации
+ * @param crl адрес CRL-файла отозванных сертификатов центром сертификации
+ */
+void awh::Engine::crl(const string & crl) noexcept {
+	// Если адрес CRL-файла передан
+	if(!crl.empty())
+		// Устанавливаем адрес сертификата (CRL-файла)
+		this->_cert.crl = this->_fs.realPath(crl, false);
+}
+/**
+ * ca Метод установки сертификата центра сертификации (CA-файла)
+ * @param ca   адрес сертификата центра сертификации (CA-файла)
  * @param path адрес каталога где находится сертификат (CA-файл)
  */
 void awh::Engine::ca(const string & ca, const string & path) noexcept {
 	// Если адрес CA-файла передан
 	if(!ca.empty())
-		// Устанавливаем адрес доверенного сертификата (CA-файла)
+		// Устанавливаем адрес сертификата центра сертификации (CA-файла)
 		this->_cert.ca = this->_fs.realPath(ca, false);
 	// Если адрес CA-файла не передан, выполняем очистку ранее установленного CA-файла
 	else this->_cert.ca.clear();
-	// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
+	// Если адрес каталога с сертификатом центра сертификации (CA-файлом) передан, устанавливаем и его
 	if(!path.empty() && this->_fs.isDir(path))
-		// Устанавливаем адрес каталога с доверенным сертификатом (CA-файлом)
-		this->_cert.capath = this->_fs.realPath(path, false);
+		// Устанавливаем адрес каталога с сертификатом центра сертификации (CA-файлом)
+		this->_cert.path = this->_fs.realPath(path, false);
 	// Если путь хранения CA-файлов не передан, выполняем очистку ранее установленного
-	else this->_cert.capath.clear();
+	else this->_cert.path.clear();
 }
 /**
  * certificate Метод установки файлов сертификата
- * @param chain файл цепочки сертификатов
- * @param key   приватный ключ сертификата (если требуется)
+ * @param pem файл цепочки сертификатов
+ * @param key приватный ключ сертификата (если требуется)
  */
-void awh::Engine::certificate(const string & chain, const string & key) noexcept {
+void awh::Engine::certificate(const string & pem, const string & key) noexcept {
 	// Если ключ сертификата передан
 	if(!key.empty())
 		// Устанавливаем приватный ключ сертификата
@@ -4123,11 +4229,11 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
 	// Если ключ не передан, очищаем установленный ключ сертификата
 	else this->_cert.key.clear();
 	// Если сертификат передан
-	if(!chain.empty())
+	if(!pem.empty())
 		// Устанавливаем файл полной цепочки сертификатов
-		this->_cert.chain = this->_fs.realPath(chain, false);
+		this->_cert.pem = this->_fs.realPath(pem, false);
 	// Если сертификат не передан, очищаем установленный адрес сертификата
-	else this->_cert.chain.clear();
+	else this->_cert.pem.clear();
 }
 /**
  * Engine Конструктор
@@ -4136,8 +4242,8 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
  * @param uri объект работы с URI
  */
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- _verify(true), _fs(fmk, log), _cipher{""}, _fmk(fmk), _uri(uri), _log(log) {
-	// Выполняем модификацию доверенного сертификата (CA-файла)
+ _verify(true), _fs(fmk, log), _cipher{""}, _crl(nullptr), _fmk(fmk), _uri(uri), _log(log) {
+	// Выполняем установку сертификата центра сертификации (CA-файла)
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
 	// Выполняем установку алгоритмов шифрования
 	this->ciphers({
@@ -4220,6 +4326,10 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
  * ~Engine Деструктор
  */
 awh::Engine::~Engine() noexcept {
+	// Если CRL-файл сертификата уже создан
+	if(this->_crl != nullptr)
+		// Выполняем освобождение памяти
+		X509_CRL_free(this->_crl);
 	/**
 	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
