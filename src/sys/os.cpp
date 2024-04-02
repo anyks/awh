@@ -491,7 +491,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.front().first.append(1, item);
 					// Если символ является простым символом		  
-					} else if(item != 0) {
+					} else if((item != 0) && (item != '\r') && (item != '\n') && (item != '\t')) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
