@@ -481,7 +481,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Выполняем добавление записи в очередь
 							data.push(std::move(record));
 						// Если запись является строкой, добавляем полученный символ в запись
-						} else data.back().first.append(1, item);
+						} else data.back().first.append(1, ' ');
 					// Если символ является числом
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
@@ -529,7 +529,14 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Выполняем добавление новой записи в буфер
 							} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
 						// Если запись является текстом
-						} else buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+						} else {
+							// Если последний символ является пробелом, удаляем его
+							if(::isspace(data.front().first.back()))
+								// Выполняем удаление последний символ
+								data.front().first.pop();
+							// Выполняем добавление новой записи в буфер
+							buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+						}
 					}
 					// Удаляем используемую запись
 					data.pop();
