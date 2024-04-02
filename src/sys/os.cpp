@@ -508,6 +508,8 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			cout << " === sysctlnametomib= " << sysctlnametomib(name.c_str(), mib, &sz) << " == " << name << endl;
 
+			cout << " ===1 " << mib[0] << endl;
+
 			// int mib[] = { CTL_KERN, KERN_OSTYPE };
 			
 			struct __sysctl_args args;
