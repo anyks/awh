@@ -107,26 +107,6 @@ class Executor {
 			(void) rid;
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
-				
-				ws->bandwidth("20Mbps", "20Mbps");
-
-				json message = json::parse(R"({
-					"id": "1514",
-					"message": "{\"Message\":\"input line 2\",\"rs_agent_categories\":\"\",\"rs_agent_fqdn\":\"v-stand-19.pgr.local\",\"rs_agent_id\":\"619df239-b1b3-4877-9c85-46ed69b7cbe6\",\"rs_agent_input_module\":\"files\",\"rs_agent_input_tags\":[],\"rs_agent_ip\":\"172.30.254.79\",\"rs_agent_ts\":\"2023-11-07T16:48:30.241739034+03:00\"}"
-				})");
-
-
-				// Получаем параметры запроса в виде строки
-				const string query = message.dump();
-
-				for(size_t i = 0; i < 3000000; i++)
-					// Отправляем сообщение на сервер
-					ws->sendMessage(vector <char> (query.begin(), query.end()));
-
-				cout << " ALL SEND " << endl;
-				
-				
-				/*
 				// Выводим информацию в лог
 				this->_log->print("Handshake", log_t::flag_t::INFO);
 				// Выполняем установку ограничения пропускной способности сети
@@ -244,7 +224,6 @@ class Executor {
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
 				ws->sendMessage(vector <char> (query.begin(), query.end()));
-				*/
 			}
 		}
 	public:
@@ -356,28 +335,26 @@ int main(int argc, char * argv[]){
 	ssl.cert = "./certs/certificates/client-cert.pem";
 	*/
 	// Выполняем установку параметров SSL-шифрования
-	// core.ssl(ssl);
+	core.ssl(ssl);
 	// Устанавливаем активный протокол подключения
-	// core.proto(awh::engine_t::proto_t::HTTP2);
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета DTLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
-	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.sonet(awh::scheme_t::sonet_t::TCP);
+	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-
 	// Устанавливаем размер доступной кэш-памяти для одного подключения
-	core.brokerAvailableSize(0x1FFFFFFF);
+	// core.brokerAvailableSize(0x1FFFFFFF);
 	// Устанавливаем размер доступной кэш-памяти для всех подключений
-	core.memoryAvailableSize(0x7FFFFFFF);
+	// core.memoryAvailableSize(0x7FFFFFFF);
 	// Устанавливаем режим отправки сообщений
-	core.sending(node_t::sending_t::DEFFER);
-
+	// core.sending(node_t::sending_t::DEFFER);
 	// Устанавливаем логин и пароль пользователя
-	// ws.user("user", "password");
+	ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
@@ -407,19 +384,11 @@ int main(int argc, char * argv[]){
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
-	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию Websocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream");
-	// ws.init("ws://172.30.254.154:8087", {awh::http_t::compressor_t::DEFLATE});
-	ws.init("ws://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
-	// ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
-
-	// handle SIGFPE stop nopass
-	// handle SIGFPE noprint
-	
-	// ws.init("ws://172.30.249.123:8086", {awh::http_t::compressor_t::DEFLATE});
-	// ws.init("wss://172.30.249.123:2223", {awh::http_t::compressor_t::NONE});
-
+	// ws.init("ws://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
+	ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://anyks.net:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://92.63.110.56:2222", {awh::http_t::compressor_t::DEFLATE});
 	// Устанавливаем длительное подключение
@@ -432,7 +401,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
 	// Устанавливаем сабпротоколы
-	// ws.subprotocols({"test2", "test8", "test9"});
+	ws.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем поддерживаемые расширения
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов

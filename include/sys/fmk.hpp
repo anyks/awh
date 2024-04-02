@@ -37,14 +37,6 @@
 #include <type_traits>
 #include <sys/types.h>
 
-// Если используется BOOST
-#ifdef USE_BOOST_CONVERT
-	#include <boost/locale/encoding_utf.hpp>
-// Если нужно использовать стандартную библиотеку
-#else
-	#include <codecvt>
-#endif
-
 /**
  * Наши модули
  */
@@ -105,18 +97,6 @@ namespace awh {
 				HMAC_SHA256 = 0x0A, // Хэш HMAC SHA256
 				HMAC_SHA384 = 0x0B, // Хэш HMAC SHA384
 				HMAC_SHA512 = 0x0C  // Хэш HMAC SHA512
-			};
-			/**
-			 * os_t Названия поддерживаемых операционных систем
-			 */
-			enum class os_t : uint8_t {
-				NONE    = 0x00, // Операционная система не определена
-				UNIX    = 0x01, // Операционная система принадлежит к Unix
-				LINUX   = 0x02, // Операционная система является Linux
-				WIND32  = 0x03, // Операционная система является Windows 32bit
-				WIND64  = 0x04, // Операционная система является Windows 64bit
-				MACOSX  = 0x05, // Операционная система является MacOS X
-				FREEBSD = 0x06  // Операционная система является FreeBSD
 			};
 			/**
 			 * Флаги трансформации строк
@@ -755,11 +735,6 @@ namespace awh {
 			 */
 			time_t str2time(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
 		public:
-			/**
-			 * os Метод определения операционной системы
-			 * @return название операционной системы
-			 */
-			os_t os() const noexcept;
 			/**
 			 * icon Метод получения иконки
 			 * @param end флаг завершения работы

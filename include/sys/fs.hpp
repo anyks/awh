@@ -32,7 +32,6 @@
 #include <sstream>
 #include <cstdlib>
 #include <functional>
-#include <unistd.h>
 #include <dirent.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -55,8 +54,6 @@
  * Выполняем работу для Unix
  */
 #else
-	#include <grp.h>
-	#include <pwd.h>
 	#include <sys/mman.h>
 #endif
 
@@ -70,6 +67,7 @@
 /**
  * Наши модули
  */
+#include <sys/os.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -107,6 +105,9 @@ namespace awh {
 				SOCK = 0x07  // Сокет
 			};
 		private:
+			// Объект работы с операционной системой
+			os_t _os;
+		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
@@ -118,19 +119,6 @@ namespace awh {
 			 * @return     текст сообщения описания кода ошибки
 			 */
 			string message(const int32_t code = 0) const noexcept;
-		public:
-			/**
-			 * uid Метод вывода идентификатора пользователя
-			 * @param name имя пользователя
-			 * @return     полученный идентификатор пользователя
-			 */
-			uid_t uid(const string & name) const noexcept;
-			/**
-			 * gid Метод вывода идентификатора группы пользователя
-			 * @param name название группы пользователя
-			 * @return     полученный идентификатор группы пользователя
-			 */
-			gid_t gid(const string & name) const noexcept;
 		public:
 			/**
 			 * isDir Метод проверяющий существование дирректории

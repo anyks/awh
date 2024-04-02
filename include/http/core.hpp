@@ -213,6 +213,9 @@ namespace awh {
 				{504, "Gateway Timeout"},
 				{505, "HTTP Version Not Supported"}
 			};
+		private:
+			// Объект работы с операционной системой
+			os_t _os;
 		protected:
 			// Создаём объект работы с URI
 			uri_t _uri;

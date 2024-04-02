@@ -199,6 +199,7 @@ endif(CMAKE_BUILD_EVENT2)
 # Выполняем подключение исходников
 set(SOURCE_FILES
     "${SOURCE_FILES}"
+    "${CMAKE_SOURCE_DIR}/src/sys/os.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/ver.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"

@@ -2647,53 +2647,6 @@ time_t awh::Framework::str2time(const string & date, const string & format) cons
 	return result;
 }
 /**
- * os Метод определения операционной системы
- * @return название операционной системы
- */
-awh::Framework::os_t awh::Framework::os() const noexcept {
-	// Результат
-	os_t result = os_t::NONE;
-	/**
-	 * Операционной системой является Windows 32bit
-	 */
-	#ifdef _WIN32
-		// Заполняем структуру
-		result = os_t::WIND32;
-	/**
-	 * Операционной системой является Windows 64bit
-	 */
-	#elif _WIN64
-		// Заполняем структуру
-		result = os_t::WIND64;
-	/**
-	 * Операционной системой является MacOS X
-	 */
-	#elif __APPLE__ || __MACH__
-		// Заполняем структуру
-		result = os_t::MACOSX;
-	/**
-	 * Операционной системой является Linux
-	 */
-	#elif __linux__
-		// Заполняем структуру
-		result = os_t::LINUX;
-	/**
-	 * Операционной системой является FreeBSD
-	 */
-	#elif __FreeBSD__
-		// Заполняем структуру
-		result = os_t::FREEBSD;
-	/**
-	 * Операционной системой является Unix
-	 */
-	#elif __unix || __unix__
-		// Заполняем структуру
-		result = os_t::UNIX;
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
  * icon Метод получения иконки
  * @param end флаг завершения работы
  * @return    иконка напутствия работы

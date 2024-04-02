@@ -43,66 +43,6 @@ string awh::FS::message(const int32_t code) const noexcept {
 	#endif
 }
 /**
- * uid Метод вывода идентификатора пользователя
- * @param name имя пользователя
- * @return     полученный идентификатор пользователя
- */
-uid_t awh::FS::uid(const string & name) const noexcept {
-	// Результат работы функции
-	uid_t result = 0;
-	/**
-	 * Выполняем работу для Unix
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если имя пользователя передано
-		if(!name.empty()){
-			// Получаем идентификатор имени пользователя
-			struct passwd * pwd = getpwnam(name.c_str());
-			// Если идентификатор пользователя не найден
-			if(pwd == nullptr){
-				// Выводим сообщение об ошибке
-				this->_log->print("Failed to get userId from username [%s]", log_t::flag_t::WARNING, name.c_str());
-				// Сообщаем что ничего не найдено
-				return result;
-			}
-			// Выводим идентификатор пользователя
-			result = pwd->pw_uid;
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * gid Метод вывода идентификатора группы пользователя
- * @param name название группы пользователя
- * @return     полученный идентификатор группы пользователя
- */
-gid_t awh::FS::gid(const string & name) const noexcept {
-	// Результат работы функции
-	gid_t result = 0;
-	/**
-	 * Выполняем работу для Unix
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если имя пользователя передано
-		if(!name.empty()){
-			// Получаем идентификатор группы пользователя
-			struct group * grp = getgrnam(name.c_str());
-			// Если идентификатор группы не найден
-			if(grp == nullptr){
-				// Выводим сообщение об ошибке
-				this->_log->print("Failed to get groupId from groupname [%s]", log_t::flag_t::WARNING, name.c_str());
-				// Сообщаем что ничего не найдено
-				return result;
-			}
-			// Выводим идентификатор группы пользователя
-			result = grp->gr_gid;
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
  * isDir Метод проверяющий существование дирректории
  * @param addr адрес дирректории
  * @return     результат проверки
@@ -1247,9 +1187,9 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		// Если путь передан
 		if(!path.empty() && !user.empty() && !group.empty() && (this->type(path) != type_t::NONE)){
 			// Идентификатор пользователя
-			const uid_t uid = this->uid(user);
+			const uid_t uid = this->_os.uid(user);
 			// Идентификатор группы
-			const gid_t gid = this->gid(group);
+			const gid_t gid = this->_os.gid(group);
 			// Устанавливаем права на каталог
 			if((result = (uid && gid))){
 				// Выполняем установку владельца

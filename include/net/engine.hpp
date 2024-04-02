@@ -503,7 +503,8 @@ namespace awh {
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
 					 _verb(false), _encrypted(false), _type(type_t::NONE),
 					 _proto(proto_t::RAW), _bio(nullptr), _ssl(nullptr),
-					 _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {}
+					 _ctx(nullptr), _addr(nullptr), _verify(nullptr),
+					 _fmk(fmk), _log(log), _crl(nullptr) {}
 					/**
 					 * ~Context Деструктор
 					 */
