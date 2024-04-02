@@ -521,7 +521,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 			args.oldlenp = &osnamelth;
 			osnamelth = sizeof(osname);
 
-			if (syscall(SYS__sysctl, &args) == -1) {
+			if (_sysctl(&args) == -1) {
 				perror("_sysctl");
 				exit(EXIT_FAILURE);
 			}
