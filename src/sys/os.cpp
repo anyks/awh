@@ -485,7 +485,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
 							  (item == '6') || (item == '7') || (item == '8') ||
-							  (item == '9') || ((item == '-') && (data.empty()) || data.front().first.empty()))) {
+							  (item == '9') || ((item == '-') && (data.empty() || data.front().first.empty()))) {
 						
 						cout << " *****1 " << string(1, item) << endl;
 						
