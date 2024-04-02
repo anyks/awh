@@ -29,6 +29,7 @@
 	 */
 	#include <pwd.h>
 	#include <grp.h>
+	#include <sys/resource.h>
 /**
  * Методы только для OS Windows
  */
