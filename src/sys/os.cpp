@@ -520,10 +520,16 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = ::popen(cmd.c_str(), "r");
 			// Если пайп открыт
 			if(stream){
+				// Строка полученного результата
+				const char * result = nullptr;
+				// Зануляем буфер для чтения
+				::memset(buffer, 0, sizeof(buffer));
 				// Считываем до тех пор пока все не прочитаем
-				while(::fgets(buffer, sizeof(buffer), stream) != nullptr){
+				while((result = ::fgets(buffer, sizeof(buffer), stream)) != nullptr){
 					// Добавляем полученный результат
-					result.append(buffer);
+					result.append(result, strlen(result));
+					// Зануляем буфер для чтения
+					::memset(buffer, 0, sizeof(buffer));
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла
@@ -558,17 +564,23 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = _wpopen(command.c_str(), L"rt");
 			// Если пайп открыт
 			if(stream){
+				// Строка полученного результата
+				const wchar_t * result = nullptr;
+				// Зануляем буфер для чтения
+				::memset(buffer, 0, sizeof(buffer));
 				// Считываем до тех пор пока все не прочитаем
-				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
+				while((result = ::fgetws(buffer, sizeof(buffer), stream)) != nullptr){
 					// Если используется BOOST
 					#ifdef USE_BOOST_CONVERT
 						// Выполняем конвертирование в utf-8 строку
-						result.append(utf_to_utf <char> (buffer, buffer + strlen(buffer)));
+						result.append(utf_to_utf <char> (result, result + strlen(result)));
 					// Если нужно использовать стандартную библиотеку
 					#else
 						// Выполняем конвертирование в utf-8 строку
-						result.append(conv.to_bytes(buffer));
+						result.append(conv.to_bytes(string{result, strlen(result)}));
 					#endif
+					// Зануляем буфер для чтения
+					::memset(buffer, 0, sizeof(buffer));
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла
