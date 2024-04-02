@@ -136,7 +136,7 @@ int main(int argc, char * argv[]){
 
 	cout << " ---- net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
 	cout << " ---- kernel.shmmax= " << os.sysctl <uint64_t> ("kernel.shmmax") << endl;
-	cout << " ---- kernel.acct= " << os.sysctl <vector <uint32_t>> ("kernel.acct")[1] << endl;
+	cout << " ---- kernel.acct= " << os.sysctl <vector <uint32_t>> ("kernel.acct")[2] << endl;
 	cout << " ---- kernel.osrelease= " << os.sysctl <string> ("kernel.osrelease") << endl;
 	cout << " ---- fs.epoll.max_user_watches= " << os.sysctl <uint32_t> ("fs.epoll.max_user_watches") << endl;
 	cout << " ---- kernel.sem_next_id= " << os.sysctl <int16_t> ("kernel.sem_next_id") << endl;
