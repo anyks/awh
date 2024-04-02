@@ -116,7 +116,7 @@ int main(int argc, char * argv[]){
 	os_t os;
 
 	// kernel.shmmax = 18446744073692774399
-	// kernel.acct = 4	2
+	// kernel.acct = 4 2       30
 	// kernel.osrelease = 4.19.0-26-amd64
 	// fs.epoll.max_user_watches = 33797775
 	// kernel.sem_next_id = -1
