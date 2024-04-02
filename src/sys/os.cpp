@@ -17,8 +17,15 @@
  */
 #include <regex>
 
-// Подключаем заголовочный файл
-#include <sys/os.hpp>
+/**
+ * Операционной системой является Linux
+ */
+#if __linux__
+	/**
+	 * Стандартные модули
+	 */
+	#include <queue>
+#endif
 
 /**
  * Методы только не для OS Windows
@@ -40,6 +47,10 @@
 	 */
 	#include <wchar.h>
 #endif
+
+// Подключаем заголовочный файл
+#include <sys/os.hpp>
+
 /**
  * boost Метод применение сетевой оптимизации операционной системы
  * @return результат работы
@@ -457,9 +468,64 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			const string & result = this->exec(command, false);
 			// Если результат получен
 			if(!result.empty()){
-
-				cout << " ********** " << result << endl;
-
+				// Очередь собранных данных
+				queue <pair <string, bool>> data;
+				// Выполняем перебор всего полученного результата
+				for(auto & item : result){
+					// Если символ является пробелом
+					if(item == ' '){
+						// Выполняем создание блока данных
+						pair <string, bool> record = make_pair("", true);
+						// Выполняем добавление записи в очередь
+						data.push(std::move(record));
+					// Если символ является числом
+					} else if((item == '0') || (item == '1') || (item == '2') ||
+					          (item == '3') || (item == '4') || (item == '5') ||
+							  (item == '6') || (item == '7') || (item == '8') || (item == '9')) {
+						// Если данных в очереди ещё нет
+						if(data.empty()){
+							// Выполняем создание блока данных
+							pair <string, bool> record = make_pair(string(1, item), true);
+							// Выполняем добавление записи в очередь
+							data.push(std::move(record));
+						// Если данные в очереди уже есть, добавляем полученный символ в запись
+						} else data.front().first.append(1, item);
+					// Если символ является простым символом		  
+					} else {
+						// Если данных в очереди ещё нет
+						if(data.empty()){
+							// Выполняем создание блока данных
+							pair <string, bool> record = make_pair(string(1, item), false);
+							// Выполняем добавление записи в очередь
+							data.push(std::move(record));
+						// Если данные в очереди уже есть
+						} else {
+							// Помечаем что запись не является числом
+							data.front().second = false;
+							// Добавляем полученный символ в запись
+							data.front().first.append(1, item);
+						}
+					}
+				}
+				// Выполняем перебор всей очереди собранных данных
+				while(!data.empty()){
+					// Если запись является числом
+					if(data.front().second){
+						// Выполняем получение числа
+						const uint64_t value1 = ::stoull(data.front().first);
+						// Пытаемся уменьшить число
+						if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
+							// Выполняем преобразование в unsigned int 32
+							const uint32_t value2 = static_cast <uint32_t> (value1);
+							// Выполняем добавление новой записи в буфер
+							buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
+						// Выполняем добавление новой записи в буфер
+						} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+					// Если запись является текстом
+					} else buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+					// Удаляем используемую запись
+					data.pop();
+				}
 			}
 		#endif
 	}
@@ -520,19 +586,10 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = ::popen(cmd.c_str(), "r");
 			// Если пайп открыт
 			if(stream){
-				// Строка полученного результата
-				const char * str = nullptr;
-				// Зануляем буфер для чтения
-				::memset(buffer, 0, sizeof(buffer));
 				// Считываем до тех пор пока все не прочитаем
-				while((str = ::fgets(buffer, sizeof(buffer), stream)) != nullptr){
+				while(::fgets(buffer, sizeof(buffer), stream) != nullptr){
 					// Добавляем полученный результат
-					result.append(str, strlen(str));
-					
-					cout << " ±±±±±±±±± " << result << " == " << result.size() << endl;
-					
-					// Зануляем буфер для чтения
-					::memset(buffer, 0, sizeof(buffer));
+					result.append(buffer);
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла
@@ -567,23 +624,17 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = _wpopen(command.c_str(), L"rt");
 			// Если пайп открыт
 			if(stream){
-				// Строка полученного результата
-				const wchar_t * str = nullptr;
-				// Зануляем буфер для чтения
-				::memset(buffer, 0, sizeof(buffer));
 				// Считываем до тех пор пока все не прочитаем
-				while((str = ::fgetws(buffer, sizeof(buffer), stream)) != nullptr){
+				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
 					// Если используется BOOST
 					#ifdef USE_BOOST_CONVERT
 						// Выполняем конвертирование в utf-8 строку
-						result.append(utf_to_utf <char> (str, str + strlen(str)));
+						result.append(utf_to_utf <char> (buffer, buffer + strlen(buffer)));
 					// Если нужно использовать стандартную библиотеку
 					#else
 						// Выполняем конвертирование в utf-8 строку
-						result.append(conv.to_bytes(string{str, strlen(str)}));
+						result.append(conv.to_bytes(buffer));
 					#endif
-					// Зануляем буфер для чтения
-					::memset(buffer, 0, sizeof(buffer));
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла
