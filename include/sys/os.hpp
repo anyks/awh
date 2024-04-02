@@ -286,12 +286,25 @@ namespace awh {
 			bool sysctl(const string & name, const T value) const noexcept {
 				// Если название записи для установки настроек передано
 				if(!name.empty()){
-					// Буфер результата по умолчанию
-					vector <uint8_t> buffer(sizeof(value), 0);
-					// Выполняем установку результата по умолчанию
-					::memcpy(buffer.data(), &value, sizeof(value));
-					// Выполняем установку буфера бинарных данных
-					return this->sysctl(name, buffer);
+					/**
+					 * Если это Linux
+					 */
+					#ifdef __linux__
+						// Выполняем преобразование числа в строку
+						const string param = to_string(value);
+						// Выполняем установку буфера бинарных данных
+						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
+					/**
+					 * Если это другая операционная система
+					 */
+					#else
+						// Буфер результата по умолчанию
+						vector <uint8_t> buffer(sizeof(value), 0);
+						// Выполняем установку результата по умолчанию
+						::memcpy(buffer.data(), &value, sizeof(value));
+						// Выполняем установку буфера бинарных данных
+						return this->sysctl(name, buffer);
+					#endif
 				}
 				// Сообщаем, что ничего не установленно
 				return false;

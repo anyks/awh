@@ -29,6 +29,7 @@
 	 */
 	#include <pwd.h>
 	#include <grp.h>
+	#include <sys/sysctl.h>
 	#include <sys/resource.h>
 /**
  * Методы только для OS Windows
@@ -38,25 +39,6 @@
 	 * Стандартные модули
 	 */
 	#include <wchar.h>
-#endif
-
-/**
- * Если мы работаем в MacOS X или FreeBSD
- */
-#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
-	/**
-	 * Стандартные модули
-	 */
-	#include <sys/sysctl.h>
-/**
- * Операционной системой является Linux
- */
-#elif __linux__
-	/**
-	 * Стандартные модули
-	 */
-	#include <sys/sysctl.h>
-	#include <linux/sysctl.h>
 #endif
 
 /**
@@ -433,6 +415,22 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		return false;
 	#endif
 }
+
+int
+sysctlnametomib(const char *name, int *mibp, size_t *sizep)
+{
+	int oid[2];
+	int error;
+
+	oid[0] = 0;
+	oid[1] = 3;
+
+	*sizep *= sizeof (int);
+	error = __sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
+	*sizep /= sizeof (int);
+	return (error);
+}
+
 /**
  * sysctl Метод извлечения настроек ядра операционной системы
  * @param name   название записи для получения настроек
@@ -444,10 +442,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 		// Выполняем очистку буфера данных
 		buffer.clear();
 		/**
-		 * Методы только не для OS Windows
+		 * Если мы работаем в MacOS X или FreeBSD
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			/*
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
 			// Получаем размер буфера
 			size_t length = 0;
 			// Если размеры удачно получены
@@ -459,7 +456,26 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					// Выполняем очистку буфера данных
 					buffer.clear();
 			}
-			*/
+		/**
+		 * Если это Linux
+		 */
+		#elif __linux__
+			// Создаём комманду запуска
+			string command = "sysctl";
+			// Добавляем разделитель
+			command.append(1, ' ');
+			// Добавляем название параметра
+			command.append(name);
+			// Добавляем разделитель
+			command.append(1, ' ');
+			// Добавляем усечение строки
+			command.append("| cut -d \"=\" -f2 | xargs");
+			// Выполняем получение значения команды
+			const string & result = this->exec(command, false);
+			// Если результат получен
+			if(!result.empty()){
+			
+			}
 		#endif
 	}
 }
@@ -482,17 +498,18 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 		 * Операционной системой является Linux
 		 */
 		#elif __linux__
-
-			int mib[4];
-
-			size_t len = sizeof(mib) / sizeof(int);
-
-			sysctlnametomib("kern.proc.pid", mib, &len);
-
-			// Фомируем блок аргументов для установки
-			struct __sysctl_args args;
-
-			// args.name = name.c_str();
+			// Создаём комманду запуска
+			string command = "sysctl -w";
+			// Добавляем разделитель
+			command.append(1, ' ');
+			// Добавляем название параметра
+			command.append(name);
+			// Добавляем разделитель
+			command.append(1, '=');
+			// Добавляем параметр для установки
+			command.append(string(buffer.begin(), buffer.end()));
+			// Выполняем установку параметров ядра
+			return !this->exec(command, false).empty();
 		#endif
 	}
 	// Сообщаем, что ничего не установленно
