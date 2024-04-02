@@ -561,7 +561,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 			
 			int result = ::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size());
 
-			cout << " ============= " << result << " === " << errno << " || " << name << endl;
+			cout << " ============= " << result << " === " << errno << " || " << name << " || " << buffer.size() << endl;
 			
 			// Устанавливаем новые параметры настройки ядра
 			// return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size()) == 0);
