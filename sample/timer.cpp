@@ -117,7 +117,7 @@ int main(int argc, char * argv[]){
 
 	cout << " ----1 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
 
-	os.sysctl("kern.ipc.maxsockbuf", 16777216);
+	os.sysctl("kern.ipc.maxsockbuf", 6291456);
 
 	cout << " ----2 kern.ipc.maxsockbuf= " << os.sysctl <uint32_t> ("kern.ipc.maxsockbuf") << endl;
 

@@ -558,16 +558,8 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 		 * Если мы работаем в MacOS X или FreeBSD
 		 */
 		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
-			
-			int result = ::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size());
-
-			uint32_t go = 0;
-			::memcpy(&go, buffer.data(), buffer.size());
-
-			cout << " ============= " << result << " === " << errno << " || " << name << " || " << buffer.size() << " == " << go << endl;
-			
 			// Устанавливаем новые параметры настройки ядра
-			// return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size()) == 0);
+			return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size()) == 0);
 		/**
 		 * Операционной системой является Linux
 		 */
