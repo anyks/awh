@@ -476,7 +476,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
-					if(::isspace(item) || (item == 32) || (item == '\t') || (item == '\n') || (item == '\r')){
+					if(::isspace(item) || (item == '\t') || (item == '\n') || (item == '\r') || (item == '\f') || (item == '\v')){
 						// Выполняем создание блока данных
 						pair <string, bool> record = make_pair("", true);
 						// Выполняем добавление записи в очередь
@@ -485,7 +485,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
 							  (item == '6') || (item == '7') || (item == '8') ||
-							  (item == '9') || ((item == '-') && (data.empty() || data.front().first.empty()))) {
+							  (item == '9') || ((item == '-') && (data.empty() || data.back().first.empty()))) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
@@ -493,9 +493,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Выполняем добавление записи в очередь
 							data.push(std::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
-						} else data.front().first.append(1, item);
+						} else data.back().first.append(1, item);
 
-						cout << " ***** " << data.front().first << endl;
+						cout << " ***** " << data.back().first << endl;
 
 					// Если символ является простым символом		  
 					} else if(item != 0) {
@@ -508,9 +508,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данные в очереди уже есть
 						} else {
 							// Помечаем что запись не является числом
-							data.front().second = false;
+							data.back().second = false;
 							// Добавляем полученный символ в запись
-							data.front().first.append(1, item);
+							data.back().first.append(1, item);
 						}
 					}
 				}
