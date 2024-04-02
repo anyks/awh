@@ -426,7 +426,7 @@ sysctlnametomib(const char *name, int *mibp, size_t *sizep)
 	oid[1] = 3;
 
 	*sizep *= sizeof (int);
-	error = __sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
+	error = sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
 	*sizep /= sizeof (int);
 	return (error);
 }
