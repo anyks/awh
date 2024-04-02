@@ -292,11 +292,7 @@ namespace awh {
 					 */
 					#ifdef __linux__
 						// Выполняем преобразование числа в строку
-						const string param = (
-							is_floating_point <T>::value ?
-							to_string(static_cast <double> (value)) :
-							to_string(static_cast <int64_t> (value))
-						);
+						const string param = to_string(value);
 						// Выполняем установку буфера бинарных данных
 						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
 					/**

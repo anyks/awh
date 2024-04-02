@@ -86,7 +86,7 @@ void awh::OS::boost() const noexcept {
 		#if defined(DEBUG_MODE)
 			// Для отладки активируем создание дампов ядра
 			this->sysctl("kernel.core_uses_pid", 1);
-			this->sysctl("kernel.core_pattern", "/tmp/core-%e-%p");
+			this->sysctl("kernel.core_pattern", string{"/tmp/core-%e-%p"});
 		#endif
 		// Активируем параметр помогающий в борье за ресурсы
 		this->sysctl("net.ipv4.tcp_tw_reuse", 1);
@@ -97,12 +97,12 @@ void awh::OS::boost() const noexcept {
 		// Увеличиваем максимальный размер буферов для отправки
 		this->sysctl("net.core.wmem_max", 134217728);
 		// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
-		this->sysctl("net.ipv4.tcp_rmem", "4096 87380 33554432");
-		this->sysctl("net.ipv4.tcp_wmem", "4096 65536 33554432");
+		this->sysctl("net.ipv4.tcp_rmem", string{"4096 87380 33554432"});
+		this->sysctl("net.ipv4.tcp_wmem", string{"4096 65536 33554432"});
 		// Рекомендуется для хостов с включенными большими фреймами
 		this->sysctl("net.ipv4.tcp_mtu_probing", 1);
 		// Рекомендуется для хостов CentOS 7/Debian 8
-		this->sysctl("net.core.default_qdisc", "fq");
+		this->sysctl("net.core.default_qdisc", string{"fq"});
 		/**
 		 * Рекомендуемый контроль перегрузки по умолчанию — htcp.
 		 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.ipv4.tcp_available_congestion_control
