@@ -108,8 +108,8 @@ void awh::OS::boost() const noexcept {
 		// Увеличиваем максимальный размер буферов для отправки
 		this->sysctl("net.core.wmem_max", 134217728);
 		// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
-		this->sysctl("net.ipv4.tcp_rmem", string{"4096 87380 33554432"});
-		this->sysctl("net.ipv4.tcp_wmem", string{"4096 65536 33554432"});
+		this->sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 33554432\""});
+		this->sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 33554432\""});
 		// Рекомендуется для хостов с включенными большими фреймами
 		this->sysctl("net.ipv4.tcp_mtu_probing", 1);
 		// Рекомендуется для хостов CentOS 7/Debian 8
