@@ -52,6 +52,10 @@
  * Операционной системой является Linux
  */
 #elif __linux__
+	/**
+	 * Стандартные модули
+	 */
+	#include <sys/sysctl.h>
 	#include <linux/sysctl.h>
 #endif
 
@@ -443,6 +447,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 		 * Методы только не для OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
+			/*
 			// Получаем размер буфера
 			size_t length = 0;
 			// Если размеры удачно получены
@@ -454,6 +459,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					// Выполняем очистку буфера данных
 					buffer.clear();
 			}
+			*/
 		#endif
 	}
 }
