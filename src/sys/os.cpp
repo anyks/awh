@@ -506,7 +506,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			size_t sz = sizeof(mib) / sizeof(mib[0]);
 
-			cout << " === sysctlnametomib= " << sysctlnametomib("vm.swap_info", mib, &sz) << endl;
+			cout << " === sysctlnametomib= " << sysctlnametomib(name.c_str(), mib, &sz) << " == " << name << endl;
 
 			// int mib[] = { CTL_KERN, KERN_OSTYPE };
 			

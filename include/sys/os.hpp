@@ -74,6 +74,7 @@
  * Стандартные модули
  */
 #include <memory>
+#include <vector>
 #include <string>
 #include <cstring>
 #include <unistd.h>
