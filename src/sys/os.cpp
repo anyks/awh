@@ -498,6 +498,20 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 		 * Операционной системой является Linux
 		 */
 		#elif __linux__
+			
+			int mib[16];
+
+			size_t sz = sizeof(mib) / sizeof(mib[0]);
+
+			cout << " === sysctlnametomib= " << sysctlnametomib("vm.swap_info", mib, &sz) << endl;
+
+			struct xswdev xsw;
+
+			size_t mib_sz = sz + 1;
+
+			cout << " ^^^^ " << sysctl(mib, mib_sz, &xsw, &sz, nullptr, 0) << endl;
+			
+			/*
 			// Создаём комманду запуска
 			string command = "sysctl -w";
 			// Добавляем разделитель
@@ -510,6 +524,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 			command.append(string(buffer.begin(), buffer.end()));
 			// Выполняем установку параметров ядра
 			return !this->exec(command, false).empty();
+			*/
 		#endif
 	}
 	// Сообщаем, что ничего не установленно

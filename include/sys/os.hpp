@@ -290,10 +290,12 @@ namespace awh {
 					 * Если это Linux
 					 */
 					#ifdef __linux__
+						/*
 						// Выполняем преобразование числа в строку
 						const string param = to_string(value);
 						// Выполняем установку буфера бинарных данных
 						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
+						*/
 					/**
 					 * Если это другая операционная система
 					 */
