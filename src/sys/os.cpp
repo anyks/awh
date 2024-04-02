@@ -505,11 +505,13 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 
 			cout << " === sysctlnametomib= " << sysctlnametomib("vm.swap_info", mib, &sz) << endl;
 
-			struct xswdev xsw;
+			
+			size_t length = 0;
+			
 
-			size_t mib_sz = sz + 1;
+			cout << " ^^^^1 " << sysctl(mib, sz, nullptr, &length, nullptr, 0) << endl;
 
-			cout << " ^^^^ " << sysctl(mib, mib_sz, &xsw, &sz, nullptr, 0) << endl;
+			cout << " ^^^^2 " << length << endl;
 			
 			/*
 			// Создаём комманду запуска
