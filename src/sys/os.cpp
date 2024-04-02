@@ -470,9 +470,6 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			if(!result.empty()){
 				// Очередь собранных данных
 				queue <pair <string, bool>> data;
-				
-				cout << " *****0 " << result << endl;
-				
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -494,9 +491,6 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							data.push(std::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.back().first.append(1, item);
-
-						cout << " ***** " << data.back().first << endl;
-
 					// Если символ является простым символом		  
 					} else if(item != 0) {
 						// Если данных в очереди ещё нет
@@ -526,6 +520,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
 								// Выполняем преобразование в unsigned int 32
 								const uint32_t value2 = static_cast <uint32_t> (value1);
+								
+								cout << " ***** " << value2 << endl;
+								
 								// Выполняем добавление новой записи в буфер
 								buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
 							// Выполняем добавление новой записи в буфер
