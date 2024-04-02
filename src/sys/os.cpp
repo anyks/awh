@@ -533,7 +533,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Если последний символ является пробелом, удаляем его
 							if(::isspace(data.front().first.back()))
 								// Выполняем удаление последний символ
-								data.front().first.pop();
+								data.front().first.pop_back();
 							// Выполняем добавление новой записи в буфер
 							buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
 						}
