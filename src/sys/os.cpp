@@ -474,10 +474,14 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				for(auto & item : result){
 					// Если символ является пробелом
 					if(::isspace(item) || (item == '\t') || (item == '\n') || (item == '\r') || (item == '\f') || (item == '\v')){
-						// Выполняем создание блока данных
-						pair <string, bool> record = make_pair("", true);
-						// Выполняем добавление записи в очередь
-						data.push(std::move(record));
+						// Если запись является числом
+						if(data.back().second){
+							// Выполняем создание блока данных
+							pair <string, bool> record = make_pair("", true);
+							// Выполняем добавление записи в очередь
+							data.push(std::move(record));
+						// Если запись является строкой, добавляем полученный символ в запись
+						} else data.back().first.append(1, item);
 					// Если символ является числом
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
