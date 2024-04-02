@@ -475,8 +475,11 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
+					
+					cout << " ^^^ " << (u_short) item << endl;
+					
 					// Если символ является пробелом
-					if(item == (' ') || (item == '\t') || (item == '\n') || (item == '\r')){
+					if((item == ' ') || (item == '\t') || (item == '\n') || (item == '\r')){
 						// Выполняем создание блока данных
 						pair <string, bool> record = make_pair("", true);
 						// Выполняем добавление записи в очередь
