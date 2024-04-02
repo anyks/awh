@@ -470,6 +470,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			if(!result.empty()){
 				// Очередь собранных данных
 				queue <pair <string, bool>> data;
+				
+				cout << " *****0 " << result << endl;
+				
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -481,7 +484,8 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					// Если символ является числом
 					} else if((item == '0') || (item == '1') || (item == '2') ||
 					          (item == '3') || (item == '4') || (item == '5') ||
-							  (item == '6') || (item == '7') || (item == '8') || (item == '9')) {
+							  (item == '6') || (item == '7') || (item == '8') ||
+							  (item == '9') || ((item == '-') && (data.empty()) || data.front().first.empty()))) {
 						
 						cout << " *****1 " << string(1, item) << endl;
 						
