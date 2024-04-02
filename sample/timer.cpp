@@ -115,17 +115,11 @@ int main(int argc, char * argv[]){
 	
 	os_t os;
 
+	cout << " ----1 net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
 
-	// net.ipv4.tcp_available_congestion_control = reno cubic htcp bbr
-	// kernel.seccomp.actions_logged = kill_process kill_thread trap errno trace log
-	// kernel.watchdog_cpumask = 0-19
-	// net.core.netdev_rss_key = 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+	this->sysctl("net.core.rmem_max", 134217728);
 
-	cout << " ---- net.ipv4.tcp_available_congestion_control= " << os.sysctl <string> ("net.ipv4.tcp_available_congestion_control") << endl;
-	cout << " ---- kernel.seccomp.actions_logged= " << os.sysctl <string> ("kernel.seccomp.actions_logged") << endl;
-	cout << " ---- kernel.watchdog_cpumask= " << os.sysctl <string> ("kernel.watchdog_cpumask") << endl;
-	cout << " ---- net.core.netdev_rss_key= " << os.sysctl <string> ("net.core.netdev_rss_key") << endl;
-
+	cout << " ----2 net.core.rmem_max= " << os.sysctl <uint32_t> ("net.core.rmem_max") << endl;
 	
 	return 0;
 	
