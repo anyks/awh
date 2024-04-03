@@ -1734,6 +1734,8 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 									}
 
 								}
+
+								this->send(bid, message.data(), message.size());
 								
 								return false;
 								
