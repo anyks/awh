@@ -1735,6 +1735,8 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 
 								}
 
+								scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_ws2._scheme.get(bid));
+
 								this->send(options->sid, bid, message.data(), message.size(), false);
 								
 								return false;
